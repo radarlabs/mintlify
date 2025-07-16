@@ -1,10 +1,20 @@
 ---
 title: "Maps"
 ---
+import Map from '../../src/components/Map.jsx'
+import FitBoundsMap from '../../src/components/examples/FitBoundsMap.jsx'
+import CustomImageMarkerMap from '../../src/components/examples/CustomImageMarkerMap.jsx'
+import CustomLanguageMap from '../../src/components/examples/CustomLanguageMap.jsx'
+import CustomPopupMap from '../../src/components/examples/CustomPopupMap.jsx'
+import RouteMap from '../../src/components/examples/RouteMap.jsx'
+import PolygonMap from '../../src/components/examples/PolygonMap.jsx'
+import GlobeMap from '../../src/components/examples/GlobeMap.jsx'
 
 Radar Maps is a cost-effective alternative to Google Maps Platform and Mapbox.
 
 For example, here's a Radar Map displaying a marker for Radar HQ:
+
+<Map />
 
 You can also check out the [maps explorer](https://radar.com/dashboard/maps/maps-explorer/maps) in the dashboard, or check out a full-page [maps demo](https://radar.com/demo/maps) and [store locator demo](https://radar.com/demo/locator).
 
@@ -349,6 +359,8 @@ Use the `map.fitToMarkers()` function to center and zoom the map to encompass al
 
 In the example below, clicking the map will place a new marker, and refit the map so all markers are visible. Clicking a marker will remove it.
 
+<FitBoundsMap />
+
 <CodeGroup>
 
 ```html HTML
@@ -449,6 +461,8 @@ export default RadarMap;
 
 Add a `Marker` with a custom image to the map by specifying the image URL.
 
+<CustomImageMarkerMap />
+
 <CodeGroup>
 
 ```html HTML
@@ -542,6 +556,8 @@ export default RadarMap;
 ### Display a custom popup
 
 Display a popup with customized HTML.
+
+<CustomPopupMap />
 
 ### Union Square
 
@@ -686,6 +702,8 @@ Routes can be plotted on a Radar Map as a GeoJSON LineString, or an encoded poly
 Polylines can be added to the map with the `map.addPolyline` function, and accepts an optional precision value (defaults to 6). LineString's use the `map.addLine` function.
 
 Lines can be styled according to the MapLibre [Line Layer properties](https://maplibre.org/maplibre-style-spec/layers/#line).
+
+<RouteMap />
 
 <CodeGroup>
 
@@ -839,6 +857,8 @@ Polygons or complex shapes can be drawn on a Radar Map by providing a GeoJSON Po
 
 Polygon features can be styled according to the polygon options highlighted above.
 
+<PolygonMap />
+
 <CodeGroup>
 
 ```html HTML
@@ -961,6 +981,8 @@ Display a Radar Map with an interactive globe projection.
 
 Only available on MapLibre v5 and above.
 
+<GlobeMap />
+
 <CodeGroup>
 
 ```html HTML
@@ -1056,6 +1078,8 @@ export default RadarMap;
 The map display language can be changed by setting the `language` option to the ISO language code (`en`), or the browser's current setting from `navigator.language`.
 
 You can also set `language: "local"` to use the device language by default.
+
+<CustomLanguageMap />
 
 Local (local)
 
