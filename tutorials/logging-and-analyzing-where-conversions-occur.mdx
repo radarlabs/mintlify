@@ -1,0 +1,117 @@
+---
+title: "Logging and analyzing where conversions occur"
+description: "Conversions are available on the ."
+---
+
+In this tutorial, we show you how to use Radar's [conversions API](/api#log-a-conversion) to analyze the location context associated with key customer interactions. Conversions can represent anything from a purchase or signup to engagement with an in-app feature.
+
+When these events are enriched with Radar's location context, they can be used to determine where these conversions occur and measure the value of location based features.
+
+## []()Languages used[#](#languages-used "Direct link to heading")
+
+* Swift
+* Kotlin
+
+## []()Features used[#](#features-used "Direct link to heading")
+
+* [iOS SDK](/sdk/ios)
+* [Android SDK](/sdk/android)
+* [Conversions API](/api#log-a-conversion)
+
+## []()Steps[#](#steps "Direct link to heading")
+
+### []()Step 1: Sign up for Radar[#](#step-1-sign-up-for-radar "Direct link to heading")
+
+If you haven't already, sign up for Radar to get your API key. You can create up to 1,000 geofences and make up to 100,000 API requests per month for free.
+
+[Get API keys](https://radar.com/signup)
+
+### []()Step 2: Install the Radar SDK[#](#step-2-install-the-radar-sdk "Direct link to heading")
+
+#### []()iOS[#](#ios "Direct link to heading")
+
+If you're starting from scratch, create a new Xcode project of type Single View App.
+
+[Install the iOS SDK](/sdk/ios#install-sdk) using CocoaPods or Carthage (recommended) or by [downloading the framework](https://github.com/radarlabs/radar-sdk-ios/releases) and dragging it into your project.
+
+Initialize the SDK in your `AppDelegate` class with your publishable API key.
+
+```
+import UIKitimport RadarSDK
+@UIApplicationMainclass AppDelegate: UIResponder, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {        Radar.initialize(publishableKey: "prj_test_pk_...")
+        return true    }
+}
+```
+
+Copy
+
+#### []()Android[#](#android "Direct link to heading")
+
+The best way to add the SDK to your project is via Gradle. See the [Android SDK installation guide](/sdk/android#install-sdk).
+
+When your app starts, in application `onCreate()`, initialize the SDK with your publishable API key.
+
+```
+import io.radar.sdk.Radar
+class MyApplication : Application() {
+    override fun onCreate() {        super.onCreate()
+        Radar.initialize(this, "prj_test_pk_...")    }
+}
+```
+
+Copy
+
+### []()Step 3: Determine the conversions you want to track[#](#step-3-determine-the-conversions-you-want-to-track "Direct link to heading")
+
+To take advantage of Radar's conversions API, you need to identify the events that are important to your business. Here are some examples:
+
+| Conversion name  | Example purpose                                                                                             | Placement                              | Event properties                                                |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------- |
+| `purchase`       | Measure the revenue driven from location-enabled features                                                   | After a user makes a purchase          | `revenue` (number) `pickup` (boolean) `in_store_mode` (boolean) |
+| `order_placed`   | Understand where users are placing orders within the app to prioritize personalized features                | After a user places an order           | `revenue` (number) `applied_coupon` (boolean)                   |
+| `sign_up`        | Measure which stores are driving sign ups through store promotions                                          | After a user completes the signup flow | `referrer` (string) `rewards` (boolean)                         |
+| `product_search` | Understand where customers are searching for products (i.e., in specific stores or at competitor locations) | After a user searches for a product    | `section` (string)                                              |
+
+### []()Step 4: Set up Radar geofences or places[#](#step-4-set-up-radar-geofences-or-places "Direct link to heading")
+
+On the [Geofences page](https://radar.com/dashboard/geofences), import geofences for your locations. For places, on the [Settings page](https://radar.com/dashboard/settings), monitor your desired place chains and categories. When processing conversions, Radar will determine if they happen at any of these geofences or places.
+
+### []()Step 5: Log conversions via the Radar SDK[#](#step-5-log-conversions-via-the-radar-sdk "Direct link to heading")
+
+The following example demonstrates how to log a conversion when a user makes a purchase.
+
+* Swift
+* Kotlin
+
+```
+// on making a purchaseRadar.logConversion(  name: "purchase",  revenue: 12.50,  metadata: ["product":"shirt"]) { (status, event) in  print("Logged conversion: status = \(Radar.stringForStatus(status)); event = \(String(describing: event))")}
+```
+
+Copy
+
+```
+// on searching for a productval metadata = JSONObject(mapOf("product" to "shirt"))Radar.logConversion(    "purchase",    12.50,    metadata) { status, event ->    Log.v("example", "Conversion = ${event?.type}: status = $status; event = $event")}
+```
+
+Copy
+
+### []()Step 6: Conversions overview in the Radar dashboard[#](#step-6-conversions-overview-in-the-radar-dashboard "Direct link to heading")
+
+The [Report](https://radar.com/dashboard/report?view=conversions) page of the Radar dashboard has a *Conversions* tab that provides an overview of all conversions logged for a project. Understand how engagement with your app differs between opted-in and opted-out users. See the total revenue across all conversions that have been logged with `revenue`.
+
+Below is an example of a fully populated *Conversions* page for a project that has logged conversions for `purchase` and `opened_notification` events: ![Conversions report page](/images/tutorials/assets/images/conversions-report-page-0b467fbf731440f46fab841b3ebcee68.png)
+
+### []()Step 7: Analyze conversions across location context types[#](#step-7-analyze-conversions-across-location-context-types "Direct link to heading")
+
+You can see when and where conversions were generated directly in the Radar dashboard. On the [Events](https://radar.com/dashboard/events) page, watch as conversions start to stream in:
+
+![Conversion events feed](/images/tutorials/assets/images/conversion-events-feed-61fa7247b3e1dc0a1b91a4492f3d7687.png)
+
+Click the *View* icon on the right to view a conversion's details: ![Conversion event detail page](/assets/images/conversion-event-detail-page-3421ed91319913e20b52db38f1cd6dd8.gif)
+
+Finally, select *Analysis* within the dropdown on the [Events](https://radar.com/dashboard/events) page to view all of your conversions sliced by different dimensions, such as place chain or geofence tag:
+
+![Conversion events analysis](/images/tutorials/assets/images/conversion-events-analysis-0252a5def813edf16b7ac1c4ce50ff80.png)
+
+[Edit this page](https://github.com/radarlabs/docs/edit/main/docs/tutorials/logging-and-analyzing-where-conversions-occur.md)

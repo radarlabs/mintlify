@@ -1,0 +1,191 @@
+---
+title: "Places"
+---
+
+<Info>
+  Places is available on the [Enterprise plan](https://radar.com/pricing).
+</Info>
+
+With Places, you can use our points-of-interest (POI) database to detect when a user visits a place, chain, or category, even if you haven't set up geofences for those places.
+
+Our database includes millions of places around the world from open and commercial datasets, with coverage for major chains (like McDonald's or Walmart) and categories (like airports or stadiums), often with accurate polygon geometry and additional metadata like address or operating hours.
+
+![](/images/f2vbu16fzuly/5SOzJ3H2StLCXe7HOZ7Bwh/7bbe802954a39517d9e475774af7b731/places_event.svg)
+
+Places provides the following user context:
+
+```json
+{
+  "place": {
+    "name": "Starbucks",
+    "chain": {
+      "name": "Starbucks",
+      "slug": "starbucks",
+      "externalId": "123",
+      "metadata": {
+        "customFlag": true
+      }
+    },
+    "categories": ["food-beverage", "coffee-shop"],
+    "location": {
+      "type": "Point",
+      "coordinates": [-73.977797, 40.783826]
+    }
+  }
+}
+```
+
+Places also provides the following events:
+
+- `user.entered_place`
+- `user.exited_place`
+
+You can receive events client-side via the [SDK](/sdk) or server-side via [event integrations](/integrations), including webhooks.
+
+You can enable Places on the [Settings page](https://radar.com/dashboard/settings).
+
+Alternatively, if you have your own custom place data, you can create geofences instead. Learn more about [Geofences](/geofences).
+
+## Quickstart
+
+First, [sign up](https://radar.com/signup) for Radar and get an API key.
+
+Then, enable Places events and enable chains or categories on the [Settings page](https://radar.com/dashboard/settings).
+
+From there, [integrate the SDK](/sdk) and call `Radar.trackOnce()` or `Radar.startTracking()`, depending on your use case. Radar will generate an entry event on the first stopped location update at a place matching your enabled chains or categories.
+
+## How it works
+
+Radar generates a place entry event if a user stops at a place (i.e., when `stopped` is `true` based on [tracking options](/sdk/tracking) or when `foreground` is `true`) matching [filters](#place-filters) with sufficient confidence, then a place exit event when the user leaves the place with sufficient confidence.
+
+All place events have [confidence levels](#confidence), and places may have one or more [categories](/places#categories) and a [chain](/places#chains).
+
+## Confidence
+
+All place events have confidence levels. Confidence levels range from `1` (low) to `3` (high). Confidence is a function of the accuracy of the location reported by the device, the footprint of the place, the density of the area, the popularity of the place, and other signals.
+
+You may decide to ignore events based on confidence levels.
+
+## Categories
+
+Places may have one or more categories. Radar supports hundreds of categories, organized in a hierarchy. View the [full list of categories](/places/categories).
+
+You can listen for place events with specific categories. For example, to do something if a user is at an airport, on [iOS](/sdk#ios):
+
+```java
+Radar.trackOnce { (status, location, events, user) in
+    if let place = user?.place,
+       place.hasCategory("airport") {
+        // do something
+    }
+}
+```
+
+## Chains
+
+Places may have a chain. Radar supports thousands of U.S. and international chains. View the [full list of chains](/places/chains).
+
+You can listen for place events with specific chains. For example, to do something when a user stops at a Starbucks, on [Android](/sdk#android):
+
+```java
+public void onEventsReceived(Context context,
+                             RadarEvent[] events,
+                             RadarUser user) {
+    for (RadarEvent event : events) {
+        if (event.type == RadarEventType.USER_ENTERED_PLACE &&
+            event.confidence == RadarEventConfidence.HIGH &&
+            event.place.isChain("starbucks")) {
+            // do something
+        }
+    }
+}
+```
+
+### Mappings
+
+To map Radar chain slugs to custom IDs, set _Chain mappings_ under _Places_ on the [Settings page](https://radar.com/dashboard/settings).
+
+You can set a JSON string representing a dictionary with keys and values of type string.
+
+For example, to map `burger-king` to `123` and `mcdonalds` to `456`:
+
+```json
+{ "burger-king": "123", "mcdonalds": "456" }
+```
+
+Custom chain IDs will be exposed as `place.chain.externalId` in user context and events. These custom IDs can also be used in place of chain slugs when performing searches with the [search places API](/api#search-places).
+
+### Metadata
+
+To map Radar chain slugs to custom metadata, set _Chain metadata_ under _Places_ on the [Settings page](https://radar.com/dashboard/settings).
+
+You can set a JSON string with values of type dictionary, each with between 1 and 16 keys and values of type string, boolean, or number.
+
+For example, to map `metadata.category` and `metadata.offers` for `burger-king` and `mcdonalds`:
+
+```json
+{
+  "burger-king": { "category": "Restaurant", "offers": true },
+  "mcdonalds": { "category": "Restaurant", "offers": false }
+}
+```
+
+Custom chain metadata will be exposed as `place.chain.metadata` in user context and events.
+
+## Place filters
+
+We recommend filtering events to specific categories or chains under _Places_ on the [Settings page](https://radar.com/dashboard/settings).
+
+For example, to monitor only fast food restaurants, you might add `fast-food-restaurant` to category filters, or add `burger-king`, `mcdonalds`, and others to chain filters.
+
+View the [full list of categories](/places#categories) and the [full list of chains](/places#chains).
+
+## State blocklist
+
+To suppress tracking specific place categories in certain states, set _Category state blocklist mapping_ under _Places_ on the [Settings page](https://radar.com/dashboard/settings).
+
+For example, blocking the `fast-food-restaurant` category in New York would bypass visits to `fast-food-restaurant` places in New York.
+
+[Regions](/regions) must be enabled to expose this setting.
+
+## Verify events
+
+You can accept or reject places events after user check-ins or other forms of verification. Event verifications will be used to improve the accuracy and confidence level of future events.
+
+For example, to accept an event on iOS:
+
+```java
+Radar.acceptEventId(event._id, verifiedPlaceId: event.alternatePlaces[0]._id)
+```
+
+## Place matching
+
+<Info>
+  Place matching is available on the [Enterprise plan](https://radar.com/pricing).
+</Info>
+
+Place matching is the easiest way to make sure your geofence coordinates and geometries are accurate and stay up-to-date over time. Place matching will ensure that entry and exit events are reliable, trip approaching and arrived signals are precise, and messaging for nearby locations is relevant.
+
+Navigate to the [Geofences page](https://radar.com/dashboard/geofences) and select _Import_. If [Places](/places) are enabled for your project, toggle _Enable place matching_ on.
+
+### How it works
+
+1. **Import your geofences against Radar's places data.** Select [chains](/places/chains) to match your geofences against while importing your geofences into Radar.
+2. **View the results of place matching.** After the import has completed, look at the results on the [Import history page](https://radar.com/dashboard/geofences/imports). Click _View import_ to see a summary and logs that indicate the outcome for each row. If the place match was successful, the import log will contain a link to the Radar place and the distance that the geofence center was corrected.
+3. **Filter and export the results for further analysis.** Apply _Filters_ to isolate rows that were not place matched, geofences that have large center correction values, or errors. Click _Export rows_ to download a CSV of the results.
+
+![PlaceMatching.gif](/assets/images/place_matching-a01ba4b97da8fda20fce00e981438b19.gif)
+
+### Geofence types
+
+- `circle`: When a `circle` geofence is matched, it will take on the geometry of the Radar place.
+- `polygon`: When a `polygon` geofence is matched, it will be linked to the Radar place, but not adopt the place center or geometry.
+- `isochrone`: When an `isochrone` geofence is matched, it will only take on the center of the Radar place, regenerating the [isochrone](https://en.wikipedia.org/wiki/Isochrone_map) geometry from the new center.
+
+### Advanced options
+
+- **Search radius.** Place matching will look for the nearest location within 10 kilometers by default. This value can be reduced to enforce a tighter search distance.
+- **Geofence tag(s).** Filter the rows to place match. For example, only perform place matching on rows where `tag = store` but not `tag = nearby`.
+- **Use Radar's place geometry.** By default, `circle` geofences will adopt both the center and geometry of the Radar place. Toggle this off for `circle` geofences to take on the center but not the geometry.
+
+[Edit this page](https://github.com/radarlabs/docs/edit/main/docs/places.mdx)

@@ -1,0 +1,358 @@
+---
+title: "Salesforce Marketing Cloud"
+---
+
+<Info>
+  The Salesforce Marketing Cloud integration is available on the [**Enterprise plan**](https://radar.com/pricing).
+</Info>
+
+Radar can send events to [Salesforce Marketing Cloud](https://www.salesforce.com/products/marketing-cloud/overview/) to trigger journeys in _Journey Builder_.
+
+Use the Salesforce Marketing Cloud integration to send location-triggered messages to increase engagement and conversion.
+
+## Configuration
+
+On the Salesforce Marketing Cloud _Setup_ menu, under _Installed Packages_, click _New_. Add an installed package with the name _Radar_. On the package details page, add an _API Integration_ component with the _Server-to-Server_ integration type and all permissions for the _Automation_, _Contacts_, _Cross Cloud Platform_, and _Data_ scopes. Copy your _Client ID_, _Client Secret_, _Authentication Base URI_, and _REST Base URI_.
+
+Then, on the Radar [Integrations page](https://radar.com/dashboard/integrations#salesforce) under _Salesforce Marketing Cloud_, set _Enabled_ to _Yes_ and paste these values. When you click _Save_, Radar will create an event definition and data extension with the specified event definition key (`radar-event` by default). Whenever events are generated, Radar will send events to your Salesforce Marketing Cloud data extension to trigger journeys.
+
+In Salesforce Marketing Cloud's _Contact Builder_, under _Data Designer_, connect the Radar data extension to your data model by linking the Customer Data's _Contact Key_ field to the Radar Data Extension's _contactKey_ field in a one to many relationship.
+
+To map a Radar user to a Salesforce Marketing Cloud contact, you must specify a custom mapping by setting Radar `metadata.salesforceContactKey`.
+
+<CodeGroup>
+
+```swift Swift
+let contactKey = SFMCSdk.mp.contactKey()
+Radar.setMetadata(["salesforceContactKey": contactKey])
+```
+
+
+```kotlin Kotlin
+SFMCSdk.requestSdk { sdk ->
+    sdk.mp {
+        val contactKey = it.moduleIdentity.profileId
+        Radar.setMetadata(JSONObject().put("salesforceContactKey",contactKey))
+    }
+}
+```
+
+</CodeGroup>
+
+## Verify integration data delivery
+
+To test that the integration is configured correctly and can deliver data, use the [Simulator](https://radar.com/dashboard/simulate) to generate events. Click _View_ on an event row and scroll down to the _Logs_ section on the details page to verify delivery. Perform a similar process via a test app build with Radar location tracking enabled by spoofing location or moving into the relevant boundary.
+
+![Verify integration event delivery](/assets/images/verify_integration_salesforce-3bb24441b56d78179f0105e888e67d6e.gif)
+
+Additionally, check the Radar data extension in Salesforce's _Contact Builder_ to verify records are delivering.
+
+All integration delivery can be monitored via the integration's event logs by clicking _View event logs_ on the [Integrations page](https://radar.com/dashboard/integrations#salesforce).
+
+## Example use cases
+
+### Send a personalized push notification when a user arrives at a store[#](#send-a-personalized-push-notification-when-a-user-arrives-at-a-store)
+
+1. Create [Geofences](/geofences#create-geofences) in Radar with the geofence tag set to `store`. The geofence tag will be used to trigger messages for the subset of geofence entries where this tag is present.
+2. Create a Salesforce Journey triggered by an API Event from the Radar data extension. The Radar data extension will be filtered on `user.entered_geofence` as the `type` attribute and `store` as the `geofenceTag` attribute.
+
+![Radar triggered Salesforce campaign](/images/integrations/assets/images/salesforce_radar_triggered_messaging-07b74c2968ee136997bc1f6c67738467.png)
+
+### Message all users who have been nearby a store
+
+1. Create [Geofences](/geofences#create-geofences) in Radar to represent nearby store boundaries with geofence tag set to `nearby-store`. The geofence tag will be used to target messages for the subset of geofences where this tag has been present on an event in the last 7 days.
+2. Create a Salesforce Mobile List filtered on the Radar data extension attributes of `type` equal to `user.entered_geofence`, `geofenceTag` equal to `nearby` and `createdAt` set to the last 7 days.
+3. Create a Salesforce MobilePush Message with audience targeting set to the Salesforce Mobile List created in the step above.
+
+![Radar targeted Salesforce campaign](/images/integrations/assets/images/salesforce_radar_targeted_messaging-cea6de96bf5e409be819b70930a2431d.png)
+
+## Event mapping
+
+### user.entered_geofence
+
+| Radar Event Field      | Salesforce Event Attribute | Type                      | Example                      |
+| ---------------------- | -------------------------- | ------------------------- | ---------------------------- |
+| `type`                 | `type`                     | string                    | `"user.entered_geofence"`    |
+| `user.userId`          | `userUserId`               | string (max length 100)   | `"1"`                        |
+| `user.deviceId`        | `userDeviceId`             | string (max length 100)   | `"10974a2ee035770b9"`        |
+| `geofence._id`         | `geofenceId`               | string                    | `"5b2c0906f5874b001aecfd8e"` |
+| `geofence.description` | `geofenceDescription`      | string (max length 100)   | `"Store #123"`               |
+| `geofence.tag`         | `geofenceTag`              | string (max length 100)   | `"store"`                    |
+| `geofence.externalId`  | `geofenceExternalId`       | string (max length 100)   | `"123"`                      |
+| `geofence.metadata`    | `geofenceMetadata`         | string (max length 4,000) | `'{"parking":false}'`        |
+| `confidence`           | `confidence`               | string                    | `"high"`                     |
+| `foreground`           | `foreground`               | boolean                   | `true`                       |
+
+If [Regions](/regions) is enabled, Radar will also send the following attributes:
+
+| Radar Event Field | Salesforce Event Attribute | Type   | Example           |
+| ----------------- | -------------------------- | ------ | ----------------- |
+| `country.code`    | `countryCode`              | string | `"US"`            |
+| `country.name`    | `countryName`              | string | `"United States"` |
+| `state.code`      | `stateCode`                | string | `"MD"`            |
+| `state.name`      | `stateName`                | string | `"Maryland"`      |
+| `dma.code`        | `dmaCode`                  | string | `"26"`            |
+| `dma.name`        | `dmaName`                  | string | `"Baltimore"`     |
+| `postalCode.code` | `postalCode`               | string | `"21014"`         |
+
+### user.exited_geofence
+
+| Radar Event Field      | Salesforce Event Attribute | Type                      | Example                      |
+| ---------------------- | -------------------------- | ------------------------- | ---------------------------- |
+| `type`                 | `type`                     | string                    | `"user.exited_geofence"`     |
+| `user.userId`          | `userUserId`               | string (max length 100)   | `"1"`                        |
+| `user.deviceId`        | `userDeviceId`             | string (max length 100)   | `"10974a2ee035770b9"`        |
+| `geofence._id`         | `geofenceId`               | string                    | `"5b2c0906f5874b001aecfd8e"` |
+| `geofence.description` | `geofenceDescription`      | string (max length 100)   | `"Store #123"`               |
+| `geofence.tag`         | `geofenceTag`              | string (max length 100)   | `"store"`                    |
+| `geofence.externalId`  | `geofenceExternalId`       | string (max length 100)   | `"123"`                      |
+| `geofence.metadata`    | `geofenceMetadata`         | string (max length 4,000) | `'{"parking":false}'`        |
+| `confidence`           | `confidence`               | string                    | `"high"`                     |
+| `duration`             | `duration`                 | number (minutes)          | ``` 42.1``foreground ```     |
+| `foreground`           | `foreground`               | boolean                   | `true`                       |
+
+If [Regions](/regions) is enabled, Radar will also send the following attributes:
+
+| Radar Event Field | Salesforce Event Attribute | Type   | Example           |
+| ----------------- | -------------------------- | ------ | ----------------- |
+| `country.code`    | `countryCode`              | string | `"US"`            |
+| `country.name`    | `countryName`              | string | `"United States"` |
+| `state.code`      | `stateCode`                | string | `"MD"`            |
+| `state.name`      | `stateName`                | string | `"Maryland"`      |
+| `dma.code`        | `dmaCode`                  | string | `"26"`            |
+| `dma.name`        | `dmaName`                  | string | `"Baltimore"`     |
+| `postalCode.code` | `postalCode`               | string | `"21014"`         |
+
+### user.dwelled_in_geofence
+
+| Radar Event Field      | Salesforce Event Attribute | Type                      | Example                      |
+| ---------------------- | -------------------------- | ------------------------- | ---------------------------- |
+| `type`                 | `type`                     | string                    | `"user.exited_geofence"`     |
+| `user.userId`          | `userUserId`               | string (max length 100)   | `"1"`                        |
+| `user.deviceId`        | `userDeviceId`             | string (max length 100)   | `"10974a2ee035770b9"`        |
+| `geofence._id`         | `geofenceId`               | string                    | `"5b2c0906f5874b001aecfd8e"` |
+| `geofence.description` | `geofenceDescription`      | string (max length 100)   | `"Store #123"`               |
+| `geofence.tag`         | `geofenceTag`              | string (max length 100)   | `"store"`                    |
+| `geofence.externalId`  | `geofenceExternalId`       | string (max length 100)   | `"123"`                      |
+| `geofence.metadata`    | `geofenceMetadata`         | string (max length 4,000) | `'{"parking":false}'`        |
+| `confidence`           | `confidence`               | string                    | `"high"`                     |
+| `duration`             | `duration`                 | number (minutes)          | `5`                          |
+| `foreground`           | `foreground`               | boolean                   | `true`                       |
+
+If [Regions](/regions) is enabled, Radar will also send the following attributes:
+
+| Radar Event Field | Salesforce Event Attribute | Type   | Example           |
+| ----------------- | -------------------------- | ------ | ----------------- |
+| `country.code`    | `countryCode`              | string | `"US"`            |
+| `country.name`    | `countryName`              | string | `"United States"` |
+| `state.code`      | `stateCode`                | string | `"MD"`            |
+| `state.name`      | `stateName`                | string | `"Maryland"`      |
+| `dma.code`        | `dmaCode`                  | string | `"26"`            |
+| `dma.name`        | `dmaName`                  | string | `"Baltimore"`     |
+| `postalCode.code` | `postalCode`               | string | `"21014"`         |
+
+### user.entered_place
+
+| Radar Event Field      | Salesforce Event Attribute | Type                      | Example                            |
+| ---------------------- | -------------------------- | ------------------------- | ---------------------------------- |
+| `type`                 | `type`                     | string                    | `"user.entered_place"`             |
+| `user.userId`          | `userUserId`               | string (max length 100)   | `"1"`                              |
+| `user.deviceId`        | `userDeviceId`             | string (max length 100)   | `"10974a2ee035770b9"`              |
+| `place._id`            | `placeId`                  | string                    | `"59302bcf8f27e8a156bd4f91"`       |
+| `place.name`           | `placeName`                | string                    | `"Starbucks"`                      |
+| `place.chain.slug`     | `placeChainSlug`           | string                    | `"starbucks"`                      |
+| `place.chain.name`     | `placeChainName`           | string                    | `"Starbucks"`                      |
+| `place.chain.metadata` | `placeChainMetadata`       | string (max length 4,000) | `'{"parking":false}'`              |
+| `place.categories`     | `placeCategories`          | string (comma-separated)  | `"food-beverage,cafe,coffee-shop"` |
+| `confidence`           | `confidence`               | string                    | `"high"`                           |
+| `foreground`           | `foreground`               | boolean                   | `true`                             |
+
+If [Regions](/regions) is enabled, Radar will also send the following attributes:
+
+| Radar Event Field | Salesforce Event Attribute | Type   | Example           |
+| ----------------- | -------------------------- | ------ | ----------------- |
+| `country.code`    | `countryCode`              | string | `"US"`            |
+| `country.name`    | `countryName`              | string | `"United States"` |
+| `state.code`      | `stateCode`                | string | `"MD"`            |
+| `state.name`      | `stateName`                | string | `"Maryland"`      |
+| `dma.code`        | `dmaCode`                  | string | `"26"`            |
+| `dma.name`        | `dmaName`                  | string | `"Baltimore"`     |
+| `postalCode.code` | `postalCode`               | string | `"21014"`         |
+
+### user.exited_place
+
+| Radar Event Field      | Salesforce Event Attribute | Type                      | Example                            |
+| ---------------------- | -------------------------- | ------------------------- | ---------------------------------- |
+| `type`                 | `type`                     | string                    | `"user.exited_place"`              |
+| `user.userId`          | `userUserId`               | string (max length 100)   | `"1"`                              |
+| `user.deviceId`        | `userDeviceId`             | string (max length 100)   | `"10974a2ee035770b9"`              |
+| `place._id`            | `placeId`                  | string                    | `"59302bcf8f27e8a156bd4f91"`       |
+| `place.name`           | `placeName`                | string                    | `"Starbucks"`                      |
+| `place.chain.slug`     | `placeChainSlug`           | string                    | `"starbucks"`                      |
+| `place.chain.name`     | `placeChainName`           | string                    | `"Starbucks"`                      |
+| `place.chain.metadata` | `placeChainMetadata`       | string (max length 4,000) | `'{"parking":false}'`              |
+| `place.categories`     | `placeCategories`          | string (comma-separated)  | `"food-beverage,cafe,coffee-shop"` |
+| `confidence`           | `confidence`               | string                    | `"high"`                           |
+| `duration`             | `duration`                 | number (minutes)          | `42.1`                             |
+| `foreground`           | `foreground`               | boolean                   | `true`                             |
+
+If [Regions](/regions) is enabled, Radar will also send the following attributes:
+
+| Radar Event Field | Salesforce Event Attribute | Type   | Example           |
+| ----------------- | -------------------------- | ------ | ----------------- |
+| `country.code`    | `countryCode`              | string | `"US"`            |
+| `country.name`    | `countryName`              | string | `"United States"` |
+| `state.code`      | `stateCode`                | string | `"MD"`            |
+| `state.name`      | `stateName`                | string | `"Maryland"`      |
+| `dma.code`        | `dmaCode`                  | string | `"26"`            |
+| `dma.name`        | `dmaName`                  | string | `"Baltimore"`     |
+| `postalCode.code` | `postalCode`               | string | `"21014"`         |
+
+### user.entered_region_country
+
+| Radar Event Field | Salesforce Event Attribute | Type    | Example Value                   |
+| ----------------- | -------------------------- | ------- | ------------------------------- |
+| `type`            | `type`                     | string  | `"user.entered_region_country"` |
+| `user.userId`     | `userUserId`               | string  | `"1"`                           |
+| `user.deviceId`   | `userDeviceId`             | string  | `"10974a2ee035770b9"`           |
+| `region.code`     | `regionCode`               | string  | `"US"`                          |
+| `region.name`     | `regionName`               | string  | `"United States"`               |
+| `confidence`      | `confidence`               | string  | `"high"`                        |
+| `foreground`      | `foreground`               | boolean | `true`                          |
+
+### user.exited_region_country
+
+| Radar Event Field | Salesforce Event Attribute | Type    | Example Value                  |
+| ----------------- | -------------------------- | ------- | ------------------------------ |
+| `type`            | `type`                     | string  | `"user.exited_region_country"` |
+| `user.userId`     | `userUserId`               | string  | `"1"`                          |
+| `user.deviceId`   | `userDeviceId`             | string  | `"10974a2ee035770b9"`          |
+| `region.code`     | `regionCode`               | string  | `"US"`                         |
+| `region.name`     | `regionName`               | string  | `"United States"`              |
+| `confidence`      | `confidence`               | string  | `"high"`                       |
+| `foreground`      | `foreground`               | boolean | `true`                         |
+
+### user.entered_region_state
+
+| Radar Event Field | Salesforce Event Attribute | Type    | Example Value                 |
+| ----------------- | -------------------------- | ------- | ----------------------------- |
+| `type`            | `type`                     | string  | `"user.entered_region_state"` |
+| `user.userId`     | `userUserId`               | string  | `"1"`                         |
+| `user.deviceId`   | `userDeviceId`             | string  | `"10974a2ee035770b9"`         |
+| `region.code`     | `regionCode`               | string  | `"MD"`                        |
+| `region.name`     | `regionName`               | string  | `"Maryland"`                  |
+| `confidence`      | `confidence`               | string  | `"high"`                      |
+| `foreground`      | `foreground`               | boolean | `true`                        |
+
+### user.exited_region_state
+
+| Radar Event Field | Salesforce Event Attribute | Type    | Example Value                |
+| ----------------- | -------------------------- | ------- | ---------------------------- |
+| `type`            | `type`                     | string  | `"user.exited_region_state"` |
+| `user.userId`     | `userUserId`               | string  | `"1"`                        |
+| `user.deviceId`   | `userDeviceId`             | string  | `"10974a2ee035770b9"`        |
+| `region.code`     | `regionCode`               | string  | `"MD"`                       |
+| `region.name`     | `regionName`               | string  | `"Maryland"`                 |
+| `confidence`      | `confidence`               | string  | `"high"`                     |
+| `foreground`      | `foreground`               | boolean | `true`                       |
+
+### user.entered_region_dma
+
+| Radar Event Field | Salesforce Event Attribute | Type    | Example Value               |
+| ----------------- | -------------------------- | ------- | --------------------------- |
+| `type`            | `type`                     | string  | `"user.entered_region_dma"` |
+| `user.userId`     | `userUserId`               | string  | `"1"`                       |
+| `user.deviceId`   | `userDeviceId`             | string  | `"10974a2ee035770b9"`       |
+| `region.code`     | `regionCode`               | string  | `"26"`                      |
+| `region.name`     | `regionName`               | string  | `"Baltimore"`               |
+| `confidence`      | `confidence`               | string  | `"high"`                    |
+| `foreground`      | `foreground`               | boolean | `true`                      |
+
+### user.exited_region_dma
+
+| Radar Event Field | Salesforce Event Attribute | Type    | Example Value              |
+| ----------------- | -------------------------- | ------- | -------------------------- |
+| `type`            | `type`                     | string  | `"user.exited_region_dma"` |
+| `user.userId`     | `userUserId`               | string  | `"1"`                      |
+| `user.deviceId`   | `userDeviceId`             | string  | `"10974a2ee035770b9"`      |
+| `region.code`     | `regionCode`               | string  | `"26"`                     |
+| `region.name`     | `regionName`               | string  | `"Baltimore"`              |
+| `confidence`      | `confidence`               | string  | `"high"`                   |
+| `foreground`      | `foreground`               | boolean | `true`                     |
+
+### user.started_trip
+
+| Radar Event Attribute                | Salesforce Event Attribute          | Type                      | Example Value                         |
+| ------------------------------------ | ----------------------------------- | ------------------------- | ------------------------------------- |
+| `trip.externalId`                    | `tripExternalId`                    | string (max length 100)   | `"299"`                               |
+| `trip.metadata`                      | `tripMetadata`                      | string (max length 4,000) | `'{"Car Model":"Green Honda Civic"}'` |
+| `trip.destinationGeofenceTag`        | `tripDestinationGeofenceTag`        | string (max length 100)   | `"store"`                             |
+| `trip.destinationGeofenceExternalId` | `tripDestinationGeofenceExternalId` | string (max length 100)   | `"123"`                               |
+| `foreground`                         | `foreground`                        | boolean                   | `true`                                |
+
+### user.updated_trip
+
+| Radar Event Attribute                | Salesforce Event Attribute          | Type                      | Example Value                         |
+| ------------------------------------ | ----------------------------------- | ------------------------- | ------------------------------------- |
+| `trip.externalId`                    | `tripExternalId`                    | string (max length 100)   | `"299"`                               |
+| `trip.metadata`                      | `tripMetadata`                      | string (max length 4,000) | `'{"Car Model":"Green Honda Civic"}'` |
+| `trip.destinationGeofenceTag`        | `tripDestinationGeofenceTag`        | string (max length 100)   | `"store"`                             |
+| `trip.destinationGeofenceExternalId` | `tripDestinationGeofenceExternalId` | string (max length 100)   | `"123"`                               |
+| `foreground`                         | `foreground`                        | boolean                   | `true`                                |
+
+### user.approaching_trip_destination
+
+| Radar Event Attribute                | Salesforce Event Attribute          | Type                      | Example Value                         |
+| ------------------------------------ | ----------------------------------- | ------------------------- | ------------------------------------- |
+| `trip.externalId`                    | `tripExternalId`                    | string (max length 100)   | `"299"`                               |
+| `trip.metadata`                      | `tripMetadata`                      | string (max length 4,000) | `'{"Car Model":"Green Honda Civic"}'` |
+| `trip.destinationGeofenceTag`        | `tripDestinationGeofenceTag`        | string (max length 100)   | `"store"`                             |
+| `trip.destinationGeofenceExternalId` | `tripDestinationGeofenceExternalId` | string (max length 100)   | `"123"`                               |
+| `foreground`                         | `foreground`                        | boolean                   | `true`                                |
+
+### user.arrived_at_trip_destination
+
+| Radar Event Attribute                | Salesforce Event Attribute          | Type                      | Example Value                         |
+| ------------------------------------ | ----------------------------------- | ------------------------- | ------------------------------------- |
+| `trip.externalId`                    | `tripExternalId`                    | string (max length 100)   | `"299"`                               |
+| `trip.metadata`                      | `tripMetadata`                      | string (max length 4,000) | `'{"Car Model":"Green Honda Civic"}'` |
+| `trip.destinationGeofenceTag`        | `tripDestinationGeofenceTag`        | string (max length 100)   | `"store"`                             |
+| `trip.destinationGeofenceExternalId` | `tripDestinationGeofenceExternalId` | string (max length 100)   | `"123"`                               |
+| `foreground`                         | `foreground`                        | boolean                   | `true`                                |
+
+### user.stopped_trip
+
+| Radar Event Attribute                | Salesforce Event Attribute          | Type                      | Example Value                         |
+| ------------------------------------ | ----------------------------------- | ------------------------- | ------------------------------------- |
+| `trip.externalId`                    | `tripExternalId`                    | string (max length 100)   | `"299"`                               |
+| `trip.metadata`                      | `tripMetadata`                      | string (max length 4,000) | `'{"Car Model":"Green Honda Civic"}'` |
+| `trip.destinationGeofenceTag`        | `tripDestinationGeofenceTag`        | string (max length 100)   | `"store"`                             |
+| `trip.destinationGeofenceExternalId` | `tripDestinationGeofenceExternalId` | string (max length 100)   | `"123"`                               |
+| `foreground`                         | `foreground`                        | boolean                   | `true`                                |
+
+### user.entered_beacon
+
+| Radar Event Attribute | Salesforce Event Attribute | Type                      | Example Value                |
+| --------------------- | -------------------------- | ------------------------- | ---------------------------- |
+| `beacon._id`          | `beaconId`                 | string                    | `"5b2c0906f5874b001aecfd8f"` |
+| `beacon.description`  | `beaconDescription`        | string (max length 100)   | `"Store #123 - Drive-Thru"`  |
+| `beacon.tag`          | `beaconTag`                | string (max length 100)   | `"drive-thru"`               |
+| `beacon.externalId`   | `beaconExternalId`         | string (max length 100)   | `"123"`                      |
+| `beacon.metadata`     | `beaconMetadata`           | string (max length 4,000) | `'{"type":"parking"}'`       |
+| `confidence`          | `confidence`               | string                    | `"high"`                     |
+| `foreground`          | `foreground`               | boolean                   | `true`                       |
+
+### user.exited_beacon
+
+| Radar Event Attribute | Salesforce Event Attribute | Type                      | Example Value                |
+| --------------------- | -------------------------- | ------------------------- | ---------------------------- |
+| `beacon._id`          | `beaconId`                 | string                    | `"5b2c0906f5874b001aecfd8f"` |
+| `beacon.description`  | `beaconDescription`        | string (max length 100)   | `"Store #123 - Drive-Thru"`  |
+| `beacon.tag`          | `beaconTag`                | string (max length 100)   | `"drive-thru"`               |
+| `beacon.externalId`   | `beaconExternalId`         | string (max length 100)   | `"123"`                      |
+| `beacon.metadata`     | `beaconMetadata`           | string (max length 4,000) | `'{"type":"parking"}'`       |
+| `confidence`          | `confidence`               | string                    | `"high"`                     |
+| `duration`            | `duration`                 | number (minutes)          | `1.42`                       |
+| `foreground`          | `foreground`               | boolean                   | `true`                       |
+
+[Edit this page](https://github.com/radarlabs/docs/edit/main/docs/integrations/salesforce.mdx)

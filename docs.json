@@ -1,0 +1,133 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Radar",
+  "colors": {
+    "primary": "#0005FB",
+    "light": "#A6BAED",
+    "dark": "#0003A5"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Home",
+        "pages": [
+          "home"
+        ]
+      },
+      {
+        "group": "Geofencing Platform",
+        "pages": [
+          "geofencing/overview",
+          "geofencing/geofences",
+          "geofencing/trips",
+          "geofencing/places",
+          "geofencing/regions",
+          "geofencing/beacons",
+          "geofencing/fraud",
+          "geofencing/campaigns",
+          {
+            "group": "Integrations",
+            "pages": [
+              "integrations",
+              "integrations/webhooks",
+              "integrations/airship",
+              "integrations/amplitude",
+              "integrations/aws-pinpoint",
+              "integrations/aws-s3",
+              "integrations/attentive",
+              "integrations/branch",
+              "integrations/brandify",
+              "integrations/braze",
+              "integrations/cordial",
+              "integrations/census",
+              "integrations/iterable",
+              "integrations/leanplum",
+              "integrations/lytics",
+              "integrations/mixpanel",
+              "integrations/mparticle",
+              "integrations/olo",
+              "integrations/onesignal",
+              "integrations/salesforce",
+              "integrations/segment",
+              "integrations/yext"
+            ]
+          },
+          "geofencing/testing"
+        ]
+      },
+      {
+        "group": "Maps Platform",
+        "pages": [
+          "maps/overview",
+          "maps/geocoding",
+          "maps/search",
+          "maps/routing",
+          "maps/maps",
+          "maps/static-maps",
+          "maps/autocomplete",
+          "maps/migration-sdk"
+        ]
+      },
+      {
+        "group": "SDK Reference",
+        "pages": [
+          "sdk/sdk",
+          "sdk/ios",
+          "sdk/android",
+          "sdk/react-native",
+          "sdk/web",
+          "sdk/cordova",
+          "sdk/capacitor",
+          "sdk/flutter",
+          "sdk/maui",
+          "sdk/tracking",
+          "sdk/remote-configuration"
+        ]
+      },
+      {
+        "group": "Api",
+        "pages": [
+          "api"
+        ]
+      },
+      {
+        "group": "Tutorials",
+        "pages": [
+          "tutorials",
+          "tutorials/building-an-on-premise-mode",
+          "tutorials/building-menuboard-detection-with-in-geofence-tracking-options",
+          "tutorials/showing-a-notification-when-a-user-enters-a-geofence",
+          "tutorials/building-an-app-with-location-enabled-curbside-pickup",
+          "tutorials/building-a-delivery-tracking-app",
+          "tutorials/building-a-store-locator-on-ios",
+          "tutorials/localizing-a-website-based-on-current-country-or-city",
+          "tutorials/logging-and-analyzing-where-conversions-occur",
+          "tutorials/migrate-from-google-maps",
+          "tutorials/displaying-radar-maps-on-ios",
+          "tutorials/displaying-radar-maps-on-android",
+          "tutorials/displaying-radar-maps-with-react-native",
+          "tutorials/displaying-radar-maps-with-flutter",
+          "tutorials/create-a-custom-map-style"
+        ]
+      },
+      {
+        "group": "Waypoint",
+        "pages": [
+          "waypoint"
+        ]
+      },
+      {
+        "group": "Faqs",
+        "pages": [
+          "faqs"
+        ]
+      },
+      {
+        "group": "Radar.com",
+        "pages": []
+      }
+    ]
+  }
+}

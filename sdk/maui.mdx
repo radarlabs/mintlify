@@ -1,0 +1,317 @@
+---
+title: "MAUI SDK"
+description: "This is the documentation for the MAUI package. Before integrating, read the to familiarize yourself with the platform."
+---
+
+## Install[#](#install)
+
+Install the package from [NuGet](https://www.nuget.org/packages/RadarIO.Xamarin/):
+
+```bash
+Install-Package RadarIO.Xamarin
+```
+
+RadarIO.Xamarin supports both Xamarin and MAUI bindings.
+
+If you have an iOS and an Android project, add the package to each project.
+
+## Integrate[#](#integrate)
+
+### Initialize[#](#initialize)
+
+First, initialize the SDK:
+
+```csharp
+using RadarIO;
+using static RadarIO.RadarSingleton;
+
+namespace MyProject
+{ 
+  public class Example 
+  { 
+    void Example () 
+    {
+      RadarSingleton.Initialize(new RadarSDKImpl());
+      Radar.Initialize(publishableKey); 
+    } 
+  }
+}
+```
+
+### Identify user[#](#identify-user)
+
+To identify the user when logged in, call:
+
+```csharp
+Radar.UserId = userId;
+```
+
+where `userId` is a stable unique ID for the user.
+
+To set an optional dictionary of custom metadata for the user, call:
+
+```csharp
+Radar.Metadata = metadata;
+```
+
+where `metadata` is a `JSONObject` with up to 16 keys and values of type string, boolean, or number.
+
+Finally, to set an optional description for the user, displayed in the dashboard, call:
+
+```csharp
+Radar.Description = description;
+```
+
+where `description` is a string.
+
+You only need to call these functions once, as these settings will be persisted across app sessions.
+
+Learn about platform-specific implementations of these functions in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+
+### Request permissions[#](#request-permissions)
+
+Before tracking the user's location, the user must have granted location permissions for the app.
+
+See the [MAUI Permissions docs](https://learn.microsoft.com/en-us/dotnet/maui/platform-integration/appmodel/permissions) to learn how to check and request permissions.
+
+### Foreground tracking[#](#foreground-tracking)
+
+Once you have initialized the SDK and the user has granted permissions, you can track the user's location.
+
+To track the user's location in the foreground, call:
+
+```csharp
+var (status, location, events, user) = await Radar.TrackOnce();
+```
+
+Learn about platform-specific implementations of this function in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+
+### Background tracking[#](#background-tracking)
+
+On iOS and Android, once you have initialized the SDK and the user has granted permissions, you can start tracking the user's location in the background.
+
+For background tracking, the SDK supports custom tracking options as well as three presets:
+
+* **`TrackingOptionsEfficient`**: A low frequency of location updates and lowest battery usage. On Android, avoids Android vitals bad behavior thresholds.
+* **`TrackingOptionsResponsive`**: A medium frequency of location updates and low battery usage. Suitable for most consumer use cases.
+* **`TrackingOptionsContinuous`**: A high frequency of location updates and higher battery usage. Suitable for on-demand use cases (e.g., delivery tracking) and some consumer use cases (e.g., order ahead, "mall mode").
+
+Learn about platform-specific implementations of these presets in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+
+To start tracking the user's location in the background, call one of:
+
+```csharp
+Radar.StartTracking(Radar.TrackingOptionsEfficient);
+Radar.StartTracking(Radar.TrackingOptionsResponsive);
+Radar.StartTracking(Radar.TrackingOptionsContinuous);
+```
+
+You only need to call these methods once, as these settings will be persisted across app sessions.
+
+Though we recommend using presets for most use cases, you can customize the tracking options. See the [tracking options reference](/sdk/tracking).
+
+```csharp
+RadarTrackingOptions trackingOptions = Radar.TrackingOptionsContinuous;
+trackingOptions.DesiredStoppedUpdateInterval = 180;
+trackingOptions.DesiredStoppedUpdateInterval = 60;
+trackingOptions.DesiredSyncInterval = 50;
+trackingOptions.DesiredAccuracy = RadarTrackingOptionsDesiredAccuracy.High;
+trackingOptions.StopDuration = 140;
+trackingOptions.StopDistance = 70;
+trackingOptions.Sync = RadarTrackingOptionsSync.All;
+trackingOptions.Replay = RadarTrackingOptionsReplay.None;
+
+Radar.StartTracking(trackingOptions);
+```
+
+To determine whether tracking has been started, call:
+
+```csharp
+Radar.IsTracking;
+```
+
+To stop tracking the user's location in the background (e.g., when the user logs out), call:
+
+```csharp
+Radar.StopTracking();
+```
+
+Learn about platform-specific implementations of these functions in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+
+To listen for events, location updates, and errors, you can add event listeners:
+
+```csharp
+Radar.ClientLocationUpdated += (result) =>
+{ 
+  // do something with result.location, result.stopped, result.source
+};
+
+Radar.LocationUpdated += (result) =>
+{ 
+  // do something with result.location, result.user
+};
+
+Radar.EventsReceived += (result) =>
+{ 
+  // do something with result.events, result.user
+};
+
+Radar.Error += (err) => 
+{ 
+  // do something with err
+};
+```
+
+Listeners should be set only once and before tracking begins.
+
+### Mock tracking[#](#mock-tracking)
+
+On iOS and Android, you can simulate a sequence of location updates for testing. For example, to simulate a sequence of 10 location updates every 3 seconds by car from an `origin` to a `destination`, we can call:
+
+```csharp
+RadarLocation origin = new() { Latitude = 40.714708, Longitude = -74.035807 };
+RadarLocation destination = new() { Latitude = 40.717410, Longitude = -74.053334 };
+
+Radar.MockTracking(origin, destination, RadarRouteMode.Car, 10, 3, data =>
+{ 
+  System.Console.WriteLine($"{data.Location.Latitude} {data.Location.Longitude}");
+});
+```
+
+### Trip tracking[#](#trip-tracking)
+
+On iOS and Android, to start a trip to a destination, call:
+
+```csharp
+RadarTripOptions tripOptions = new()
+{ 
+  ExternalId = "299",
+  DestinationGeofenceTag = "store", 
+  DestinationGeofenceExternalId = "123", 
+  Mode = RadarRouteMode.Car
+};
+
+await Radar.StartTrip(tripOptions);
+Radar.StartTracking(Radar.TrackingOptionsContinuous);
+```
+
+Later, to complete the trip and stop tracking, call:
+
+```csharp
+await Radar.CompleteTrip();
+Radar.StopTracking();
+```
+
+Or, to cancel the trip and stop tracking, call:
+
+```csharp
+await Radar.CancelTrip();
+Radar.StopTracking();
+```
+
+Learn more about [trip tracking](/trip-tracking).
+
+### Manual tracking[#](#manual-tracking)
+
+You can manually update the user's location by calling:
+
+```csharp
+RadarLocation loc = new() { Latitude = 40.714708, Longitude = -74.035807, Accuracy = 65 };
+
+var (status, location, events, user) = await Radar.TrackOnce(loc);
+```
+
+Learn about platform-specific implementation of this function in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+
+### Other APIs[#](#other-apis)
+
+The MAUI SDK also exposes APIs for anonymous context, geocoding, search, and distance.
+
+#### Get location[#](#get-location)
+
+Get a single location update without sending it to the server:
+
+```csharp
+var (status, location, stopped) = await Radar.GetLocation();
+```
+
+#### Context[#](#context)
+
+With the [context API](/api#context), get context for a location without sending device or user identifiers to the server:
+
+```csharp
+var (status, location, context) = await Radar.GetContext();
+```
+
+#### Geocoding[#](#geocoding)
+
+With the [forward geocoding API](/api#forward-geocode), geocode an address, converting address to coordinates:
+
+```csharp
+var (status, addresses) = await Radar.Geocode("20 jay st brooklyn ny");
+```
+
+With the [reverse geocoding API](/api#reverse-geocode), reverse geocode a location, converting coordinates to address:
+
+```csharp
+RadarLocation loc = new() { Latitude = 40.714708, Longitude = -74.035807 };
+
+var (status, addresses) = await Radar.ReverseGeocode(loc);
+```
+
+With the [IP geocoding API](/api#ip-geocode), geocode the device's current IP address, converting IP address to city, state, and country:
+
+```csharp
+var (status, address, proxy) = await Radar.IpGeocode();
+```
+
+#### Search[#](#search)
+
+With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance:
+
+```csharp
+RadarLocation near = new() { Latitude = 40.714708, Longitude = -74.035807 };
+
+var (status, addresses) = await Radar.Autocomplete("brooklyn roasting", near, 10);
+```
+
+With the [geofence search API](/api#search-geofences), search for geofences near a location, sorted by distance:
+
+```csharp
+RadarLocation near = new() { Latitude = 40.714708, Longitude = -74.035807 };
+
+var (status, location, geofences) = await Radar.SearchGeofences(near, 1000, new string[] { "venue" }, limit: 10);
+```
+
+With the [places search API](/api#search-places), search for places near a location, sorted by distance:
+
+```csharp
+RadarLocation near = new() { Latitude = 40.714708, Longitude = -74.035807 };
+
+var (status, location, places) = await Radar.SearchPlaces(near, 1000, new string[] { "starbucks" }, null, null, 10);
+```
+
+#### Distance[#](#distance)
+
+With the [distance API](/api#distance), calculate the travel distance and duration from an origin to a destination:
+
+```csharp
+RadarLocation origin = new() { Latitude = 40.78382, Longitude = -73.97536 };
+RadarLocation destination = new() { Latitude = 40.70390, Longitude = -73.98670 };
+
+var (status, routes) = await Radar.GetDistance(origin, destination, new[] { RadarRouteMode.Foot, RadarRouteMode.Car }, RadarRouteUnits.Imperial);
+```
+
+#### Matrix[#](#matrix)
+
+With the [matrix API](/api#matrix), calculate the travel distances and durations between multiple origins and destinations for up to 25 routes:
+
+```csharp
+var (status, routes) = await Radar.GetDistance(origins, destinations, new[] { RadarRouteMode.Car }, RadarRouteUnits.Imperial);
+```
+
+## Support[#](#support)
+
+Have questions? We're here to help! Contact us at [radar.com/support](https://radar.com/support).
+
+[Edit this page](https://github.com/radarlabs/docs/edit/main/docs/sdk/maui.mdx)

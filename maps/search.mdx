@@ -1,0 +1,319 @@
+---
+title: "Search APIs"
+description: "Use Radar's search APIs to search data in Radar, including addresses, places, and geofences."
+---
+
+![](/images/maps/f2vbu16fzuly/6v2U27ZTaLxJKQ9rMNkPmP/9f5d24201a77e9ff4ada49a4a2af55ce/search_api.svg)
+
+## Quickstart
+
+First, [sign up](https://radar.com/signup) for Radar and get an API key.
+
+Then, call one of the search APIs below, either [directly](/api) or [using the SDK](/sdk).
+
+From there, use the APIs to build location features in your app or website, such as store locators, address autocomplete, or delivery tracking.
+
+## Endpoints
+
+### Address autocomplete
+
+Use the address autocomplete API to autocomplete partial addresses.
+
+This endpoint is best for partial addresses. For complete addresses, call the [forward geocoding API](/maps/geocoding#forward) instead.
+
+Use cases for this endpoint include autocompleting partial addresses for checkout forms or store locators.
+
+See the autocomplete API reference [here](/api#autocomplete).
+
+### Address validation
+
+Use the address validation API to validate complete structured addresses.
+
+Use cases for this endpoint include verifying addresses or suggesting mailable addresses for checkout forms or delivery.
+
+See the address validation API reference [here](/api#validate-an-address).
+
+### Places search
+
+Use the places search API to search for places near a location, filtered by [chain](/places#chains) (e.g., `mcdonalds`) or [category](/places#categories) (e.g., `airport`).
+
+Use cases for this endpoint include nearby search.
+
+See the places search API reference [here](/api#search-places).
+
+### Geofences search
+
+Use the geofences search API to search for geofences near a location, filtered by tag.
+
+Use cases for this endpoint include store locators, assuming you've imported your stores as geofences.
+
+See the geofences search API reference [here](/api#search-geofences).
+
+## Coverage
+
+Radar's search APIs incorporate both open and commercial datasets for maximum coverage at an affordable price relative to alternatives.
+
+The following table describes data coverage for search APIs, by country, for consumer use cases (e.g., store locators) and logistics use cases (e.g., ride sharing, delivery).
+
+#### Legend
+
+| Icon | Description                               |
+| ---- | ----------------------------------------- |
+| ⬤    | Great data quality and availability       |
+| ◐    | Good data quality and availability        |
+| ◯    | Approximate data quality and availability |
+
+#### Coverage
+
+|                                              | Coarse (city-level) address autocomplete | Fine (address-level) address autocomplete | Place detection and search |
+| -------------------------------------------- | ---------------------------------------- | ----------------------------------------- | -------------------------- |
+| Afghanistan                                  | ⬤                                        | ◯                                         | ◐                          |
+| Albania                                      | ⬤                                        | ◯                                         | ◐                          |
+| Algeria                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Andorra                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Angola                                       | ⬤                                        | ◯                                         | ◐                          |
+| Anguilla                                     | ⬤                                        | ◯                                         | ◐                          |
+| Antarctica                                   | ⬤                                        | ◯                                         | ◐                          |
+| Antigua and Barbuda                          | ⬤                                        | ◯                                         | ◐                          |
+| Argentina                                    | ⬤                                        | ◐                                         | ◐                          |
+| Armenia                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Aruba                                        | ⬤                                        | ◯                                         | ◐                          |
+| Australia                                    | ⬤                                        | ⬤                                         | ◐                          |
+| Austria                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Azerbaijan                                   | ⬤                                        | ⬤                                         | ◐                          |
+| Bahamas                                      | ⬤                                        | ◯                                         | ◐                          |
+| Bahrain                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Bangladesh                                   | ⬤                                        | ◯                                         | ◐                          |
+| Barbados                                     | ⬤                                        | ◯                                         | ◐                          |
+| Belarus                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Belgium                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Belize                                       | ⬤                                        | ◯                                         | ◐                          |
+| Benin                                        | ⬤                                        | ◯                                         | ◐                          |
+| Bermuda                                      | ⬤                                        | ◯                                         | ◐                          |
+| Bhutan                                       | ⬤                                        | ◯                                         | ◐                          |
+| Bolivia                                      | ⬤                                        | ◯                                         | ◐                          |
+| Bonaire Sint Eustatius and Saba              | ⬤                                        | ◯                                         | ◐                          |
+| Bosnia-Herzegovina                           | ⬤                                        | ⬤                                         | ◐                          |
+| Botswana                                     | ⬤                                        | ◯                                         | ◐                          |
+| Bouvet Island                                | ⬤                                        | ◯                                         | ◐                          |
+| Brazil                                       | ⬤                                        | ⬤                                         | ◐                          |
+| British Virgin Islands                       | ⬤                                        | ◯                                         | ◐                          |
+| Brunei                                       | ⬤                                        | ◐                                         | ◐                          |
+| Bulgaria                                     | ⬤                                        | ⬤                                         | ◐                          |
+| Burkina Faso                                 | ⬤                                        | ◯                                         | ◐                          |
+| Burundi                                      | ⬤                                        | ◯                                         | ◐                          |
+| Cabo Verde                                   | ⬤                                        | ◯                                         | ◐                          |
+| Cambodia                                     | ⬤                                        | ◐                                         | ◐                          |
+| Cameroon                                     | ⬤                                        | ◯                                         | ◐                          |
+| Canada                                       | ⬤                                        | ⬤                                         | ◐                          |
+| Cayman Islands                               | ⬤                                        | ◯                                         | ◐                          |
+| Central African Republic                     | ⬤                                        | ◯                                         | ◐                          |
+| Chad                                         | ⬤                                        | ◯                                         | ◐                          |
+| Chile                                        | ⬤                                        | ⬤                                         | ◐                          |
+| Clipperton Island                            | ⬤                                        | ◯                                         | ◐                          |
+| Cocos (Keeling) Islands                      | ⬤                                        | ◯                                         | ◐                          |
+| Colombia                                     | ⬤                                        | ⬤                                         | ◐                          |
+| Comoros                                      | ⬤                                        | ◯                                         | ◐                          |
+| Congo-Brazzaville                            | ⬤                                        | ◯                                         | ◐                          |
+| Cook Islands                                 | ⬤                                        | ◯                                         | ◐                          |
+| Costa Rica                                   | ⬤                                        | ◯                                         | ◐                          |
+| Cote d'Ivoire                                | ⬤                                        | ◯                                         | ◐                          |
+| Croatia                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Cuba                                         | ⬤                                        | ◯                                         | ◐                          |
+| Curacao                                      | ⬤                                        | ◯                                         | ◐                          |
+| Cyprus                                       | ⬤                                        | ⬤                                         | ◐                          |
+| Czechia                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Democratic Republic of the Congo             | ⬤                                        | ◯                                         | ◐                          |
+| Denmark                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Djibouti                                     | ⬤                                        | ◯                                         | ◐                          |
+| Dominica                                     | ⬤                                        | ◯                                         | ◐                          |
+| Dominican Republic                           | ⬤                                        | ◯                                         | ◐                          |
+| Ecuador                                      | ⬤                                        | ◐                                         | ◐                          |
+| Egypt                                        | ⬤                                        | ◐                                         | ◐                          |
+| El Salvador                                  | ⬤                                        | ◯                                         | ◐                          |
+| Equatorial Guinea                            | ⬤                                        | ◯                                         | ◐                          |
+| Eritrea                                      | ⬤                                        | ◯                                         | ◐                          |
+| Estonia                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Eswatini                                     | ⬤                                        | ◯                                         | ◐                          |
+| Ethiopia                                     | ⬤                                        | ◯                                         | ◐                          |
+| Falkland Islands                             | ⬤                                        | ◯                                         | ◐                          |
+| Faroe Islands                                | ⬤                                        | ⬤                                         | ◐                          |
+| Federated States of Micronesia               | ⬤                                        | ◯                                         | ◐                          |
+| Fiji                                         | ⬤                                        | ◯                                         | ◐                          |
+| Finland                                      | ⬤                                        | ⬤                                         | ◐                          |
+| France                                       | ⬤                                        | ⬤                                         | ◐                          |
+| French Guiana                                | ⬤                                        | ⬤                                         | ◐                          |
+| French Polynesia                             | ⬤                                        | ◯                                         | ◐                          |
+| French Southern and Antarctic Lands          | ⬤                                        | ◯                                         | ◐                          |
+| Gabon                                        | ⬤                                        | ◯                                         | ◐                          |
+| Georgia                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Germany                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Ghana                                        | ⬤                                        | ◯                                         | ◐                          |
+| Gibraltar                                    | ⬤                                        | ◯                                         | ◐                          |
+| Greece                                       | ⬤                                        | ⬤                                         | ◐                          |
+| Greenland                                    | ⬤                                        | ◯                                         | ◐                          |
+| Grenada                                      | ⬤                                        | ◯                                         | ◐                          |
+| Guadeloupe                                   | ⬤                                        | ⬤                                         | ◐                          |
+| Guatemala                                    | ⬤                                        | ◯                                         | ◐                          |
+| Guinea                                       | ⬤                                        | ◯                                         | ◐                          |
+| Guinea-Bissau                                | ⬤                                        | ◯                                         | ◐                          |
+| Guyana                                       | ⬤                                        | ◯                                         | ◐                          |
+| Haiti                                        | ⬤                                        | ◯                                         | ◐                          |
+| Heard Island and McDonald Islands            | ⬤                                        | ◯                                         | ◐                          |
+| Holy See                                     | ⬤                                        | ◯                                         | ◐                          |
+| Honduras                                     | ⬤                                        | ◯                                         | ◐                          |
+| Hong Kong                                    | ⬤                                        | ◐                                         | ◐                          |
+| Hungary                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Iceland                                      | ⬤                                        | ⬤                                         | ◐                          |
+| India                                        | ⬤                                        | ◐                                         | ◐                          |
+| Indonesia                                    | ⬤                                        | ◐                                         | ◐                          |
+| Iran                                         | ⬤                                        | ◯                                         | ◐                          |
+| Iraq                                         | ⬤                                        | ◯                                         | ◐                          |
+| Ireland                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Israel                                       | ⬤                                        | ◐                                         | ◐                          |
+| Italy                                        | ⬤                                        | ⬤                                         | ◐                          |
+| Jamaica                                      | ⬤                                        | ◯                                         | ◐                          |
+| Japan                                        | ⬤                                        | ◐                                         | ◐                          |
+| Jordan                                       | ⬤                                        | ◐                                         | ◐                          |
+| Kazakhstan                                   | ⬤                                        | ◐                                         | ◐                          |
+| Kenya                                        | ⬤                                        | ◯                                         | ◐                          |
+| Kiribati                                     | ⬤                                        | ◯                                         | ◐                          |
+| Kosovo                                       | ⬤                                        | ⬤                                         | ◐                          |
+| Kuwait                                       | ⬤                                        | ◐                                         | ◐                          |
+| Kyrgyzstan                                   | ⬤                                        | ◯                                         | ◐                          |
+| Laos                                         | ⬤                                        | ◐                                         | ◐                          |
+| Latvia                                       | ⬤                                        | ⬤                                         | ◐                          |
+| Lebanon                                      | ⬤                                        | ◐                                         | ◐                          |
+| Lesotho                                      | ⬤                                        | ◯                                         | ◐                          |
+| Liberia                                      | ⬤                                        | ◯                                         | ◐                          |
+| Libya                                        | ⬤                                        | ◯                                         | ◐                          |
+| Liechtenstein                                | ⬤                                        | ⬤                                         | ◐                          |
+| Lithuania                                    | ⬤                                        | ⬤                                         | ◐                          |
+| Luxembourg                                   | ⬤                                        | ⬤                                         | ◐                          |
+| Macao                                        | ⬤                                        | ◐                                         | ◐                          |
+| Madagascar                                   | ⬤                                        | ◯                                         | ◐                          |
+| Malawi                                       | ⬤                                        | ◯                                         | ◐                          |
+| Malaysia                                     | ⬤                                        | ◐                                         | ◐                          |
+| Maldives                                     | ⬤                                        | ◯                                         | ◐                          |
+| Mali                                         | ⬤                                        | ◯                                         | ◐                          |
+| Malta                                        | ⬤                                        | ⬤                                         | ◐                          |
+| Marshall Islands                             | ⬤                                        | ◯                                         | ◐                          |
+| Martinique                                   | ⬤                                        | ⬤                                         | ◐                          |
+| Mauritania                                   | ⬤                                        | ◯                                         | ◐                          |
+| Mauritius                                    | ⬤                                        | ◯                                         | ◐                          |
+| Mayotte                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Mexico                                       | ⬤                                        | ⬤                                         | ◐                          |
+| Moldova                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Monaco                                       | ⬤                                        | ◐                                         | ◐                          |
+| Mongolia                                     | ⬤                                        | ◯                                         | ◐                          |
+| Montenegro                                   | ⬤                                        | ⬤                                         | ◐                          |
+| Montserrat                                   | ⬤                                        | ◯                                         | ◐                          |
+| Morocco                                      | ⬤                                        | ◐                                         | ◐                          |
+| Mozambique                                   | ⬤                                        | ◯                                         | ◐                          |
+| Myanmar                                      | ⬤                                        | ◐                                         | ◐                          |
+| Namibia                                      | ⬤                                        | ◯                                         | ◐                          |
+| Nauru                                        | ⬤                                        | ◯                                         | ◐                          |
+| Nepal                                        | ⬤                                        | ◯                                         | ◐                          |
+| Netherlands                                  | ⬤                                        | ⬤                                         | ◐                          |
+| New Caledonia                                | ⬤                                        | ◯                                         | ◐                          |
+| New Zealand                                  | ⬤                                        | ⬤                                         | ◐                          |
+| Nicaragua                                    | ⬤                                        | ◯                                         | ◐                          |
+| Niger                                        | ⬤                                        | ◯                                         | ◐                          |
+| Nigeria                                      | ⬤                                        | ◯                                         | ◐                          |
+| Niue                                         | ⬤                                        | ◯                                         | ◐                          |
+| Norfolk Island                               | ⬤                                        | ◯                                         | ◐                          |
+| Norway                                       | ⬤                                        | ⬤                                         | ◐                          |
+| Pakistan                                     | ⬤                                        | ◯                                         | ◐                          |
+| Palau                                        | ⬤                                        | ◯                                         | ◐                          |
+| Panama                                       | ⬤                                        | ◯                                         | ◐                          |
+| Papua New Guinea                             | ⬤                                        | ◯                                         | ◐                          |
+| Paraguay                                     | ⬤                                        | ⬤                                         | ◐                          |
+| Peru                                         | ⬤                                        | ◐                                         | ◐                          |
+| Philippines                                  | ⬤                                        | ◐                                         | ◐                          |
+| Pitcairn Islands                             | ⬤                                        | ◯                                         | ◐                          |
+| Poland                                       | ⬤                                        | ⬤                                         | ◐                          |
+| Portugal                                     | ⬤                                        | ⬤                                         | ◐                          |
+| Qatar                                        | ⬤                                        | ◯                                         | ◐                          |
+| Republic of Belarus                          | ⬤                                        | ⬤                                         | ◐                          |
+| Republic of Korea                            | ⬤                                        | ◯                                         | ◐                          |
+| Republic of North Macedonia                  | ⬤                                        | ⬤                                         | ◐                          |
+| Reunion                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Romania                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Russia                                       | ⬤                                        | ⬤                                         | ◐                          |
+| Rwanda                                       | ⬤                                        | ◯                                         | ◐                          |
+| Saint Barthelemy                             | ⬤                                        | ◯                                         | ◐                          |
+| Saint Helena                                 | ⬤                                        | ◯                                         | ◐                          |
+| Saint Kitts and Nevis                        | ⬤                                        | ◯                                         | ◐                          |
+| Saint Lucia                                  | ⬤                                        | ◯                                         | ◐                          |
+| Saint Martin                                 | ⬤                                        | ◯                                         | ◐                          |
+| Saint Pierre and Miquelon                    | ⬤                                        | ◯                                         | ◐                          |
+| Saint Vincent and the Grenadines             | ⬤                                        | ◯                                         | ◐                          |
+| Samoa                                        | ⬤                                        | ◯                                         | ◐                          |
+| San Marino                                   | ⬤                                        | ⬤                                         | ◐                          |
+| Sao Tome and Principe                        | ⬤                                        | ◯                                         | ◐                          |
+| Saudi Arabia                                 | ⬤                                        | ◐                                         | ◐                          |
+| Senegal                                      | ⬤                                        | ◯                                         | ◐                          |
+| Serbia                                       | ⬤                                        | ⬤                                         | ◐                          |
+| Seychelles                                   | ⬤                                        | ◯                                         | ◐                          |
+| Sierra Leone                                 | ⬤                                        | ◯                                         | ◐                          |
+| Singapore                                    | ⬤                                        | ◐                                         | ◐                          |
+| Sint Maarten                                 | ⬤                                        | ◯                                         | ◐                          |
+| Slovakia                                     | ⬤                                        | ⬤                                         | ◐                          |
+| Slovenia                                     | ⬤                                        | ⬤                                         | ◐                          |
+| Solomon Islands                              | ⬤                                        | ◯                                         | ◐                          |
+| Somalia                                      | ⬤                                        | ◯                                         | ◐                          |
+| South Africa                                 | ⬤                                        | ⬤                                         | ◐                          |
+| South Georgia and the South Sandwich Islands | ⬤                                        | ◯                                         |                            |
+| South Sudan                                  | ⬤                                        | ◯                                         | ◐                          |
+| Spain                                        | ⬤                                        | ⬤                                         | ◐                          |
+| Sri Lanka                                    | ⬤                                        | ◯                                         | ◐                          |
+| State Of Palestine                           | ⬤                                        | ◯                                         | ◐                          |
+| Sudan                                        | ⬤                                        | ◯                                         | ◐                          |
+| Suriname                                     | ⬤                                        | ◯                                         | ◐                          |
+| Sweden                                       | ⬤                                        | ⬤                                         | ◐                          |
+| Switzerland                                  | ⬤                                        | ⬤                                         | ◐                          |
+| Syria                                        | ⬤                                        | ◯                                         | ◐                          |
+| Taiwan                                       | ⬤                                        | ◯                                         | ◐                          |
+| Tajikistan                                   | ⬤                                        | ◯                                         | ◐                          |
+| Tanzania                                     | ⬤                                        | ◯                                         | ◐                          |
+| Thailand                                     | ⬤                                        | ◯                                         | ◐                          |
+| The Gambia                                   | ⬤                                        | ◯                                         | ◐                          |
+| The Sultanate of Oman                        | ⬤                                        | ◯                                         | ◐                          |
+| Timor-Leste                                  | ⬤                                        | ◯                                         | ◐                          |
+| Togo                                         | ⬤                                        | ◯                                         | ◐                          |
+| Tokelau                                      | ⬤                                        | ◯                                         | ◐                          |
+| Tonga                                        | ⬤                                        | ◯                                         | ◐                          |
+| Trinidad and Tobago                          | ⬤                                        | ◯                                         | ◐                          |
+| Tunisia                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Turkey                                       | ⬤                                        | ⬤                                         | ◐                          |
+| Turkmenistan                                 | ⬤                                        | ◯                                         | ◐                          |
+| Turks and Caicos Islands                     | ⬤                                        | ◯                                         | ◐                          |
+| Tuvalu                                       | ⬤                                        | ◯                                         | ◐                          |
+| Uganda                                       | ⬤                                        | ◯                                         | ◐                          |
+| Ukraine                                      | ⬤                                        | ⬤                                         | ◐                          |
+| United Arab Emirates                         | ⬤                                        | ◐                                         | ◐                          |
+| United Kingdom                               | ⬤                                        | ⬤                                         | ◐                          |
+| United States                                | ⬤                                        | ⬤                                         | ⬤                          |
+| Uruguay                                      | ⬤                                        | ⬤                                         | ◐                          |
+| Uzbekistan                                   | ⬤                                        | ◯                                         | ◐                          |
+| Vanuatu                                      | ⬤                                        | ◯                                         | ◐                          |
+| Venezuela                                    | ⬤                                        | ◯                                         | ◐                          |
+| Vietnam                                      | ⬤                                        | ◯                                         | ◐                          |
+| Wallis and Futuna                            | ⬤                                        | ◯                                         | ◐                          |
+| Yemen                                        | ⬤                                        | ◯                                         | ◐                          |
+| Zambia                                       | ⬤                                        | ◯                                         | ◐                          |
+| Zimbabwe                                     | ⬤                                        | ◯                                         | ◐                          |
+
+## Caching
+
+You can cache API responses for up to 30 days. For more information, see our terms of use [here](https://radar.com/terms).
+
+## Report an issue
+
+The Radar team is constantly working to improve data coverage for our geocoding, search, and routing APIs. Bad response? Unexpected error? Report it [here](https://forms.gle/9ZfHi95wd8xgEERb6), and our team will fix it ASAP.
+
+## Support
+
+Have questions? We're here to help\! Contact us at [radar.com/support](https://radar.com/support).
+
+[Edit this page](https://github.com/radarlabs/docs/edit/main/docs/maps/search.mdx)

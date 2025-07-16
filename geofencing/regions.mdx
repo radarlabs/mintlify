@@ -1,0 +1,121 @@
+---
+title: "Regions"
+---
+
+<Info>
+  Regions is available on the [Enterprise plan](https://radar.com/pricing).
+</Info>
+
+With Regions, you can use our admin boundary database to detect a user's country, state, DMA (media market), or postal code.
+
+![](/images/f2vbu16fzuly/45Ug4Lnky0SH8p0AU7j0Pi/f4f8e538d79692b7406ba152937c02c3/regions_event.svg)
+
+Regions provides the following user context:
+
+```json
+{
+  "country": {
+    "code": "US",
+    "name": "United States",
+    "flag": "🇺🇸"
+  },
+  "state": {
+    "code": "MD",
+    "name": "Maryland"
+  },
+  "dma": {
+    "code": "26",
+    "name": "Baltimore"
+  },
+  "postalCode": {
+    "code": "21014"
+  }
+}
+```
+
+Regions also provides the following events:
+
+- `user.entered_region_country`
+- `user.exited_region_country`
+- `user.entered_region_state`
+- `user.exited_region_state`
+- `user.entered_region_dma`
+- `user.exited_region_dma`
+- `user.entered_region_postal_code`
+- `user.exited_region_postal_code`
+
+## Quickstart
+
+First, [sign up](https://radar.com/signup) for Radar and get an API key.
+
+Then, enable Regions events on the [Settings page](https://radar.com/dashboard/settings).
+
+From there, [integrate the SDK](/sdk) and call `Radar.trackOnce()` or `Radar.startTracking()`, depending on your use case. Radar will generate an entry event on the first location update in a region matching your enabled event types.
+
+## Countries
+
+Regions supports country detection globally. Each country has a `name` and a unique 2-letter [ISO 3166](https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes) `code`. View the [full list of countries](/regions/countries).
+
+### Country allowlist or blocklist
+
+Regions can also be used to allowlist or blocklist location updates in specific countries for privacy or compliance reasons. Contact your customer success manager to enable this feature.
+
+## States
+
+Regions supports state detection in the US and Canada only. Each state has a `name` and a 2-letter `code` unique to the residing `country`. View the [full list of states](/regions/states).
+
+## DMAs
+
+Regions supports DMA (designated market area) detection in the US only. Each DMA has a `name` and a unique `code`. View the [full list of DMAs](/regions/dmas). Or, learn more about [DMAs](https://en.wikipedia.org/wiki/Media_market).
+
+## Postal codes
+
+Regions supports postal (ZIP) code detection in the US only. Each postal code has a unique 5-letter `code`.
+
+## Coarse home and traveling detection
+
+<Info>
+  Contact your customer success manager for access to coarse home and traveling detection.
+</Info>
+
+Regions can automatically detect a user's home regions based on location updates in the last 30 days, and detect when a user is traveling outside of their home regions.
+
+Coarse home detection provides the following user context:
+
+```json
+{
+  "homeRegions": {
+    "country": {
+      "code": "US",
+      "name": "United States",
+      "flag": "🇺🇸"
+    },
+    "state": {
+      "code": "MD",
+      "name": "Maryland"
+    },
+    "dma": {
+      "code": "26",
+      "name": "Baltimore"
+    },
+    "postalCode": {
+      "code": "21014"
+    }
+  }
+}
+```
+
+It also provides the following `traveling` state on events:
+
+```json
+{
+  "traveling": {
+    "country": true,
+    "dma": true,
+    "state": true,
+    "postalCode": true,
+  }
+}
+```
+
+[Edit this page](https://github.com/radarlabs/docs/edit/main/docs/regions.mdx)

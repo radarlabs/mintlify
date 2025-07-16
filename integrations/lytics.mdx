@@ -1,0 +1,278 @@
+---
+title: "Lytics"
+---
+
+<Info>
+  The Lytics integration is available on the [**Enterprise plan**](https://radar.com/pricing).
+</Info>
+
+Radar can send events and user state to [Lytics](https://www.lytics.com).
+
+Use the Lytics integration to build location-based user segments.
+
+## Configuration
+
+Before enabling the integration, contact your Lytics account manager. After Lytics is configured, in Lytics, [create an API token](https://learn.lytics.com/understanding/product-docs/account-management/managing-api-tokens#creating-a-new-api-token) with no expiration and the _Data Manager_ role.
+
+Then, on the Radar [Integrations page](https://radar.com/dashboard/integrations) under _Lytics_, set _Enabled_ to _Yes_, paste your API token. Note that you can set separate API tokens and stream names for the _Test_ and _Live_ environments.
+
+Whenever events are generated, Radar will send events to the `radar_events` stream and user state to the `radar_users` stream.
+
+## User mapping
+
+Note that Radar uses the special string `"(null)"` to represent `null` user data field values.
+
+| Radar User Field                     | Lytics User Data Field                   | Type          | Example Value                              | Context Type                    |
+| ------------------------------------ | ---------------------------------------- | ------------- | ------------------------------------------ | ------------------------------- |
+| `userId`                             | `radarUserId`                            | string        | `"1"`                                      |                                 |
+| `deviceId`                           | `radarDeviceId`                          | string        | `"10974a2ee035770b9"`                      |                                 |
+| `location.coordinates[0]`            | `radarLocationLongitude`                 | number        | `-76.350663`                               |                                 |
+| `location.coordinates[1]`            | `radarLocationLatitude`                  | number        | `39.525665`                                |                                 |
+| `locationAuthorization`              | `radarLocationAuthorization`             | string        | `"GRANTED_FOREGROUND"`                     |                                 |
+| `locationAccuracyAuthorization`      | `radarLocationAccuracyAuthorization`     | string        | `"FULL"`                                   |                                 |
+| `_id`                                | `radarId`                                | string        | `"5b2c0906f5874b001aecfd8d"`               |                                 |
+| `updatedAt`                          | `radarUpdatedAt`                         | timestamp     | `"2018-06-22T15:23:39.000Z"`               |                                 |
+| `segments[*].externalId`             | `radarSegmentExternalIds`                | array[string] | `["starbucks-visitors"]`                   |                                 |
+| `topChains[*].slug`                  | `radarTopChainSlugs`                     | array[string] | `["starbucks", "walmart"]`                 |                                 |
+| `topChains[*].externalId`            | `radarTopChainExternalIds`               | array[string] | `["123", "456"]`                           |                                 |
+| `geofences[*]._id`                   | `radarGeofenceIds`                       | array[string] | `["5b2c0906f5874b001aecfd8e"]`             | [Geofences](/geofences)         |
+| `geofences[*].description`           | `radarGeofenceDescriptions`              | array[string] | `["Store #123"]`                           | [Geofences](/geofences)         |
+| `geofences[*].tag`                   | `radarGeofenceTags`                      | array[string] | `["store"]`                                | [Geofences](/geofences)         |
+| `geofences[*].externalId`            | `radarGeofenceExternalIds`               | array[string] | `["123"]`                                  | [Geofences](/geofences)         |
+| `place._id`                          | `radarPlaceId`                           | string        | `"59302bcf8f27e8a156bd4f91"`               | [Places](/places)               |
+| `place.name`                         | `radarPlaceName`                         | string        | `"Starbucks"`                              | [Places](/places)               |
+| `place.categories`                   | `radarPlaceCategories`                   | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | [Places](/places)               |
+| `place.chain.slug`                   | `radarPlaceChainSlug`                    | string        | `"starbucks"`                              | [Places](/places)               |
+| `place.chain.name`                   | `radarPlaceChainName`                    | string        | `"Starbucks"`                              | [Places](/places)               |
+| `country.code`                       | `radarRegionCountryCode`                 | string        | `"US"`                                     | [Regions](/regions)             |
+| `country.name`                       | `radarRegionCountryName`                 | string        | `"United States"`                          | [Regions](/regions)             |
+| `state.code`                         | `radarRegionStateCode`                   | string        | `"MD"`                                     | [Regions](/regions)             |
+| `state.name`                         | `radarRegionStateName`                   | string        | `"Maryland"`                               | [Regions](/regions)             |
+| `dma.code`                           | `radarRegionDMACode`                     | string        | `"26"`                                     | [Regions](/regions)             |
+| `dma.name`                           | `radarRegionDMAName`                     | string        | `"Baltimore"`                              | [Regions](/regions)             |
+| `postalCode.code`                    | `radarRegionPostalCode`                  | string        | `"21014"`                                  | [Regions](/regions)             |
+| `trip.externalId`                    | `radarTripExternalId`                    | string        | `"299"`                                    | [Trip Tracking](/trip-tracking) |
+| `trip.destinationGeofenceTag`        | `radarTripDestinationGeofenceTag`        | string        | `"store"`                                  | [Trip Tracking](/trip-tracking) |
+| `trip.destinationGeofenceExternalId` | `radarTripDestinationGeofenceExternalId` | string        | `"123"`                                    | [Trip Tracking](/trip-tracking) |
+| `beacons[*]._id`                     | `radarBeaconIds`                         | array[string] | `["5b2c0906f5874b001aecfd8f"]`             | [Beacons](/beacons)             |
+| `beacons[*].description`             | `radarBeaconDescriptions`                | array[string] | `["Store #123 - Drive-Thru"]`              | [Beacons](/beacons)             |
+| `beacons[*].tag`                     | `radarBeaconTags`                        | array[string] | `["drive-thru"]`                           | [Beacons](/beacons)             |
+| `beacons[*].externalId`              | `radarBeaconExternalIds`                 | array[string] | `["123"]`                                  | [Beacons](/beacons)             |
+
+## Event mapping
+
+### user.entered_geofence
+
+| Radar Event Field          | Lytics Event Data Field | Type    | Example                      |
+| -------------------------- | ----------------------- | ------- | ---------------------------- |
+| `user.userId`              | `userUserId`            | string  | `"1"`                        |
+| `user.deviceId`            | `userDeviceId`          | string  | `"10974a2ee035770b9"`        |
+| `geofence._id`             | `geofenceId`            | string  | `"5b2c0906f5874b001aecfd8e"` |
+| `geofence.description`     | `geofenceDescription`   | string  | `"Store #123"`               |
+| `geofence.tag`             | `geofenceTag`           | string  | `"store"`                    |
+| `geofence.externalId`      | `geofenceExternalId`    | string  | `"123"`                      |
+| `geofence.metadata[{key}]` | `geofenceMetadata{key}` | type    | `{value}`                    |
+| `confidence`               | `confidence`            | string  | `"high"`                     |
+| `foreground`               | `foreground`            | boolean | `true`                       |
+
+### user.exited_geofence
+
+| Radar Event Field          | Lytics Event Data Field | Type             | Example                      |
+| -------------------------- | ----------------------- | ---------------- | ---------------------------- |
+| `user.userId`              | `userUserId`            | string           | `"1"`                        |
+| `user.deviceId`            | `userDeviceId`          | string           | `"10974a2ee035770b9"`        |
+| `geofence._id`             | `geofenceId`            | string           | `"5b2c0906f5874b001aecfd8e"` |
+| `geofence.description`     | `geofenceDescription`   | string           | `"Store #123"`               |
+| `geofence.tag`             | `geofenceTag`           | string           | `"store"`                    |
+| `geofence.externalId`      | `geofenceExternalId`    | string           | `"123"`                      |
+| `geofence.metadata[{key}]` | `geofenceMetadata{key}` | type             | `{value}`                    |
+| `confidence`               | `confidence`            | string           | `"high"`                     |
+| `duration`                 | `duration`              | number (minutes) | `42.1`                       |
+| `foreground`               | `foreground`            | boolean          | `true`                       |
+
+### user.dwelled_in_geofence
+
+| Radar Event Field          | Lytics Event Data Field | Type             | Example                      |
+| -------------------------- | ----------------------- | ---------------- | ---------------------------- |
+| `user.userId`              | `userUserId`            | string           | `"1"`                        |
+| `user.deviceId`            | `userDeviceId`          | string           | `"10974a2ee035770b9"`        |
+| `geofence._id`             | `geofenceId`            | string           | `"5b2c0906f5874b001aecfd8e"` |
+| `geofence.description`     | `geofenceDescription`   | string           | `"Store #123"`               |
+| `geofence.tag`             | `geofenceTag`           | string           | `"store"`                    |
+| `geofence.externalId`      | `geofenceExternalId`    | string           | `"123"`                      |
+| `geofence.metadata[{key}]` | `geofenceMetadata{key}` | type             | `{value}`                    |
+| `confidence`               | `confidence`            | string           | `"high"`                     |
+| `duration`                 | `duration`              | number (minutes) | `5`                          |
+| `foreground`               | `foreground`            | boolean          | `true`                       |
+
+### user.entered_place
+
+| Radar Event Field  | Lytics Event Data Field | Type          | Example                                    |
+| ------------------ | ----------------------- | ------------- | ------------------------------------------ |
+| `user.userId`      | `userUserId`            | string        | `"1"`                                      |
+| `user.deviceId`    | `userDeviceId`          | string        | `"10974a2ee035770b9"`                      |
+| `place._id`        | `placeId`               | string        | `"59302bcf8f27e8a156bd4f91"`               |
+| `place.name`       | `placeName`             | string        | `"Starbucks"`                              |
+| `place.chain.slug` | `placeChainSlug`        | string        | `"starbucks"`                              |
+| `place.chain.name` | `placeChainName`        | string        | `"Starbucks"`                              |
+| `place.categories` | `placeCategories`       | array[string] | `["food-beverage", "cafe", "coffee-shop"]` |
+| `confidence`       | `confidence`            | string        | `"high"`                                   |
+| `foreground`       | `foreground`            | boolean       | `true`                                     |
+
+### user.exited_place
+
+| Radar Event Field  | Lytics Event Data Field | Type             | Example                                    |
+| ------------------ | ----------------------- | ---------------- | ------------------------------------------ |
+| `user.userId`      | `userUserId`            | string           | `"1"`                                      |
+| `user.deviceId`    | `userDeviceId`          | string           | `"10974a2ee035770b9"`                      |
+| `place._id`        | `placeId`               | string           | `"59302bcf8f27e8a156bd4f91"`               |
+| `place.name`       | `placeName`             | string           | `"Starbucks"`                              |
+| `place.chain.slug` | `placeChainSlug`        | string           | `"starbucks"`                              |
+| `place.chain.name` | `placeChainName`        | string           | `"Starbucks"`                              |
+| `place.categories` | `placeCategories`       | array[string]    | `["food-beverage", "cafe", "coffee-shop"]` |
+| `confidence`       | `confidence`            | string           | `"high"`                                   |
+| `duration`         | `duration`              | number (minutes) | `42.1`                                     |
+| `foreground`       | `foreground`            | boolean          | `true`                                     |
+
+### user.entered_region_country
+
+| Radar Event Field | Lytics Event Data Field | Type    | Example Value         |
+| ----------------- | ----------------------- | ------- | --------------------- |
+| `user.userId`     | `userUserId`            | string  | `"1"`                 |
+| `user.deviceId`   | `userDeviceId`          | string  | `"10974a2ee035770b9"` |
+| `region.code`     | `regionCode`            | string  | `"US"`                |
+| `region.name`     | `regionName`            | string  | `"United States"`     |
+| `confidence`      | `confidence`            | string  | `"high"`              |
+| `foreground`      | `foreground`            | boolean | `true`                |
+
+### user.exited_region_country
+
+| Radar Event Field | Lytics Event Data Field | Type    | Example Value         |
+| ----------------- | ----------------------- | ------- | --------------------- |
+| `user.userId`     | `userUserId`            | string  | `"1"`                 |
+| `user.deviceId`   | `userDeviceId`          | string  | `"10974a2ee035770b9"` |
+| `region.code`     | `regionCode`            | string  | `"US"`                |
+| `region.name`     | `regionName`            | string  | `"United States"`     |
+| `confidence`      | `confidence`            | string  | `"high"`              |
+| `foreground`      | `foreground`            | boolean | `true`                |
+
+### user.entered_region_state
+
+| Radar Event Field | Lytics Event Data Field | Type    | Example Value         |
+| ----------------- | ----------------------- | ------- | --------------------- |
+| `user.userId`     | `userUserId`            | string  | `"1"`                 |
+| `user.deviceId`   | `userDeviceId`          | string  | `"10974a2ee035770b9"` |
+| `region.code`     | `regionCode`            | string  | `"MD"`                |
+| `region.name`     | `regionName`            | string  | `"Maryland"`          |
+| `confidence`      | `confidence`            | string  | `"high"`              |
+| `foreground`      | `foreground`            | boolean | `true`                |
+
+### user.exited_region_state
+
+| Radar Event Field | Lytics Event Data Field | Type    | Example Value         |
+| ----------------- | ----------------------- | ------- | --------------------- |
+| `user.userId`     | `userUserId`            | string  | `"1"`                 |
+| `user.deviceId`   | `userDeviceId`          | string  | `"10974a2ee035770b9"` |
+| `region.code`     | `regionCode`            | string  | `"MD"`                |
+| `region.name`     | `regionName`            | string  | `"Maryland"`          |
+| `confidence`      | `confidence`            | string  | `"high"`              |
+| `foreground`      | `foreground`            | boolean | `true`                |
+
+### user.entered_region_dma
+
+| Radar Event Field | Lytics Event Data Field | Type    | Example Value         |
+| ----------------- | ----------------------- | ------- | --------------------- |
+| `user.userId`     | `userUserId`            | string  | `"1"`                 |
+| `user.deviceId`   | `userDeviceId`          | string  | `"10974a2ee035770b9"` |
+| `region.code`     | `regionCode`            | string  | `"26"`                |
+| `region.name`     | `regionName`            | string  | `"Baltimore"`         |
+| `confidence`      | `confidence`            | string  | `"high"`              |
+| `foreground`      | `foreground`            | boolean | `true`                |
+
+### user.exited_region_dma
+
+| Radar Event Field | Lytics Event Data Field | Type    | Example Value         |
+| ----------------- | ----------------------- | ------- | --------------------- |
+| `user.userId`     | `userUserId`            | string  | `"1"`                 |
+| `user.deviceId`   | `userDeviceId`          | string  | `"10974a2ee035770b9"` |
+| `region.code`     | `regionCode`            | string  | `"26"`                |
+| `region.name`     | `regionName`            | string  | `"Baltimore"`         |
+| `confidence`      | `confidence`            | string  | `"high"`              |
+| `foreground`      | `foreground`            | boolean | `true`                |
+
+### user.started_trip
+
+| Radar Event Attribute                | Lytics Event Data Field             | Type    | Example Value |
+| ------------------------------------ | ----------------------------------- | ------- | ------------- |
+| `trip.externalId`                    | `tripExternalId`                    | string  | `"299"`       |
+| `trip.metadata[{key}]`               | `tripMetadata{key}`                 | type    | `{value}`     |
+| `trip.destinationGeofenceTag`        | `tripDestinationGeofenceTag`        | string  | `"store"`     |
+| `trip.destinationGeofenceExternalId` | `tripDestinationGeofenceExternalId` | string  | `"123"`       |
+| `foreground`                         | `foreground`                        | boolean | `true`        |
+
+### user.updated_trip
+
+| Radar Event Attribute                | Lytics Event Data Field             | Type    | Example Value |
+| ------------------------------------ | ----------------------------------- | ------- | ------------- |
+| `trip.externalId`                    | `tripExternalId`                    | string  | `"299"`       |
+| `trip.metadata[{key}]`               | `tripMetadata{key}`                 | type    | `{value}`     |
+| `trip.destinationGeofenceTag`        | `tripDestinationGeofenceTag`        | string  | `"store"`     |
+| `trip.destinationGeofenceExternalId` | `tripDestinationGeofenceExternalId` | string  | `"123"`       |
+| `foreground`                         | `foreground`                        | boolean | `true`        |
+
+### user.approaching_trip_destination
+
+| Radar Event Attribute                | Lytics Event Data Field             | Type    | Example Value |
+| ------------------------------------ | ----------------------------------- | ------- | ------------- |
+| `trip.externalId`                    | `tripExternalId`                    | string  | `"299"`       |
+| `trip.metadata[{key}]`               | `tripMetadata{key}`                 | type    | `{value}`     |
+| `trip.destinationGeofenceTag`        | `tripDestinationGeofenceTag`        | string  | `"store"`     |
+| `trip.destinationGeofenceExternalId` | `tripDestinationGeofenceExternalId` | string  | `"123"`       |
+| `foreground`                         | `foreground`                        | boolean | `true`        |
+
+### user.arrived_at_trip_destination
+
+| Radar Event Attribute                | Lytics Event Data Field             | Type    | Example Value |
+| ------------------------------------ | ----------------------------------- | ------- | ------------- |
+| `trip.externalId`                    | `tripExternalId`                    | string  | `"299"`       |
+| `trip.metadata[{key}]`               | `tripMetadata{key}`                 | type    | `{value}`     |
+| `trip.destinationGeofenceTag`        | `tripDestinationGeofenceTag`        | string  | `"store"`     |
+| `trip.destinationGeofenceExternalId` | `tripDestinationGeofenceExternalId` | string  | `"123"`       |
+| `foreground`                         | `foreground`                        | boolean | `true`        |
+
+### user.stopped_trip
+
+| Radar Event Attribute                | Lytics Event Data Field             | Type    | Example Value |
+| ------------------------------------ | ----------------------------------- | ------- | ------------- |
+| `trip.externalId`                    | `tripExternalId`                    | string  | `"299"`       |
+| `trip.metadata[{key}]`               | `tripMetadata{key}`                 | type    | `{value}`     |
+| `trip.destinationGeofenceTag`        | `tripDestinationGeofenceTag`        | string  | `"store"`     |
+| `trip.destinationGeofenceExternalId` | `tripDestinationGeofenceExternalId` | string  | `"123"`       |
+| `foreground`                         | `foreground`                        | boolean | `true`        |
+
+### user.entered_beacon
+
+| Radar Event Attribute    | Lytics Event Data Field | Type    | Example Value                |
+| ------------------------ | ----------------------- | ------- | ---------------------------- |
+| `beacon._id`             | `beaconId`              | string  | `"5b2c0906f5874b001aecfd8f"` |
+| `beacon.description`     | `beaconDescription`     | string  | `"Store #123 - Drive-Thru"`  |
+| `beacon.tag`             | `beaconTag`             | string  | `"drive-thru"`               |
+| `beacon.externalId`      | `beaconExternalId`      | string  | `"123"`                      |
+| `beacon.metadata[{key}]` | `beaconMetadata{key}`   | type    | `{value}`                    |
+| `confidence`             | `confidence`            | string  | `"high"`                     |
+| `foreground`             | `foreground`            | boolean | `true`                       |
+
+### user.exited_beacon
+
+| Radar Event Attribute    | Lytics Event Data Field | Type             | Example Value                |
+| ------------------------ | ----------------------- | ---------------- | ---------------------------- |
+| `beacon._id`             | `beaconId`              | string           | `"5b2c0906f5874b001aecfd8f"` |
+| `beacon.description`     | `beaconDescription`     | string           | `"Store #123 - Drive-Thru"`  |
+| `beacon.tag`             | `beaconTag`             | string           | `"drive-thru"`               |
+| `beacon.externalId`      | `beaconExternalId`      | string           | `"123"`                      |
+| `beacon.metadata[{key}]` | `beaconMetadata{key}`   | type             | `{value}`                    |
+| `confidence`             | `confidence`            | string           | `"high"`                     |
+| `duration`               | `duration`              | number (minutes) | `1.42`                       |
+| `foreground`             | `foreground`            | boolean          | `true`                       |
+
+[Edit this page](https://github.com/radarlabs/docs/edit/main/docs/integrations/lytics.mdx)

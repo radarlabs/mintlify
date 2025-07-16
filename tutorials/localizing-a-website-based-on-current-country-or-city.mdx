@@ -1,0 +1,86 @@
+---
+title: "Localizing a website based on current country or city"
+description: "In this tutorial, we show you how to use the Radar  and  to localize a website based on current country or city."
+---
+
+For example, you may show a default language or currency based on current country. Or, you may show nearby content based on current city.
+
+## []()Video[#](#video "Direct link to heading")
+
+## []()Languages used[#](#languages-used "Direct link to heading")
+
+* HTML
+* JavaScript
+
+## []()Features used[#](#features-used "Direct link to heading")
+
+* [Web SDK](/sdk/web)
+* [IP geocoding API](/api#ip-geocode)
+
+## []()Steps[#](#steps "Direct link to heading")
+
+### []()Step 1: Sign up for Radar[#](#step-1-sign-up-for-radar "Direct link to heading")
+
+If you haven't already, sign up for Radar to get your API key. You can make up to 100,000 API requests per month for free.
+
+[Get API keys](https://radar.com/signup)
+
+### []()Step 2: Install the Radar web SDK[#](#step-2-install-the-radar-web-sdk "Direct link to heading")
+
+In an HTML page, include the SDK using a `<script>` tag:
+
+```
+<script src="https://js.radar.com/v4/radar.min.js"></script>
+```
+
+Copy
+
+In a web app, install the package from npm, then import the library:
+
+```
+npm install --save radar-sdk-js
+```
+
+Copy
+
+```
+import Radar from 'radar-sdk-js';
+```
+
+Copy
+
+### []()Step 3: Call the IP geocoding API[#](#step-3-call-the-ip-geocoding-api "Direct link to heading")
+
+The [IP geocoding API](/api#ip-geocode) converts IP address into city, state, and country.
+
+Initialize the SDK with your publishable API key, then call the IP geocoding API.
+
+In the callback, `result.address` will include `countryCode`, `stateCode`, `city`, coarse `latitude` and `longitude`, and more.
+
+```
+Radar.initialize("prj_test_pk_...");
+Radar.ipGeocode(function(err, result) {  if (err) {    console.error(err);
+    return;  }
+  if (result && result.address) {    // do something with result.address.countryCode  }});
+```
+
+Copy
+
+## []()Sample code[#](#sample-code "Direct link to heading")
+
+```
+<html>  <head>    <title>Hello, world!</title>    <script src="https://js.radar.com/v4/radar.min.js"></script>  </head>  <body>    <div id="country">      Loading...    </div>
+    <script type="text/javascript">      Radar.initialize("prj_test_pk_...");
+      Radar.ipGeocode(function(err, result) {        if (err) {          console.error(err);
+          return;        }
+        if (result && result.address) {          console.log(result.address);
+          document.getElementById("country").innerHTML = "Your country is " +            result.address.countryFlag + " " + result.address.countryCode;        }      });    </script>  </body></html>
+```
+
+Copy
+
+## []()Support[#](#support "Direct link to heading")
+
+Have questions or feedback on this documentation? Let us know! Contact us at [radar.com/support](https://radar.com/support).
+
+[Edit this page](https://github.com/radarlabs/docs/edit/main/docs/tutorials/localizing-a-website-based-on-current-country-or-city.mdx)

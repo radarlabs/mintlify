@@ -1,0 +1,54 @@
+---
+title: "Yext"
+---
+
+<Info>
+  The Yext integration is available on the [**Enterprise plan**](https://radar.com/pricing).
+</Info>
+
+Radar can sync locations from [Yext](http://www.yext.com) as geofences in Radar.
+
+## Configuration
+
+On the Radar [Integrations page](https://radar.com/dashboard/integrations) under _Yext_, set _Enabled_ to _Yes_ and optionally configure any additional settings.
+
+### Default Settings
+
+Radar will use the following default mappings when syncing Yext locations to Radar geofences:
+
+| Yext Location Field | Radar Geofence Field | Type    |
+| ------------------- | -------------------- | ------- |
+| `locationName`      | `description`        | string  |
+| `id`                | `externalId`         | string  |
+| `closed.isClosed`   | `enabled`            | boolean |
+
+Radar will use the following default values when syncing Yext locations to Radar geofences:
+
+| Radar Geofence Field | Default Value                               | Type                                                  |
+| -------------------- | ------------------------------------------- | ----------------------------------------------------- |
+| `type`               | `circle`                                    | string (`circle` or `isochrone`)                      |
+| `tag`                | `location`                                  | string                                                |
+| `radius`             | `100` (for `circle`) `15` (for `isochrone`) | number (meters for `circle`, minutes for `isochrone`) |
+
+### Additional Settings
+
+You can choose to override certain defaults with additional configuration settings for the [geofences](/geofences) synced from Yext.
+
+The available overrides include:
+
+- Default geofence `type`
+- Default geofence `radius`
+- An override for the mapping of the `description` field to a different Yext field than `locationName` (e.g. `address`)
+- An override for the default `tag` value that will be mapped to a Yext field (e.g. `schemaTypes.0`)
+
+Additionally, you can map up to 16 Yext fields to Radar geofence metadata. Use _dot notation_ to access nested Yext fields. For example, if you have a Yext location with the following property: `"schemaTypes": ["Restaurant"]`, you can store the value `"Restaurant"` by adding `schemaTypes.0` as a _Yext Key_. If you include a Yext field in the metadata mapping and that field is not found, or the value in Yext is undefined or `null`, the value will not be copied over to the geofence.
+
+### Syncing Data
+
+Once configured, click _Connect & Sync_ and you will be redirected to Yext, where you can authorize Radar. Then, you will be redirected back to the Radar [Integrations page](https://radar.com/dashboard/integrations) with an indication of whether the authorization succeeded or failed. If the authorization succeeded, your Yext locations will immediately begin syncing to Radar [geofences](/geofences).
+
+Radar will automatically keep geofences in sync when you create or update locations in Yext. Radar will sync geofences both to the _Test_ and _Live_ environments. **If you update the geometry of a geofence in Radar that has been synced with Yext, your changes will not be overwritten in Radar with subsequent updates from Yext.**
+
+Update any of the defaults after the initial sync by changing the integration settings and clicking _Update & Sync_. Once clicked, a full sync of every Yext location will occur. **A change in these default overrides will only be reflected for newly created locations in Yext. Previously synced locations turned geofences will not be updated to the new defaults.**
+
+[Edit this page](https://github.com/radarlabs/docs/edit/main/docs/integrations/yext.mdx)

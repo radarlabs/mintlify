@@ -1,0 +1,190 @@
+---
+title: "iOS SDK"
+description: "The Radar SDK abstracts away cross-platform differences between location services, allowing you to add geofencing, location tracking, trip tracking, geocoding, and search to your apps with just a few lines of code."
+---
+
+Learn how to integrate the iOS SDK below. You can also see the [source](https://github.com/radarlabs/radar-sdk-ios) and a [detailed SDK reference](https://radarlabs.github.io/radar-sdk-ios/Classes/Radar.html) on GitHub.
+
+## [Install SDK](#install-sdk)
+
+The best way to install the SDK is via [CocoaPods](https://cocoapods.org) or [Carthage](https://github.com/Carthage/Carthage).
+
+For details on the latest SDK releases, see the [releases page](https://github.com/radarlabs/radar-sdk-ios/releases) on GitHub. You can also star ⭐️ and watch 👀 the repo.
+
+The SDK is small and typically adds less than 500 KB to your compiled app.
+
+### [CocoaPods](#cocoapods)
+
+Install [CocoaPods](https://cocoapods.org). If you don't have an existing `Podfile`, run `pod init` in your project directory. Add the following to your `Podfile`:
+
+```ruby
+pod 'RadarSDK', '~> 3.21.5'
+```
+
+Then, run `pod install`. You may also need to run `pod repo update`.
+
+After installing, use the `.xcworkspace` file to open your project in Xcode instead of the `.xcproject` file.
+
+### [Swift Package Manager](#swift-package-manager)
+
+In Xcode, go to _File_ \> _Swift Packages_ \> _Add Package Dependency_. Enter `https://github.com/radarlabs/radar-sdk-ios-spm.git` for the _Package Repository URL_. This URL points to our [SPM optimized repo](https://github.com/radarlabs/radar-sdk-ios-spm), which has a smaller binary size to facilitate faster build times.
+
+**Note:** we recommend pinning the minor version you're installing as we occasionally introduce breaking changes in new minor versions. You can pin the minor version using the range operator:
+
+```
+3.21.5..<3.22.0
+```
+
+Only select `RadarSDK` unless you are also intending to use the location metadata feature. Refer to [this section](/sdk/ios#location-metadata) for more information.
+
+### [Carthage](#carthage)
+
+Install [Carthage](https://github.com/Carthage/Carthage). To include Radar as a `github` origin, add the following to your `Cartfile`:
+
+```
+github "radarlabs/radar-sdk-ios" ~> 3.21.5
+```
+
+To include Radar as a `binary` origin, add the following to your `Cartfile`:
+
+```
+binary "https://raw.githubusercontent.com/radarlabs/radar-sdk-ios/master/RadarSDK.json" ~> 3.21.5
+```
+
+Then, run `carthage update` and drag `Build/iOS/RadarSDK.framework` into the _Linked Frameworks and Libraries_ section of your target. Do not add the framework as an input to your `copy-frameworks` run script.
+
+### [Add manually](#add-manually)
+
+You can also add the SDK to your project manually. Download [the current release](https://github.com/radarlabs/radar-sdk-ios/releases), unzip the package, and drag `RadarSDK.xcframework` into your Xcode project. It will automatically appear in the _Frameworks, Libraries, and Embedded Content_ section of your target settings. Switch _Do Not Embed_ to _Embed & Sign_.
+
+## [Dependencies](#dependencies)
+
+The SDK depends on Apple's `CoreLocation` framework. In your target settings, go to _General_ \> _Frameworks, Libraries, and Embedded Content_ and add `CoreLocation` if you haven't already.
+
+The SDK currently supports iOS 10 and higher.
+
+## [Initialize SDK](#initialize-sdk)
+
+When your app starts, initialize the SDK with your publishable API key, found on the [Settings page](https://radar.com/dashboard/settings).
+
+Use your `Test Publishable` key for testing and non-production environments. Use your `Live Publishable` key for production environments.
+
+Note that you should always use your publishable API keys, which are restricted in scope, in the SDK. Do not use your secret API keys, which are unrestricted in scope, in any client-side code.
+
+```swift
+Radar.initialize(publishableKey: "prj_test_pk_...")
+```
+
+## [Request permissions](#request-permissions)
+
+Radar respects [standard iOS location permissions](https://developer.apple.com/documentation/corelocation/requesting_authorization_for_location_services).
+
+For foreground tracking or trip tracking with continuous mode, the app's location authorization status must be `authorizedWhenInUse` or `authorizedAlways`. For background tracking or geofencing with responsive mode, the app's location authorization status must be `authorizedAlways`.
+
+If your app already requests the necessary location permissions, you can skip this step.
+
+Before requesting permissions, you must add location usage strings to your `Info.plist` file. For foreground permissions, you must add a value for `NSLocationWhenInUseUsageDescription`. For background permissions, you must add a value for `NSLocationAlwaysAndWhenInUseUsageDescription`.
+
+### [Background modes](#background-modes)
+
+If you are planning to use `RadarTrackingOptions.presetContinuous` or `RadarTrackingOptions.presetResponsive`, or if you are planning to [range beacons by UUID only](/beacons#ranging-by-uuid-only), you must enable the _Location updates_ and _Background fetch_ background modes.
+
+In your project settings, go to _Signing & Capabilities_, add _Background Modes_, and turn on _Location updates_ and _Background fetch_.
+
+## [Foreground tracking](#foreground-tracking)
+
+```swift
+Radar.trackOnce { (status, location, events, user) in
+  // handle response
+}
+```
+
+## [Background tracking for geofencing](#background-tracking-for-geofencing)
+
+```swift
+Radar.startTracking(trackingOptions: .presetResponsive)
+```
+
+## [Background tracking for trips](#background-tracking-for-trips)
+
+```swift
+Radar.startTrip(options: tripOptions, trackingOptions: .presetContinuous) { (status, trip, events) in
+  // handle response
+}
+```
+
+## [Mock tracking for testing](#mock-tracking-for-testing)
+
+```swift
+Radar.mockTracking(
+  origin: CLLocation(latitude: 40.7147, longitude: -74.0358),
+  destination: CLLocation(latitude: 40.7174, longitude: -74.0533),
+  mode: .car,
+  steps: 10,
+  interval: 3
+) { (status, location, events, user) in
+  // handle response
+}
+```
+
+## [Location metadata](#location-metadata)
+
+Add this to your Podfile:
+
+```ruby
+pod 'RadarSDKMotion', '~> 3.21.5'
+```
+
+## [Listening for events with a delegate](#listening-for-events-with-a-delegate)
+
+```swift
+Radar.setDelegate(self)
+```
+
+## [Manual tracking](#manual-tracking)
+
+```swift
+Radar.trackOnce(location: location) { (status, location, events, user) in
+  // handle response
+}
+```
+
+## [Identify user](#identify-user)
+
+```swift
+Radar.setUserId("user-id")
+Radar.setMetadata(["key": "value"])
+Radar.setDescription("Optional description")
+```
+
+## [Debug logging](#debug-logging)
+
+```swift
+Radar.setLogLevel(.debug)
+```
+
+## [Submit to App Store](#submit-to-app-store)
+
+Apple requires that you justify your use of background location. Include a description like:
+
+\> This app uses background location to track deliveries. Continued use of background location may decrease battery life.
+
+## [Other APIs](#other-apis)
+
+### [Beacons](#beacons)
+
+### [Get location](#get-location)
+
+### [Context](#context)
+
+### [Geocoding](#geocoding)
+
+### [Search](#search)
+
+### [Distance](#distance)
+
+### [Matrix](#matrix)
+
+### [Conversions](#conversions)
+
+[Edit this page](https://github.com/radarlabs/docs/edit/main/docs/sdk/ios.mdx)

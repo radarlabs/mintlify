@@ -1,0 +1,192 @@
+---
+title: "Geofences"
+---
+
+Geofences represent custom regions or places monitored in your project. Depending on your use case, a geofence might represent a retail store, a neighborhood, and so on.
+
+Radar geofencing is more powerful than native iOS or Android geofencing, with cross-platform support for unlimited geofences, polygon geofences, [isochrone](https://en.wikipedia.org/wiki/Isochrone_map) (time-based) geofences, temporary geofences, and stop detection.
+
+<img
+  src="/images/f2vbu16fzuly/7g93fYMsIya1BRo9js96h9/fd5624ec2d3db9305ca9564f59374fe4/geofences_event.svg"
+  alt=""
+  className="mr-auto"
+/>
+
+Geofences provides the following user context:
+
+```json
+{
+  "geofences": [
+    {
+      "tag": "store",
+      "externalId": "123",
+      "description": "Store #123",
+      "metadata": {
+        "parking": false
+      }
+    }
+  ]
+}
+```
+
+Geofences also provides the following events:
+
+- `user.entered_geofence`
+- `user.exited_geofence`
+- `user.dwelled_in_geofence`
+
+You can receive events client-side via the [SDK](/sdk/sdk) or server-side via [event integrations](/geofencing/integrations), including webhooks.
+
+You can [create geofences](#create-geofences) via the dashboard, CSV import, the API, nightly sync, or integrations.
+
+Alternatively, if you don't have your own custom place data, Radar can detect when a user visits a place even if you haven't set up a geofence for that place. Learn more about [Places](/places).
+
+## Quickstart
+
+First, [sign up](https://radar.com/signup) for Radar and get an API key.
+
+Then, [create geofences](#create-a-geofence).
+
+From there, [integrate the SDK](/sdk) and call `Radar.trackOnce()` or `Radar.startTracking()`, depending on your use case. Radar will generate an entry event on the first location update inside of a geofence.
+
+## How it works
+
+Geofencing works in the foreground and in the background. All event generation happens server-side. This allows Radar geofencing to be more powerful than native iOS or Android geofencing, with cross-platform support for unlimited geofences, polygon geofences, [isochrone](https://en.wikipedia.org/wiki/Isochrone_map) (time-based) geofences, temporary geofences, and stop detection.
+
+Radar generates a geofence entry event if a user enters a geofence (if [stop detection](#stop-detection) is off) or stops in a geofence (if [stop detection](#stop-detection) is on) with sufficient confidence, then a geofence exit event when the user leaves the geofence with sufficient confidence. A device must exit a geofence before a subsequent entry into that same geofence.
+
+## Create geofences
+
+You can create geofences via the dashboard, CSV import, the API, nightly sync, or integrations. You can create geofences in the _Test_ environment for development and testing, and in the _Live_ environment for production.
+
+You specify the metadata for geofences when you create them, including the _tag_ (a group for the geofence, e.g., `store`), _external ID_ (an external ID for the geofence that maps to your internal database, e.g., `123`), and _description_ (a display name for the geofence, e.g., `Store #123`).
+
+**Geofences should be uniquely referenced by tag and external ID, assigned by you when a geofence is created. To disable or update metadata for a geofence, re-import the geofence with the same tag and external ID.**
+
+### Dashboard
+
+To create a geofence via the dashboard, go to the [Geofences page](https://radar.com/dashboard/geofencing/geofences/new) and click the _Create_ button. Optionally search for an address or place, then enter a description, tag, external ID, and optional metadata. Choose _circle_ to create a circle geofence, _polygon_ to create a polygon geofence, or _isochrone_ to create an [isochrone](https://en.wikipedia.org/wiki/Isochrone_map) (time-based) geofence. Click _Create_ to create the geofence.
+
+### CSV import
+
+To create geofences via CSV import, go to the [Geofences page](https://radar.com/dashboard/geofencing/geofences#import) and click the _Import_ button. Then, select a CSV to upload.
+
+Headers are required as the first row of the CSV.
+
+The CSV may have the following columns:
+
+- **`description`** (string, required): A description for the geofence.
+- **`type`** (string, required): The type of geofence geometry. `polygon`, `circle`, and `isochrone` are supported.
+- **`tag`** (string, required): A group for the geofence.
+- **`externalId`** (string, required): An external ID for the geofence that maps to your internal database.
+- **`coordinates`** (array, required if `address` and `placeId` are not included): An array or JSON string representing a center for type `circle` or a destination for type `isochrone` in the format `[longitude,latitude]`. A two-dimensional array or JSON string representing a closed ring of between 4 and 2,000 coordinates in the format `[[longitude0, latitude0],[longitude1,latitude1],[longitude2,latitude2],...,[longitude0,latitude0]]` for type `polygon`. **Note that longitude comes before latitude, a GeoJSON convention.**
+- **`address`** (string, required if `coordinates` and `placeId` are not included): An address to search for, and if found, will represent the center for type `circle` or `isochrone`. If `address` and `coordinates` are both provided, they must be nearby, and `coordinates` will take precedent. Ignored for type `polygon`.
+- **`radius`** (number, required for type `circle` and `isochrone`): The radius in meters for type `circle`, a number between `10` and `10000`. The travel duration in minutes for type `isochrone`. Ignored for type `polygon`.
+- **`mode`** (required for type `isochrone`): the [travel mode](/api#routing) for type `isochrone`.
+- **`enabled`** (boolean, optional): If `true`, the geofence will generate events. If `false`, the geofence will not generate events. Defaults to `true`.
+- **`metadata`** (dictionary, optional): An optional set of custom key-value pairs for the geofence. A dictionary or JSON string with up to 16 keys and values of type string, boolean, or number. **`Cannot be used with metadata.{key} columns.`**
+- **`metadata.{key}`** (string, optional): Instead of converting `metadata` to stringified JSON, use columns of this format to add a key-value pairs to `metadata`. For example, the column header `metadata.pickup-mode` with a value of `"drive-thru"` will resolve to `{ pickup-mode: "drive-thru" }`. Avoid using spaces and commas for keys. **`Cannot be used with the metadata column.`**
+- **`operatingHours`** (dictionary, optional): An optional set of key-value pairs restricting the [operating hours of the geofence](/geofences#operating-hours). Each key is a day of the week (e.g., `Sunday`) or the three letter abbreviation of the day (e.g., `Sun`), case insensitive. Each value is a list of pairs, where a pair indicates one opening and closing time for that day. For example, a restaurant only open for lunch and dinner on Sundays would be `{ Sunday: [["11:00", "14:00"], ["19:00", "22:00"]] }`. Accepted time formats include `h:mm aa` (e.g., `12:45 AM`) and `HH:mm` (e.g., `00:45`). If neither `operatingHours` nor `operatingHours.{day}` is provided, the geofence will always be open. **`Cannot be used with operatingHours.{day} columns.`**
+- **`operatingHours.{day}`** (string, optional): Instead of converting `operatingHours` to stringified JSON, use columns of this format to add a key-value pairs to `operatingHours`. For example, the column header `operatingHours.sunday` (or `operatingHours.sun`) with a value of `"[["11:00", "14:00"], ["19:00", "22:00"]]"` will resolve to `{ Sunday: [["11:00", "14:00"], ["19:00", "22:00"]] }`. If neither `operatingHours` nor `operatingHours.{day}` is provided, the geofence will always be open. **`Cannot be used with the operatingHours column.`**
+- **`stopDetection`** (boolean, optional): The [stop detection](/geofences#stop-detection) setting for the geofence. Overrides the project-level stop detection setting.
+- **`disableAfter`** (datetime, optional): Use to create temporary geofences. If set, the geofence will be disabled after the specified datetime. `disableAfter` operates independently of `operatingHours`. A date or valid ISO date string.
+- **`deleteAfter`** (datetime, optional): Use to create temporary geofences. If set, the geofence will be deleted after the specified datetime. A date or valid ISO date string.
+- **`userId`** (string, optional): An optional user restriction for the geofence. If set, the geofence will only generate events for the specified user. If not set, the geofence will generate events for all users. **Deprecated.**
+- **`userIds`** (string, optional): An optional user restriction for the geofence. A string of comma-separated user IDs. If set, the geofence will only generate events for the specified users. If not set, the geofence will generate events for all users.
+- **`ip`** (string, optional): An optional IP address restriction for the geofence. A string of comma-separated IP address ranges, each of which could be a single IP (`8.8.8.8`), wildcard notation (`8.8.8.*`), or CIDR notation (`8.8.8.8/24`). If set, the geofence will only generate events for requests from the specified IP address. If not set, the geofence will generate events for all requests.
+- **`dwellThreshold`** (number, optional): An optional field to trigger dwell events. If set and `user.dwelled_in_geofence` is enabled in settings, an event is triggered when a user dwells in the geofence longer than the threshold (in minutes). For example, a value of `10` would result in a dwell event on the next track call after a user has occupied a geofence for 10 minutes.
+- **`placeId`** (string, required if `coordinates` and `address` are not included): For [place matching](/places#place-matching), an optional `_id` of the Radar [place](/places) to match to the geofence. If a place was matched, the geometry of the place will override the geometry of the geofence.
+
+**If a geofence with the specified tag and external ID already exists, it will be updated. If not, it will be created.**
+
+For example, to import a circle geofence representing a store and a polygon geofence representing a neighborhood, you could use the following CSV:
+
+```csv
+description,tag,externalId,type,radius,mode,coordinates,address,enabled,metadata,stopDetection,disableAfter,deleteAfter,userIds,operatingHours
+"Store #123",store,123,circle,50,,"[-73.975363,40.783826]",,true,"{""parking"":false}",,,,,
+"SoHo",neighborhood,soho,polygon,,,"[[-73.996973,40.725660],[-73.998282,40.726294],[-74.001072,40.727660],[-74.002853,40.728603],[-74.003282,40.727936],[-74.003840,40.726310],[-74.004226,40.725351],[-74.004998,40.723530],[-74.005191,40.722993],[-74.005556,40.722115],[-74.004462,40.721334],[-74.001908,40.719496],[-73.999827,40.718016],[-73.997467,40.720863],[-73.997016,40.722212],[-73.996501,40.723497],[-73.995750,40.724278],[-73.995128,40.725107],[-73.996973,40.725660]]",,true,,,,,,
+"15 minutes driving to Disney World","car-15",disney,isochrone,15,car,"[-81.563874,28.385233]",,true,"{""type"":""resort""}",,,,,
+"Madison Square Garden from address",stadium,msg,circle,200,,,"4 Pennsylvania Plaza, New York, NY 10001",true,,,,,,
+"Disable in 2028 and delete in 2029",new-years,2027,circle,50,,"[-73.9877313,40.7579787]",,true,,,"2028-01-01T00:01:00-05:00","Jan 1, 2029",,
+"Delivery #123 for user #456 and driver #321",delivery,123,circle,50,,"[-73.9934387,40.7505045]",,true,,,,,"456,321",
+"Restaurant #789 open for Sunday breakfast and dinner",restaurant,789,circle,50,,"[-73.9934387,40.7505045]",,true,,,,,,"{""Sun"":[[""09:00"",""14:00""], [""17:00"",""22:00""]]}"
+```
+
+**Again, note that longitude comes before latitude, a GeoJSON convention.**
+
+You can find a history of past imports on the [Geofences import history page](https://radar.com/dashboard/geofences/imports).
+
+### API
+
+You can also create geofences programmatically via the [API](/api#upsert-a-geofence). You can create a geofence via POST `/api/v1/geofences`, or upsert a geofence based on tag and external ID via PUT `/api/v1/geofences/:tag/:externalId`.
+
+For example, to upsert a geofence representing a store via the [API](/api#upsert-a-geofence):
+
+```sh
+curl https://api.radar.io/v1/geofences/store/123 \
+  -H "Authorization: prj_live_sk_..." \
+  -X PUT \
+  -d "description=Store #123" \
+  -d "type=circle" \
+  -d "coordinates=[-73.975363,40.783826]" \
+  -d "radius=100"
+```
+
+**Again, note that longitude comes before latitude, a GeoJSON convention.**
+
+### [Geofence sync](#geofence-sync)
+
+Finally, you can sync geofences nightly from a CSV.
+
+On the Radar [Integrations page](https://radar.com/dashboard/integrations) under _Geofence Sync_, set _Enabled_ to _Yes_. Enter a _Notification Email_ to receive success and failure confirmation emails. Then, choose a _Protocol_:
+
+- Choose _HTTP_ for geofence CSVs at public HTTP or HTTPS URLs. Enter the URLs of the geofence CSVs.
+- Or, choose _AWS S3_ for geofence CSVs in a private S3 bucket. Enter an S3 bucket region, S3 bucket name, and the S3 object keys of the geofence CSVs. Finally, enter the AWS access key ID and secret access key of an IAM user with `GetObject` permissions for the specified S3 bucket and objects.
+
+Note that you can set separate CSVs for the _Test_ and _Live_ environments.
+
+The geofence sync CSV format is the same as the [geofence import CSV format](/geofences#csv-import).
+
+When you click _Save and Sync_, Radar will attempt a one-time sync and send an email on success or failure. Radar will then attempt syncs nightly.
+
+## Confidence and accuracy
+
+All geofence events have confidence levels. Confidence levels range from `1` (low) to `3` (high). Confidence is a function of the accuracy of the location reported by the device and the geometry of the geofence.
+
+Confidence will be high when the user, taking into account the accuracy of the location reported by the device, is completely inside the geofence. Confidence will be medium when the user is mostly inside the geofence. Confidence will be low when the user is only partially inside the geofence.
+
+![](/images/f2vbu16fzuly/cszDUh5NBGi6lBpslnH67/cc29547e9e38cee37d325814a6f4f589/confidence.png)
+
+The smaller the geofence and the less accurate the location reported by the device, the lower the confidence level. As a result, you may decide to ignore some events based on confidence levels.
+
+## Stop detection
+
+When _Geofence stop detection_ is on, Radar can understand the difference between a user walking or driving through a geofence and stopping in a geofence, and will only generate a geofence entry event when a user stops in a geofence (i.e., when `stopped` is `true` based on [tracking options](/sdk/tracking) or when `foreground` is `true`).
+
+You can enable this setting at a project level on the [Settings page](https://radar.com/dashboard/settings#geofences-settings), or at a geofence level when you [create geofences](#create-geofences).
+
+## Buffer entries and exits
+
+Use _Buffer entries_ to more aggressively enter geofences and reduce the likelihood of missed entry events. When _Buffer Entries_ is off, Radar will only generate an entry event if the location reported by the device is inside the geofence boundary. However, when _Buffer Entries_ is on, Radar will generate an entry event if the device is within X meters of the geofence, where X is the accuracy reported by the device. For example, if the device reports a location accurate to within 50 meters, Radar will generate an entry event if the location is within 50 meters of the geofence boundary.
+
+Use _Buffer exits_ to more conservatively exit geofences and reduce the jumpiness of exit events. When _Buffer Exits_ is off, Radar will generate an exit event if the location reported by the device is outside the geofence boundary. However, when _Buffer Exits_ is on, Radar will only generate an exit event if the device is more than X meters outside of the geofence, where X is the accuracy reported by the device. For example, if the device reports a location accurate to within 50 meters, Radar will only generate an entry event if the location is more than 50 meters outside of the geofence boundary.
+
+You can enable these settings at a project level on the [Settings page](https://radar.com/dashboard/settings#geofences-settings).
+
+## Operating hours
+
+When _Operating Hours_ are set on a geofence, Radar will indicate whether a user entered, exited, or dwelled in the geofence during its operating hours. Radar will add a boolean flag `currentlyOperating` to all geofence event payloads.
+
+Radar can also restrict geofence events from being generated outside of operating hours. Restrict event generation to only operating hours at the project level on the [Settings page](https://radar.com/dashboard/settings#geofences-settings).
+
+Operating hours can be set on individual geofences via [CSV import](/geofences#csv-import), the [API](/api#upsert-a-geofence), or in the _Advanced_ section of the geofence create and edit pages.
+
+![](/images/f2vbu16fzuly/2NBWd8m5bdREs2U0YEwlOI/658e8683aab80223b0ab50a055dc4136/operating-hours.png)
+
+## Dwell events
+
+If `user.dwelled_in_geofence` is enabled, Radar can trigger dwell events after a device remains inside of a geofence boundary for more than a specific threshold. Radar will generate a dwell event after the first location reported by the device beyond the specified threshold.
+
+You can enable this event at the project level on the [Settings page](https://radar.com/dashboard/settings#geofences-settings).
+
+[Edit this page](https://github.com/radarlabs/docs/edit/main/docs/geofences.mdx)

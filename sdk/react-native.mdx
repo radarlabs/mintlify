@@ -1,0 +1,712 @@
+---
+title: "React Native SDK"
+description: "This is the documentation for the React Native module. Before integrating, read the to familiarize yourself with the platform."
+---
+
+See the source on GitHub [here](https://github.com/radarlabs/react-native-radar). Or, see the `react-native-radar` package on npm [here](https://www.npmjs.com/package/react-native-radar).
+
+The SDK currently supports React Native `0.60.0` and higher.
+
+## Install[#](#install)
+
+Install the package from npm:
+
+```bash
+npm install --save react-native-radar
+```
+
+If you're using Expo, your build process must facilitate the installation of native modules. This is the default behavior with prebuild and autolinking.
+
+Then, install the [iOS SDK](/sdk/ios). Change to the `ios/` directory. In the `Podfile`, update `platform :ios` to `10.0` or higher. Then, run `pod install`. Learn about [autolinking](https://github.com/react-native-community/cli/blob/master/docs/autolinking.md).
+
+Before writing any JavaScript, you must integrate the Radar SDK with your iOS and Android apps as described in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+
+### iOS[#](#ios)
+
+You must add location usage descriptions and background modes to your `Info.plist`. For foreground permissions, you must add a value for `NSLocationWhenInUseUsageDescription` *(Privacy - Location When In Use Usage Description)*. For background permissions, you must add a value for `NSLocationAlwaysAndWhenInUseUsageDescription` *(Privacy - Location Always and When In Use Usage Description)*. These strings are displayed in permissions prompts.
+
+![](/images/sdk/f2vbu16fzuly/66LUD7W9uTt7f2H5pMmpBp/1e5a2bb2baaf79328e88c3ea47a7f6ff/permissions.png)
+
+If you are planning to leverage background tracking, such as responsive or continuous mode, in your project settings, go to *Signing & Capabilities*, add *Background Modes*, and turn on *Background fetch* and *Location updates*. Note that this requires additional justification during App Store review. [Learn more](/sdk/ios#submit-to-app-store).
+
+![](/images/sdk/f2vbu16fzuly/UUjdS7HyuFgu5bzGzuOYd/3eb568125cea0d6c4cf9384327446f08/modes.png)
+
+### Android[#](#android)
+
+You must add Google Play Services Location to your app's `build.gradle` file *(use version 21.0.1 or higher)*.
+
+```gradle
+implementation "com.google.android.gms:play-services-location:21.0.1"
+```
+
+For background tracking without a foreground service, and if targeting API level `29` or higher, Radar also requires the `ACCESS_BACKGROUND_LOCATION` permission. You must add the `ACCESS_BACKGROUND_LOCATION` permission to your manifest manually:
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+</manifest>
+```
+
+### Expo[#](#expo)
+
+You can also use our Expo plugin to take care of the native setup. Add `react-native-radar` to `plugins` in `app.json` and specify one or more of the plugin options below:
+
+```json
+{
+  "expo": {
+    ...
+    "plugins": [
+      [
+        "react-native-radar",
+        {
+          // boolean to enable iOS fraud detection, defaults to false
+          "iosFraud": true,
+          // string used in iOS NSLocationWhenInUseUsageDescription prompt, required for foreground location permissions
+          "iosNSLocationWhenInUseUsageDescription": "Your foreground location usage description.",
+          // string used in iOS NSLocationAlwaysAndWhenInUseUsageDescription prompt, required for background location permissions
+          "iosNSLocationAlwaysAndWhenInUseUsageDescription": "Your background location usage description.",
+          // boolean to enable iOS background location mode, required for .presetContinuous and .presetResponsive, defaults to false
+          "iosBackgroundMode": true,
+          // boolean to enable Android fraud detection, defaults to false
+          "androidFraud": true,
+          // boolean to enable Android background location permissions, defaults to false
+          "androidBackgroundPermission": true,
+          // boolean to enable Android foreground location permissions, defaults to false
+          "androidFineLocationPermission": true,
+          // boolean to enable motion activity detection, defaults to false
+          "addRadarSDKMotion": true,
+          // string used in iOS NSMotionUsageDescription prompt, defaults to "This app uses the motion service to provide motion-based services."
+          "iosNSMotionUsageDescription": "Your motion usage description."
+        }
+      ],
+      // optional, only required if using Radar Maps
+      [
+        "@maplibre/maplibre-react-native"
+      ]
+    ]
+  }
+}
+```
+
+## Integrate[#](#integrate)
+
+### Import module[#](#import-module)
+
+First, import the module:
+
+```javascript
+import Radar from 'react-native-radar';
+```
+
+### Initialize[#](#initialize)
+
+When your app starts, initialize the SDK with your publishable key.
+
+Use your `Test Publishable` key for testing and non-production environments. Use your `Live Publishable` key for production environments.
+
+Note that you should always use your publishable API keys, which are restricted in scope, in the SDK. Do not use your secret API keys, which are unrestricted in scope, in any client-side code.
+
+```javascript
+Radar.initialize(publishableKey);
+```
+
+### Identify user[#](#identify-user)
+
+To identify the user when logged in, call:
+
+```javascript
+Radar.setUserId(userId);
+```
+
+where `userId` is a stable unique ID for the user.
+
+To set an optional dictionary of custom metadata for the user, call:
+
+```javascript
+Radar.setMetadata(metadata);
+```
+
+where `metadata` is a JSON object with up to 16 keys and values of type string, boolean, or number.
+
+Finally, to set an optional description for the user, displayed in the dashboard, call:
+
+```javascript
+Radar.setDescription(description);
+```
+
+where `description` is a string.
+
+You only need to call these functions once, as these settings will be persisted across app sessions.
+
+Learn about platform-specific implementations of these functions in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+
+### Debug logging[#](#debug-logging)
+
+By default, only critical errors are logged to the console. To enable debug logging, call:
+
+```javascript
+Radar.setLogLevel('debug');
+```
+
+Logging app lifecycle events is done in native platform code. Instructions for doing so on iOS can be found in the [iOS SDK documentation](/sdk/ios#debug-logging). Logging app lifecycle events on Android happens automatically without any additional setup.
+
+Contact your customer success manager to enable logging app lifecycle events.
+
+### Request permissions[#](#request-permissions)
+
+Before tracking the user's location, the user must have granted location permissions for the app.
+
+To determine the whether user has granted location permissions for the app, call:
+
+```javascript
+Radar.getPermissionsStatus().then((status) => {
+  // do something with status
+});
+```
+
+`status` will be a string, one of:
+
+* **`GRANTED_BACKGROUND`**
+* **`GRANTED_FOREGROUND`**
+* **`NOT_DETERMINED`**
+* **`DENIED`**
+
+To request location permissions for the app, call:
+
+```javascript
+Radar.requestPermissions(background).then((status) => {
+  // do something with status
+});
+```
+
+where `background` is a boolean indicating whether to request background location permissions or foreground location permissions.
+
+On iOS and Android, the user needs to grant foreground location permissions first before you can prompt for background location permissions:
+
+```javascript
+// request foreground location permissions
+Radar.requestPermissions(false).then((status) => {
+  // request background location permissions
+  Radar.requestPermissions(true).then((status) => {
+    // do something with status
+  }).catch((err) => {
+    // optionally, do something with err
+  });
+}).catch((err) => {
+  // optionally, do something with err
+});
+```
+
+Learn about platform-specific permissions in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+
+Build and run the app to make sure permissions prompts are displayed!
+
+### Foreground tracking[#](#foreground-tracking)
+
+Once you have initialized the SDK and the user has granted permissions, you can track the user's location.
+
+To track the user's location in the foreground, call:
+
+```javascript
+Radar.trackOnce().then((result) => {
+  // do something with result.location, result.events, result.user
+}).catch((err) => {
+  // optionally, do something with err
+});
+```
+
+`err` will be a string, one of:
+
+* **`ERROR_PUBLISHABLE_KEY`**: SDK not initialized
+* **`ERROR_PERMISSIONS`**: location permissions not granted
+* **`ERROR_LOCATION`**: location services error or timeout (10 seconds)
+* **`ERROR_NETWORK`**: network error or timeout (10 seconds)
+* **`ERROR_BAD_REQUEST`**: bad request (missing or invalid params)
+* **`ERROR_UNAUTHORIZED`**: unauthorized (invalid API key)
+* **`ERROR_PAYMENT_REQUIRED`**: payment required (organization disabled or usage exceeded)
+* **`ERROR_FORBIDDEN`**: forbidden (insufficient permissions or no beta access)
+* **`ERROR_NOT_FOUND`**: not found
+* **`ERROR_RATE_LIMIT`**: too many requests ([rate limit](/api#track) exceeded)
+* **`ERROR_SERVER`**: internal server error
+* **`ERROR_UNKNOWN`**: unknown error
+
+Learn about platform-specific implementations of this function in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+
+### Background tracking[#](#background-tracking)
+
+Once you have initialized the SDK and the user has granted permissions, you can start tracking the user's location in the background.
+
+For background tracking, the SDK supports custom tracking options as well as three presets:
+
+* **`EFFICIENT`**: A low frequency of location updates and lowest battery usage. On Android, avoids Android vitals bad behavior thresholds.
+* **`RESPONSIVE`**: A medium frequency of location updates and low battery usage. Suitable for most consumer use cases.
+* **`CONTINUOUS`**: A high frequency of location updates and higher battery usage. Suitable for on-demand use cases (e.g., delivery tracking) and some consumer use cases (e.g., order ahead, "mall mode").
+
+Learn about platform-specific implementations of these presets in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+
+To start tracking the user's location in the background, call one of:
+
+```javascript
+Radar.startTrackingEfficient();
+Radar.startTrackingResponsive();
+Radar.startTrackingContinuous();
+```
+
+You only need to call these methods once, as these settings will be persisted across app sessions.
+
+Though we recommend using presets for most use cases, you can customize the tracking options. See the [tracking options reference](/sdk/tracking).
+
+```javascript
+// optionally adjust foreground service options for android
+Radar.setForegroundServiceOptions({ 
+  options: { 
+    text: "Location tracking started", 
+    title: "Location updates", 
+    updatesOnly: false,
+    importance: 2, 
+    activity: 'com.yourapp.MainActivity' 
+  }
+});
+
+Radar.startTrackingCustom({ 
+  desiredStoppedUpdateInterval: 180,
+  fastestStoppedUpdateInterval: 15, 
+  desiredMovingUpdateInterval: 60,
+  fastestMovingUpdateInterval: 15, 
+  desiredSyncInterval: 10,
+  desiredAccuracy: 'high', 
+  stopDuration: 140, 
+  stopDistance: 70, 
+  sync: 'all', 
+  replay: 'none', 
+  useStoppedGeofence: true, 
+  showBlueBar: true,
+  foregroundServiceEnabled: true
+});
+```
+
+To determine whether tracking has been started, call:
+
+```javascript
+Radar.isTracking();
+```
+
+To stop tracking the user's location in the background (e.g., when the user logs out), call:
+
+```javascript
+Radar.stopTracking();
+```
+
+Learn about platform-specific implementations of these functions in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+
+To listen for events, location updates, and errors, you can add event listeners:
+
+```javascript
+Radar.on('clientLocation', (result) => {
+  // do something with result.location
+});
+
+Radar.on('location', (result) => {
+  // do something with result.location, result.user
+});
+
+Radar.on('events', (result) => {
+  // do something with result.events, result.user
+});
+
+Radar.on('error', (err) => {
+  // do something with err
+});
+```
+
+Listeners should be set only once and before tracking begins.
+
+Add event listeners outside of your component lifecycle (e.g., outside of `componentDidMount`) if you want them to work when the app is in the background.
+
+You can also remove event listeners:
+
+```javascript
+Radar.off('clientLocation');
+Radar.off('location');
+Radar.off('events');
+Radar.off('error');
+```
+
+### Battery usage[#](#battery-usage)
+
+Because React Native loads and parses your JavaScript bundle on each app launch, and because background tracking may launch the app in the background, background tracking with the React Native module can increase battery usage.
+
+On iOS, the app loads and parses the JavaScript bundle when the app is launched. If you do not want to receive events in JavaScript and you want to disable this in the background, check `launchOptions` for the `UIApplicationLaunchOptionsLocationKey` to conditionally parse and load the JavaScript bundle. Learn more about this key [here](https://developer.apple.com/documentation/uikit/uiapplication/launchoptionskey/location?language=objc).
+
+On Android, a receiver in the React Native module loads and parses the JavaScript bundle when the app is launched in the background. If you do not want to receive events in JavaScript and you want to disable this, add an override to your manifest:
+
+```xml
+<receiver 
+  tools:replace="android:enabled"
+  android:name="io.radar.react.RNRadarReceiver"
+  android:enabled="false" 
+  android:exported="false" />
+```
+
+### Trip tracking[#](#trip-tracking)
+
+To start a trip to a destination, call:
+
+```javascript
+Radar.startTrip({ 
+  tripOptions: { 
+    externalId: '299',
+    destinationGeofenceTag: 'store', 
+    destinationGeofenceExternalId: '123', 
+    mode: 'car' 
+  }, 
+  trackingOptions:{
+    desiredStoppedUpdateInterval: 30, 
+    fastestStoppedUpdateInterval: 30,
+    desiredMovingUpdateInterval: 30, 
+    fastestMovingUpdateInterval: 30,
+    desiredSyncInterval: 20, 
+    desiredAccuracy: "high", 
+    stopDuration: 0,
+    stopDistance: 0, 
+    replay: "none", 
+    sync: "all", 
+    showBlueBar: true,
+    syncGeofences: false, 
+    syncGeofencesLimit: 0, 
+    beacons: false,
+    foregroundServiceEnabled: true 
+  }
+}).then((result) => {
+  // do something with result.status
+});
+```
+
+Update information about the trip. Status can be set to 'unknown' to leave the status unchanged as it will update via location tracking.
+
+```javascript
+Radar.updateTrip({ 
+  status:'arrived', 
+  options: { 
+    externalId: '299',
+    metadata: { 
+      parkingSpot: '5' 
+    } 
+  }
+}).then((result) => {
+  // do something with result.status
+});
+```
+
+Later, complete the trip by calling:
+
+```javascript
+Radar.completeTrip().then((result) => {
+  // do something with result.status
+});
+```
+
+Or, cancel the trip by calling:
+
+```javascript
+Radar.cancelTrip().then((result) => {
+  // do something with result.status
+});
+```
+
+If tracking was disabled before the trip started, it will stop after the trip ends. Otherwise, it will revert to the tracking options in use before the trip started.
+
+Learn more about [trip tracking](/trip-tracking).
+
+### Manual tracking[#](#manual-tracking)
+
+You can manually update the user's location by calling:
+
+```javascript
+Radar.trackOnce({ 
+  latitude: 39.2904, 
+  longitude: -76.6122, 
+  accuracy: 65
+}).then((result) => {
+  // do something with result.events, result.user
+}).catch((err) => {
+  // optionally, do something with err
+});
+```
+
+Learn about platform-specific implementation of this function in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+
+### Location metadata[#](#location-metadata)
+
+The SDK can also pass along information like motion activity detection, speed and heading via the location metadata field.
+
+Enable this feature with the Expo plugin by adding the following line into the app.json:
+
+```json
+{
+  "expo":{
+    ...
+    "plugins": [
+      [
+        "react-native-radar",
+        {
+          ...
+          "addRadarSDKMotion":true
+        }
+      ],
+      // optional, only required when you are also using Radar maps
+      ["@maplibre/maplibre-react-native"]
+    ]
+  }
+}
+```
+
+Learn about platform-specific implementation of this function in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+
+### Other APIs[#](#other-apis)
+
+The React Native module also exposes APIs for anonymous context, geocoding, search, and distance.
+
+#### Get location[#](#get-location)
+
+Get a single location update without sending it to the server:
+
+```javascript
+Radar.getLocation().then((result) => {
+  // do something with result.location
+}).catch((err) => {
+  // optionally, do something with err
+});
+```
+
+#### Context[#](#context)
+
+With the [context API](/api#context), get context for a location without sending device or user identifiers to the server:
+
+```javascript
+Radar.getContext({ 
+  latitude: 40.783826, 
+  longitude: -73.975363, 
+  accuracy: 65
+}).then((result) => {
+  // do something with result.context
+}).catch((err) => {
+  // optionally, do something with err
+});
+```
+
+#### Geocoding[#](#geocoding)
+
+With the [forward geocoding API](/api#forward-geocode), geocode an address, converting address to coordinates:
+
+```javascript
+Radar.geocode('20 jay st brooklyn ny').then((result) => {
+  // do something with result.addresses
+}).catch((err) => {
+  // optionally, do something with err
+});
+```
+
+With the [reverse geocoding API](/api#reverse-geocode), reverse geocode a location, converting coordinates to address:
+
+```javascript
+Radar.reverseGeocode({ 
+  latitude: 40.783826, 
+  longitude: -73.975363
+}).then((result) => {
+  // do something with result.addresses
+}).catch((err) => {
+  // optionally, do something with err
+});
+```
+
+With the [IP geocoding API](/api#ip-geocode), geocode the device's current IP address, converting IP address to city, state, and country:
+
+```javascript
+Radar.ipGeocode().then((result) => {
+  // do something with result.address
+}).catch((err) => {
+  // optionally, do something with err
+});
+```
+
+#### Search[#](#search)
+
+With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance:
+
+```javascript
+Radar.autocomplete({ 
+  query: 'brooklyn roasting', 
+  near: { 
+    latitude: 40.783826, 
+    longitude: -73.975363 
+  }, 
+  limit: 10
+}).then((result) => {
+  // do something with result.addresses
+}).catch((err) => {
+  // optionally, do something with err
+});
+```
+
+With the [geofence search API](/api#search-geofences), search for geofences near a location, sorted by distance:
+
+```javascript
+Radar.searchGeofences({ 
+  radius: 1000, 
+  tags: ['venue'], 
+  limit: 10
+}).then((result) => {
+  // do something with result.geofences
+}).catch((err) => {
+  // optionally, do something with err
+});
+```
+
+With the [places search API](/api#search-places), search for places near a location, sorted by distance:
+
+```javascript
+Radar.searchPlaces({ 
+  near: { 
+    latitude: 40.783826, 
+    longitude: -73.975363 
+  }, 
+  radius: 1000, 
+  chains: ['starbucks'], 
+  limit: 10
+}).then((result) => {
+  // do something with result.places
+}).catch((err) => {
+  // optionally, do something with err
+});
+```
+
+#### Distance[#](#distance)
+
+With the [distance API](/api#distance), calculate the travel distance and duration from an origin to a destination:
+
+```javascript
+Radar.getDistance({ 
+  origin: { 
+    latitude: 40.78382, 
+    longitude: -73.97536 
+  }, 
+  destination: { 
+    latitude: 40.70390, 
+    longitude: -73.98670 
+  }, 
+  modes: [ 'foot', 'car' ], 
+  units: 'imperial'
+}).then((result) => {
+  // do something with result.routes
+}).catch((err) => {
+  // optionally, do something with err
+});
+```
+
+#### Matrix[#](#matrix)
+
+With the [matrix API](/api#matrix), calculate the travel distance and duration between multiple origins and destinations for up to 25 routes:
+
+```javascript
+Radar.getMatrix({ 
+  origins: [ 
+    { 
+      latitude: 40.78382, 
+      longitude: -73.97536 
+    }, 
+    { 
+      latitude: 40.70390, 
+      longitude: -73.98670 
+    } 
+  ], 
+  destinations: [ 
+    { 
+      latitude: 40.64189, 
+      longitude: -73.78779 
+    }, 
+    { 
+      latitude: 35.99801, 
+      longitude: -78.94294 
+    } 
+  ], 
+  mode: 'car', 
+  units: 'imperial'
+}).then((result) => {
+  // do something with result.matrix
+}).catch((err) => {
+  // optionally, do something with err
+});
+```
+
+#### Conversions[#](#conversions)
+
+With the [conversions API](/api#log-a-conversion), log a conversion, such as a purchase or signup, to analyze alongside your app's location activity:
+
+```javascript
+Radar.logConversion(
+  name, 
+  metadata
+).then((result) => {
+  // do something with result.event
+}).catch((err) => {
+  // optionally, do something with err
+});
+
+// conversion with revenue
+Radar.logConversion(
+  name, 
+  revenue,
+  metadata
+).then((result) => {
+  // do something with result.event
+}).catch((err) => {
+  // optionally, do something with err
+});
+```
+
+To enable logging of app opens through notifications taps on iOS, perform the following native setup in the app's AppDelegate:
+
+```objc
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions{
+  self.moduleName = @"main";
+  self.initialProps = @{};
+  BOOL result = [super application:application didFinishLaunchingWithOptions:launchOptions];
+  RadarInitializeOptions *options = [RadarInitializeOptions new];
+  options.autoLogNotificationConversions = YES;
+  [Radar nativeSetup:options];
+  return result;
+}
+```
+
+### Notification options[#](#notification-options)
+
+On Android, you can call `setNotificationOptions` to set the icon and the background color of the foreground service and event notifications:
+
+```javascript
+// Set both foreground service and event notifications
+Radar.setNotificationOptions({ 
+  iconString: 'icon_1', 
+  iconColor: 'color_1'
+});
+
+// Or, set the foreground service notification and event notifications separately
+Radar.setNotificationOptions({ 
+  foregroundServiceIconString: "icon_1",
+  foregroundServiceIconColor: "color_1", 
+  eventIconString: "icon_2",
+  eventIconColor: "color_2",
+});
+```
+
+iOS defaults to the standard notification icon.
+
+### Maps and UI kits[#](#maps-and-ui-kits)
+
+The React Native SDK also has UI components for maps and address autocomplete. Learn more in the [Maps Platform documentation](/maps/overview).
+
+## Support[#](#support)
+
+Have questions? We're here to help! Contact us at [radar.com/support](https://radar.com/support).
+
+[Edit this page](https://github.com/radarlabs/docs/edit/main/docs/sdk/react-native.mdx)
