@@ -7,6 +7,10 @@
     "light": "#A6BAED",
     "dark": "#0003A5"
   },
+  "logo": {
+    "light": "https://docs.radar.com/img/logo.svg",
+    "dark": "https://docs.radar.com/img/logo.svg"
+  },
   "favicon": "/favicon.svg",
   "navigation": {
     "groups": [
