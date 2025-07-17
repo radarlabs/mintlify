@@ -463,7 +463,7 @@ pod 'RadarSDKMotion', '~> 3.21.5'
 
 or add the `RadarSDKMotion` package product to your target via SPM.
 
-## **Listening for events with a delegate**[**#**](https://docs.radar.com/sdk/ios#listening-for-events-with-a-delegate)
+## **Listening for events with a delegate**
 
 To listen for events, location updates, and errors client-side, set a `RadarDelegate`. Set your `RadarDelegate` in a codepath that will be initialized and executed in the background. For example, make your `AppDelegate` implement `RadarDelegate`, not a `ViewController`. `AppDelegate` will be initialized in the background, whereas a `ViewController` may not be.
 
@@ -561,7 +561,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, RadarDelegate {
   To listen for events server-side instead, add a [**webhook**](https://docs.radar.com/integrations/webhooks) or enable an [**integration**](https://docs.radar.com/integrations).
 </Info>
 
-## **Manual tracking**[**#**](https://docs.radar.com/sdk/ios#manual-tracking)
+## **Manual tracking**
 
 If you want to manage location services yourself, you can manually update the user's location instead by calling:
 
