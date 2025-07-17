@@ -1,0 +1,94 @@
+---
+title: "Integrations"
+---
+
+Radar supports a number of server-side integrations. _Event integrations_ like webhooks, mParticle, and Braze allow you to send events from Radar to other systems. _Geofence integrations_ like geofence sync and Yext allow you to sync geofences from other systems to Radar. Finally, _trip integrations_ allow you to [start and stop trips](https://docs.radar.com/trip-tracking) and send live ETAs to other platforms.
+
+## **Event integrations**
+
+<CardGroup cols={3}>
+  <Card title="Webhooks">
+    
+    </Card>
+    
+<Card title="Braze">
+    
+  </Card>
+<Card title="Airship">
+    
+  </Card>
+<Card title="Onesignal">
+    
+  </Card>
+<Card title="mParticle">
+    
+  </Card>
+<Card title="Segment">
+    
+  </Card>
+<Card title="Branch">
+    
+  </Card>
+<Card title="Lytics">
+    
+  </Card>
+<Card title="Iterable">
+    
+  </Card>
+<Card title="Leanplum">
+    
+  </Card>
+<Card title="Salesforce">
+    
+  </Card>
+<Card title="Amplitude">
+    
+  </Card>
+<Card title="Mixpanel">
+    
+  </Card>
+<Card title="Amazon Pinpoint">
+    
+  </Card>
+<Card title="Attentive">
+    
+  </Card>
+<Card title="Cordial">
+    
+  </Card>
+  
+</CardGroup>
+
+### **Filters**
+
+Click _Show Advanced_ on the [Integrations page](https://radar.com/dashboard/integrations) under an integration to show advanced filters.
+
+To filter event types sent to an integration, select or unselect event types under _Event Type Allowlist_.
+
+To filter keys from the request body sent to an integration, add keys, comma-separated, to _Request Key Blocklist_. For example, to skip sending `radar_geofence_ids` to the Segment `identify` call and to skip sending `geofence_id` to the Segment `track` call, add `radar_geofence_ids,geofence_id` to _Request Key Blocklist_.
+
+To filter events sent to an integration based upon a [Geofence](https://docs.radar.com/geofences) tag, add tags, comma-separated to _Geofence Tag Blocklist_. For example, to skip sending all events to the Amplitude integration for geofences tagged `gas-station` and `cafe`, add `gas-station,cafe` to _Geofence Tag Blocklist_.
+
+## **Geofence integrations**
+
+_Geofence integrations_ allow you to sync geofences from other systems to Radar.
+
+<CardGroup cols={3}>
+  <Card title="Yext">
+    
+  </Card>
+  <Card title="Brandify">
+    
+  </Card>
+  <Card title="Census">
+    
+  </Card>
+</CardGroup>
+
+## **Trip integrations**
+
+<CardGroup cols={3}>
+ <Card title="Olo">
+    
+  </Card>
+</CardGroup>
