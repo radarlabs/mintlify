@@ -124,7 +124,7 @@ If your app already requests the necessary location permissions, you can skip th
 
 Before requesting permissions, you must add location usage strings to your `Info.plist` file. For foreground permissions, you must add a value for `NSLocationWhenInUseUsageDescription` (_Privacy - Location When In Use Usage Description_). For background permissions, you must add a value for `NSLocationAlwaysAndWhenInUseUsageDescription` (_Privacy - Location Always and When In Use Usage Description_). These strings are displayed in permissions prompts.
 
-**IMAGE HERE**
+![Request Permissions Pn](/images/sdk/request-permissions.png)
 
 To request foreground permissions, call `requestWhenInUseAuthorization`on a `CLLocationManager` instance. To request background permissions in the app, make sure the user has granted foreground permissions first, then call `requestAlwaysAuthorization` on a `CLLocationManager` instance.
 
@@ -226,6 +226,8 @@ If you are planning to use `RadarTrackingOptions.presetContinuous` or `RadarTrac
 In your project settings, go to _Signing & Capabilities_, add _Background Modes_, and turn on _Location updates_ and _Background fetch_.
 
 Note that this requires additional justification during App Store review. Learn more [below](https://docs.radar.com/sdk/ios#submit-to-app-store).
+
+![Background Modes Pn](/images/sdk/background-modes.png)
 
 ## **Foreground tracking**
 
