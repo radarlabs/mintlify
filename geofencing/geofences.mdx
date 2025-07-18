@@ -8,7 +8,7 @@ Radar geofencing is more powerful than native iOS or Android geofencing, with cr
 
 <img
   src="/images/f2vbu16fzuly/7g93fYMsIya1BRo9js96h9/fd5624ec2d3db9305ca9564f59374fe4/geofences_event.svg"
-  alt=""
+  alt={true}
   className="mr-auto"
 />
 
@@ -39,7 +39,7 @@ You can receive events client-side via the [SDK](/sdk/sdk) or server-side via [e
 
 You can [create geofences](#create-geofences) via the dashboard, CSV import, the API, nightly sync, or integrations.
 
-Alternatively, if you don't have your own custom place data, Radar can detect when a user visits a place even if you haven't set up a geofence for that place. Learn more about [Places](/places).
+Alternatively, if you don't have your own custom place data, Radar can detect when a user visits a place even if you haven't set up a geofence for that place. Learn more about [Places](/geofencing/places).
 
 ## Quickstart
 
@@ -47,7 +47,7 @@ First, [sign up](https://radar.com/signup) for Radar and get an API key.
 
 Then, [create geofences](#create-a-geofence).
 
-From there, [integrate the SDK](/sdk) and call `Radar.trackOnce()` or `Radar.startTracking()`, depending on your use case. Radar will generate an entry event on the first location update inside of a geofence.
+From there, [integrate the SDK](/sdk/sdk) and call `Radar.trackOnce()` or `Radar.startTracking()`, depending on your use case. Radar will generate an entry event on the first location update inside of a geofence.
 
 ## How it works
 
@@ -86,16 +86,16 @@ The CSV may have the following columns:
 - **`enabled`** (boolean, optional): If `true`, the geofence will generate events. If `false`, the geofence will not generate events. Defaults to `true`.
 - **`metadata`** (dictionary, optional): An optional set of custom key-value pairs for the geofence. A dictionary or JSON string with up to 16 keys and values of type string, boolean, or number. **`Cannot be used with metadata.{key} columns.`**
 - **`metadata.{key}`** (string, optional): Instead of converting `metadata` to stringified JSON, use columns of this format to add a key-value pairs to `metadata`. For example, the column header `metadata.pickup-mode` with a value of `"drive-thru"` will resolve to `{ pickup-mode: "drive-thru" }`. Avoid using spaces and commas for keys. **`Cannot be used with the metadata column.`**
-- **`operatingHours`** (dictionary, optional): An optional set of key-value pairs restricting the [operating hours of the geofence](/geofences#operating-hours). Each key is a day of the week (e.g., `Sunday`) or the three letter abbreviation of the day (e.g., `Sun`), case insensitive. Each value is a list of pairs, where a pair indicates one opening and closing time for that day. For example, a restaurant only open for lunch and dinner on Sundays would be `{ Sunday: [["11:00", "14:00"], ["19:00", "22:00"]] }`. Accepted time formats include `h:mm aa` (e.g., `12:45 AM`) and `HH:mm` (e.g., `00:45`). If neither `operatingHours` nor `operatingHours.{day}` is provided, the geofence will always be open. **`Cannot be used with operatingHours.{day} columns.`**
+- **`operatingHours`** (dictionary, optional): An optional set of key-value pairs restricting the [operating hours of the geofence](#operating-hours). Each key is a day of the week (e.g., `Sunday`) or the three letter abbreviation of the day (e.g., `Sun`), case insensitive. Each value is a list of pairs, where a pair indicates one opening and closing time for that day. For example, a restaurant only open for lunch and dinner on Sundays would be `{ Sunday: [["11:00", "14:00"], ["19:00", "22:00"]] }`. Accepted time formats include `h:mm aa` (e.g., `12:45 AM`) and `HH:mm` (e.g., `00:45`). If neither `operatingHours` nor `operatingHours.{day}` is provided, the geofence will always be open. **`Cannot be used with operatingHours.{day} columns.`**
 - **`operatingHours.{day}`** (string, optional): Instead of converting `operatingHours` to stringified JSON, use columns of this format to add a key-value pairs to `operatingHours`. For example, the column header `operatingHours.sunday` (or `operatingHours.sun`) with a value of `"[["11:00", "14:00"], ["19:00", "22:00"]]"` will resolve to `{ Sunday: [["11:00", "14:00"], ["19:00", "22:00"]] }`. If neither `operatingHours` nor `operatingHours.{day}` is provided, the geofence will always be open. **`Cannot be used with the operatingHours column.`**
-- **`stopDetection`** (boolean, optional): The [stop detection](/geofences#stop-detection) setting for the geofence. Overrides the project-level stop detection setting.
+- **`stopDetection`** (boolean, optional): The [stop detection](#stop-detection) setting for the geofence. Overrides the project-level stop detection setting.
 - **`disableAfter`** (datetime, optional): Use to create temporary geofences. If set, the geofence will be disabled after the specified datetime. `disableAfter` operates independently of `operatingHours`. A date or valid ISO date string.
 - **`deleteAfter`** (datetime, optional): Use to create temporary geofences. If set, the geofence will be deleted after the specified datetime. A date or valid ISO date string.
 - **`userId`** (string, optional): An optional user restriction for the geofence. If set, the geofence will only generate events for the specified user. If not set, the geofence will generate events for all users. **Deprecated.**
 - **`userIds`** (string, optional): An optional user restriction for the geofence. A string of comma-separated user IDs. If set, the geofence will only generate events for the specified users. If not set, the geofence will generate events for all users.
 - **`ip`** (string, optional): An optional IP address restriction for the geofence. A string of comma-separated IP address ranges, each of which could be a single IP (`8.8.8.8`), wildcard notation (`8.8.8.*`), or CIDR notation (`8.8.8.8/24`). If set, the geofence will only generate events for requests from the specified IP address. If not set, the geofence will generate events for all requests.
 - **`dwellThreshold`** (number, optional): An optional field to trigger dwell events. If set and `user.dwelled_in_geofence` is enabled in settings, an event is triggered when a user dwells in the geofence longer than the threshold (in minutes). For example, a value of `10` would result in a dwell event on the next track call after a user has occupied a geofence for 10 minutes.
-- **`placeId`** (string, required if `coordinates` and `address` are not included): For [place matching](/places#place-matching), an optional `_id` of the Radar [place](/places) to match to the geofence. If a place was matched, the geometry of the place will override the geometry of the geofence.
+- **`placeId`** (string, required if `coordinates` and `address` are not included): For [place matching](/places#place-matching), an optional `_id` of the Radar [place](/geofencing/places) to match to the geofence. If a place was matched, the geometry of the place will override the geometry of the geofence.
 
 **If a geofence with the specified tag and external ID already exists, it will be updated. If not, it will be created.**
 
@@ -134,7 +134,7 @@ curl https://api.radar.io/v1/geofences/store/123 \
 
 **Again, note that longitude comes before latitude, a GeoJSON convention.**
 
-### [Geofence sync](#geofence-sync)
+### Geofence sync
 
 Finally, you can sync geofences nightly from a CSV.
 
