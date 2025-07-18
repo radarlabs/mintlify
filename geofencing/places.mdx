@@ -44,7 +44,7 @@ You can receive events client-side via the [SDK](/sdk) or server-side via [event
 
 You can enable Places on the [Settings page](https://radar.com/dashboard/settings).
 
-Alternatively, if you have your own custom place data, you can create geofences instead. Learn more about [Geofences](/geofences).
+Alternatively, if you have your own custom place data, you can create geofences instead. Learn more about [Geofences](/geofencing/geofences).
 
 ## Quickstart
 
@@ -58,7 +58,7 @@ From there, [integrate the SDK](/sdk) and call `Radar.trackOnce()` or `Radar.sta
 
 Radar generates a place entry event if a user stops at a place (i.e., when `stopped` is `true` based on [tracking options](/sdk/tracking) or when `foreground` is `true`) matching [filters](#place-filters) with sufficient confidence, then a place exit event when the user leaves the place with sufficient confidence.
 
-All place events have [confidence levels](#confidence), and places may have one or more [categories](/places#categories) and a [chain](/places#chains).
+All place events have [confidence levels](#confidence), and places may have one or more [categories](#categories) and a [chain](#chains).
 
 ## Confidence
 
@@ -146,7 +146,7 @@ To suppress tracking specific place categories in certain states, set _Category 
 
 For example, blocking the `fast-food-restaurant` category in New York would bypass visits to `fast-food-restaurant` places in New York.
 
-[Regions](/regions) must be enabled to expose this setting.
+[Regions](/geofencing/regions) must be enabled to expose this setting.
 
 ## Verify events
 
@@ -166,7 +166,7 @@ Radar.acceptEventId(event._id, verifiedPlaceId: event.alternatePlaces[0]._id)
 
 Place matching is the easiest way to make sure your geofence coordinates and geometries are accurate and stay up-to-date over time. Place matching will ensure that entry and exit events are reliable, trip approaching and arrived signals are precise, and messaging for nearby locations is relevant.
 
-Navigate to the [Geofences page](https://radar.com/dashboard/geofences) and select _Import_. If [Places](/places) are enabled for your project, toggle _Enable place matching_ on.
+Navigate to the [Geofences page](https://radar.com/dashboard/geofences) and select _Import_. If [Places](/geofencing/places) are enabled for your project, toggle _Enable place matching_ on.
 
 ### How it works
 
