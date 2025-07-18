@@ -1,43 +1,63 @@
 ---
 title: "Integrations"
-description: "Radar supports a number of server-side integrations.  like webhooks, mParticle, and Braze allow you to send events from Radar to other systems.  like geofence sync and Yext allow you to sync geofences from other systems to Radar. Finally,  allow you to  and send live ETAs to other platforms."
 ---
 
-## [Event integrations](#event-integrations)
+Radar supports a number of server-side integrations. _Event integrations_ like webhooks, mParticle, and Braze allow you to send events from Radar to other systems. _Geofence integrations_ like geofence sync and Yext allow you to sync geofences from other systems to Radar. Finally, _trip integrations_ allow you to [start and stop trips](https://docs.radar.com/trip-tracking) and send live ETAs to other platforms.
 
-[Webhooks](/integrations/webhooks)
+## **Event integrations**
 
-[Braze](/integrations/braze)
+<CardGroup cols={3}>
+  <Card title="Webhooks" href="/integrations/webhooks" img="/images/integrations/webhooks.png">
+    
+  </Card>
+  <Card title="Braze" href="/integrations/braze" img="/images/integrations/braze.png">
+    
+  </Card>
+  <Card title="Airship" href="/integrations/airship" img="/images/integrations/airship.png">
+    
+  </Card>
+  <Card title="Onesignal" href="/integrations/onesignal" img="/images/integrations/onesignal.png">
+    
+  </Card>
+  <Card title="mParticle" href="/integrations/mparticle" img="/images/integrations/mparticle.png">
+    
+  </Card>
+  <Card title="Segment" href="/integrations/segment" img="/images/integrations/segment.png">
+    
+  </Card>
+  <Card title="Branch" href="/integrations/branch" img="/images/integrations/branch.png">
+    
+  </Card>
+  <Card title="Lytics" href="/integrations/lytics" img="/images/integrations/lytics.png">
+    
+  </Card>
+  <Card title="Iterable" href="/integrations/iterable" img="/images/integrations/iterable.png">
+    
+  </Card>
+  <Card title="Leanplum" href="/integrations/leanplum" img="/images/integrations/leanplum.png">
+    
+  </Card>
+  <Card title="Salesforce" href="/integrations/salesforce" img="/images/integrations/salesforce.png">
+    
+  </Card>
+  <Card title="Amplitude" href="/integrations/amplitude" img="/images/integrations/amplitude.png">
+    
+  </Card>
+  <Card title="Mixpanel" href="/integrations/mixpanel" img="/images/integrations/mixpanel.png">
+    
+  </Card>
+  <Card title="Amazon Pinpoint" href="/integrations/aws-pinpoint" img="/images/integrations/amazonpinpoint.png">
+    
+  </Card>
+  <Card title="Attentive" href="/integrations/attentive" img="/images/integrations/attentive.png">
+    
+  </Card>
+  <Card title="Cordial" href="/integrations/cordial" img="/images/integrations/cordial.png">
+    
+  </Card>
+</CardGroup>
 
-[Airship](/integrations/urban-airship)
-
-[OneSignal](/integrations/onesignal)
-
-[mParticle](/integrations/mparticle)
-
-[Segment](/integrations/segment)
-
-[Branch](/integrations/branch)
-
-[Lytics](/integrations/lytics)
-
-[Iterable](/integrations/iterable)
-
-[Leanplum](/integrations/leanplum)
-
-[Salesforce](/integrations/salesforce)
-
-[Amplitude](/integrations/amplitude)
-
-[Mixpanel](/integrations/mixpanel)
-
-[Amazon Pinpoint](/integrations/aws-pinpoint)
-
-[Attentive](/integrations/attentive)
-
-[Cordial](/integrations/cordial)
-
-### [Filters](#filters)
+### **Filters**
 
 Click _Show Advanced_ on the [Integrations page](https://radar.com/dashboard/integrations) under an integration to show advanced filters.
 
@@ -45,20 +65,28 @@ To filter event types sent to an integration, select or unselect event types und
 
 To filter keys from the request body sent to an integration, add keys, comma-separated, to _Request Key Blocklist_. For example, to skip sending `radar_geofence_ids` to the Segment `identify` call and to skip sending `geofence_id` to the Segment `track` call, add `radar_geofence_ids,geofence_id` to _Request Key Blocklist_.
 
-To filter events sent to an integration based upon a [Geofence](/geofences) tag, add tags, comma-separated to _Geofence Tag Blocklist_. For example, to skip sending all events to the Amplitude integration for geofences tagged `gas-station` and `cafe`, add `gas-station,cafe` to _Geofence Tag Blocklist_.
+To filter events sent to an integration based upon a [Geofence](https://docs.radar.com/geofences) tag, add tags, comma-separated to _Geofence Tag Blocklist_. For example, to skip sending all events to the Amplitude integration for geofences tagged `gas-station` and `cafe`, add `gas-station,cafe` to _Geofence Tag Blocklist_.
 
-## [Geofence integrations](#geofence-integrations)
+## **Geofence integrations**
 
 _Geofence integrations_ allow you to sync geofences from other systems to Radar.
 
-[Yext](/integrations/yext)
+<CardGroup cols={3}>
+  <Card title="Yext" href="/integrations/yext" img="/images/integrations/yext.png">
+    
+  </Card>
+  <Card title="Brandify" href="/integrations/brandify" img="/images/integrations/brandify.png">
+    
+  </Card>
+  <Card title="Census" href="/integrations/census" img="/images/integrations/census.png">
+    
+  </Card>
+</CardGroup>
 
-[Brandify](/integrations/brandify)
+## **Trip integrations**
 
-[Census](/integrations/census)
-
-## [Trip integrations](#trip-integrations)
-
-[Olo](/integrations/olo)
-
-[Edit this page](https://github.com/radarlabs/docs/edit/main/docs/integrations.mdx)
+<CardGroup cols={3}>
+  <Card title="Olo" href="/integrations/olo" img="/images/integrations/olo.png">
+    
+  </Card>
+</CardGroup>
