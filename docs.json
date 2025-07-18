@@ -28,7 +28,7 @@
   "favicon": {
     "light": "/images/radar-dark.png",
     "dark": "/images/radar-light.png"
-  }
+  },
   "navigation": {
     "groups": [
       {
