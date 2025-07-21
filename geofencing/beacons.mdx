@@ -8,7 +8,7 @@ title: "Beacons"
 
 With Beacons, you can detect nearby Bluetooth beacons. Use Beacons for indoor or drive-thru use cases.
 
-Beacons are like hardware-enabled micro-geofences, accurate down to a few meters. For example, you might create a store-level [geofence](/geofences) and monitor beacons installed at the entrance, in the drive-thru, on registers, on tables, in aisles, or in parking spaces at each store.
+Beacons are like hardware-enabled micro-geofences, accurate down to a few meters. For example, you might create a store-level [geofence](/geofencing/geofences) and monitor beacons installed at the entrance, in the drive-thru, on registers, on tables, in aisles, or in parking spaces at each store.
 
 ![](/images/f2vbu16fzuly/1D7sswAV1IGmu8uMNBfG45/485dcb54b1b73c70c2722eb1edc74828/beacons_event.svg)
 
@@ -45,7 +45,7 @@ Beacons also provides the following events:
 - `user.entered_beacon`
 - `user.exited_beacon`
 
-You can receive events client-side via the [SDK](/sdk) or server-side via [event integrations](/integrations), including webhooks.
+You can receive events client-side via the [SDK](/sdk) or server-side via [event integrations](/integrations/integrations), including webhooks.
 
 ## Quickstart
 
@@ -61,11 +61,11 @@ Beacon detection works on iOS and Android in the foreground and in the backgroun
 
 On iOS and Android, Radar can range any beacons compatible with [iBeacon](https://developer.apple.com/ibeacon/). On Android, the SDK can also range any beacons compatible with [Eddystone-UID](https://github.com/google/eddystone).
 
-Just like the Radar generates `user.entered_geofence` events after you import [geofences](/geofences), Radar will generate `user.entered_beacon` events after you import beacons.
+Just like the Radar generates `user.entered_geofence` events after you import [geofences](/geofencing/geofences), Radar will generate `user.entered_beacon` events after you import beacons.
 
 To range beacons, the user must grant location permissions. On Android, the user must also grant the [required Bluetooth permissions](https://developer.android.com/about/versions/12/features/bluetooth-permissions#declare-new-permissions). If the user grants foreground location permissions, you can range nearby beacons in the foreground by calling `Radar.trackOnce(desiredAccuracy, beacons, completionHandler:)` with `beacons = true`. If the user grants background location permissions, you can monitor beacons in the background by calling `Radar.startTracking()` with `trackingOptions.beacons = true`. See the [SDK reference](/sdk) for more information.
 
-Beacon entry and exit events are sent to the SDK, to [webhooks](/integrations#webhooks), and to [integrations](/integrations) just like geofence entry and exit events.
+Beacon entry and exit events are sent to the SDK, to [webhooks](/integrations#webhooks), and to [integrations](/integrations/integrations) just like geofence entry and exit events.
 
 ### Ranging by UUID only
 
@@ -77,7 +77,7 @@ Alternatively, the SDK can range beacons based on `uuid` or `uid` only, regardle
 
 You can create beacons via the dashboard, CSV import, or through the API. You can create beacons in the Test environment for development and testing, and in the Live environment for production.
 
-Like [geofences](/geofences), you also specify the metadata for beacons when you create them, including _tag_ (a group for the beacon, e.g., `store-register`), external ID (an external ID for the beacon that maps to your internal database, e.g., `123-1`), _description_ (a display name for the beacon, e.g., `Store 123 - Register 1`).
+Like [geofences](/geofencing/geofences), you also specify the metadata for beacons when you create them, including _tag_ (a group for the beacon, e.g., `store-register`), external ID (an external ID for the beacon that maps to your internal database, e.g., `123-1`), _description_ (a display name for the beacon, e.g., `Store 123 - Register 1`).
 
 You also specify the identifiers used to range the beacon, including `uuid`, `major`, and `minor` for iBeacon or `uid` and `instance` for Eddystone, as well as an approximate latitude and longitude used to sync nearby beacons (within 1 kilometer) to the SDK.
 

@@ -50,7 +50,7 @@ Trips also provides the following events:
 
 First, [sign up](https://radar.com/signup) for Radar and get an API key.
 
-Then, [create a destination geofence](/geofences#create-a-geofence).
+Then, [create a destination geofence](/geofencing/geofences#create-a-geofence).
 
 From there, [integrate the SDK](/sdk) and call `Radar.startTrip()`. Radar will generate trip events with ETAs to the destination geofence.
 
@@ -291,7 +291,7 @@ Radar calculates ETAs and generates events when trips are updated:
 
 ETAs are calculated based on travel mode using the same routing engine that powers our [distance API](/maps/routing).
 
-You can receive events client-side via the [SDK](/sdk) or server-side via [event integrations](/integrations), including webhooks.
+You can receive events client-side via the [SDK](/sdk) or server-side via [event integrations](/integrations/integrations), including webhooks.
 
 ```json
 {
@@ -369,7 +369,7 @@ Ask your customer success manager for a distribution of the app specific to your
 
 Poll the [list trips API](/api#list-trips) to retrieve active trips for a specific destination geofence, including ID, custom metadata, and ETA. For example, you might poll the list trips API from an internal dashboard.
 
-Or, listen for [trip events](/trip-tracking#trip-events) sent to a webhook. From there, forward trip information, including ID, custom metadata, and ETA, to other systems. For example, you might set up a webhook that sends ETA to an order management or kitchen display system.
+Or, listen for [trip events](#trip-events) sent to a webhook. From there, forward trip information, including ID, custom metadata, and ETA, to other systems. For example, you might set up a webhook that sends ETA to an order management or kitchen display system.
 
 ## Analytics
 
