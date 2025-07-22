@@ -22,33 +22,34 @@ Whenever events are generated, Radar will send custom events to Branch.
 
 Radar `deviceId` maps to `idfv` for iOS devices and `android_id` for Android devices in Branch. For web devices, set Radar `metadata.branchFingerprintId` to the Branch Browser Fingerprint Id.
 
-```
-// track web devices with a Branch fingerprint mapping
-branch.getBrowserFingerprintId(function(err, data) {  Radar.setMetadata({ 'branchFingerprintId': data });});
+```javascript
+branch.getBrowserFingerprintId(function(err, data) {
+    Radar.setMetadata({ 'branchFingerprintId': data });
+});
 ```
 
 ## Event mapping
 
-| Radar Event                         | Context Type                    | Branch Event                   |
-| ----------------------------------- | ------------------------------- | ------------------------------ |
-| `user.entered_geofence`             | [Geofences](/geofences)         | `entered_geofence`             |
-| `user.exited_geofence`              | [Geofences](/geofences)         | `exited_geofence`              |
-| `user.dwelled_in_geofence`          | [Geofences](/geofences)         | `dwelled_in_geofence`          |
-| `user.entered_place`                | [Places](/places)               | `entered_place`                |
-| `user.exited_place`                 | [Places](/places)               | `exited_place`                 |
-| `user.entered_region_country`       | [Regions](/regions)             | `entered_country`              |
-| `user.exited_region_country`        | [Regions](/regions)             | `exited_country`               |
-| `user.entered_region_state`         | [Regions](/regions)             | `entered_state`                |
-| `user.exited_region_state`          | [Regions](/regions)             | `exited_state`                 |
-| `user.entered_region_dma`           | [Regions](/regions)             | `entered_dma`                  |
-| `user.exited_region_dma`            | [Regions](/regions)             | `exited_dma`                   |
-| `user.started_trip`                 | [Trip Tracking](/trip-tracking) | `started_trip`                 |
-| `user.updated_trip`                 | [Trip Tracking](/trip-tracking) | `updated_trip`                 |
-| `user.approaching_trip_destination` | [Trip Tracking](/trip-tracking) | `approaching_trip_destination` |
-| `user.arrived_at_trip_destination`  | [Trip Tracking](/trip-tracking) | `arrived_at_trip_destination`  |
-| `user.stopped_trip`                 | [Trip Tracking](/trip-tracking) | `stopped_trip`                 |
-| `user.entered_beacon`               | [Beacons](/beacons)             | `entered_beacon`               |
-| `user.exited_beacon`                | [Beacons](/beacons)             | `exited_beacon`                |
+| Radar Event                         | Context Type                       | Branch Event                   |
+| ----------------------------------- | ---------------------------------- | ------------------------------ |
+| `user.entered_geofence`             | [Geofences](/geofencing/geofences) | `entered_geofence`             |
+| `user.exited_geofence`              | [Geofences](/geofencing/geofences) | `exited_geofence`              |
+| `user.dwelled_in_geofence`          | [Geofences](/geofencing/geofences) | `dwelled_in_geofence`          |
+| `user.entered_place`                | [Places](/geofencing/places)       | `entered_place`                |
+| `user.exited_place`                 | [Places](/geofencing/places)       | `exited_place`                 |
+| `user.entered_region_country`       | [Regions](/geofencing/regions)     | `entered_country`              |
+| `user.exited_region_country`        | [Regions](/geofencing/regions)     | `exited_country`               |
+| `user.entered_region_state`         | [Regions](/geofencing/regions)     | `entered_state`                |
+| `user.exited_region_state`          | [Regions](/geofencing/regions)     | `exited_state`                 |
+| `user.entered_region_dma`           | [Regions](/geofencing/regions)     | `entered_dma`                  |
+| `user.exited_region_dma`            | [Regions](/geofencing/regions)     | `exited_dma`                   |
+| `user.started_trip`                 | [Trip Tracking](/geofencing/trips) | `started_trip`                 |
+| `user.updated_trip`                 | [Trip Tracking](/geofencing/trips) | `updated_trip`                 |
+| `user.approaching_trip_destination` | [Trip Tracking](/geofencing/trips) | `approaching_trip_destination` |
+| `user.arrived_at_trip_destination`  | [Trip Tracking](/geofencing/trips) | `arrived_at_trip_destination`  |
+| `user.stopped_trip`                 | [Trip Tracking](/geofencing/trips) | `stopped_trip`                 |
+| `user.entered_beacon`               | [Beacons](/geofencing/beacons)     | `entered_beacon`               |
+| `user.exited_beacon`                | [Beacons](/geofencing/beacons)     | `exited_beacon`                |
 
 ### entered_geofence
 
@@ -58,7 +59,7 @@ branch.getBrowserFingerprintId(function(err, data) {  Radar.setMetadata({ 'branc
 | `geofence.description`     | `geofence_description`    | string  | `"Store #123"`               |
 | `geofence.tag`             | `geofence_tag`            | string  | `"store"`                    |
 | `geofence.externalId`      | `geofence_external_id`    | string  | `"123"`                      |
-| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | {type}  | `{value}`                    |
+| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type    | `{value}`                    |
 | `confidence`               | `confidence`              | string  | `"high"`                     |
 | `foreground`               | `foreground`              | boolean | `true`                       |
 
@@ -82,12 +83,12 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `geofence.description`     | `geofence_description`    | string           | `"Store #123"`               |
 | `geofence.tag`             | `geofence_tag`            | string           | `"store"`                    |
 | `geofence.externalId`      | `geofence_external_id`    | string           | `"123"`                      |
-| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | {type}           | `{value}`                    |
+| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type             | `{value}`                    |
 | `confidence`               | `confidence`              | string           | `"high"`                     |
 | `duration`                 | `duration`                | number (minutes) | `42.1`                       |
 | `foreground`               | `foreground`              | boolean          | `true`                       |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Branch Event Property | Type   | Example Value     |
 | ----------------- | --------------------- | ------ | ----------------- |
@@ -107,12 +108,12 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `geofence.description`     | `geofence_description`    | string           | `"Store #123"`               |
 | `geofence.tag`             | `geofence_tag`            | string           | `"store"`                    |
 | `geofence.externalId`      | `geofence_external_id`    | string           | `"123"`                      |
-| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | {type}           | `{value}`                    |
+| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type             | `{value}`                    |
 | `confidence`               | `confidence`              | string           | `"high"`                     |
 | `duration`                 | `duration`                | number (minutes) | `5`                          |
 | `foreground`               | `foreground`              | boolean          | `true`                       |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Branch Event Property | Type   | Example Value     |
 | ----------------- | --------------------- | ------ | ----------------- |
@@ -133,12 +134,12 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `place.chain.slug`            | `place_chain_id`             | string                   | `"starbucks"`                      |
 | `place.chain.name`            | `place_chain_name`           | string                   | `"Starbucks"`                      |
 | `place.chain.externalId`      | `place_chain_external_id`    | string                   | `"123"`                            |
-| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | {type}                   | `{value}`                          |
+| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | type                     | `{value}`                          |
 | `place.categories`            | `place_categories`           | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` |
 | `confidence`                  | `confidence`                 | string                   | `"high"`                           |
 | `foreground`                  | `foreground`                 | boolean                  | `true`                             |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Branch Event Property | Type   | Example Value     |
 | ----------------- | --------------------- | ------ | ----------------- |
@@ -159,13 +160,13 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `place.chain.slug`            | `place_chain_id`             | string                   | `"starbucks"`                      |
 | `place.chain.name`            | `place_chain_name`           | string                   | `"Starbucks"`                      |
 | `place.chain.externalId`      | `place_chain_external_id`    | string                   | `"123"`                            |
-| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | {type}                   | `{value}`                          |
+| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | type                     | `{value}`                          |
 | `place.categories`            | `place_categories`           | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` |
 | `confidence`                  | `confidence`                 | string                   | `"high"`                           |
 | `duration`                    | `duration`                   | number (minutes)         | `42.1`                             |
 | `foreground`                  | `foreground`                 | boolean                  | `true`                             |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Branch Event Property | Type   | Example Value               |
 | ----------------- | --------------------- | ------ | --------------------------- |
@@ -236,7 +237,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | Radar Event Attribute                | Branch Event Property                   | Type    | Example Value |
 | ------------------------------------ | --------------------------------------- | ------- | ------------- |
 | `trip.externalId`                    | `trip_external_id`                      | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | {type}  | `{value}`     |
+| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | type    | `{value}`     |
 | `trip.destinationGeofenceTag`        | `trip_destination_geofence_tag`         | string  | `"store"`     |
 | `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string  | `"123"`       |
 | `foreground`                         | `foreground`                            | boolean | `true`        |
@@ -246,7 +247,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | Radar Event Attribute                | Branch Event Property                   | Type    | Example Value |
 | ------------------------------------ | --------------------------------------- | ------- | ------------- |
 | `trip.externalId`                    | `trip_external_id`                      | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | {type}  | `{value}`     |
+| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | type    | `{value}`     |
 | `trip.destinationGeofenceTag`        | `trip_destination_geofence_tag`         | string  | `"store"`     |
 | `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string  | `"123"`       |
 | `foreground`                         | `foreground`                            | boolean | `true`        |
@@ -256,7 +257,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | Radar Event Attribute                | Branch Event Property                   | Type    | Example Value |
 | ------------------------------------ | --------------------------------------- | ------- | ------------- |
 | `trip.externalId`                    | `trip_external_id`                      | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | {type}  | `{value}`     |
+| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | type    | `{value}`     |
 | `trip.destinationGeofenceTag`        | `trip_destination_geofence_tag`         | string  | `"store"`     |
 | `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string  | `"123"`       |
 | `foreground`                         | `foreground`                            | boolean | `true`        |
@@ -266,7 +267,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | Radar Event Attribute                | Branch Event Property                   | Type    | Example Value |
 | ------------------------------------ | --------------------------------------- | ------- | ------------- |
 | `trip.externalId`                    | `trip_external_id`                      | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | {type}  | `{value}`     |
+| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | type    | `{value}`     |
 | `trip.destinationGeofenceTag`        | `trip_destination_geofence_tag`         | string  | `"store"`     |
 | `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string  | `"123"`       |
 | `foreground`                         | `foreground`                            | boolean | `true`        |
@@ -276,7 +277,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | Radar Event Attribute                | Branch Event Property                   | Type    | Example Value |
 | ------------------------------------ | --------------------------------------- | ------- | ------------- |
 | `trip.externalId`                    | `trip_external_id`                      | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | {type}  | `{value}`     |
+| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | type    | `{value}`     |
 | `trip.destinationGeofenceTag`        | `trip_destination_geofence_tag`         | string  | `"store"`     |
 | `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string  | `"123"`       |
 | `foreground`                         | `foreground`                            | boolean | `true`        |
@@ -289,7 +290,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `beacon.description`     | `beacon_description`    | string  | `"Store #123 - Drive-Thru"`  |
 | `beacon.tag`             | `beacon_tag`            | string  | `"drive-thru"`               |
 | `beacon.externalId`      | `beacon_external_id`    | string  | `"123"`                      |
-| `beacon.metadata[{key}]` | `beacon_metadata_{key}` | {type}  | `{value}`                    |
+| `beacon.metadata[{key}]` | `beacon_metadata_{key}` | type    | `{value}`                    |
 | `confidence`             | `confidence`            | string  | `"high"`                     |
 | `foreground`             | `foreground`            | boolean | `true`                       |
 
@@ -301,7 +302,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `beacon.description`     | `beacon_description`    | string           | `"Store #123 - Drive-Thru"`  |
 | `beacon.tag`             | `beacon_tag`            | string           | `"drive-thru"`               |
 | `beacon.externalId`      | `beacon_external_id`    | string           | `"123"`                      |
-| `beacon.metadata[{key}]` | `beacon_metadata_{key}` | {type}           | `{value}`                    |
+| `beacon.metadata[{key}]` | `beacon_metadata_{key}` | type             | `{value}`                    |
 | `confidence`             | `confidence`            | string           | `"high"`                     |
 | `duration`               | `duration`              | number (minutes) | `1.42`                       |
 | `foreground`             | `foreground`            | boolean          | `true`                       |

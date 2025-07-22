@@ -20,7 +20,7 @@ Whenever events are generated, Radar will send custom events and user attributes
 
 To map a Radar user to a Pinpoint endpoint ID, you must specify a custom mapping by setting Radar `metadata.awsPinpointEndpointId`. For example, on iOS:
 
-```
+```swift
 // track users with custom userId mapping (not required if using default mapping)
 Radar.setMetadata(["awsPinpointEndpointId": endpointid])
 ```
@@ -79,7 +79,7 @@ Note that Radar uses the string `[]` to represent `null` user attribute values.
 | `confidence`               | `Confidence`             | string  | `"high"`                     |
 | `foreground`               | `Foreground`             | boolean | `true`                       |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Pinpoint Event Attribute | Type   | Example Value     |
 | ----------------- | ------------------------ | ------ | ----------------- |
@@ -104,7 +104,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `duration`                 | `Duration`               | string  | `"42.1"`                     |
 | `foreground`               | `Foreground`             | boolean | `true`                       |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Pinpoint Event Attribute | Type   | Example Value     |
 | ----------------- | ------------------------ | ------ | ----------------- |
@@ -129,7 +129,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `duration`                 | `Duration`               | string  | `"5"`                        |
 | `foreground`               | `Foreground`             | boolean | `true`                       |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Pinpoint Event Attribute | Type   | Example Value     |
 | ----------------- | ------------------------ | ------ | ----------------- |
@@ -155,7 +155,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `confidence`                  | `Confidence`              | string                   | `"high"`                           |
 | `foreground`                  | `Foreground`              | boolean                  | `true`                             |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Pinpoint Event Attribute | Type   | Example Value     |
 | ----------------- | ------------------------ | ------ | ----------------- |
@@ -182,7 +182,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `duration`                    | `Duration`                | string                   | `"42.1"`                           |
 | `foreground`                  | `Foreground`              | boolean                  | `true`                             |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Pinpoint Event Attribute | Type   | Example Value     |
 | ----------------- | ------------------------ | ------ | ----------------- |

@@ -68,26 +68,26 @@ Note that Radar uses the special string `"(null)"` to represent `null` user prop
 
 ## Event mapping
 
-| Radar Event                         | Context Type                    | Amplitude Event                        |
-| ----------------------------------- | ------------------------------- | -------------------------------------- |
-| `user.entered_geofence`             | [Geofences](/geofences)         | `[Radar] Geofence Entered`             |
-| `user.exited_geofence`              | [Geofences](/geofences)         | `[Radar] Geofence Exited`              |
-| `user.dwelled_in_geofence`          | [Geofences](/geofences)         | `[Radar] Dwelled in Geofence`          |
-| `user.entered_place`                | [Places](/places)               | `[Radar] Place Entered`                |
-| `user.exited_place`                 | [Places](/places)               | `[Radar] Place Exited`                 |
-| `user.entered_region_country`       | [Regions](/regions)             | `[Radar] Country Entered`              |
-| `user.exited_region_country`        | [Regions](/regions)             | `[Radar] Country Exited`               |
-| `user.entered_region_state`         | [Regions](/regions)             | `[Radar] State Entered`                |
-| `user.exited_region_state`          | [Regions](/regions)             | `[Radar] State Exited`                 |
-| `user.entered_region_dma`           | [Regions](/regions)             | `[Radar] DMA Entered`                  |
-| `user.exited_region_dma`            | [Regions](/regions)             | `[Radar] DMA Exited`                   |
-| `user.started_trip`                 | [Trip Tracking](/trip-tracking) | `[Radar] Started Trip`                 |
-| `user.updated_trip`                 | [Trip Tracking](/trip-tracking) | `[Radar] Updated Trip`                 |
-| `user.approaching_trip_destination` | [Trip Tracking](/trip-tracking) | `[Radar] Approaching Trip Destination` |
-| `user.arrived_at_trip_destination`  | [Trip Tracking](/trip-tracking) | `[Radar] Arrived at Trip Destination`  |
-| `user.stopped_trip`                 | [Trip Tracking](/trip-tracking) | `[Radar] Stopped Trip`                 |
-| `user.entered_beacon`               | [Beacons](/beacons)             | `[Radar] Beacon Entered`               |
-| `user.exited_beacon`                | [Beacons](/beacons)             | `[Radar] Beacon Exited`                |
+| Radar Event                         | Context Type                       | Amplitude Event                        |
+| ----------------------------------- | ---------------------------------- | -------------------------------------- |
+| `user.entered_geofence`             | [Geofences](/geofencing/geofences) | `[Radar] Geofence Entered`             |
+| `user.exited_geofence`              | [Geofences](/geofencing/geofences) | `[Radar] Geofence Exited`              |
+| `user.dwelled_in_geofence`          | [Geofences](/geofencing/geofences) | `[Radar] Dwelled in Geofence`          |
+| `user.entered_place`                | [Places](/geofencing/places)       | `[Radar] Place Entered`                |
+| `user.exited_place`                 | [Places](/geofencing/places)       | `[Radar] Place Exited`                 |
+| `user.entered_region_country`       | [Regions](/geofencing/regions)     | `[Radar] Country Entered`              |
+| `user.exited_region_country`        | [Regions](/geofencing/regions)     | `[Radar] Country Exited`               |
+| `user.entered_region_state`         | [Regions](/geofencing/regions)     | `[Radar] State Entered`                |
+| `user.exited_region_state`          | [Regions](/geofencing/regions)     | `[Radar] State Exited`                 |
+| `user.entered_region_dma`           | [Regions](/geofencing/regions)     | `[Radar] DMA Entered`                  |
+| `user.exited_region_dma`            | [Regions](/geofencing/regions)     | `[Radar] DMA Exited`                   |
+| `user.started_trip`                 | [Trip Tracking](/geofencing/trips) | `[Radar] Started Trip`                 |
+| `user.updated_trip`                 | [Trip Tracking](/geofencing/trips) | `[Radar] Updated Trip`                 |
+| `user.approaching_trip_destination` | [Trip Tracking](/geofencing/trips) | `[Radar] Approaching Trip Destination` |
+| `user.arrived_at_trip_destination`  | [Trip Tracking](/geofencing/trips) | `[Radar] Arrived at Trip Destination`  |
+| `user.stopped_trip`                 | [Trip Tracking](/geofencing/trips) | `[Radar] Stopped Trip`                 |
+| `user.entered_beacon`               | [Beacons](/geofencing/beacons)     | `[Radar] Beacon Entered`               |
+| `user.exited_beacon`                | [Beacons](/geofencing/beacons)     | `[Radar] Beacon Exited`                |
 
 ### [Radar] Geofence Entered
 
@@ -97,7 +97,7 @@ Note that Radar uses the special string `"(null)"` to represent `null` user prop
 | `geofence.description`     | `Geofence Description`    | string          | `"Store #123"`               |
 | `geofence.tag`             | `Geofence Tag`            | string          | `"store"`                    |
 | `geofence.externalId`      | `Geofence External ID`    | string          | `"123"`                      |
-| `geofence.metadata[{key}]` | `Geofence Metadata {key}` | {type}          | `{value}`                    |
+| `geofence.metadata[{key}]` | `Geofence Metadata {key}` | type            | `{value}`                    |
 | `confidence`               | `Confidence`              | string          | `"high"`                     |
 | `accuracy`                 | `Accuracy`                | number (meters) | `5`                          |
 | `foreground`               | `Foreground`              | boolean         | `true`                       |
@@ -129,7 +129,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `geofence.description`     | `Geofence Description`    | string           | `"Store #123"`               |
 | `geofence.tag`             | `Geofence Tag`            | string           | `"store"`                    |
 | `geofence.externalId`      | `Geofence External ID`    | string           | `"123"`                      |
-| `geofence.metadata[{key}]` | `Geofence Metadata {key}` | {type}           | `{value}`                    |
+| `geofence.metadata[{key}]` | `Geofence Metadata {key}` | type             | `{value}`                    |
 | `confidence`               | `Confidence`              | string           | `"high"`                     |
 | `accuracy`                 | `Accuracy`                | number (meters)  | `5`                          |
 | `foreground`               | `Foreground`              | boolean          | `true`                       |
@@ -162,7 +162,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `geofence.description`     | `Geofence Description`    | string           | `"Store #123"`               |
 | `geofence.tag`             | `Geofence Tag`            | string           | `"store"`                    |
 | `geofence.externalId`      | `Geofence External ID`    | string           | `"123"`                      |
-| `geofence.metadata[{key}]` | `Geofence Metadata {key}` | {type}           | `{value}`                    |
+| `geofence.metadata[{key}]` | `Geofence Metadata {key}` | type             | `{value}`                    |
 | `confidence`               | `Confidence`              | string           | `"high"`                     |
 | `accuracy`                 | `Accuracy`                | number (meters)  | `5`                          |
 | `foreground`               | `Foreground`              | boolean          | `true`                       |
@@ -320,7 +320,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `accuracy`        | `Accuracy`               | number (meters) | `5`           |
 | `foreground`      | `Foreground`             | boolean         | `true`        |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Amplitude Event Property | Type   | Example Value                |
 | ----------------- | ------------------------ | ------ | ---------------------------- |
@@ -431,7 +431,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | Radar Event Attribute                | Amplitude Event Property                | Type            | Example Value |
 | ------------------------------------ | --------------------------------------- | --------------- | ------------- |
 | `trip.externalId`                    | `Trip External ID`                      | string          | `"299"`       |
-| `trip.metadata[{key}]`               | `Trip Metadata {key}`                   | {type}          | `{value}`     |
+| `trip.metadata[{key}]`               | `Trip Metadata {key}`                   | type            | `{value}`     |
 | `trip.destinationGeofenceTag`        | `Trip Destination Geofence Tag`         | string          | `"store"`     |
 | `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string          | `"123"`       |
 | `accuracy`                           | `Accuracy`                              | number (meters) | `5`           |
@@ -461,7 +461,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | Radar Event Attribute                | Amplitude Event Property                | Type            | Example Value |
 | ------------------------------------ | --------------------------------------- | --------------- | ------------- |
 | `trip.externalId`                    | `Trip External ID`                      | string          | `"299"`       |
-| `trip.metadata[{key}]`               | `Trip Metadata {key}`                   | {type}          | `{value}`     |
+| `trip.metadata[{key}]`               | `Trip Metadata {key}`                   | type            | `{value}`     |
 | `trip.destinationGeofenceTag`        | `Trip Destination Geofence Tag`         | string          | `"store"`     |
 | `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string          | `"123"`       |
 | `accuracy`                           | `Accuracy`                              | number (meters) | `5`           |
@@ -491,7 +491,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | Radar Event Attribute                | Amplitude Event Property                | Type            | Example Value |
 | ------------------------------------ | --------------------------------------- | --------------- | ------------- |
 | `trip.externalId`                    | `Trip External ID`                      | string          | `"299"`       |
-| `trip.metadata[{key}]`               | `Trip Metadata {key}`                   | {type}          | `{value}`     |
+| `trip.metadata[{key}]`               | `Trip Metadata {key}`                   | type            | `{value}`     |
 | `trip.destinationGeofenceTag`        | `Trip Destination Geofence Tag`         | string          | `"store"`     |
 | `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string          | `"123"`       |
 | `accuracy`                           | `Accuracy`                              | number (meters) | `5`           |
@@ -521,7 +521,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | Radar Event Attribute                | Amplitude Event Property                | Type            | Example Value |
 | ------------------------------------ | --------------------------------------- | --------------- | ------------- |
 | `trip.externalId`                    | `Trip External ID`                      | string          | `"299"`       |
-| `trip.metadata[{key}]`               | `Trip Metadata {key}`                   | {type}          | `{value}`     |
+| `trip.metadata[{key}]`               | `Trip Metadata {key}`                   | type            | `{value}`     |
 | `trip.destinationGeofenceTag`        | `Trip Destination Geofence Tag`         | string          | `"store"`     |
 | `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string          | `"123"`       |
 | `accuracy`                           | `Accuracy`                              | number (meters) | `5`           |
@@ -551,7 +551,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | Radar Event Attribute                | Amplitude Event Property                | Type            | Example Value |
 | ------------------------------------ | --------------------------------------- | --------------- | ------------- |
 | `trip.externalId`                    | `Trip External ID`                      | string          | `"299"`       |
-| `trip.metadata[{key}]`               | `Trip Metadata {key}`                   | {type}          | `{value}`     |
+| `trip.metadata[{key}]`               | `Trip Metadata {key}`                   | type            | `{value}`     |
 | `trip.destinationGeofenceTag`        | `Trip Destination Geofence Tag`         | string          | `"store"`     |
 | `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string          | `"123"`       |
 | `accuracy`                           | `Accuracy`                              | number (meters) | `5`           |
@@ -584,7 +584,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `beacon.description`     | `Beacon Description`     | string | `"Store #123 - Drive-Thru"`  |
 | `beacon.tag`             | `Beacon Tag`             | string | `"drive-thru"`               |
 | `beacon.externalId`      | `Beacon External ID`     | string | `"123"`                      |
-| `beacon.metadata[{key}]` | `Beacon Metadata {key}`  | {type} | `{value}`                    |
+| `beacon.metadata[{key}]` | `Beacon Metadata {key}`  | type   | `{value}`                    |
 | `confidence`             | `Confidence`             | string | `"high"`                     |
 
 If [Regions](/regions) is enabled, Radar will also send the following attributes:
@@ -614,7 +614,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `beacon.description`     | `Beacon Description`     | string           | `"Store #123 - Drive-Thru"`  |
 | `beacon.tag`             | `Beacon Tag`             | string           | `"drive-thru"`               |
 | `beacon.externalId`      | `Beacon External ID`     | string           | `"123"`                      |
-| `beacon.metadata[{key}]` | `Beacon Metadata {key}`  | {type}           | `{value}`                    |
+| `beacon.metadata[{key}]` | `Beacon Metadata {key}`  | type             | `{value}`                    |
 | `confidence`             | `Confidence`             | string           | `"high"`                     |
 | `duration`               | `Duration`               | number (minutes) | `1.42`                       |
 

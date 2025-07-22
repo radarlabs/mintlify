@@ -63,7 +63,7 @@ From there, [integrate the SDK](/sdk), complete the steps below, and call `Radar
 
 ## How it works
 
-You can call `Radar.trackOnce()` to accurately detect a user's current [geofences](/geofences), current [place](/places), or current [country and state](/regions).
+You can call `Radar.trackOnce()` to accurately detect a user's current [geofences](/geofencing/geofences), current [place](/geofencing/places), or current [country and state](/regions/countries).
 
 However, users can spoof a device's location. For example, a gaming app user may spoof their location to access sports betting features only available in specific states. Or, a retail app user may spoof their location to access offers only available inside a store geofence.
 
@@ -518,7 +518,7 @@ If `passed == false`, responses include an array of more detailed [failure reaso
 
 ### Troubleshooting
 
-To troubleshoot a failed geolocation check, go to the [Fraud page](https://radar.com/dashboard/fraud). Use the _Filters_ button to filter down to specific user IDs, IP addresses, or jurisdictions, and use the _date filters_ to filter down to specific dates or times.
+To troubleshoot a failed geolocation check, go to the [Fraud page](https://dashboard.radar.com/geofencing/). Use the _Filters_ button to filter down to specific user IDs, IP addresses, or jurisdictions, and use the _date filters_ to filter down to specific dates or times.
 
 Click on a specific geolocation check to see all the details, including a map view, [failure reasons](#failure-reasons), detailed user, device, IP, and jurisdiction information, and more.
 

@@ -20,7 +20,7 @@ Whenever events are generated, Radar will send custom events and user mappings t
 
 By default, Radar `userId` maps to Attentive `clientUserId`. However, you can specify custom mappings by setting Radar `metadata.attentiveUserId`. For example, on iOS:
 
-```
+```swift
 // track users with a custom userId mapping (not required if using default mapping)
 Radar.setMetadata(["attentiveUserId": userId])
 ```
@@ -39,7 +39,7 @@ Radar.setMetadata(["attentiveUserId": userId])
 | `confidence`               | `confidence`              | string  | `"high"`                     |
 | `foreground`               | `foreground`              | boolean | `true`                       |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Attentive Event Property | Type   | Example Value     |
 | ----------------- | ------------------------ | ------ | ----------------- |
@@ -64,7 +64,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `duration`                 | `duration`                | number (minutes) | `42.1`                       |
 | `foreground`               | `foreground`              | boolean          | `true`                       |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Attentive Event Property | Type   | Example Value     |
 | ----------------- | ------------------------ | ------ | ----------------- |
@@ -89,7 +89,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `duration`                 | `duration`                | number (minutes) | `5`                          |
 | `foreground`               | `foreground`              | boolean          | `true`                       |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Attentive Event Property | Type   | Example Value     |
 | ----------------- | ------------------------ | ------ | ----------------- |
@@ -115,7 +115,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `confidence`                  | `confidence`                 | string                   | `"high"`                           |
 | `foreground`                  | `foreground`                 | boolean                  | `true`                             |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Attentive Event Property | Type   | Example Value     |
 | ----------------- | ------------------------ | ------ | ----------------- |
@@ -142,7 +142,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `duration`                    | `duration`                   | number (minutes)         | `42.1`                             |
 | `foreground`                  | `foreground`                 | boolean                  | `true`                             |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Attentive Event Property | Type   | Example Value     |
 | ----------------- | ------------------------ | ------ | ----------------- |
