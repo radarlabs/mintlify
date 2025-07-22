@@ -5,7 +5,7 @@ description: "This is the documentation for the Radar Web SDK."
 
 The source can be found on GitHub [here](https://github.com/radarlabs/radar-sdk-js). Or, see the `radar-sdk-js` package on npm [here](https://www.npmjs.com/package/radar-sdk-js).
 
-## [Install](#install)
+## Install
 
 In an HTML page, add the SDK script and stylesheet:
 
@@ -29,9 +29,9 @@ import Radar from 'radar-sdk-js';
 import 'radar-sdk-js/dist/radar.css';
 ```
 
-## [Setup](#setup)
+## Setup
 
-### [Initialize](#initialize)
+### Initialize
 
 Initialize the library with your publishable API key, found on the [Settings page](https://radar.com/dashboard/settings):
 
@@ -39,7 +39,9 @@ Initialize the library with your publishable API key, found on the [Settings pag
 Radar.initialize('prj_live_pk_...');
 ```
 
-You must initialize the library before calling any other functions.
+<Info>
+  You must initialize the library before calling any other functions.
+</Info>
 
 Optionally, you can specify configuration options:
 
@@ -51,17 +53,17 @@ Radar.initialize('prj_live_pk_...', { /* custom options here */});
 
 Available options include:
 
-| Name | Default | Possible values | Description |
-| -------------------- | ------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `logLevel` | `error` | `none`, `info`, `warn`, `error` | Determines the log level for console logging. Defaults to `error` when using a test publishable key. |
-| `cacheLocationMinutes` | `null` | number | Determines whether to reuse previous location updates. A cache ttl in minutes. If `null` or `0`, will always request a new location. |
-| `locationMaximumAge` | `null` | number | Determines whether to use old browser locations. A maximum age in milliseconds. If `null` or `0`, will always request a new location. See [getCurrentPosition options()](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition). |
-| `locationTimeout` | `30000` | number | The number of milliseconds to wait for a location update before an error is thrown. Defaults to 30 seconds. |
-| `desiredAccuracy` | `high` | `high`, `medium`, `low` | Determines the desired accuracy of location updates. Note that higher accuracy can result in slower response times. |
+| Name                   | Default | Possible values                 | Description                                                                                                                                                                                                                                                |
+| ---------------------- | ------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `logLevel`             | `error` | `none`, `info`, `warn`, `error` | Determines the log level for console logging. Defaults to `error` when using a test publishable key.                                                                                                                                                       |
+| `cacheLocationMinutes` | `null`  | number                          | Determines whether to reuse previous location updates. A cache ttl in minutes. If `null` or `0`, will always request a new location.                                                                                                                       |
+| `locationMaximumAge`   | `null`  | number                          | Determines whether to use old browser locations. A maximum age in milliseconds. If `null` or `0`, will always request a new location. See [getCurrentPosition options()](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition). |
+| `locationTimeout`      | `30000` | number                          | The number of milliseconds to wait for a location update before an error is thrown. Defaults to 30 seconds.                                                                                                                                                |
+| `desiredAccuracy`      | `high`  | `high`, `medium`, `low`         | Determines the desired accuracy of location updates. Note that higher accuracy can result in slower response times.                                                                                                                                        |
 
-## [Geofencing](#geofencing)
+## Geofencing
 
-### [Identify user](#identify-user)
+### Identify user
 
 To identify the user when logged in, call:
 
@@ -91,7 +93,7 @@ You only need to call these functions once, as these settings will be persisted 
 
 Learn more about when Radar creates new user records [here](/faqs#what-is-a-unique-user-when-does-radar-create-a-new-user-record).
 
-### [Foreground tracking](#foreground-tracking)
+### Foreground tracking
 
 Once you have initialized the SDK and the user has granted permissions, you can track the user's location.
 
@@ -112,18 +114,18 @@ Radar.trackOnce()
 
 If the request fails, `err` will be one of:
 
-* **`RadarPublishableKeyError`**: SDK not initialized
-* **`RadarLocationPermissionsError`**: location permissions not granted
-* **`RadarLocationError`**: location services error or timeout (10 seconds)
-* **`RadarTimeoutError`**: network timeout (10 seconds)
-* **`RadarBadRequestError`**: bad request (missing or invalid params)
-* **`RadarUnknownError`**: unauthorized (invalid API key)
-* **`RadarPaymentRequiredError`**: payment required (organization disabled or usage exceeded)
-* **`RadarForbiddenError`**: forbidden (insufficient permissions or no beta access)
-* **`RadarNotFoundError`**: not found
-* **`RadarRateLimitError`**: too many requests ([rate limit](/api#track) exceeded)
-* **`RadarServerError`**: internal server error
-* **`RadarUnknownError`**: unknown error
+- **`RadarPublishableKeyError`**: SDK not initialized
+- **`RadarLocationPermissionsError`**: location permissions not granted
+- **`RadarLocationError`**: location services error or timeout (10 seconds)
+- **`RadarTimeoutError`**: network timeout (10 seconds)
+- **`RadarBadRequestError`**: bad request (missing or invalid params)
+- **`RadarUnknownError`**: unauthorized (invalid API key)
+- **`RadarPaymentRequiredError`**: payment required (organization disabled or usage exceeded)
+- **`RadarForbiddenError`**: forbidden (insufficient permissions or no beta access)
+- **`RadarNotFoundError`**: not found
+- **`RadarRateLimitError`**: too many requests ([rate limit](/api#track) exceeded)
+- **`RadarServerError`**: internal server error
+- **`RadarUnknownError`**: unknown error
 
 If the error is the result of a failed API call, `err` will include an HTTP response code and the API response body:
 
@@ -132,7 +134,7 @@ err.code; // HTTP response code
 err.response; // API response body
 ```
 
-### [Manual tracking](#manual-tracking)
+### Manual tracking
 
 Alternatively, you can manually update the user's location with any location by calling:
 
@@ -149,7 +151,7 @@ Radar.trackOnce({
 });
 ```
 
-### [Get location](#get-location)
+### Get location
 
 You can also get a single location update without sending it to the server:
 
@@ -164,7 +166,7 @@ Radar.getLocation()
   });
 ```
 
-### [Context](#context)
+### Context
 
 With the [context API](/api#context), get context for a location without sending device or user identifiers to the server:
 
@@ -179,9 +181,9 @@ Radar.getContext()
   });
 ```
 
-## [Maps](#maps)
+## Maps
 
-### [Geocoding](#geocoding)
+### Geocoding
 
 With the [forward geocoding API](/api#forward-geocode), geocode an address, converting address to coordinates:
 
@@ -227,7 +229,7 @@ Radar.ipGeocode()
   });
 ```
 
-### [Search](#search)
+### Search
 
 With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance:
 
@@ -298,7 +300,7 @@ Radar.validateAddress({
 });
 ```
 
-### [Distance](#distance)
+### Distance
 
 With the [distance API](/api#distance), calculate the travel distance and duration between two locations:
 
@@ -323,7 +325,7 @@ Radar.distance({
 });
 ```
 
-### [Matrix](#matrix)
+### Matrix
 
 With the [matrix API](/api#matrix), calculate the travel distances and durations between multiple origins and destinations for up to 25 routes:
 
@@ -353,12 +355,12 @@ Radar.matrix({
 });
 ```
 
-## [Maps and UI kits](#maps-and-ui-kits)
+## Maps and UI kits
 
 The React Native SDK also has UI components for maps and address autocomplete. Learn more in the [Maps Platform documentation](/maps/overview).
 
-## [Support](#support)
+## Support
 
-Have questions? We're here to help! Contact us at [radar.com/support](https://radar.com/support).
+Have questions? We're here to help\! Contact us at [radar.com/support](https://radar.com/support).
 
 [Edit this page](https://github.com/radarlabs/docs/edit/main/docs/sdk/web.mdx)
