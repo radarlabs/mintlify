@@ -39,7 +39,7 @@ In Xcode, go to _File_ \> _Swift Packages_ \> _Add Package Dependency_. Enter `h
 ```
 
 <Info>
-  Only select `RadarSDK` unless you are also intending to use the location metadata feature. Refer to [**this section**](https://docs.radar.com/sdk/ios#location-metadata) for more information.
+  Only select `RadarSDK` unless you are also intending to use the location metadata feature. Refer to [**this section**](#location-metadata) for more information.
 </Info>
 
 ### **Carthage**
@@ -120,7 +120,9 @@ Radar respects [standard iOS location permissions](https://developer.apple.com/d
 
 For foreground tracking or trip tracking with continuous mode, the app's location authorization status must be `kCLAuthorizationStatusAuthorizedWhenInUse` or`kCLAuthorizationStatusAuthorizedAlways`. For background tracking or geofencing with responsive mode, the app's location authorization status must be `kCLAuthorizationStatusAuthorizedAlways`.
 
-If your app already requests the necessary location permissions, you can skip this step.
+<Info>
+  If your app already requests the necessary location permissions, you can skip this step.
+</Info>
 
 Before requesting permissions, you must add location usage strings to your `Info.plist` file. For foreground permissions, you must add a value for `NSLocationWhenInUseUsageDescription` (_Privacy - Location When In Use Usage Description_). For background permissions, you must add a value for `NSLocationAlwaysAndWhenInUseUsageDescription` (_Privacy - Location Always and When In Use Usage Description_). These strings are displayed in permissions prompts.
 
@@ -219,13 +221,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate, CLLocationManagerDelegate
 
 </CodeGroup>
 
+<Info>
+  Build and run the app to make sure permissions prompts are displayed\!
+</Info>
+
+<Info>
+  Not seeing permissions prompts? First, make sure your location manager is in memory when you request permissions. Second, make sure you've added location usage strings to your `Info.plist` file. Finally, check your device settings to make sure you haven't already granted location permissions
+</Info>
+
 ### **Background modes**
 
-If you are planning to use `RadarTrackingOptions.presetContinuous` or `RadarTrackingOptions.presetResponsive`, or if you are planning to [range beacons by UUID only](https://docs.radar.com/beacons#ranging-by-uuid-only), you must enable the _Location updates_ and _Background fetch_ background modes.
+If you are planning to use `RadarTrackingOptions.presetContinuous` or `RadarTrackingOptions.presetResponsive`, or if you are planning to [range beacons by UUID only](/geofencing/beacons#ranging-by-uuid-only), you must enable the _Location updates_ and _Background fetch_ background modes.
 
 In your project settings, go to _Signing & Capabilities_, add _Background Modes_, and turn on _Location updates_ and _Background fetch_.
 
-Note that this requires additional justification during App Store review. Learn more [below](https://docs.radar.com/sdk/ios#submit-to-app-store).
+Note that this requires additional justification during App Store review. Learn more [below](#submit-to-app-store).
 
 ![Background Modes Pn](/images/sdk/background-modes.png)
 
@@ -264,7 +274,7 @@ You may provide an optional `completionHandler` that receives the request status
 - `.errorPaymentRequired`: payment required (organization disabled or usage exceeded)
 - `.errorForbidden`: forbidden (insufficient permissions)
 - `.errorNotFound`: not found
-- `.errorRateLimit`: too many requests ([rate limit](https://docs.radar.com/api#track) exceeded)
+- `.errorRateLimit`: too many requests ([rate limit](/api#track) exceeded)
 - `.errorServer`: internal server error
 - `.errorUnknown`: unknown error
 
@@ -287,7 +297,7 @@ Assuming the user has authorized background permissions, background tracking wil
 </Warning>
 
 <Info>
-  Though we recommend using presets for most use cases, you can modify the presets. See the [**tracking options reference**](https://docs.radar.com/sdk/tracking).
+  Though we recommend using presets for most use cases, you can modify the presets. See the [**tracking options reference**](/sdk/sdk/tracking).
 </Info>
 
 To start tracking for geofencing, call:
@@ -408,7 +418,7 @@ Radar.cancelTrip()
 
 </CodeGroup>
 
-Learn more about starting, completing, and canceling trips in the [trip tracking documentation](https://docs.radar.com/trip-tracking).
+Learn more about starting, completing, and canceling trips in the [trip tracking documentation](/geofencing/trips).
 
 <Info>
   Don't forget\! You can always find your user on the [**Users page**](https://radar.com/dashboard/users) or events on the [**Events page**](https://radar.com/dashboard/events). To trigger an event, you'll need to [**create a geofence**](https://radar.com/dashboard/geofencing/geofences) or [**start a trip**](https://docs.radar.com/trip-tracking) if you haven't already. Also, check your device settings to make sure you've granted location permissions.
@@ -752,7 +762,7 @@ The iOS SDK also exposes APIs for beacons, anonymous context, geocoding, search,
 
 ### Beacons
 
-If the user has granted location permissions, you can range and monitor [beacons](https://docs.radar.com/beacons).
+If the user has granted location permissions, you can range and monitor [beacons](/geofencing/beacons).
 
 To range beacons in the foreground, call:
 
@@ -815,7 +825,7 @@ Radar.getLocation { (status: RadarStatus, location: CLLocation?, stopped: Bool) 
 
 ### Context
 
-With the [context API](https://docs.radar.com/api#context), get context for a location without sending device or user identifiers to the server:
+With the [context API](/api#context), get context for a location without sending device or user identifiers to the server:
 
 <CodeGroup>
 
@@ -836,7 +846,7 @@ Radar.getContext { (status: RadarStatus, location: CLLocation?, context: RadarCo
 
 ### Geocoding
 
-With the [forward geocoding API](https://docs.radar.com/api#forward-geocode), geocode an address, converting address to coordinates:
+With the [forward geocoding API](/api#forward-geocode), geocode an address, converting address to coordinates:
 
 <CodeGroup>
 
@@ -858,7 +868,7 @@ Radar.geocode(
 
 </CodeGroup>
 
-With the [reverse geocoding API](https://docs.radar.com/api#reverse-geocode), reverse geocode a location, converting coordinates to address:
+With the [reverse geocoding API](/api#reverse-geocode), reverse geocode a location, converting coordinates to address:
 
 <CodeGroup>
 
@@ -880,7 +890,7 @@ Radar.reverseGeocode(
 
 </CodeGroup>
 
-With the [IP geocoding API](https://docs.radar.com/api#ip-geocode), geocode the device's current IP address, converting IP address to city, state, and country:
+With the [IP geocoding API](/api#ip-geocode), geocode the device's current IP address, converting IP address to city, state, and country:
 
 <CodeGroup>
 
@@ -901,7 +911,7 @@ Radar.ipGeocode { (status: RadarStatus, address: RadarAddress, proxy: Bool) in
 
 ### Search
 
-With the [autocomplete API](https://docs.radar.com/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance:
+With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance:
 
 <CodeGroup>
 
@@ -927,7 +937,7 @@ Radar.autocomplete(
 
 </CodeGroup>
 
-With the [geofence search API](https://docs.radar.com/api#search-geofences), search for geofences near a location, sorted by distance:
+With the [geofence search API](/api#search-geofences), search for geofences near a location, sorted by distance:
 
 <CodeGroup>
 
@@ -957,7 +967,7 @@ Radar.searchGeofences(
 
 </CodeGroup>
 
-With the [places search API](https://docs.radar.com/api#search-places), search for places near a location, sorted by distance:
+With the [places search API](/api#search-places), search for places near a location, sorted by distance:
 
 <CodeGroup>
 
@@ -989,7 +999,7 @@ Radar.searchPlaces(
 
 </CodeGroup>
 
-With the [address validation API](https://docs.radar.com/api##validate-an-address) (currently in beta), validate a structured address in the US or Canada:
+With the [address validation API](/api##validate-an-address) (currently in beta), validate a structured address in the US or Canada:
 
 <CodeGroup>
 
@@ -1013,7 +1023,7 @@ Radar.validateAddress(
 
 ### Distance
 
-With the [distance API](https://docs.radar.com/api#distance), calculate the travel distance and duration between an origin and a destination:
+With the [distance API](/api#distance), calculate the travel distance and duration between an origin and a destination:
 
 <CodeGroup>
 
@@ -1043,7 +1053,7 @@ Radar.getDistance(
 
 ### Matrix
 
-With the [matrix API](https://docs.radar.com/api#matrix), calculate the travel distance and duration between multiple origins and destinations for up to 25 routes:
+With the [matrix API](/api#matrix), calculate the travel distance and duration between multiple origins and destinations for up to 25 routes:
 
 <CodeGroup>
 
@@ -1073,7 +1083,7 @@ Radar.getMatrix(
 
 ### Conversions
 
-With the [conversions API](https://docs.radar.com/api#log-a-conversion), log a conversion, such as a purchase or signup, to analyze alongside your app's location activity:
+With the [conversions API](/api#log-a-conversion), log a conversion, such as a purchase or signup, to analyze alongside your app's location activity:
 
 <CodeGroup>
 
