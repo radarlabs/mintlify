@@ -20,12 +20,23 @@ Whenever events are generated, Radar will send custom events and tags to Airship
 
 If you are using Airship SDK `13.x` or earlier with Radar iOS SDK `3.0.4` or earlier or Radar Android SDK `3.0.6` or earlier, the Radar SDK will automatically collect Airship channel ID and Airship session ID. However, if you are using Airship SDK `14.0` or later with Radar iOS SDK `3.0.5` or later or Radar Android SDK `3.0.7` or later, you must set Radar `metadata.airshipChannelId` and `metadata.airshipSessionId` manually to collect Airship channel ID and Airship session ID.
 
-- **Swift**
-- **Kotlin**
+<CodeGroup>
 
+```swift Swift
+Radar.setMetadata([
+  "airshipChannelId": Airship.channel.identifier,
+  "airshipSessionId": Airship.analytics.sessionID
+])
 ```
-Radar.setMetadata([  "airshipChannelId": Airship.channel.identifier,  "airshipSessionId": Airship.analytics.sessionID])
+
+
+```kotlin Kotlin
+val channelId = UAirship.shared().channel.id
+val sessionId = UAirship.shared().analytics.sessionId
+Radar.setMetadata(JSONObject().put("airshipChannelId",channelId).put("airshipSessionId",sessionId))
 ```
+
+</CodeGroup>
 
 It is recommended to set the Radar user metadata once the Airship channel ID becomes available. This can be performed via the `addChannelListener` [Airship methods](https://docs.airship.com/platform/mobile/audience/#accessing-the-airship-channel-id).
 
@@ -51,14 +62,72 @@ All integration delivery can be monitored via the integration's event logs by cl
 
 To trigger in-app messaging from detected user state on app open, custom events need to deliver through Airship's SDK rather than via Radar's server to server integration with Airship. To support this, implement custom logic in the SDK leveraging Radar's location update listener, on [iOS](https://docs.radar.com/sdk/ios#listening-for-events-with-a-delegate) or [Android](https://docs.radar.com/sdk/android#listening-for-events-with-a-receiver), to send foreground detections to Airship. The example code below assumes you are calling `Radar.trackOnce()` on application launch. See the [iOS](https://docs.radar.com/sdk/ios#foreground-tracking) and [Android](https://docs.radar.com/sdk/android#foreground-tracking) tracking references if needed.
 
-- **Swift**
-- **Kotlin**
+<CodeGroup>
 
+```swift Swift
+import RadarSDK
+import AirshipKit
+
+@main
+class AppDelegate: UIResponder, UIApplicationDelegate, RadarDelegate {
+
+  func didUpdateLocation(_ location: CLLocation, user: RadarUser) {
+    if (user.foreground  && user.source == RadarLocationSource.foregroundLocation) {
+      if let place = user.place {
+        let event = CustomEvent(name: "radar_fg_place_detected");
+        event.interactionType = "location"
+        event.properties = [
+          "radar_place_name": place.name,
+          "radar_place_categories": place.categories.joined(separator: ","),
+          "radar_place_chain_slug": place.chain?.slug ?? ""
+        ]
+        event.track()
+      }
+      if let geofences = user.geofences {
+        let event = CustomEvent(name: "radar_fg_geofences_detected");
+        event.interactionType = "location"
+        event.properties = [
+          "radar_geofence_descriptions": geofences.compactMap({ $0.description }),
+          "radar_geofence_tags": geofences.compactMap({ $0.tag }),
+          "radar_geofence_external_ids": geofences.compactMap({ $0.externalId })
+        ]
+        event.track()
+      }
+    }
+  }
+}
 ```
-import RadarSDKimport AirshipKit
-@mainclass AppDelegate: UIResponder, UIApplicationDelegate, RadarDelegate {
-  func didUpdateLocation(_ location: CLLocation, user: RadarUser) {    if (user.foreground  && user.source == RadarLocationSource.foregroundLocation) {      if let place = user.place {        let event = CustomEvent(name: "radar_fg_place_detected");        event.interactionType = "location"        event.properties = [          "radar_place_name": place.name,          "radar_place_categories": place.categories.joined(separator: ","),          "radar_place_chain_slug": place.chain?.slug ?? ""        ]        event.track()      }      if let geofences = user.geofences {        let event = CustomEvent(name: "radar_fg_geofences_detected");        event.interactionType = "location"        event.properties = [          "radar_geofence_descriptions": geofences.compactMap({ $0.description }),          "radar_geofence_tags": geofences.compactMap({ $0.tag }),          "radar_geofence_external_ids": geofences.compactMap({ $0.externalId })        ]        event.track()      }    }  }}
+
+
+```kotlin Kotlin
+class MyRadarReceiver: RadarReceiver() {
+  override fun onLocationUpdated(context: Context, location: Location, user: RadarUser) {
+    if (user.foreground && user.source == RadarLocationSource.FOREGROUND_LOCATION) {
+      var userGeofences = user.geofences
+      var userPlace = user.place
+      if (userGeofences != null && userGeofences.isNotEmpty()) {
+        CustomEvent.newBuilder("radar_fg_geofences_entered")
+          .addProperty("geofence_descriptions", userGeofences.map { it.description }.joinToString())
+          .addProperty("geofence_tags", userGeofences.map { it.tag }.joinToString())
+          .addProperty("geofence_external_ids", userGeofences.map { it.externalId }.joinToString())
+          .build()
+          .track()
+      }
+      if (userPlace != null) {
+        val chain: String =  userPlace.chain?.slug ?: ""
+        CustomEvent.newBuilder("radar_fg_place_entered")
+          .addProperty("place_name", userPlace.name)
+          .addProperty("place_chain", chain)
+          .addProperty("categories", userPlace.categories.joinToString())
+          .build()
+          .track()
+      }
+    }
+  }
+}
 ```
+
+</CodeGroup>
 
 ## **User mapping**
 
@@ -125,7 +194,7 @@ import RadarSDKimport AirshipKit
 | `geofence.description`     | `radar_geofence_description`    | string   | `"Store #123"`               |
 | `geofence.tag`             | `radar_geofence_tag`            | string   | `"store"`                    |
 | `geofence.externalId`      | `radar_geofence_external_id`    | string   | `"123"`                      |
-| `geofence.metadata[{key}]` | `radar_geofence_metadata_{key}` | {type}   | `{value}`                    |
+| `geofence.metadata[{key}]` | `radar_geofence_metadata_{key}` | type     | `{value}`                    |
 | `confidence`               | `radar_confidence`              | string   | `"high"`                     |
 | `foreground`               | `radar_foreground`              | boolean  | `true`                       |
 
@@ -137,7 +206,7 @@ import RadarSDKimport AirshipKit
 | `geofence.description`     | `radar_geofence_description`    | string           | `"Store #123"`               |
 | `geofence.tag`             | `radar_geofence_tag`            | string           | `"store"`                    |
 | `geofence.externalId`      | `radar_geofence_external_id`    | string           | `"123"`                      |
-| `geofence.metadata[{key}]` | `radar_geofence_metadata_{key}` | {type}           | `{value}`                    |
+| `geofence.metadata[{key}]` | `radar_geofence_metadata_{key}` | type             | `{value}`                    |
 | `confidence`               | `radar_confidence`              | string           | `"high"`                     |
 | `duration`                 | `radar_duration`                | number (minutes) | `42.1`                       |
 | `foreground`               | `radar_foreground`              | boolean          | `true`                       |
@@ -150,7 +219,7 @@ import RadarSDKimport AirshipKit
 | `geofence.description`     | `radar_geofence_description`    | string           | `"Store #123"`               |
 | `geofence.tag`             | `radar_geofence_tag`            | string           | `"store"`                    |
 | `geofence.externalId`      | `radar_geofence_external_id`    | string           | `"123"`                      |
-| `geofence.metadata[{key}]` | `radar_geofence_metadata_{key}` | {type}           | `{value}`                    |
+| `geofence.metadata[{key}]` | `radar_geofence_metadata_{key}` | type             | `{value}`                    |
 | `confidence`               | `radar_confidence`              | string           | `"high"`                     |
 | `duration`                 | `radar_duration`                | number (minutes) | `5`                          |
 | `foreground`               | `radar_foreground`              | boolean          | `true`                       |
@@ -163,7 +232,7 @@ import RadarSDKimport AirshipKit
 | `place.name`                  | `radar_place_name`                 | string                   | `"Starbucks"`                      |
 | `place.chain.slug`            | `radar_place_chain_slug`           | string                   | `"starbucks"`                      |
 | `place.chain.name`            | `radar_place_chain_name`           | string                   | `"Starbucks"`                      |
-| `place.chain.metadata[{key}]` | `radar_place_chain_metadata_{key}` | {type}                   | `{value}`                          |
+| `place.chain.metadata[{key}]` | `radar_place_chain_metadata_{key}` | type                     | `{value}`                          |
 | `place.categories`            | `radar_place_categories`           | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` |
 | `confidence`                  | `radar_confidence`                 | string                   | `"high"`                           |
 | `foreground`                  | `radar_foreground`                 | boolean                  | `true`                             |
@@ -176,7 +245,7 @@ import RadarSDKimport AirshipKit
 | `place.name`                  | `radar_place_name`                 | string                   | `"Starbucks"`                      |
 | `place.chain.slug`            | `radar_place_chain_id`             | string                   | `"starbucks"`                      |
 | `place.chain.name`            | `radar_place_chain_name`           | string                   | `"Starbucks"`                      |
-| `place.chain.metadata[{key}]` | `radar_place_chain_metadata_{key}` | {type}                   | `{value}`                          |
+| `place.chain.metadata[{key}]` | `radar_place_chain_metadata_{key}` | type                     | `{value}`                          |
 | `place.categories`            | `radar_place_categories`           | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` |
 | `confidence`                  | `radar_confidence`                 | string                   | `"high"`                           |
 | `duration`                    | `radar_duration`                   | number (minutes)         | `42.1`                             |
@@ -241,7 +310,7 @@ import RadarSDKimport AirshipKit
 | **Radar Event Attribute**            | **Airship Event Property**                    | **Type** | **Example Value** |
 | :----------------------------------- | :-------------------------------------------- | :------- | :---------------- |
 | `trip.externalId`                    | `radar_trip_external_id`                      | string   | `"299"`           |
-| `trip.metadata[{key}]`               | `radar_trip_metadata_{key}`                   | {type}   | `{value}`         |
+| `trip.metadata[{key}]`               | `radar_trip_metadata_{key}`                   | type     | `{value}`         |
 | `trip.destinationGeofenceTag`        | `radar_trip_destination_geofence_tag`         | string   | `"store"`         |
 | `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string   | `"123"`           |
 | `foreground`                         | `radar_foreground`                            | boolean  | `true`            |
@@ -251,7 +320,7 @@ import RadarSDKimport AirshipKit
 | **Radar Event Attribute**            | **Airship Event Property**                    | **Type** | **Example Value** |
 | :----------------------------------- | :-------------------------------------------- | :------- | :---------------- |
 | `trip.externalId`                    | `radar_trip_external_id`                      | string   | `"299"`           |
-| `trip.metadata[{key}]`               | `radar_trip_metadata_{key}`                   | {type}   | `{value}`         |
+| `trip.metadata[{key}]`               | `radar_trip_metadata_{key}`                   | type     | `{value}`         |
 | `trip.destinationGeofenceTag`        | `radar_trip_destination_geofence_tag`         | string   | `"store"`         |
 | `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string   | `"123"`           |
 | `foreground`                         | `radar_foreground`                            | boolean  | `true`            |
@@ -261,7 +330,7 @@ import RadarSDKimport AirshipKit
 | **Radar Event Attribute**            | **Airship Event Property**                    | **Type** | **Example Value** |
 | :----------------------------------- | :-------------------------------------------- | :------- | :---------------- |
 | `trip.externalId`                    | `radar_trip_external_id`                      | string   | `"299"`           |
-| `trip.metadata[{key}]`               | `radar_trip_metadata_{key}`                   | {type}   | `{value}`         |
+| `trip.metadata[{key}]`               | `radar_trip_metadata_{key}`                   | type     | `{value}`         |
 | `trip.destinationGeofenceTag`        | `radar_trip_destination_geofence_tag`         | string   | `"store"`         |
 | `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string   | `"123"`           |
 | `foreground`                         | `radar_foreground`                            | boolean  | `true`            |
@@ -271,7 +340,7 @@ import RadarSDKimport AirshipKit
 | **Radar Event Attribute**            | **Airship Event Property**                    | **Type** | **Example Value** |
 | :----------------------------------- | :-------------------------------------------- | :------- | :---------------- |
 | `trip.externalId`                    | `radar_trip_external_id`                      | string   | `"299"`           |
-| `trip.metadata[{key}]`               | `radar_trip_metadata_{key}`                   | {type}   | `{value}`         |
+| `trip.metadata[{key}]`               | `radar_trip_metadata_{key}`                   | type     | `{value}`         |
 | `trip.destinationGeofenceTag`        | `radar_trip_destination_geofence_tag`         | string   | `"store"`         |
 | `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string   | `"123"`           |
 | `foreground`                         | `radar_foreground`                            | boolean  | `true`            |
@@ -281,7 +350,7 @@ import RadarSDKimport AirshipKit
 | **Radar Event Attribute**            | **Airship Event Property**                    | **Type** | **Example Value** |
 | :----------------------------------- | :-------------------------------------------- | :------- | :---------------- |
 | `trip.externalId`                    | `radar_trip_external_id`                      | string   | `"299"`           |
-| `trip.metadata[{key}]`               | `radar_trip_metadata_{key}`                   | {type}   | `{value}`         |
+| `trip.metadata[{key}]`               | `radar_trip_metadata_{key}`                   | type     | `{value}`         |
 | `trip.destinationGeofenceTag`        | `radar_trip_destination_geofence_tag`         | string   | `"store"`         |
 | `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string   | `"123"`           |
 | `foreground`                         | `radar_foreground`                            | boolean  | `true`            |
@@ -294,7 +363,7 @@ import RadarSDKimport AirshipKit
 | `beacon.description`      | `radar_beacon_description`  | string   | `"Store #123 - Drive-Thru"`  |
 | `beacon.tag`              | `radar_beacon_tag`          | string   | `"drive-thru"`               |
 | `beacon.externalId`       | `radar_beacon_external_id`  | string   | `"123"`                      |
-| `beacon.metadata[{key}]`  | `radar_trip_metadata_{key}` | {type}   | `{value}`                    |
+| `beacon.metadata[{key}]`  | `radar_trip_metadata_{key}` | type     | `{value}`                    |
 | `confidence`              | `radar_confidence`          | string   | `"high"`                     |
 | `foreground`              | `radar_foreground`          | boolean  | `true`                       |
 
@@ -306,7 +375,7 @@ import RadarSDKimport AirshipKit
 | `beacon.description`      | `radar_beacon_description`  | string           | `"Store #123 - Drive-Thru"`  |
 | `beacon.tag`              | `radar_beacon_tag`          | string           | `"drive-thru"`               |
 | `beacon.externalId`       | `radar_beacon_external_id`  | string           | `"123"`                      |
-| `beacon.metadata[{key}]`  | `radar_trip_metadata_{key}` | {type}           | `{value}`                    |
+| `beacon.metadata[{key}]`  | `radar_trip_metadata_{key}` | type             | `{value}`                    |
 | `confidence`              | `radar_confidence`          | string           | `"high"`                     |
 | `duration`                | `radar_duration`            | number (minutes) | `1.42`                       |
 | `foreground`              | `radar_foreground`          | boolean          | `true`                       |
