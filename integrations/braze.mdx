@@ -51,24 +51,21 @@ All integration delivery can be monitored via the integration's event logs by cl
 
 ### Send a personalized push notification when a user arrives at a store[#](#send-a-personalized-push-notification-when-a-user-arrives-at-a-store)
 
-1. Create [Geofences](/geofences#create-geofences) in Radar with the geofence tag set to `store`. The geofence tag will be used to trigger messages for the subset of geofence entries where this tag is present.
+1. Create [Geofences](/geofencing/geofences) in Radar with the geofence tag set to `store`. The geofence tag will be used to trigger messages for the subset of geofence entries where this tag is present.
 2. Set up a Braze campaign triggered from the Radar geofence entry event, the `entered_geofence` custom event in Braze, and add property filtering where `geofence_tag` is `store`. These same events can be used as part of a Braze [Canvas](https://www.braze.com/docs/user_guide/engagement_tools/canvas) and the event properties can be used in message personalization with [Liquid](https://www.braze.com/docs/user_guide/personalization_and_dynamic_content/liquid).
 
 ![Radar triggered Braze campaign](/images/integrations/assets/images/braze_radar_entered_geofence-585d860f5bc28a765f3030a4a012b728.png)
 
 ### Message all users nearby a store
 
-1. Create [Geofences](/geofences#create-geofences) in Radar to represent nearby store boundaries with geofence tag set to `nearby-store`. The geofence tag will be used to target messages for the subset of geofences where this tag is present.
+1. Create [Geofences](/geofencing/geofences) in Radar to represent nearby store boundaries with geofence tag set to `nearby-store`. The geofence tag will be used to target messages for the subset of geofences where this tag is present.
 2. Set up a Braze campaign targeted with the `radar_geofence_tags` user attribute that Radar sends. This will be an array of all geofences the user is currently in, so set the attribute to include the value of `nearby-store`. Additional attribute filtering can be performed for more complex targeting, including how recently the location was updated via the `radar_updated_at` user attribute.
 
 ![Radar targeted Braze campaign](/images/integrations/assets/images/braze_radar_targeted_messaging-37c7b9b5ff26a24490df27969fd13d17.png)
 
 ### In-app messaging
 
-To trigger in-app messaging from the user state detected on app open, custom events need to deliver through Braze's SDK rather than via Radar's server to server integration with Braze. To support this, implement custom logic in the SDK leveraging Radar's location update listener, on [iOS](/sdk/ios#listening-for-events-with-a-delegate) or [Android](/sdk/android#listening-for-events-with-a-receiver), to send foreground detections to Braze. The example code below assumes you are calling `Radar.trackOnce()` on application launch. See the [iOS](/sdk/ios#foreground-tracking) and [Android](/sdk/android#foreground-tracking) tracking references if needed.
-
-- Swift
-- Kotlin
+To trigger in-app messaging from the user state detected on app open, custom events need to deliver through Braze's SDK rather than via Radar's server to server integration with Braze. To support this, implement custom logic in the SDK leveraging Radar's location update listener, on [iOS](/sdk/ios#install-sdk) or [Android](/sdk/android), to send foreground detections to Braze. The example code below assumes you are calling Radar.trackOnce() on application launch. See the [iOS](/sdk/ios) and [Android](/sdk/android) tracking references if needed.
 
 <CodeGroup>
 
@@ -176,26 +173,26 @@ Note that Radar uses the special string `"(null)"` to represent `null` user attr
 
 ## Event mapping
 
-| Radar Event                         | Context Type                    | Braze Event                    |
-| ----------------------------------- | ------------------------------- | ------------------------------ |
-| `user.entered_geofence`             | [Geofences](/geofences)         | `entered_geofence`             |
-| `user.exited_geofence`              | [Geofences](/geofences)         | `exited_geofence`              |
-| `user.dwelled_in_geofence`          | [Geofences](/geofences)         | `dwelled_in_geofence`          |
-| `user.entered_place`                | [Places](/places)               | `entered_place`                |
-| `user.exited_place`                 | [Places](/places)               | `exited_place`                 |
-| `user.entered_region_country`       | [Regions](/regions)             | `entered_country`              |
-| `user.exited_region_country`        | [Regions](/regions)             | `exited_country`               |
-| `user.entered_region_state`         | [Regions](/regions)             | `entered_state`                |
-| `user.exited_region_state`          | [Regions](/regions)             | `exited_state`                 |
-| `user.entered_region_dma`           | [Regions](/regions)             | `entered_dma`                  |
-| `user.exited_region_dma`            | [Regions](/regions)             | `exited_dma`                   |
-| `user.started_trip`                 | [Trip Tracking](/trip-tracking) | `started_trip`                 |
-| `user.updated_trip`                 | [Trip Tracking](/trip-tracking) | `updated_trip`                 |
-| `user.approaching_trip_destination` | [Trip Tracking](/trip-tracking) | `approaching_trip_destination` |
-| `user.arrived_at_trip_destination`  | [Trip Tracking](/trip-tracking) | `arrived_at_trip_destination`  |
-| `user.stopped_trip`                 | [Trip Tracking](/trip-tracking) | `stopped_trip`                 |
-| `user.entered_beacon`               | [Beacons](/beacons)             | `entered_beacon`               |
-| `user.exited_beacon`                | [Beacons](/beacons)             | `exited_beacon`                |
+| Radar Event                         | Context Type                       | Braze Event                    |
+| ----------------------------------- | ---------------------------------- | ------------------------------ |
+| `user.entered_geofence`             | [Geofences](/geofencing/geofences) | `entered_geofence`             |
+| `user.exited_geofence`              | [Geofences](/geofencing/geofences) | `exited_geofence`              |
+| `user.dwelled_in_geofence`          | [Geofences](/geofencing/geofences) | `dwelled_in_geofence`          |
+| `user.entered_place`                | [Places](/geofencing/places)       | `entered_place`                |
+| `user.exited_place`                 | [Places](/geofencing/places)       | `exited_place`                 |
+| `user.entered_region_country`       | [Regions](/geofencing/regions)     | `entered_country`              |
+| `user.exited_region_country`        | [Regions](/geofencing/regions)     | `exited_country`               |
+| `user.entered_region_state`         | [Regions](/geofencing/regions)     | `entered_state`                |
+| `user.exited_region_state`          | [Regions](/geofencing/regions)     | `exited_state`                 |
+| `user.entered_region_dma`           | [Regions](/geofencing/regions)     | `entered_dma`                  |
+| `user.exited_region_dma`            | [Regions](/geofencing/regions)     | `exited_dma`                   |
+| `user.started_trip`                 | [Trip Tracking](/geofencing/trips) | `started_trip`                 |
+| `user.updated_trip`                 | [Trip Tracking](/trip-tracking)    | `updated_trip`                 |
+| `user.approaching_trip_destination` | [Trip Tracking](/trip-tracking)    | `approaching_trip_destination` |
+| `user.arrived_at_trip_destination`  | [Trip Tracking](/trip-tracking)    | `arrived_at_trip_destination`  |
+| `user.stopped_trip`                 | [Trip Tracking](/trip-tracking)    | `stopped_trip`                 |
+| `user.entered_beacon`               | [Beacons](/geofencing/beacons)     | `entered_beacon`               |
+| `user.exited_beacon`                | [Beacons](/beacons)                | `exited_beacon`                |
 
 ### entered_geofence
 
