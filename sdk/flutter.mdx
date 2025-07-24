@@ -5,7 +5,7 @@ description: "This is the documentation for the Flutter package. Before integrat
 
 See the source on GitHub [here](https://github.com/radarlabs/flutter-radar). Or, see the `flutter_radar` package on pub.dev [here](https://pub.dev/packages/flutter_radar).
 
-## [Install](#install)
+## Install
 
 Add the package to your `pubspec.yaml` file:
 
@@ -20,13 +20,14 @@ Then, update dependencies:
 flutter pub get
 ```
 
-### [iOS](#ios)
+### iOS
 
 Change to the `ios/` directory. In the `Podfile`, add `platform :ios, '10.0'` or higher to your target.
 
 On iOS, you must add location usage descriptions and background modes to your `Info.plist`. Initialize the SDK in `application:didFinishLaunchingWithOptions:` in `AppDelegate.m` or `AppDelegate.swift`, passing in your Radar publishable API key.
 
 <CodeGroup>
+
 ```swift Swift
 import UIKit
 import Flutter
@@ -42,6 +43,7 @@ import RadarSDK
   }
 }
 ```
+
 
 ```objc Objective-C
 #import "AppDelegate.h"
@@ -59,9 +61,10 @@ import RadarSDK
 
 @end
 ```
+
 </CodeGroup>
 
-### [Android](#android)
+### Android
 
 On Android, add the Radar Android SDK to the `dependencies` section of your Android app's `build.gradle` file. Ensure the Android SDK version matches the version of your Radar Flutter package.
 
@@ -71,11 +74,14 @@ dependencies {
 }
 ```
 
-When upgrading the SDK, ensure the Android SDK version is updated to match the plugin's pinned version. For details on the latest SDK releases, see the [releases page](https://github.com/radarlabs/flutter-radar/releases) on GitHub.
+<Info>
+  When upgrading the SDK, ensure the Android SDK version is updated to match the plugin's pinned version. For details on the latest SDK releases, see the [releases page](https://github.com/radarlabs/flutter-radar/releases) on GitHub.
+</Info>
 
 Initialize the SDK in `onCreate()` in `MainApplication.java`, passing in your Radar publishable API key. If your Flutter Android app is in Kotlin, add a `Application.kt` file and reference this as the application name in your Android manifest.
 
 <CodeGroup>
+
 ```java Java
 import io.flutter.app.FlutterApplication;
 import io.flutter.view.FlutterMain;
@@ -92,6 +98,7 @@ public class MainApplication extends FlutterApplication {
   }
 }
 ```
+
 
 ```kotlin Kotlin
 import io.flutter.app.FlutterApplication
@@ -113,6 +120,7 @@ class Application : FlutterApplication(), PluginRegistry.PluginRegistrantCallbac
   }
 }
 ```
+
 </CodeGroup>
 
 For background tracking without a foreground service, and if targeting API level `29` or higher, Radar also requires the `ACCESS_BACKGROUND_LOCATION` permission. You must add the `ACCESS_BACKGROUND_LOCATION` permission to your manifest manually:
@@ -123,9 +131,9 @@ For background tracking without a foreground service, and if targeting API level
 </manifest>
 ```
 
-## [Integrate](#integrate)
+## Integrate
 
-### [Import module](#import-module)
+### Import module
 
 First, import the package:
 
@@ -133,19 +141,21 @@ First, import the package:
 import 'package:flutter_radar/flutter_radar.dart';
 ```
 
-### [Initialize](#initialize)
+### Initialize
 
 When your app starts, initialize the SDK with your publishable key.
 
 Use your `Test Publishable` key for testing and non-production environments. Use your `Live Publishable` key for production environments.
 
-Note that you should always use your publishable API keys, which are restricted in scope, in the SDK. Do not use your secret API keys, which are unrestricted in scope, in any client-side code.
+<Warning>
+  Note that you should always use your publishable API keys, which are restricted in scope, in the SDK. Do not use your secret API keys, which are unrestricted in scope, in any client-side code.
+</Warning>
 
 ```dart
 Radar.initialize(publishableKey);
 ```
 
-### [Identify user](#identify-user)
+### Identify user
 
 To identify the user when logged in, call:
 
@@ -175,7 +185,7 @@ You only need to call these functions once, as these settings will be persisted 
 
 Learn about platform-specific implementations of these functions in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
 
-### [Request permissions](#request-permissions)
+### Request permissions
 
 Before tracking the user's location, the user must have granted location permissions for the app.
 
@@ -187,10 +197,10 @@ String status = await Radar.getPermissionsStatus();
 
 `status` will be a string, one of:
 
-* **`GRANTED_FOREGROUND`**
-* **`GRANTED_BACKGROUND`**
-* **`DENIED`**
-* **`NOT_DETERMINED`**
+- **`GRANTED_FOREGROUND`**
+- **`GRANTED_BACKGROUND`**
+- **`DENIED`**
+- **`NOT_DETERMINED`**
 
 To request location permissions for the app, call:
 
@@ -202,7 +212,7 @@ where `background` is a boolean indicating whether to request background locatio
 
 Learn about platform-specific permissions in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
 
-### [Foreground tracking](#foreground-tracking)
+### Foreground tracking
 
 Once you have initialized the SDK and the user has granted permissions, you can track the user's location.
 
@@ -215,15 +225,15 @@ var res = await Radar.trackOnce();
 
 Learn about platform-specific implementations of this function in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
 
-### [Background tracking](#background-tracking)
+### Background tracking
 
 On iOS and Android, once you have initialized the SDK and the user has granted permissions, you can start tracking the user's location in the background.
 
 For background tracking, the SDK supports custom tracking options as well as three presets:
 
-* **`EFFICIENT`**: A low frequency of location updates and lowest battery usage. On Android, avoids Android vitals bad behavior thresholds.
-* **`RESPONSIVE`**: A medium frequency of location updates and low battery usage. Suitable for most consumer use cases.
-* **`CONTINUOUS`**: A high frequency of location updates and higher battery usage. Suitable for on-demand use cases (e.g., delivery tracking) and some consumer use cases (e.g., order ahead, "mall mode").
+- **`EFFICIENT`**: A low frequency of location updates and lowest battery usage. On Android, avoids Android vitals bad behavior thresholds.
+- **`RESPONSIVE`**: A medium frequency of location updates and low battery usage. Suitable for most consumer use cases.
+- **`CONTINUOUS`**: A high frequency of location updates and higher battery usage. Suitable for on-demand use cases (e.g., delivery tracking) and some consumer use cases (e.g., order ahead, "mall mode").
 
 Learn about platform-specific implementations of these presets in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
 
@@ -231,7 +241,9 @@ To start tracking the user's location in the background, call one of:
 
 ```dart
 Radar.startTracking('efficient');
+
 Radar.startTracking('responsive');
+
 Radar.startTracking('continuous');
 ```
 
@@ -306,11 +318,13 @@ Radar.onEvents(onEvents);
 Radar.onError(onError);
 ```
 
-Listeners should be set only once and before tracking begins.
+<Warning>
+  Listeners should be set only once and before tracking begins.
+</Warning>
 
 Add event listeners outside of your view lifecycle if you want them to work when the app is in the background.
 
-### [Mock tracking](#mock-tracking)
+### Mock tracking
 
 On iOS and Android, you can simulate a sequence of location updates for testing. For example, to simulate a sequence of 10 location updates every 3 seconds by car from an `origin` to a `destination`, we can call:
 
@@ -324,7 +338,7 @@ Radar.mockTracking(
 );
 ```
 
-### [Trip tracking](#trip-tracking)
+### Trip tracking
 
 On iOS and Android, to start a trip to a destination, call:
 
@@ -366,7 +380,7 @@ If tracking was disabled before the trip started, it will stop after the trip en
 
 Learn more about [trip tracking](/trip-tracking).
 
-### [Manual tracking](#manual-tracking)
+### Manual tracking
 
 You can manually update the user's location by calling:
 
@@ -381,17 +395,17 @@ var res = await Radar.trackOnce({
 
 Learn about platform-specific implementation of this function in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
 
-### [Location metadata](#location-metadata)
+### Location metadata
 
 The SDK can also pass along information like motion activity detection, speed and heading via the location metadata field.
 
 Learn about platform-specific implementation of this function in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
 
-### [Other APIs](#other-apis)
+### Other APIs
 
 The Flutter package also exposes APIs for anonymous context, geocoding, search, and distance.
 
-#### [Get location](#get-location)
+#### Get location
 
 Get a single location update without sending it to the server:
 
@@ -399,7 +413,7 @@ Get a single location update without sending it to the server:
 var coordinates = await Radar.getLocation();
 ```
 
-#### [Context](#context)
+#### Context
 
 With the [context API](/api#context), get context for a location without sending device or user identifiers to the server:
 
@@ -412,7 +426,7 @@ var res = await Radar.getContext({
 // do something with res['status'], res['context']
 ```
 
-#### [Geocoding](#geocoding)
+#### Geocoding
 
 With the [forward geocoding API](/api#forward-geocode), geocode an address, converting address to coordinates:
 
@@ -439,7 +453,7 @@ var res = await Radar.ipGeocode();
 // do something with res['status'], res['address']
 ```
 
-#### [Search](#search)
+#### Search
 
 With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance:
 
@@ -476,7 +490,7 @@ var res = await Radar.searchPlaces(
 // do something with res['status'], res['places']
 ```
 
-#### [Distance](#distance)
+#### Distance
 
 With the [distance API](/api#distance), calculate the travel distance and duration from an origin to a destination:
 
@@ -490,8 +504,8 @@ var res = await Radar.getDistance(
 // do something with res['status'], res['routes']
 ```
 
-## [Support](#support)
+## Support
 
-Have questions? We're here to help! Contact us at [radar.com/support](https://radar.com/support).
+Have questions? We're here to help\! Contact us at [radar.com/support](https://radar.com/support).
 
 [Edit this page](https://github.com/radarlabs/docs/edit/main/docs/sdk/flutter.mdx)
