@@ -72,26 +72,26 @@ Radar.setMetadata(JSONObject().put("cordial:emailHash", emailHash))
 
 ## Event mapping
 
-| Radar Event                         | Context Type            | Cordial Event                  |
-| ----------------------------------- | ----------------------- | ------------------------------ |
-| `user.entered_geofence`             | [Geofences](/geofences) | `entered_geofence`             |
-| `user.exited_geofence`              | [Geofences](/geofences) | `exited_geofence`              |
-| `user.dwelled_in_geofence`          | [Geofences](/geofences) | `dwelled_in_geofence`          |
-| `user.entered_place`                | [Places](/places)       | `entered_place`                |
-| `user.exited_place`                 | [Places](/places)       | `exited_place`                 |
-| `user.entered_region_country`       | [Regions](/regions)     | `entered_country`              |
-| `user.exited_region_country`        | [Regions](/regions)     | `exited_country`               |
-| `user.entered_region_state`         | [Regions](/regions)     | `entered_state`                |
-| `user.exited_region_state`          | [Regions](/regions)     | `exited_state`                 |
-| `user.entered_region_dma`           | [Regions](/regions)     | `entered_dma`                  |
-| `user.exited_region_dma`            | [Regions](/regions)     | `exited_dma`                   |
-| `user.started_trip`                 | [Trips](/trip-tracking) | `started_trip`                 |
-| `user.updated_trip`                 | [Trips](/trip-tracking) | `updated_trip`                 |
-| `user.approaching_trip_destination` | [Trips](/trip-tracking) | `approaching_trip_destination` |
-| `user.arrived_at_trip_destination`  | [Trips](/trip-tracking) | `arrived_at_trip_destination`  |
-| `user.stopped_trip`                 | [Trips](/trip-tracking) | `stopped_trip`                 |
-| `user.entered_beacon`               | [Beacons](/beacons)     | `entered_beacon`               |
-| `user.exited_beacon`                | [Beacons](/beacons)     | `exited_beacon`                |
+| Radar Event                         | Context Type                       | Cordial Event                  |
+| ----------------------------------- | ---------------------------------- | ------------------------------ |
+| `user.entered_geofence`             | [Geofences](/geofencing/geofences) | `entered_geofence`             |
+| `user.exited_geofence`              | [Geofences](/geofencing/geofences) | `exited_geofence`              |
+| `user.dwelled_in_geofence`          | [Geofences](/geofencing/geofences) | `dwelled_in_geofence`          |
+| `user.entered_place`                | [Places](/geofencing/places)       | `entered_place`                |
+| `user.exited_place`                 | [Places](/geofencing/places)       | `exited_place`                 |
+| `user.entered_region_country`       | [Regions](/geofencing/regions)     | `entered_country`              |
+| `user.exited_region_country`        | [Regions](/geofencing/regions)     | `exited_country`               |
+| `user.entered_region_state`         | [Regions](/geofencing/regions)     | `entered_state`                |
+| `user.exited_region_state`          | [Regions](/geofencing/regions)     | `exited_state`                 |
+| `user.entered_region_dma`           | [Regions](/geofencing/regions)     | `entered_dma`                  |
+| `user.exited_region_dma`            | [Regions](/geofencing/regions)     | `exited_dma`                   |
+| `user.started_trip`                 | [Trips](/geofencing/trips)         | `started_trip`                 |
+| `user.updated_trip`                 | [Trips](/trip-tracking)            | `updated_trip`                 |
+| `user.approaching_trip_destination` | [Trips](/trip-tracking)            | `approaching_trip_destination` |
+| `user.arrived_at_trip_destination`  | [Trips](/trip-tracking)            | `arrived_at_trip_destination`  |
+| `user.stopped_trip`                 | [Trips](/trip-tracking)            | `stopped_trip`                 |
+| `user.entered_beacon`               | [Beacons](/geofencing/beacons)     | `entered_beacon`               |
+| `user.exited_beacon`                | [Beacons](/geofencing/beacons)     | `exited_beacon`                |
 
 ### entered_geofence
 
