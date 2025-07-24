@@ -6,7 +6,7 @@ Use this guide to troubleshoot issues with location tracking and event generatio
 
 ## Device is not showing up in the dashboard
 
-A device will show up in the Radar dashboard once a successful [track API](/api#track) call has been sent to the server. The Radar [SDK](/sdk) collects location updates and then sends them to the server via the track API.
+A device will show up in the Radar dashboard once a successful [track API](/api#track) call has been sent to the server. The Radar [SDK](/sdk/sdk) collects location updates and then sends them to the server via the track API.
 
 ### Common issues
 
@@ -23,7 +23,7 @@ A device will show up in the Radar dashboard once a successful [track API](/api#
 
 **A successful Radar API request log looks like the following:**
 
-```
+```bash
 2022-11-08 11:33:01.784759-0500 RadarImplementation[6947:250060] 📍 Radar API response | method = POST; url = https://api.radar.io/v1/track; statusCode = 200;
 ```
 
@@ -95,18 +95,18 @@ The [simulator](https://radar.com/dashboard/simulate) is the easiest way to gene
 
 1. **Click around the map to generate locations and events.** The activity feed is populated in real-time to mirror how our APIs would surface locations and events in your app. The data generated flows through to your enabled [integrations](https://radar.com/dashboard/integrations) in the corresponding environment. The locations and events generated abide by your project's [settings](https://radar.com/dashboard/settings) and will persist across the dashboard. To avoid any production side effects, use the test environment with the default user provided (`simulated-user-id`).
 2. **Simulate a target user.** To simulate a given [user](/api#users), click into that specific user on the [users](https://radar.com/dashboard/users) page and hit the "Simulate" button. You can also set custom user metadata, app-specific information that downstream systems can act upon, such as whether a user has been activated or membership in a target cohort.
-3. **Simulate a trip.** There are 3 fields necessary to simulate a [trip](/trip-tracking): `externalId`, `destinationGeofenceTag`, and `destinationGeofenceExternalId`. You can enter them manually or select a geofence on the map and click "Set as trip destination" to autofill these values. Then, click "Start Trip" to officially kick off and activate the trip\! As you click around, you'll notice events such as `user.approaching_trip_destination` and `user.arrived_at_trip_destination`.
+3. **Simulate a trip.** There are 3 fields necessary to simulate a [trip](/geofencing/trips): `externalId`, `destinationGeofenceTag`, and `destinationGeofenceExternalId`. You can enter them manually or select a geofence on the map and click "Set as trip destination" to autofill these values. Then, click "Start Trip" to officially kick off and activate the trip\! As you click around, you'll notice events such as `user.approaching_trip_destination` and `user.arrived_at_trip_destination`.
 
 ![Simulator.gif](/assets/images/simulator-2674659db05c1ee82e4ff3ee900f4e46.gif)
 
 ## User Activity
 
-The User Activity page is the most straightforward way to debug a user's recent locations and events. Navigate to the [Users page](https://radar.com/dashboard/users) and select _View_ within the desired user row. Then, click _View Activity_. Filter the user's recent activity down to the minute to investigate why events did or did not fire, and understand [confidence levels](/geofences#confidence-and-accuracy) for events in real-world scenarios.
+The User Activity page is the most straightforward way to debug a user's recent locations and events. Navigate to the [Users page](https://radar.com/dashboard/users) and select _View_ within the desired user row. Then, click _View Activity_. Filter the user's recent activity down to the minute to investigate why events did or did not fire, and understand [confidence levels](/geofencing/geofences#confidence-and-accuracy) for events in real-world scenarios.
 
 ### How it works
 
 1. **See a unified view of locations, events, and geofences.** The User Activity map displays a user's recent locations and events alongside geofences to pin down exactly when entries and exits occurred.
-2. **Focus on an individual location or event.** Hover over a row in the Activity Feed to center the map view around those coordinates and to display the accuracy bubble for that location or event. An Event's [confidence level](/geofences#confidence-and-accuracy) is a function of the accuracy of the location and the geometry of the geofence. The smaller the geofence and the less accurate the location, the lower the confidence.
+2. **Focus on an individual location or event.** Hover over a row in the Activity Feed to center the map view around those coordinates and to display the accuracy bubble for that location or event. An Event's [confidence level](/geofencing/geofences#confidence-and-accuracy) is a function of the accuracy of the location and the geometry of the geofence. The smaller the geofence and the less accurate the location, the lower the confidence.
 3. **Filter to a specific time period.** Move the bounds of the slider to isolate a range of time for investigation. The slider supports granularity down to the minute.
 
 ![UserActivity.gif](/assets/images/user_activity-f2bd510e6027b73607f2632351158c13.gif)
