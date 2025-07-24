@@ -8,7 +8,7 @@ title: "mParticle"
 
 Radar can send events and user attributes to [mParticle](https://www.mparticle.com) as an input feed. You can use events and user attributes to build audiences in mParticle, and mParticle can send events and user attributes to hundreds of outputs.
 
-The mParticle SDK can also install and initialize the [Radar SDK](/sdk) as a kit.
+The mParticle SDK can also install and initialize the [Radar SDK](/sdk/sdk) as a kit.
 
 Use the mParticle integration to build location-based audiences and to forward location events and user context to any outputs.
 
@@ -26,7 +26,7 @@ By default, Radar sends the IDFV on iOS and Android Id on Android to associate t
 
 You can specify a custom mapping for the mParticle customer ID by setting Radar `metadata.mParticleCustomerId`. For example, on iOS:
 
-```
+```swift
 // track logged in users with custom userId mapping (not required if using default mapping)
 // map by mParticle
 CustomerIdRadar.setMetadata(["mParticleCustomerId": customerid])
@@ -76,7 +76,7 @@ To configure the kit, on the Radar [Settings page](https://radar.com/dashboard/s
 
 Install the kit using CocoaPods or Carthage on iOS and Gradle on Android. See the [iOS kit code and readme](https://github.com/mparticle-integrations/mparticle-apple-integration-radar), [Android kit code and readme](https://github.com/mparticle-integrations/mparticle-android-integration-radar), and [mParticle Kit documentation for Radar](https://docs.mparticle.com/integrations/radar/event/).
 
-The kit will initialize the [Radar SDK](/sdk) and identify the user with the mParticle customer ID. After version `8.0.2` of the iOS kit and `5.15.1` of the Android kit, Radar will also set `metadata.mParticleId` to the [MPID](https://docs.mparticle.com/developers/sdk/web/users/#mparticle-id). In addition, if you chose to run automatically and the user has granted permissions, the kit will automatically track the user's location in the foreground on app open and/or in the background.
+The kit will initialize the [Radar SDK](/sdk/sdk) and identify the user with the mParticle customer ID. After version `8.0.2` of the iOS kit and `5.15.1` of the Android kit, Radar will also set `metadata.mParticleId` to the [MPID](https://docs.mparticle.com/developers/sdk/web/users/#mparticle-id). In addition, if you chose to run automatically and the user has granted permissions, the kit will automatically track the user's location in the foreground on app open and/or in the background.
 
 ## User mapping
 
