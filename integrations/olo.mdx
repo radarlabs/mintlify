@@ -14,7 +14,7 @@ Configure an Olo webhook to deliver order events to `https://api.radar.io/webhoo
 
 Once the webhook is setup, your Radar account team will setup the configuration on the [Integrations page](https://radar.com/dashboard/integrations). Applicable Olo _Handoff modes_, a destination geofence tag (e.g., `restaurant`), and custom field mappings from the Olo webhook body to Radar trip metadata will be set.
 
-Finally, on the Radar [Geofences page](https://radar.com/dashboard/geofences), [import geofences](/geofences#csv-import) for your restaurants. Use the tag from the Olo integration configuration for the geofence `tag` attribute.
+Finally, on the Radar [Geofences page](https://radar.com/dashboard/geofences), [import geofences](/geofencing/geofences#csv-import) for your restaurants. Use the tag from the Olo integration configuration for the geofence `tag` attribute.
 
 ![Olo Webhook Configuration](/images/integrations/assets/images/olo_webhook_configuration-458f0f2bd2b1429164c93cadd79fe93d.png)
 
@@ -31,7 +31,7 @@ The mapping below will be used between the Olo webhook and a Radar trip:
 
 \*_Requires enabling the associated auto-calculate order firing setting_
 
-Assuming locations permissions have been granted and location tracking has been started in your app, Radar will calculate live ETAs to the restaurant and generate `user.updated_trip`, `user.approaching_trip_destination`, and `user.arrived_at_trip_destination` events. Learn more about [Trip Tracking](/trip-tracking).
+Assuming locations permissions have been granted and location tracking has been started in your app, Radar will calculate live ETAs to the restaurant and generate `user.updated_trip`, `user.approaching_trip_destination`, and `user.arrived_at_trip_destination` events. Learn more about [Trip Tracking](/geofencing/trips).
 
 ## Order firing
 
