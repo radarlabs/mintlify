@@ -18,7 +18,7 @@ Whenever events are generated, Radar will send custom events and user properties
 
 By default, Radar `userId` maps to Mixpanel `distinct ID` for logged in users. However, you can specify a custom mapping by setting Radar `metadata.mixpanelDistinctId`. For example, on iOS:
 
-```
+```swift
 Radar.setMetadata(["mixpanelDistinctId": distinctIdValue])
 ```
 
@@ -66,26 +66,26 @@ Note that Radar uses the special string `"(null)"` to represent `null` user prop
 
 ## Event mapping
 
-| Radar Event                         | Context Type                    | Mixpanel Event                       |
-| ----------------------------------- | ------------------------------- | ------------------------------------ |
-| `user.entered_geofence`             | [Geofences](/geofences)         | `Radar Geofence Entered`             |
-| `user.exited_geofence`              | [Geofences](/geofences)         | `Radar Geofence Exited`              |
-| `user.dwelled_in_geofence`          | [Geofences](/geofences)         | `Radar Dwelled in Geofence`          |
-| `user.entered_place`                | [Places](/places)               | `Radar Place Entered`                |
-| `user.exited_place`                 | [Places](/places)               | `Radar Place Exited`                 |
-| `user.entered_region_country`       | [Regions](/regions)             | `Radar Country Entered`              |
-| `user.exited_region_country`        | [Regions](/regions)             | `Radar Country Exited`               |
-| `user.entered_region_state`         | [Regions](/regions)             | `Radar State Entered`                |
-| `user.exited_region_state`          | [Regions](/regions)             | `Radar State Exited`                 |
-| `user.entered_region_dma`           | [Regions](/regions)             | `Radar DMA Entered`                  |
-| `user.exited_region_dma`            | [Regions](/regions)             | `Radar DMA Exited`                   |
-| `user.started_trip`                 | [Trip Tracking](/trip-tracking) | `Radar Started Trip`                 |
-| `user.updated_trip`                 | [Trip Tracking](/trip-tracking) | `Radar Updated Trip`                 |
-| `user.approaching_trip_destination` | [Trip Tracking](/trip-tracking) | `Radar Approaching Trip Destination` |
-| `user.arrived_at_trip_destination`  | [Trip Tracking](/trip-tracking) | `Radar Arrived at Trip Destination`  |
-| `user.stopped_trip`                 | [Trip Tracking](/trip-tracking) | `Radar Stopped Trip`                 |
-| `user.entered_beacon`               | [Beacons](/beacons)             | `Radar Beacon Entered`               |
-| `user.exited_beacon`                | [Beacons](/beacons)             | `Radar Beacon Exited`                |
+| Radar Event                         | Context Type                       | Mixpanel Event                       |
+| ----------------------------------- | ---------------------------------- | ------------------------------------ |
+| `user.entered_geofence`             | [Geofences](/geofencing/geofences) | `Radar Geofence Entered`             |
+| `user.exited_geofence`              | [Geofences](/geofencing/geofences) | `Radar Geofence Exited`              |
+| `user.dwelled_in_geofence`          | [Geofences](/geofencing/geofences) | `Radar Dwelled in Geofence`          |
+| `user.entered_place`                | [Places](/geofencing/places)       | `Radar Place Entered`                |
+| `user.exited_place`                 | [Places](/geofencing/places)       | `Radar Place Exited`                 |
+| `user.entered_region_country`       | [Regions](/geofencing/regions)     | `Radar Country Entered`              |
+| `user.exited_region_country`        | [Regions](/geofencing/regions)     | `Radar Country Exited`               |
+| `user.entered_region_state`         | [Regions](/geofencing/regions)     | `Radar State Entered`                |
+| `user.exited_region_state`          | [Regions](/geofencing/regions)     | `Radar State Exited`                 |
+| `user.entered_region_dma`           | [Regions](/geofencing/regions)     | `Radar DMA Entered`                  |
+| `user.exited_region_dma`            | [Regions](/geofencing/regions)     | `Radar DMA Exited`                   |
+| `user.started_trip`                 | [Trip Tracking](/geofencing/trips) | `Radar Started Trip`                 |
+| `user.updated_trip`                 | [Trip Tracking](/trip-tracking)    | `Radar Updated Trip`                 |
+| `user.approaching_trip_destination` | [Trip Tracking](/trip-tracking)    | `Radar Approaching Trip Destination` |
+| `user.arrived_at_trip_destination`  | [Trip Tracking](/trip-tracking)    | `Radar Arrived at Trip Destination`  |
+| `user.stopped_trip`                 | [Trip Tracking](/geofencing/trips) | `Radar Stopped Trip`                 |
+| `user.entered_beacon`               | [Beacons](/geofencing/beacons)     | `Radar Beacon Entered`               |
+| `user.exited_beacon`                | [Beacons](/geofencing/beacons)     | `Radar Beacon Exited`                |
 
 ### Radar Geofence Entered
 
