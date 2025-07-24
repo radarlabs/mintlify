@@ -20,7 +20,7 @@ Whenever events are generated, Radar will call `track` and `identify` to send ev
 
 By default, Radar `userId` maps to Segment `userId` for logged in users, and Radar `deviceId` maps to Segment `anonymousId` for logged out users. However, you can specify custom mappings by setting Radar `metadata.segmentUserId` or `metadata.segmentAnonymousId`. For example, on iOS:
 
-```
+```swift
 // track logged out users with custom anonymousId mapping (not required if using default mapping)
 Radar.setMetadata(["segmentAnonymousId": anonymousId])
 
@@ -71,26 +71,26 @@ Note that Radar uses the special string `"(null)"` to represent `null` user trai
 
 ## Event mapping
 
-| Radar Event                         | Context Type                    | Segment Event                  |
-| ----------------------------------- | ------------------------------- | ------------------------------ |
-| `user.entered_geofence`             | [Geofences](/geofences)         | `Geofence Entered`             |
-| `user.exited_geofence`              | [Geofences](/geofences)         | `Geofence Exited`              |
-| `user.dwelled_in_geofence`          | [Geofences](/geofences)         | `Dwelled in Geofence`          |
-| `user.entered_place`                | [Places](/places)               | `Place Entered`                |
-| `user.exited_place`                 | [Places](/places)               | `Place Exited`                 |
-| `user.entered_region_country`       | [Regions](/regions)             | `Country Entered`              |
-| `user.exited_region_country`        | [Regions](/regions)             | `Country Exited`               |
-| `user.entered_region_state`         | [Regions](/regions)             | `State Entered`                |
-| `user.exited_region_state`          | [Regions](/regions)             | `State Exited`                 |
-| `user.entered_region_dma`           | [Regions](/regions)             | `DMA Entered`                  |
-| `user.exited_region_dma`            | [Regions](/regions)             | `DMA Exited`                   |
-| `user.started_trip`                 | [Trip Tracking](/trip-tracking) | `Trip Started`                 |
-| `user.updated_trip`                 | [Trip Tracking](/trip-tracking) | `Trip Updated`                 |
-| `user.approaching_trip_destination` | [Trip Tracking](/trip-tracking) | `Trip Approaching Destination` |
-| `user.arrived_at_trip_destination`  | [Trip Tracking](/trip-tracking) | `Trip Arrived Destination`     |
-| `user.stopped_trip`                 | [Trip Tracking](/trip-tracking) | `Trip Stopped`                 |
-| `user.entered_beacon`               | [Beacons](/beacons)             | `Beacon Entered`               |
-| `user.exited_beacon`                | [Beacons](/beacons)             | `Beacon Exited`                |
+| Radar Event                         | Context Type                       | Segment Event                  |
+| ----------------------------------- | ---------------------------------- | ------------------------------ |
+| `user.entered_geofence`             | [Geofences](/geofencing/geofences) | `Geofence Entered`             |
+| `user.exited_geofence`              | [Geofences](/geofencing/geofences) | `Geofence Exited`              |
+| `user.dwelled_in_geofence`          | [Geofences](/geofencing/geofences) | `Dwelled in Geofence`          |
+| `user.entered_place`                | [Places](/geofencing/places)       | `Place Entered`                |
+| `user.exited_place`                 | [Places](/geofencing/places)       | `Place Exited`                 |
+| `user.entered_region_country`       | [Regions](/geofencing/regions)     | `Country Entered`              |
+| `user.exited_region_country`        | [Regions](/geofencing/regions)     | `Country Exited`               |
+| `user.entered_region_state`         | [Regions](/geofencing/regions)     | `State Entered`                |
+| `user.exited_region_state`          | [Regions](/geofencing/regions)     | `State Exited`                 |
+| `user.entered_region_dma`           | [Regions](/geofencing/regions)     | `DMA Entered`                  |
+| `user.exited_region_dma`            | [Regions](/geofencing/regions)     | `DMA Exited`                   |
+| `user.started_trip`                 | [Trip Tracking](/geofencing/trips) | `Trip Started`                 |
+| `user.updated_trip`                 | [Trip Tracking](/trip-tracking)    | `Trip Updated`                 |
+| `user.approaching_trip_destination` | [Trip Tracking](/geofencing/trips) | `Trip Approaching Destination` |
+| `user.arrived_at_trip_destination`  | [Trip Tracking](/trip-tracking)    | `Trip Arrived Destination`     |
+| `user.stopped_trip`                 | [Trip Tracking](/trip-tracking)    | `Trip Stopped`                 |
+| `user.entered_beacon`               | [Beacons](/geofencing/beacons)     | `Beacon Entered`               |
+| `user.exited_beacon`                | [Beacons](/geofencing/beacons)     | `Beacon Exited`                |
 
 ### Geofence Entered
 
