@@ -53,14 +53,14 @@ All integration delivery can be monitored via the integration's event logs by cl
 
 ### Send a personalized push notification when a user arrives at a store[#](#send-a-personalized-push-notification-when-a-user-arrives-at-a-store)
 
-1. Create [Geofences](/geofences#create-geofences) in Radar with the geofence tag set to `store`. The geofence tag will be used to trigger messages for the subset of geofence entries where this tag is present.
+1. Create [Geofences](/geofencing/geofences#create-geofences) in Radar with the geofence tag set to `store`. The geofence tag will be used to trigger messages for the subset of geofence entries where this tag is present.
 2. Create a Salesforce Journey triggered by an API Event from the Radar data extension. The Radar data extension will be filtered on `user.entered_geofence` as the `type` attribute and `store` as the `geofenceTag` attribute.
 
 ![Radar triggered Salesforce campaign](/images/integrations/assets/images/salesforce_radar_triggered_messaging-07b74c2968ee136997bc1f6c67738467.png)
 
 ### Message all users who have been nearby a store
 
-1. Create [Geofences](/geofences#create-geofences) in Radar to represent nearby store boundaries with geofence tag set to `nearby-store`. The geofence tag will be used to target messages for the subset of geofences where this tag has been present on an event in the last 7 days.
+1. Create [Geofences](/geofencing/geofences#create-geofences) in Radar to represent nearby store boundaries with geofence tag set to `nearby-store`. The geofence tag will be used to target messages for the subset of geofences where this tag has been present on an event in the last 7 days.
 2. Create a Salesforce Mobile List filtered on the Radar data extension attributes of `type` equal to `user.entered_geofence`, `geofenceTag` equal to `nearby` and `createdAt` set to the last 7 days.
 3. Create a Salesforce MobilePush Message with audience targeting set to the Salesforce Mobile List created in the step above.
 
@@ -83,7 +83,7 @@ All integration delivery can be monitored via the integration's event logs by cl
 | `confidence`           | `confidence`               | string                    | `"high"`                     |
 | `foreground`           | `foreground`               | boolean                   | `true`                       |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Salesforce Event Attribute | Type   | Example           |
 | ----------------- | -------------------------- | ------ | ----------------- |
@@ -111,7 +111,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `duration`             | `duration`                 | number (minutes)          | ``` 42.1``foreground ```     |
 | `foreground`           | `foreground`               | boolean                   | `true`                       |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Salesforce Event Attribute | Type   | Example           |
 | ----------------- | -------------------------- | ------ | ----------------- |
@@ -139,7 +139,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `duration`             | `duration`                 | number (minutes)          | `5`                          |
 | `foreground`           | `foreground`               | boolean                   | `true`                       |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Salesforce Event Attribute | Type   | Example           |
 | ----------------- | -------------------------- | ------ | ----------------- |
@@ -167,7 +167,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `confidence`           | `confidence`               | string                    | `"high"`                           |
 | `foreground`           | `foreground`               | boolean                   | `true`                             |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Salesforce Event Attribute | Type   | Example           |
 | ----------------- | -------------------------- | ------ | ----------------- |
@@ -196,7 +196,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `duration`             | `duration`                 | number (minutes)          | `42.1`                             |
 | `foreground`           | `foreground`               | boolean                   | `true`                             |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Salesforce Event Attribute | Type   | Example           |
 | ----------------- | -------------------------- | ------ | ----------------- |
