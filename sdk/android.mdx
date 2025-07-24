@@ -340,11 +340,11 @@ Radar.stopTracking()
 You only need to call these methods once, as these settings will be persisted across app sessions.
 
 <warning>
-To test, go for a walk or a drive\! Not seeing location updates or events? Remember that, once stopped, the device will need to move more than 100 meters to wake up and start moving again. Also, check your device settings to make sure you've granted background location permissions.
+  To test, go for a walk or a drive! Not seeing location updates or events? Remember that, once stopped, the device will need to move more than 100 meters to wake up and start moving again. Also, check your device settings to make sure you've granted background location permissions.
 </warning>
 
 <info>
-Don't forget\! You can always find your user on the [Users page](https://radar.com/dashboard/users) or events on the [Events page](https://radar.com/dashboard/events). To trigger an event, you'll need to [create a geofence](https://radar.com/dashboard/geofencing/geofences) if you haven't already.
+  Don't forget! You can always find your user on the [Users page](https://radar.com/dashboard/users) or events on the [Events page](https://radar.com/dashboard/events). To trigger an event, you'll need to [create a geofence](https://radar.com/dashboard/geofencing/geofences) if you haven't already.
 </info>
 
 ## Background tracking for trips
@@ -423,7 +423,7 @@ Radar.cancelTrip { status, trip, events ->
 Learn more about starting, completing, and canceling trips in the [trip tracking documentation](/geofencing/trips).
 
 <info>
-Don't forget\! You can always find your user on the [Users page](https://radar.com/dashboard/users) or events on the [Events page](https://radar.com/dashboard/events). To trigger an event, you'll need to [create a geofence](https://radar.com/dashboard/geofencing/geofences) or [start a trip](/trip-tracking) if you haven't already.
+  Don't forget! You can always find your user on the [Users page](https://radar.com/dashboard/users) or events on the [Events page](https://radar.com/dashboard/events). To trigger an event, you'll need to [create a geofence](https://radar.com/dashboard/geofencing/geofences) or [start a trip](/trip-tracking) if you haven't already.
 </info>
 
 ## Mock tracking for testing
@@ -477,9 +477,8 @@ Radar.mockTracking(
 
 </CodeGroup>
 
-
 <info>
-Don't forget\! You can always find your user on the [Users page](https://radar.com/dashboard/users) or events on the [Events page](https://radar.com/dashboard/events). To trigger an event, you'll need to [create a geofence](https://radar.com/dashboard/geofencing/geofences) if you haven't already.
+  Don't forget! You can always find your user on the [Users page](https://radar.com/dashboard/users) or events on the [Events page](https://radar.com/dashboard/events). To trigger an event, you'll need to [create a geofence](https://radar.com/dashboard/geofencing/geofences) if you haven't already.
 </info>
 
 ## Location metadata
@@ -546,7 +545,7 @@ class MyApplication : Application() {
 </CodeGroup>
 
 <warning>
-The receiver should be instantiated only once and set before tracking begins.
+  The receiver should be instantiated only once and set before tracking begins.
 </warning>
 
 Your receiver should implement the following:
@@ -621,7 +620,7 @@ class MyRadarReceiver: RadarReceiver() {
 </CodeGroup>
 
 <info>
-To listen for events server-side instead, add a [webhook](/integrations/webhooks) or enable an [integration](/integrations/integrations).
+  To listen for events server-side instead, add a [webhook](/integrations/webhooks) or enable an [integration](/integrations/integrations).
 </info>
 
 ## Manual tracking
@@ -674,7 +673,7 @@ Radar.setUserId(userId)
 where `userId` is a stable unique ID for the user.
 
 <warning>
-Do not send any PII, like names, email addresses, or publicly available IDs, for `userId`. See [privacy best practices](/faqs#what-are-privacy-best-practices-for-radar) for more information.
+  Do not send any PII, like names, email addresses, or publicly available IDs, for `userId`. See [privacy best practices](/faqs#what-are-privacy-best-practices-for-radar) for more information.
 </warning>
 
 To set a dictionary of custom metadata for the user, call:
@@ -733,7 +732,7 @@ Radar.setLogLevel(Radar.RadarLogLevel.DEBUG)
 The Android SDK automatically logs lifecycle events without the additional setup required on iOS.
 
 <info>
-Contact your customer success manager to enable logging app lifecycle events.
+  Contact your customer success manager to enable logging app lifecycle events.
 </info>
 
 ## Other APIs
