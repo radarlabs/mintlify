@@ -36,7 +36,7 @@ In this tutorial, we will build a delivery tracking iOS application which uses [
 
     Install [CocoaPods](https://cocoapods.org/). If you don't have an existing `Podfile`, run `pod init` in your project directory. Add the following to your `Podfile`:
 
-    ```
+    ```swift
     pod 'RadarSDK', '~> 3.5.0'
     ```
 
@@ -49,7 +49,7 @@ In this tutorial, we will build a delivery tracking iOS application which uses [
   <Step title="Initialize the SDK">
     Create a new Swift file named `LocationManager.swift`, where we define a `LocationManager` class to handle location-related logic, and create a shared instance to be used across the app. Initialize the SDK in this class with your publishable [API key](https://radar.com/dashboard), and set this class to be the `CLLocationManager` delegate.
 
-    ```
+    ```swift
     import Foundation
     import RadarSDK
     
@@ -80,7 +80,7 @@ In this tutorial, we will build a delivery tracking iOS application which uses [
 
     Then, request these permissions in the app by adding the following into the `LocationManager` class:
 
-    ```
+    ```swift
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
             self.requestLocationPermissions()
     }
@@ -103,7 +103,7 @@ In this tutorial, we will build a delivery tracking iOS application which uses [
 
     If you are following the step-by-step app implementation in this tutorial, let's set up the sample app skeleton at this point. Copy these SwiftUI view files from the [source code](https://github.com/radarlabs/deliverytracker) or this [zip file](https://assets.ctfassets.net/8lppgnrkmboj/2K0sMrIXqlLpMaf5fEZoTL/883324a82709279dbb966180344135f8/tutorial-files.zip) into your project: `JobListView.swift`, `DispatchJobView.swift`, `AcceptedJobDetailView.swift`, `JobCard.swift`, `JobDetailView.swift`. Copy over `Job.swift` as well, which defines the Job struct and contains sample jobs. Then in `DeliveryTrackerApp.swift`, set `JobListView` to be the scene in the App body:
 
-    ```
+    ```swift
     var body: some Scene {
           WindowGroup {
               JobListView()
@@ -118,7 +118,7 @@ In this tutorial, we will build a delivery tracking iOS application which uses [
 
     The button action contains trip start logic (and trip cancel logic for in progress trips) as shown below. We use a uuid for the trip `externalId`, although existing delivery ids should be used here when applicable. Set your destination geofence from [Step 1](#step-1).
 
-    ```
+    ```swift
     @Published var onTrip = false
     var activeTrip = ""
     
@@ -166,13 +166,13 @@ In this tutorial, we will build a delivery tracking iOS application which uses [
   <Step title="Add trip completion logic" stepNumber={6}>
     We will use arrival at the trip destination as a signal that the delivery is complete. To do this, we need to listen for the corresponding event, then complete the trip and stop tracking when it is detected. Update the `LocationManager` to be our `RadarDelegate`:
 
-    ```
+    ```swift
     class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate, RadarDelegate
     ```
 
     Then, add a `didReceiveEvents` method with trip completion logic when it is called with the `userArrivedAtTripDestination` event type, and add in the other RadarDelegate methods:
 
-    ```
+    ```swift
     // RadarDelegate methods
     func didReceiveEvents(_ events: [RadarEvent], user: RadarUser?) {
         for event in events {            
@@ -385,7 +385,6 @@ In this tutorial, we will build a delivery tracking iOS application which uses [
     3. Use [Braze](https://docs.radar.com/tutorials/integrations/braze) to send push instead of local notifications to other users with different devices.
 
     Explore resources on the [Trip Tracking page](/geofencing/trips), [API documentation](/api), and [SDK guides](/sdk/sdk) for more information.
-
   </Step>
 </Steps>
 
