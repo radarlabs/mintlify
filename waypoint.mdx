@@ -1,124 +1,139 @@
 ---
 title: "Waypoint"
-description: "You can use our Radar Waypoint apps for iOS and Android to test Radar before integrating the , or to test your implementation of Radar side-by-side with a complete implementation."
 ---
 
-[![](/images/com.onradar.www/images/download_ios.svg)](https://apps.apple.com/us/app/radar-waypoint/id6449200427)[![](/images/com.onradar.www/images/download_android.svg)](https://play.google.com/store/apps/details?id=com.radarwaypoint)
+You can use our Radar Waypoint apps for iOS and Android to test Radar before integrating the [SDK](/sdk/ios), or to test your implementation of Radar side-by-side with a complete implementation.
 
-## [Instructions](#instructions "Direct link to heading")
+## Instructions
 
 To get started, you'll need a Radar account. Don't have a Radar account yet? [Sign up](https://radar.com/signup) first.
 
 1. Download the app.
-
 2. Open the app and enter your email address associated with the Radar account.
-
 3. Copy the 6 digit code sent to your email into the app.
-
 4. Grant notification permissions and location permissions by following the onboarding prompts.
-
 5. After completing onboarding, you should see your location on the map in the Waypoint app along with your user on the [Users page](https://radar.com/dashboard/geofencing/users) in the dashboard. If you are in a geofence or at a place, you will see events in the app and see events on the [Events page](https://radar.com/dashboard/geofencing/events) in the dashboard.
+6. To generate a new track call in the foreground, tap the refresh button\!
+7. To track in the background, move more than 100 meters\! **Note that location updates may be delayed significantly by **[**Android Doze Mode and App Standby**](https://developer.android.com/training/monitoring-device-state/doze-standby)**, **[**iOS Low Power Mode**](https://support.apple.com/en-us/101604)**, or if the device has connectivity issues, low battery, or wi-fi disabled.**
+8. To try out different presets, open the _Settings_ screen. Then, select the _Tracking Options_ preset to use, one of _Efficient_, _Responsive_, or _Continuous_. Learn about [iOS tracking presets](/sdk/tracking#ios-presets) and [Android tracking presets](/sdk/tracking#android-presets). You can also set _Custom Tracking Options_ via [Remote SDK Configurations](/sdk/remote-configuration). Manage the notifications you want to receive, including _Events_ (events received from Radar), _Locations_ (location updates sent to Radar), and _Errors_ (network, location, and permissions errors).
 
-6. To generate a new track call in the foreground, tap the refresh button!
+![Android Ios Waypoint Pn](/images/android-ios-waypoint.png)
 
-7. To track in the background, move more than 100 meters! **Note that location updates may be delayed significantly by Android [Doze Mode and App Standby](https://developer.android.com/training/monitoring-device-state/doze-standby.html), iOS [Low Power Mode](https://support.apple.com/en-us/HT205234), or if the device has connectivity issues, low battery, or wi-fi disabled.**
+## Examples
 
-8. To try out different presets, open the *Settings* screen. Then, select the *Tracking Options* preset to use, one of *Efficient*, *Responsive*, or *Continuous*. Learn about [iOS tracking presets](/sdk/tracking#ios-presets) and [Android tracking presets](/sdk/tracking#android-presets). You can also set *Custom Tracking Options* via [Remote SDK Configurations](https://radar.com/sdk/remote-configuration). Manage the notifications you want to receive, including *Events* (events received from Radar), *Locations* (location updates sent to Radar), and *Errors* (network, location, and permissions errors).
-
-![](/images/img/waypointAndroid.png)![](/images/img/waypointIOS.png)
-
-## [Examples](#examples "Direct link to heading")
-
-### [Testing On-Premise Mode](#testing-on-premise-mode "Direct link to heading")
+### Testing On-Premise Mode
 
 1. To get started, make sure you've opted-in to foreground or "while in use" permissions and notifications are enabled. Click on the settings icon on the top right to ensure Waypoint is configured correctly (See image A below).
-
 2. Create [geofences](https://radar.com/geofences#dashboard) in Radar.
-
 3. Open Waypoint and navigate to the "My Location" tab. You should see "Not in a geofence". Travel to a configured geofence (See image B below).
+4. After entering the geofence, open Waypoint, navigate to the "My Location" tab. Waypoint should display "Welcome to \<geofence_name\>". You should also receive a notification "Entered geofence \<geofence_name\>" (See image C below).
 
-4. After entering the geofence, open Waypoint, navigate to the "My Location" tab. Waypoint should display "Welcome to \<geofence\_name>". You should also receive a notification "Entered geofence \<geofence\_name>" (See image C below).
+<Card title="A" img="/images/f2vbu16fzuly/6Hu1XjBYyMtMLwUbGeA616/b5abfbdf492c44e24b4dff5842591530/waypointOnPremModeSettings.PNG">
+  
+</Card>
 
-**A**![](/images/f2vbu16fzuly/6Hu1XjBYyMtMLwUbGeA616/b5abfbdf492c44e24b4dff5842591530/waypointOnPremModeSettings.PNG)
+<img
+  src="/images/f2vbu16fzuly/6Hu1XjBYyMtMLwUbGeA616/b5abfbdf492c44e24b4dff5842591530/waypointOnPremModeSettings.PNG"
+  alt=""
+  style={{ width:"100%" }}
+/>
 
-**B**![](/images/f2vbu16fzuly/20a2pfNHbTBZ2SDEyK8N0E/88b2fa071e535ea07ad1618ca1fdb937/waypointOnPremModeNotInGeofence.PNG)
+**B**
 
-**C**![](/images/f2vbu16fzuly/2yqxlovc2vwaLX4rPodo4E/be3d52eec80e44b791e9d39009e025c0/waypointOnPremModeInGeofence.PNG)
+![](/images/f2vbu16fzuly/20a2pfNHbTBZ2SDEyK8N0E/88b2fa071e535ea07ad1618ca1fdb937/waypointOnPremModeNotInGeofence.PNG)
 
-### [Testing Trips](#testing-trips "Direct link to heading")
+**C**
+
+![](/images/f2vbu16fzuly/2yqxlovc2vwaLX4rPodo4E/be3d52eec80e44b791e9d39009e025c0/waypointOnPremModeInGeofence.PNG)
+
+### [Testing Trips](#testing-trips)
 
 1. To get started, make sure you've opted-in to foreground or "While in use" permissions and notifications are enabled. (See image A below)
-
 2. Create [geofences](https://radar.com/geofences#dashboard) in Radar.
-
 3. Once you open Waypoint, you should see geofences nearby you. Click "Go" to start a trip to one of the configured geofences. Select your mode of travel from the options provided. Start navigating to your destination geofence. (See image B below)
-
 4. Events & notifications to expect as you travel to the destination geofence (See image C below):
 
-* *user.started\_trip* -> "Started trip" notification from Waypoint
-* *user.approaching\_trip\_destination* -> "Approaching destination" notification from Waypoint
-  * Note, *approaching threshold* can be configured on the Radar dashboard. Navigate to "Settings" on top right -> "Trips" on the left sidebar -> "Approaching threshold (minutes)"
-* *user.arrived\_at\_trip\_destination* / *user.entered\_geofence* -> "Arrived"
+- _user.started_trip_ -\> "Started trip" notification from Waypoint
+- _user.approaching_trip_destination_ -\> "Approaching destination" notification from Waypoint
+  - Note, _approaching threshold_ can be configured on the Radar dashboard. Navigate to "Settings" on top right -\> "Trips" on the left sidebar -\> "Approaching threshold (minutes)"
+- _user.arrived_at_trip_destination_ / _user.entered_geofence_ -\> "Arrived"
 
 5. Once you've arrived at the geofence, you can click either the "x" or button on the bottom of the screen. (See image D below)
 
-* *user.stopped\_trip* -> "Stopped trip" notification from Waypoint
+- _user.stopped_trip_ -\> "Stopped trip" notification from Waypoint
 
-6. Analyze trip updates/events on Radar dashboard. Navigate to "Geofencing" -> "Trips" -> click on trip you'd like to analyze -> "Debugger" on top right to view the trip data. (See image E below)
+6. Analyze trip updates/events on Radar dashboard. Navigate to "Geofencing" -\> "Trips" -\> click on trip you'd like to analyze -\> "Debugger" on top right to view the trip data. (See image E below)
 
-**A**![](/images/f2vbu16fzuly/6Hu1XjBYyMtMLwUbGeA616/b5abfbdf492c44e24b4dff5842591530/waypointOnPremModeSettings.PNG)
+**A**
 
-**B**![](/images/f2vbu16fzuly/74leyLZWYGPS8RpwhyjkwD/9289fe437dec107d0dfe013466e818ad/waypoint_travelMode.png)
+![](/images/f2vbu16fzuly/6Hu1XjBYyMtMLwUbGeA616/b5abfbdf492c44e24b4dff5842591530/waypointOnPremModeSettings.PNG)
 
-**C**![](/images/f2vbu16fzuly/5WF793DRSPf9nf6SYsUB8X/be54af566a692337af4556bd74651522/waypoint_startedTrip.png)
+**B**
+
+![](/images/f2vbu16fzuly/74leyLZWYGPS8RpwhyjkwD/9289fe437dec107d0dfe013466e818ad/waypoint_travelMode.png)
+
+**C**
+
+![](/images/f2vbu16fzuly/5WF793DRSPf9nf6SYsUB8X/be54af566a692337af4556bd74651522/waypoint_startedTrip.png)
 
 ![](/images/f2vbu16fzuly/7iwGVxv6DGDFk16K6gVcdM/e3cd97adde2c8df061818d0c5f28a14a/waypoint_approachingTrip.png)
 
 ![](/images/f2vbu16fzuly/5fjEy1AERdhghjYFhC0tJa/9f48011f7b66f1a1ed39a9e5bcf2a4f1/waypoint_arrived.png)
 
-**D**![](/images/f2vbu16fzuly/1RrLsY6EbIJsrfk6grfUjy/5cbe80ba319f9172b8a751c6405d2615/waypoint_stoppedTrip.png)
+**D**
 
-**E**![](/images/img/dashboardTrip.png)
+![](/images/f2vbu16fzuly/1RrLsY6EbIJsrfk6grfUjy/5cbe80ba319f9172b8a751c6405d2615/waypoint_stoppedTrip.png)
 
-### [Testing Background Mode](#testing-background-mode "Direct link to heading")
+**E**
+
+![](/images/img/dashboardTrip.png)
+
+### [Testing Background Mode](#testing-background-mode)
 
 1. To get started, make sure you've opted-in to background or "Always allow" permissions and notifications are enabled. You'll have to navigate to your device settings to enable background tracking and toggle the "Background tracking" option in Waypoint. Click on the settings icon on the top right to ensure Waypoint is configured correctly. (See image A below)
-
 2. Create [geofences](https://radar.com/geofences#dashboard) in Radar.
-
 3. Open Waypoint and navigate to "My Location" tab. You should see "Not in a geofence". Travel to a configured geofence. (See image B below)
+4. After entering the geofence, you should receive an entry notification while Waypoint is closed and/or your device is shut off. Once you open Waypoint, navigate to "My Location" tab. As shown below, Waypoint should show "Welcome to \<geofence_name\>". (See image C below)
 
-4. After entering the geofence, you should receive an entry notification while Waypoint is closed and/or your device is shut off. Once you open Waypoint, navigate to "My Location" tab. As shown below, Waypoint should show "Welcome to \<geofence\_name>". (See image C below)
+**A**
 
-**A**![](/images/f2vbu16fzuly/6TkKpQaYEWuo3jTKlgLdUs/cdf953f54570bbc0428cecd631451a99/waypoint_background_granted.png)
+![](/images/f2vbu16fzuly/6TkKpQaYEWuo3jTKlgLdUs/cdf953f54570bbc0428cecd631451a99/waypoint_background_granted.png)
 
-**B**![](/images/f2vbu16fzuly/20a2pfNHbTBZ2SDEyK8N0E/88b2fa071e535ea07ad1618ca1fdb937/waypointOnPremModeNotInGeofence.PNG)
+**B**
 
-**C**![](/images/f2vbu16fzuly/2yqxlovc2vwaLX4rPodo4E/be3d52eec80e44b791e9d39009e025c0/waypointOnPremModeInGeofence.PNG)
+![](/images/f2vbu16fzuly/20a2pfNHbTBZ2SDEyK8N0E/88b2fa071e535ea07ad1618ca1fdb937/waypointOnPremModeNotInGeofence.PNG)
 
-### [Testing Beacons](#testing-beacons "Direct link to heading")
+**C**
+
+![](/images/f2vbu16fzuly/2yqxlovc2vwaLX4rPodo4E/be3d52eec80e44b791e9d39009e025c0/waypointOnPremModeInGeofence.PNG)
+
+### [Testing Beacons](#testing-beacons)
 
 Note: You can test beacons in either foreground or background mode.
 
 1. To get started, ensure the following settings are enabled (See image A below):
 
-* Opt-in to foreground or background permissions.
-* Ensure notifications are enabled.
-* Once you click on the settings icon on the top right, you can toggle "Beacons" on. This should prompt you to allow Bluetooth permissions. Alternatively, use [remote SDK configuration](https://radar.com/sdk/remote-configuration) & set *beacons* to *true*. Once done, you should see the "Beacons" toggle enabled within the Waypoint settings page.
+- Opt-in to foreground or background permissions.
+- Ensure notifications are enabled.
+- Once you click on the settings icon on the top right, you can toggle "Beacons" on. This should prompt you to allow Bluetooth permissions. Alternatively, use [remote SDK configuration](https://radar.com/sdk/remote-configuration) & set _beacons_ to _true_. Once done, you should see the "Beacons" toggle enabled within the Waypoint settings page.
 
 2. Create [beacons](https://radar.com/beacons) in Radar.
-
 3. Open Waypoint and navigate to "My Location" tab. You should see "No Beacons Found". (See image B below)
+4. After entering the beacon radius, open Waypoint, navigate to "My Location" tab. As shown below, Waypoint should show "\<beacon_name\>" under the "Beacons" section. You should also receive a notification "Entered beacon \<beacon_name\>". (See image C below)
 
-4. After entering the beacon radius, open Waypoint, navigate to "My Location" tab. As shown below, Waypoint should show "\<beacon\_name>" under the "Beacons" section. You should also receive a notification "Entered beacon \<beacon\_name>". (See image C below)
+**A**
 
-**A**![](/images/f2vbu16fzuly/3ILDmAqz9xzEiY3S03yiUJ/d17a40b438991ce02b5ebd0377b575ce/waypoint_beacon_permissions.png)
+![](/images/f2vbu16fzuly/3ILDmAqz9xzEiY3S03yiUJ/d17a40b438991ce02b5ebd0377b575ce/waypoint_beacon_permissions.png)
 
-**B**![](/images/f2vbu16fzuly/30vi3MDwNouhbBFCN772Y3/4c8b2e3b764bdb26aff9229130f31afa/waypoint_no_beacons.png)
+**B**
 
-**C**![](/images/f2vbu16fzuly/19QVnwmqy6SECikWHy7hAi/51a47ad1d8d8412c1052a184cdb94f96/waypoint_in_beacon.png)
+![](/images/f2vbu16fzuly/30vi3MDwNouhbBFCN772Y3/4c8b2e3b764bdb26aff9229130f31afa/waypoint_no_beacons.png)
 
-## [Support](#support "Direct link to heading")
+**C**
+
+![](/images/f2vbu16fzuly/19QVnwmqy6SECikWHy7hAi/51a47ad1d8d8412c1052a184cdb94f96/waypoint_in_beacon.png)
+
+## [Support](#support)
 
 Have questions or difficulties with Waypoint? Contact us at [radar.com/support](https://radar.com/support).
 
