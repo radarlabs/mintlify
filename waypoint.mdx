@@ -14,7 +14,7 @@ To get started, you'll need a Radar account. Don't have a Radar account yet? [Si
 4. Grant notification permissions and location permissions by following the onboarding prompts.
 5. After completing onboarding, you should see your location on the map in the Waypoint app along with your user on the [Users page](https://radar.com/dashboard/geofencing/users) in the dashboard. If you are in a geofence or at a place, you will see events in the app and see events on the [Events page](https://radar.com/dashboard/geofencing/events) in the dashboard.
 6. To generate a new track call in the foreground, tap the refresh button\!
-7. To track in the background, move more than 100 meters\! **Note that location updates may be delayed significantly by **[**Android Doze Mode and App Standby**](https://developer.android.com/training/monitoring-device-state/doze-standby)**, **[**iOS Low Power Mode**](https://support.apple.com/en-us/101604)**, or if the device has connectivity issues, low battery, or wi-fi disabled.**
+7. To track in the background, move more than 100 meters\! [[**********Note that location updates may be delayed significantly by Android Doze Mode and App Standby, iOS Low Power Mode, or if the device has connectivity issues, low battery, or wi-fi disabled.**********](https://support.apple.com/en-us/101604)](https://developer.android.com/training/monitoring-device-state/doze-standby)
 8. To try out different presets, open the _Settings_ screen. Then, select the _Tracking Options_ preset to use, one of _Efficient_, _Responsive_, or _Continuous_. Learn about [iOS tracking presets](/sdk/tracking#ios-presets) and [Android tracking presets](/sdk/tracking#android-presets). You can also set _Custom Tracking Options_ via [Remote SDK Configurations](/sdk/remote-configuration). Manage the notifications you want to receive, including _Events_ (events received from Radar), _Locations_ (location updates sent to Radar), and _Errors_ (network, location, and permissions errors).
 
 ![Android Ios Waypoint Pn](/images/android-ios-waypoint.png)
@@ -28,21 +28,17 @@ To get started, you'll need a Radar account. Don't have a Radar account yet? [Si
 3. Open Waypoint and navigate to the "My Location" tab. You should see "Not in a geofence". Travel to a configured geofence (See image B below).
 4. After entering the geofence, open Waypoint, navigate to the "My Location" tab. Waypoint should display "Welcome to \<geofence_name\>". You should also receive a notification "Entered geofence \<geofence_name\>" (See image C below).
 
-<Card title="A" img="/images/f2vbu16fzuly/6Hu1XjBYyMtMLwUbGeA616/b5abfbdf492c44e24b4dff5842591530/waypointOnPremModeSettings.PNG">
-  
-</Card>
-
-<img
-  src="/images/f2vbu16fzuly/6Hu1XjBYyMtMLwUbGeA616/b5abfbdf492c44e24b4dff5842591530/waypointOnPremModeSettings.PNG"
-  alt=""
-  style={{ width:"100%" }}
-/>
-
-**B**
-
-![](/images/f2vbu16fzuly/20a2pfNHbTBZ2SDEyK8N0E/88b2fa071e535ea07ad1618ca1fdb937/waypointOnPremModeNotInGeofence.PNG)
-
-**C**
+<CardGroup cols={3}>
+  <Card title="A" img="/images/f2vbu16fzuly/6Hu1XjBYyMtMLwUbGeA616/b5abfbdf492c44e24b4dff5842591530/waypointOnPremModeSettings.PNG">
+    
+  </Card>
+  <Card title="B" img="/images/f2vbu16fzuly/20a2pfNHbTBZ2SDEyK8N0E/88b2fa071e535ea07ad1618ca1fdb937/waypointOnPremModeNotInGeofence.PNG">
+    
+  </Card>
+  <Card title="New Card" icon="sparkles" img="/waypointOnPremModeInGeofence.PNG">
+    
+  </Card>
+</CardGroup>
 
 ![](/images/f2vbu16fzuly/2yqxlovc2vwaLX4rPodo4E/be3d52eec80e44b791e9d39009e025c0/waypointOnPremModeInGeofence.PNG)
 
