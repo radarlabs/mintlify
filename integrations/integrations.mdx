@@ -2,7 +2,7 @@
 title: "Integrations"
 ---
 
-Radar supports a number of server-side integrations. _Event integrations_ like webhooks, mParticle, and Braze allow you to send events from Radar to other systems. _Geofence integrations_ like geofence sync and Yext allow you to sync geofences from other systems to Radar. Finally, _trip integrations_ allow you to [start and stop trips](https://docs.radar.com/trip-tracking) and send live ETAs to other platforms.
+Radar supports a number of server-side integrations. _Event integrations_ like webhooks, mParticle, and Braze allow you to send events from Radar to other systems. _Geofence integrations_ like geofence sync and Yext allow you to sync geofences from other systems to Radar. Finally, _trip integrations_ allow you to [start and stop trips](/geofencing/trips) and send live ETAs to other platforms.
 
 ## **Event integrations**
 
@@ -65,7 +65,7 @@ To filter event types sent to an integration, select or unselect event types und
 
 To filter keys from the request body sent to an integration, add keys, comma-separated, to _Request Key Blocklist_. For example, to skip sending `radar_geofence_ids` to the Segment `identify` call and to skip sending `geofence_id` to the Segment `track` call, add `radar_geofence_ids,geofence_id` to _Request Key Blocklist_.
 
-To filter events sent to an integration based upon a [Geofence](https://docs.radar.com/geofences) tag, add tags, comma-separated to _Geofence Tag Blocklist_. For example, to skip sending all events to the Amplitude integration for geofences tagged `gas-station` and `cafe`, add `gas-station,cafe` to _Geofence Tag Blocklist_.
+To filter events sent to an integration based upon a [Geofence](/geofencing/geofences) tag, add tags, comma-separated to _Geofence Tag Blocklist_. For example, to skip sending all events to the Amplitude integration for geofences tagged `gas-station` and `cafe`, add `gas-station,cafe` to _Geofence Tag Blocklist_.
 
 ## **Geofence integrations**
 
