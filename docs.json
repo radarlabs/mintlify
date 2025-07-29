@@ -107,7 +107,7 @@
         ]
       },
       {
-        "group": "Api",
+        "group": "API",
         "pages": [
           "api"
         ]
@@ -133,7 +133,6 @@
         ]
       },
       {
-        "group": "Waypoint",
         "pages": [
           "waypoint"
         ]
