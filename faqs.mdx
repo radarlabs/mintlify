@@ -2,16 +2,16 @@
 title: "FAQs"
 ---
 
-## [Testing](#testing "Direct link to heading")
+## [Testing](#testing)
 
-### [How should I test Radar battery drain?](#how-should-i-test-radar-battery-drain "Direct link to heading")
+### [How should I test Radar battery drain?](#how-should-i-test-radar-battery-drain)
 
 To test battery drain attributable to Radar background tracking in your iOS or Android app, you must isolate battery drain attributable Radar's usage of location services.
 
 This means that you must control for confounding variables:
 
-* In the context of your app, you must control for battery drain attributable to other code and other SDKs running in your app, having the app foregrounded, and notifications.
-* In the context of your device, you must control for battery drain attributable to other apps, the OS, and your device state, including having the screen turned on.
+- In the context of your app, you must control for battery drain attributable to other code and other SDKs running in your app, having the app foregrounded, and notifications.
+- In the context of your device, you must control for battery drain attributable to other apps, the OS, and your device state, including having the screen turned on.
 
 Often, having the screen turned on and the app foregrounded are bigger sources of battery drain than usage of location services.
 
@@ -28,7 +28,7 @@ When using the efficient and responsive tracking presets, the SDK will wake up w
 
 See the [SDK documentation](/sdk) and [Navigating location services tradeoffs between accuracy, frequency, and battery efficiency](https://radar.com/blog/navigating-location-services-tradeoffs-between-accuracy-frequency-battery-efficiency) for more information.
 
-### [Can I test Radar side-by-side with another location SDK?](#can-i-test-radar-side-by-side-with-another-location-sdk "Direct link to heading")
+### [Can I test Radar side-by-side with another location SDK?](#can-i-test-radar-side-by-side-with-another-location-sdk)
 
 Many developers switch to Radar from other location SDKs. You can test Radar side-by-side with another location SDK, but keep in mind that there may be side effects on iOS.
 
@@ -36,73 +36,73 @@ On iOS, significant location change events, `CLRegion` events, and `CLVisit` eve
 
 On Android, this is not an issue.
 
-## [Product](#product "Direct link to heading")
+## [Product](#product)
 
-### [Is Radar still able to track location in the background if the app is killed?](#is-radar-still-able-to-track-location-in-the-background-if-the-app-is-killed "Direct link to heading")
+### [Is Radar still able to track location in the background if the app is killed?](#is-radar-still-able-to-track-location-in-the-background-if-the-app-is-killed)
 
 Yes, if background location permissions have been granted.
 
 On iOS, if the app is killed (e.g., swiped up from the App Switcher), the SDK is able to wake up and start collecting locations again if it receives certain types of location updates from the OS. These services can be activated on iOS by enabling the [location updates background mode](/sdk/ios#background-modes) and using at least one of following [tracking options](/sdk/tracking#ios-options):
 
-* `syncGeofences`
-* `useStoppedGeofence`
-* `useMovingGeofence`
-* `useSignificantLocationChanges`
-* `useVisits`
+- `syncGeofences`
+- `useStoppedGeofence`
+- `useMovingGeofence`
+- `useSignificantLocationChanges`
+- `useVisits`
 
-On Android, Radar will continue to receive location updates if the app is swiped out of the Recent Apps list. Radar will not receive location updates if the phone manufacturer aggressively kills background services or the user presses *Force stop*.
+On Android, Radar will continue to receive location updates if the app is swiped out of the Recent Apps list. Radar will not receive location updates if the phone manufacturer aggressively kills background services or the user presses _Force stop_.
 
-### [If a user backgrounds my app, do I need to request background location permissions to access location?](#if-a-user-backgrounds-my-app-do-i-need-to-request-background-location-permissions-to-access-location "Direct link to heading")
+### [If a user backgrounds my app, do I need to request background location permissions to access location?](#if-a-user-backgrounds-my-app-do-i-need-to-request-background-location-permissions-to-access-location)
 
 With just foreground location permissions, you can leverage the [background location indicator](https://developer.apple.com/documentation/corelocation/cllocationmanager/2923541-showsbackgroundlocationindicator) on iOS or a [foreground service](https://developer.android.com/guide/components/foreground-services) on Android to continue to receive location updates in the background. These are activated via the `showBlueBar` [tracking option](/sdk/tracking#ios-options) on iOS or the `foregroundService` [tracking option](/sdk/tracking#android-options) on Android. iOS devices will display a blue location icon when activated, and Android devices will display a persistent notification. Use of these visual indicators is common for operational use cases such as fleet tracking and delivery.
 
-### [What are the different event listeners and how should I use them?](#what-are-the-different-event-listeners-and-how-should-i-use-them "Direct link to heading")
+### [What are the different event listeners and how should I use them?](#what-are-the-different-event-listeners-and-how-should-i-use-them)
 
 Each listener can support different use cases and exposes different data to take actions. The client location listener (`onClientLocationUpdated` on Android, `didUpdateClientLocation` on iOS) is fired whenever the Radar SDK receives a location update from the device. It can be used to collect a stream of location updates before they hit Radar servers. The location updated listener (`onLocationUpdated` on Android, `didUpdateLocation` on iOS) delivers location updates processed by Radar servers and will return refreshed user context. This listener can be used to deliver in-app experiences based on user context, including when `Radar.trackOnce()` is called on application launch. The Radar events listener (`didReceiveEvents` on Android and iOS) can be used to listen for Radar events and trigger workflows.
 
-### [What is the latency of Radar APIs?](#what-is-the-latency-of-radar-apis "Direct link to heading")
+### [What is the latency of Radar APIs?](#what-is-the-latency-of-radar-apis)
 
 Radar APIs have a p50 latency of 50ms and a p90 of 150ms. The `/route/matrix` API increases in latency as additional `origin` or `destination` points are added, or as the distance between points increases.
 
-### [How often are usage statistics recalculated?](#how-often-are-usage-statistics-recalculated "Direct link to heading")
+### [How often are usage statistics recalculated?](#how-often-are-usage-statistics-recalculated)
 
 Usage statistics are recalculated nightly and reflect the total Monthly Tracked Users (MTUs) and API requests made in the month. Usage statistics can be found on the [Home](https://radar.com/dashboard) page of the Radar dashboard.
 
-## [Privacy](#privacy "Direct link to heading")
+## [Privacy](#privacy)
 
-### [What data does the Radar SDK collect?](#what-data-does-the-radar-sdk-collect "Direct link to heading")
+### [What data does the Radar SDK collect?](#what-data-does-the-radar-sdk-collect)
 
 The Radar SDK collects location data (latitude, longitude), device IDs, IP addresses, and device info by default. We also collect any other user IDs (e.g., user IDs) or metadata that you choose to send us. Radar does not collect personally identifiable information like name or email by default.
 
 For more information, see our [privacy policy](https://radar.com/privacy), our [commitment to privacy](https://radar.com/blog/our-commitment-to-privacy), and our [location data privacy checklist](https://radar.com/blog/location-data-privacy-checklist).
 
-### [What are privacy best practices for Radar?](#what-are-privacy-best-practices-for-radar "Direct link to heading")
+### [What are privacy best practices for Radar?](#what-are-privacy-best-practices-for-radar)
 
-* Do not send any PII, like names, email addresses, or publicly available IDs, to the Radar SDK or API.
-* Minimize the data you collect with Radar, turning on only the context types relevant to your use case (store visits for shopping apps, airport visits for travel apps, and so on).
-* Clearly explain to end users what data will be collected and how it will be used in your apps, in permissions prompts, and in your privacy policy.
+- Do not send any PII, like names, email addresses, or publicly available IDs, to the Radar SDK or API.
+- Minimize the data you collect with Radar, turning on only the context types relevant to your use case (store visits for shopping apps, airport visits for travel apps, and so on).
+- Clearly explain to end users what data will be collected and how it will be used in your apps, in permissions prompts, and in your privacy policy.
 
 For more information, see our [location data privacy checklist](https://radar.com/blog/location-data-privacy-checklist).
 
-### [What are location permission prompt best practices?](#what-are-location-permission-prompt-best-practices "Direct link to heading")
+### [What are location permission prompt best practices?](#what-are-location-permission-prompt-best-practices)
 
 The best location permission prompts are:
 
-* Transparent: The prompt explains what data will be collected from the end user and how it will be used, with a link to your privacy policy.
-* Valuable: The prompt explains why the user should grant location permissions, like enabling a location-based feature or unlocking an offer.
-* Timely: The prompt is shown when the user is engaged, like in an onboarding, when accessing a location-based feature, or after a transaction. Background permission prompts are shown after and incremental to foreground permission prompts.
+- Transparent: The prompt explains what data will be collected from the end user and how it will be used, with a link to your privacy policy.
+- Valuable: The prompt explains why the user should grant location permissions, like enabling a location-based feature or unlocking an offer.
+- Timely: The prompt is shown when the user is engaged, like in an onboarding, when accessing a location-based feature, or after a transaction. Background permission prompts are shown after and incremental to foreground permission prompts.
 
 Opt-in rates vary from app to app, but apps that follow best practices can expect 70-80% of users to grant location permissions, with 40-50% of users granting background ("always") location permissions on iOS.
 
 For more information, see our [location data privacy checklist](https://radar.com/blog/location-data-privacy-checklist).
 
-### [What is Radar's data retention policy?](#what-is-radars-data-retention-policy "Direct link to heading")
+### [What is Radar's data retention policy?](#what-is-radars-data-retention-policy)
 
 By default, users and events are retained for 1 year, trips are retained for 90 days, and location updates are retained for 7 days.
 
 Radar supports custom data retention settings. Admins can adjust these settings in the Radar dashboard under the Privacy section. Data retention settings are customizable per project.
 
-### [Is Radar CCPA-compliant and GDPR-compliant?](#is-radar-ccpa-compliant-and-gdpr-compliant "Direct link to heading")
+### [Is Radar CCPA-compliant and GDPR-compliant?](#is-radar-ccpa-compliant-and-gdpr-compliant)
 
 Yes, Radar is CCPA-compliant and GDPR-compliant. For more information, see our [commitment to privacy](https://radar.com/blog/our-commitment-to-privacy).
 
@@ -112,156 +112,148 @@ For data access requests, you can export a user and all of their events and loca
 
 If you need assistance, you can also forward requests to your customer success manager.
 
-## [Security](#security "Direct link to heading")
+## [Security](#security)
 
-### [How do Radar account roles work?](#how-do-radar-account-roles-work "Direct link to heading")
+### [How do Radar account roles work?](#how-do-radar-account-roles-work)
 
-* **Read** accounts can:
-  * Read user, geofence, event, and location data
-
-* **Write** accounts can also:
-
-  * Create, update, and delete user, geofence, and event data
-  * Create update, and delete custom reports
-  * Create custom exclusion zones
-  * Create block rules
-
-* **Admin** accounts can also:
-
-  * Invite new accounts
-  * Update project settings, API keys, integrations, and data retention settings
-  * Create custom inclusion zones
-  * Create, delete, and disable bypass rules
-  * Delete and disable block rules
-
-* **Owner** accounts can also:
-  * Edit account roles and project access
+- **Read** accounts can:
+  - Read user, geofence, event, and location data
+- **Write** accounts can also:
+  - Create, update, and delete user, geofence, and event data
+  - Create update, and delete custom reports
+  - Create custom exclusion zones
+  - Create block rules
+- **Admin** accounts can also:
+  - Invite new accounts
+  - Update project settings, API keys, integrations, and data retention settings
+  - Create custom inclusion zones
+  - Create, delete, and disable bypass rules
+  - Delete and disable block rules
+- **Owner** accounts can also:
+  - Edit account roles and project access
 
 Use the appropriate role (owner, admin, write, or read) for each co-worker's account. See [Radar security best practices](#what-are-security-best-practices-for-radar). By default, an organization can have a maximum of 100 accounts. Contact your customer success manager if you need more.
 
-### [How do data access controls work?](#how-do-data-access-controls-work "Direct link to heading")
+### [How do data access controls work?](#how-do-data-access-controls-work)
 
 Data access controls are available on the [Enterprise plan](https://radar.com/pricing).
 
 In addition to the account roles above, owners can also control:
 
-* **Project access**: Access to specific projects in an organization
+- **Project access**: Access to specific projects in an organization
+- **Environment access**: Access to test or live data across projects in an organization
+- **Data access**: Access to specific data and pages across projects in an organization
+  - _User locations_: Access to data on the user details page (map and location information) and access to the user locations page
+  - _Trip locations_: Access to data on the trip details page (map and location information) and access to the [trip tracking dashboard](/trip-tracking#in-the-radar-trip-tracking-dashboard)
+  - _Geofence tags_: Access to geofences with specific tags. An empty list gives access to all geofences. To access a Geofence, both the _tag_ and _externalId_ access controls must be satisfied.
+  - _Geofence externalIds_: Access to geofences with specific externalIds. An empty list gives access to all geofences. To access a Geofence, both the _tag_ and _externalId_ access controls must be satisfied.
 
-* **Environment access**: Access to test or live data across projects in an organization
-
-* **Data access**: Access to specific data and pages across projects in an organization
-
-  * *User locations*: Access to data on the user details page (map and location information) and access to the user locations page
-  * *Trip locations*: Access to data on the trip details page (map and location information) and access to the [trip tracking dashboard](/trip-tracking#in-the-radar-trip-tracking-dashboard)
-  * *Geofence tags*: Access to geofences with specific tags. An empty list gives access to all geofences. To access a Geofence, both the *tag* and *externalId* access controls must be satisfied.
-  * *Geofence externalIds*: Access to geofences with specific externalIds. An empty list gives access to all geofences. To access a Geofence, both the *tag* and *externalId* access controls must be satisfied.
-
-### [Does Radar have a bug bounty or responsible disclosure program?](#does-radar-have-a-bug-bounty-or-responsible-disclosure-program "Direct link to heading")
+### [Does Radar have a bug bounty or responsible disclosure program?](#does-radar-have-a-bug-bounty-or-responsible-disclosure-program)
 
 Yes. For more information, see the [Vulnerability Disclosure Policy](/vulnerability-disclosure-policy).
 
-### [What are security best practices for Radar?](#what-are-security-best-practices-for-radar "Direct link to heading")
+### [What are security best practices for Radar?](#what-are-security-best-practices-for-radar)
 
-#### [Account management](#account-management "Direct link to heading")
+#### [Account management](#account-management)
 
-* Use a strong password (at least 10 characters, at least 1 lowercase letter, at least 1 uppercase letter, at least 1 number, and at least 1 symbol).
-* Use a password manager like 1Password or LastPass to generate and store passwords, and use a different password for each website.
-* Use app- or SMS-based multi-factor authentication (MFA). Enable MFA on the Account page.
-* Do not share your account with co-workers.
-* Use the appropriate role (owner, admin, write, or read) for each co-worker's account.
-* When a co-worker is terminated, delete their account.
-* Use single sign-on (SSO) if supported by your organization.
-* Use a password protected lock screen on employee workstations set to a short timeout, e.g., 5 minutes.
+- Use a strong password (at least 10 characters, at least 1 lowercase letter, at least 1 uppercase letter, at least 1 number, and at least 1 symbol).
+- Use a password manager like 1Password or LastPass to generate and store passwords, and use a different password for each website.
+- Use app- or SMS-based multi-factor authentication (MFA). Enable MFA on the Account page.
+- Do not share your account with co-workers.
+- Use the appropriate role (owner, admin, write, or read) for each co-worker's account.
+- When a co-worker is terminated, delete their account.
+- Use single sign-on (SSO) if supported by your organization.
+- Use a password protected lock screen on employee workstations set to a short timeout, e.g., 5 minutes.
 
-#### [Authentication](#authentication "Direct link to heading")
+#### [Authentication](#authentication)
 
-* Use Test keys for development and Live keys for production.
-* Use [Publishable keys](/sdk#authentication), which are restricted in scope in client-side code. Never use [Secret keys](/api#authentication), which can read or write any data.
+- Use Test keys for development and Live keys for production.
+- Use [Publishable keys](/sdk#authentication), which are restricted in scope in client-side code. Never use [Secret keys](/api#authentication), which can read or write any data.
 
-#### [Website Restrictions](#website-restrictions "Direct link to heading")
+#### [Website Restrictions](#website-restrictions)
 
 Additionally, you can restrict which websites can use your publishable API keys. You can add or modify available domains on the [settings](https://radar.com/dashboard/settings/#website-restrictions) page. Multiple domains are supported with the selectable input field.
 
 Examples of valid rules:
 
-* A host with a single domain: **example.com**
-* A host with sub domains: **sub.example.com** or **sub1.sub2.example.com**
-* A domain and all its subdomain(s), using a wildcard (\*) asterisk: **example.com** and **\*.example.com**
-* A host with a non-standard port: **example.com:8000**
-* Using localhost with port: **localhost:8080**
+- A host with a single domain: **example.com**
+- A host with sub domains: **sub.example.com** or **sub1.sub2.example.com**
+- A domain and all its subdomain(s), using a wildcard (\*) asterisk: **example.com** and **\*.example.com**
+- A host with a non-standard port: **example.com:8000**
+- Using localhost with port: **localhost:8080**
 
-#### [Mobile Restrictions](#mobile-restrictions "Direct link to heading")
+#### [Mobile Restrictions](#mobile-restrictions)
 
 Furthermore, you can also restrict which mobile app can use your publishable key via the RadarSDK. You can add or modify bundle IDs and package names on the [settings](https://radar.com/dashboard/settings/#mobile-restrictions) page. Multiple bundle IDs and package names are supported with the selectable input field. Bundle IDs and package names cannot have wildcards (\*) and are case insensitive.
 
-#### [Data management](#data-management "Direct link to heading")
+#### [Data management](#data-management)
 
-* Encrypt data stored outside of Radar (e.g., data sent to integrations or sent to webhooks and stored in a data warehouse).
-* Do not send any PII, like names, email addresses, or publicly available IDs, to the Radar SDK or API. See also [Radar privacy best practices](#what-are-privacy-best-practices-for-radar).
+- Encrypt data stored outside of Radar (e.g., data sent to integrations or sent to webhooks and stored in a data warehouse).
+- Do not send any PII, like names, email addresses, or publicly available IDs, to the Radar SDK or API. See also [Radar privacy best practices](#what-are-privacy-best-practices-for-radar).
 
-### [Does Radar support audit logs?](#does-radar-support-audit-logs "Direct link to heading")
+### [Does Radar support audit logs?](#does-radar-support-audit-logs)
 
 Yes, Radar supports audit logs for enterprise customers. Audit logs include all requests made from the dashboard with the account, project, environment, IP address, and timestamp of each request. The 100 most recent audit logs can be viewed from the dashboard, and the most recent 100,000 audit logs can be exported to CSV. Contact your customer success manager if you need older audit logs.
 
-### [How do I set up single sign-on (SSO) in Radar?](#how-do-i-set-up-single-sign-on-sso-in-radar "Direct link to heading")
+### [How do I set up single sign-on (SSO) in Radar?](#how-do-i-set-up-single-sign-on-sso-in-radar)
 
 Radar supports single sign-on (SSO) via SAML, LDAP, Open ID, and other identity providers.
 
 SSO is an enterprise-only feature. Contact your customer success manager to enable this feature.
 
-#### [SAML](#saml "Direct link to heading")
+#### [SAML](#saml)
 
 To set up your SAML identity provider, reach out to your customer success manager who will provide the assertion consumer service URL and application callback URL. They will need the following information in return:
 
-* SAML protocol URL
-* Sign-in URL
-* Sign-out URL (optional)
-* X509 Signing Certificate (.pem file)
-* User ID attribute (defaults to [http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier](http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier) then [http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn](http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn) then [http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name](http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name))
+- SAML protocol URL
+- Sign-in URL
+- Sign-out URL (optional)
+- X509 Signing Certificate (.pem file)
+- User ID attribute (defaults to http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier then http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn then http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name)
 
-### [Is Radar SOC 2 type II-certified?](#is-radar-soc-2-type-ii-certified "Direct link to heading")
+### [Is Radar SOC 2 type II-certified?](#is-radar-soc-2-type-ii-certified)
 
 Yes, Radar is SOC 2 type II-certified. For more information, please ask your account executive for a copy of our attestation report.
 
-### [Is the Radar SDK secure?](#is-the-radar-sdk-secure "Direct link to heading")
+### [Is the Radar SDK secure?](#is-the-radar-sdk-secure)
 
 Yes. The Radar SDK calls the Radar API over HTTPS using TLS version 1.2 or higher, so all data is encrypted in transit. API calls are authenticated using your [Publishable keys](/sdk#authentication), which are restricted in scope.
 
-## [Location permissions](#location-permissions "Direct link to heading")
+## [Location permissions](#location-permissions)
 
-### [How do I get statistics for location permissions?](#how-do-i-get-statistics-for-location-permissions "Direct link to heading")
+### [How do I get statistics for location permissions?](#how-do-i-get-statistics-for-location-permissions)
 
 Statistics for location permissions are available for customers who have installed SDK 3.1 or later.
 
-### [What do the states in the location permissions graph represent?](#what-do-the-states-in-the-location-permissions-graph-represent "Direct link to heading")
+### [What do the states in the location permissions graph represent?](#what-do-the-states-in-the-location-permissions-graph-represent)
 
 On iOS, the SDK checks `authorizationStatus` on `CLLocationManager` to determine authorization status:
 
-* **`Granted Background`**: `authorizationStatus` is `.authorizedAlways`, meaning that the user has granted background location permissions.
-* **`Granted Foreground`**: `authorizationStatus` is `.authorizedWhenInUse`, meaning that the user has granted foreground location permissions.
-* **`Denied`**: `authorizationStatus` is `.denied` or `.restricted`, meaning that the user has denied location permissions.
-* **`Not Determined`**: `authorizationStatus` is `.notDetermined`, meaning that the user has not yet been prompted for location permissions.
+- **`Granted Background`**: `authorizationStatus` is `.authorizedAlways`, meaning that the user has granted background location permissions.
+- **`Granted Foreground`**: `authorizationStatus` is `.authorizedWhenInUse`, meaning that the user has granted foreground location permissions.
+- **`Denied`**: `authorizationStatus` is `.denied` or `.restricted`, meaning that the user has denied location permissions.
+- **`Not Determined`**: `authorizationStatus` is `.notDetermined`, meaning that the user has not yet been prompted for location permissions.
 
 On Android, the SDK checks the `ACCESS_FINE_LOCATION` and `ACCESS_BACKGROUND_LOCATION` permissions to determine authorization status:
 
-* **`Granted Background`**: The `ACCESS_BACKGROUND_LOCATION` permission is granted, meaning that the user has granted background location permissions.
-* **`Granted Foreground`**: The `ACCESS_FINE_LOCATION` permission is granted, meaning that the user has granted foreground location permissions.
-* **`Denied`**: The `ACCESS_FINE_LOCATION` permission is denied and `shouldShowRequestPermissionRationale()` returns `false`, meaning that the user has denied location permissions and checked "Never ask again."
-* **`Not Determined`**: None of the above criteria are true, meaning that the user has not yet been prompted for location permissions.
+- **`Granted Background`**: The `ACCESS_BACKGROUND_LOCATION` permission is granted, meaning that the user has granted background location permissions.
+- **`Granted Foreground`**: The `ACCESS_FINE_LOCATION` permission is granted, meaning that the user has granted foreground location permissions.
+- **`Denied`**: The `ACCESS_FINE_LOCATION` permission is denied and `shouldShowRequestPermissionRationale()` returns `false`, meaning that the user has denied location permissions and checked "Never ask again."
+- **`Not Determined`**: None of the above criteria are true, meaning that the user has not yet been prompted for location permissions.
 
-### [What is a tracked user?](#what-is-a-tracked-user "Direct link to heading")
+### [What is a tracked user?](#what-is-a-tracked-user)
 
 A tracked user is a unique user that sends one or more location events to Radar in a given time period.
 
-### [What is a unique user? When does Radar create a new user record?](#what-is-a-unique-user-when-does-radar-create-a-new-user-record "Direct link to heading")
+### [What is a unique user? When does Radar create a new user record?](#what-is-a-unique-user-when-does-radar-create-a-new-user-record)
 
 The Radar SDK collects IDs for each user and device, including:
 
-* `installId`: a GUID automatically generated on fresh install
-* `deviceId`: IDFV on iOS, Android ID on Android, or a GUID on web
-* `userId`: set by calling `Radar.setUserId()`, also called *External ID* in the dashboard
+- `installId`: a GUID automatically generated on fresh install
+- `deviceId`: IDFV on iOS, Android ID on Android, or a GUID on web
+- `userId`: set by calling `Radar.setUserId()`, also called _External ID_ in the dashboard
 
-Each user record is also assigned a unique `_id`, also called *Radar ID* in the dashboard.
+Each user record is also assigned a unique `_id`, also called _Radar ID_ in the dashboard.
 
 For usage tracking and security reasons, Radar maintains a separate user record for each unique combination of these IDs.
 
@@ -269,15 +261,15 @@ Although calling `Radar.setUserId()` for the first time will assign a `userId` t
 
 A unique user record created or updated in a given time period is counted as a tracked user in that time period.
 
-### [What is an active user?](#what-is-an-active-user "Direct link to heading")
+### [What is an active user?](#what-is-an-active-user)
 
 An active user is a unique user that has an [app session](#what-qualifies-as-an-app-session) in a given time period.
 
-### [What qualifies as an app session?](#what-qualifies-as-an-app-session "Direct link to heading")
+### [What qualifies as an app session?](#what-qualifies-as-an-app-session)
 
 An app session is a period of user activity in your app. A new app session is started whenever the app is opened, assuming at least 5 minutes have elapsed since the last app session started.
 
-### [Why are counts of active users different from counts of tracked users?](#why-are-counts-of-active-users-different-from-counts-of-tracked-users "Direct link to heading")
+### [Why are counts of active users different from counts of tracked users?](#why-are-counts-of-active-users-different-from-counts-of-tracked-users)
 
 Depending on your Radar SDK implementation, a user may have an [app session](#what-qualifies-as-an-app-session) without sending a location event to Radar. Conversely, a user may send a location event to Radar in the background (assuming they have granted background location permissions) without opening the app.
 

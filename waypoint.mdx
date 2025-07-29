@@ -21,10 +21,10 @@ To get started, you'll need a Radar account. Don't have a Radar account yet? [Si
 
 ## Examples
 
-### Testing On-Premise Mode
+### Testing on-premise mode
 
 1. To get started, make sure you've opted-in to foreground or "while in use" permissions and notifications are enabled. Click on the settings icon on the top right to ensure Waypoint is configured correctly (See image A below).
-2. Create [geofences](https://radar.com/geofences#dashboard) in Radar.
+2. Create [geofences](/geofences#dashboard) in Radar.
 3. Open Waypoint and navigate to the "My Location" tab. You should see "Not in a geofence". Travel to a configured geofence (See image B below).
 4. After entering the geofence, open Waypoint, navigate to the "My Location" tab. Waypoint should display "Welcome to \<geofence_name\>". You should also receive a notification "Entered geofence \<geofence_name\>" (See image C below).
 
@@ -43,7 +43,7 @@ To get started, you'll need a Radar account. Don't have a Radar account yet? [Si
 ### Testing Trips
 
 1. To get started, make sure you've opted-in to foreground or "While in use" permissions and notifications are enabled. (See image A below)
-2. Create [geofences](https://radar.com/geofences#dashboard) in Radar.
+2. Create [geofences](/geofences#dashboard) in Radar.
 3. Once you open Waypoint, you should see geofences nearby you. Click "Go" to start a trip to one of the configured geofences. Select your mode of travel from the options provided. Start navigating to your destination geofence. (See image B below)
 4. Events & notifications to expect as you travel to the destination geofence (See image C below):
    - _user.started_trip_ -\> "Started trip" notification from Waypoint
@@ -61,12 +61,68 @@ To get started, you'll need a Radar account. Don't have a Radar account yet? [Si
   <Card title="Image B" img="/images/waypoint/testing-trips-b.png">
     
   </Card>
-  <Card title="Image C1" img="/images/waypoint/testing-trips-c1">
+  <Card title="Image C1" img="/images/waypoint/testing-trips-c1.png">
+    
+  </Card>
+  <Card title="Image C2" img="/images/waypoint/testing-trips-c2.png">
+    
+  </Card>
+  <Card title="Image C3" img="/images/waypoint/testing-trips-c3.png">
+    
+  </Card>
+  <Card title="Image D - NEED HIFI IMAGE">
     
   </Card>
 </CardGroup>
 
-## [Support](#support)
+![Trip tracking dashboard](/images/waypoint/testing-trips-e.png)
+
+## Testing background mode
+
+1. To get started, make sure you've opted-in to background or "Always allow" permissions and notifications are enabled. You'll have to navigate to your device settings to enable background tracking and toggle the "Background tracking" option in Waypoint. Click on the settings icon on the top right to ensure Waypoint is configured correctly. (See image A below)
+2. Create [geofences](/geofences#dashboard) in Radar.
+3. Open Waypoint and navigate to "My Location" tab. You should see "Not in a geofence". Travel to a configured geofence. (See image B below)
+4. After entering the geofence, you should receive an entry notification while Waypoint is closed and/or your device is shut off. Once you open Waypoint, navigate to "My Location" tab. As shown below, Waypoint should show "Welcome to \<geofence_name\>". (See image C below)
+
+<CardGroup cols={3}>
+  <Card title="Image A" img="/images/waypoint/testing-background-mode-a.png">
+    
+  </Card>
+  <Card title="Image B" img="/images/f2vbu16fzuly/20a2pfNHbTBZ2SDEyK8N0E/88b2fa071e535ea07ad1618ca1fdb937/waypointOnPremModeNotInGeofence.PNG">
+    
+  </Card>
+  <Card title="Image C" img="/waypointOnPremModeInGeofence.png">
+    
+  </Card>
+</CardGroup>
+
+## Testing Beacons
+
+Note: You can test beacons in either foreground or background mode.
+
+1. To get started, ensure the following settings are enabled (See image A below):
+
+- Opt-in to foreground or background permissions.
+- Ensure notifications are enabled.
+- Once you click on the settings icon on the top right, you can toggle "Beacons" on. This should prompt you to allow Bluetooth permissions. Alternatively, use [remote SDK configuration](/sdk/remote-configuration) & set _beacons_ to _true_. Once done, you should see the "Beacons" toggle enabled within the Waypoint settings page.
+
+2. Create [beacons](/geofencing/beacons) in Radar.
+3. Open Waypoint and navigate to "My Location" tab. You should see "No Beacons Found". (See image B below)
+4. After entering the beacon radius, open Waypoint, navigate to "My Location" tab. As shown below, Waypoint should show "\<beacon_name\>" under the "Beacons" section. You should also receive a notification "Entered beacon \<beacon_name\>". (See image C below)
+
+<CardGroup cols={3}>
+  <Card title="Image A" img="/images/waypoint/testing-beacons-a.png">
+    
+  </Card>
+  <Card title="Image B" img="/images/waypoint/testing-beacons-b.png">
+    
+  </Card>
+  <Card title="Image C" img="/images/waypoint/testing-beacons-c.png">
+    
+  </Card>
+</CardGroup>
+
+## Support
 
 Have questions or difficulties with Waypoint? Contact us at [radar.com/support](https://radar.com/support).
 
