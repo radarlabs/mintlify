@@ -1,0 +1,41 @@
+.link {
+  color: #0005FB;
+  font-weight: normal;
+  border-bottom: none;
+}
+
+.callout {
+  font-size: 1rem;
+  font-weight: 400;
+  margin: 1rem 0 2rem;
+  border-radius: 4px;
+  border: 1px solid;
+  .link {
+    font-weight: bold;
+  }
+}
+
+
+.callout[data-callout-type="info"] {
+  color: #051723;
+  background-color: #EAF1F6;
+  border-color: #ACBDC8;
+  .link {
+    color: #051723;
+  }
+  svg {
+    fill: #051723;
+  }
+}
+
+.callout[data-callout-type="warning"] {
+  color: #FFE2CC;
+  background-color: #fff1e4;
+  border-color: rgba(109,51,0,.25);
+  .link {
+    color: #662C00;
+  }
+  svg {
+    stroke: #662C00;  
+  }
+}
