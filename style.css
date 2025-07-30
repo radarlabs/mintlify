@@ -1,7 +1,3 @@
-/* Text styling */
-
-
-
 /* Link styling */
 
 .link {
@@ -37,6 +33,7 @@
   }
 }
 
+/* === Light mode callouts === */
 
 .callout[data-callout-type="info"] {
   color: #051723;
@@ -62,3 +59,33 @@
   }
 }
 
+
+/* === Dark mode callouts === */
+
+.dark .callout[data-callout-type="info"] {
+  color: #DBE5EB;
+  background-color: #2B363D;
+  border-color: #8BA1B0;
+
+  .link {
+    color: #DBE5EB;
+  }
+
+  svg {
+    fill: #DBE5EB;
+  }
+}
+
+.dark .callout[data-callout-type="warning"] {
+  color: #E5AE83;
+  background-color: #411D01;
+  border-color: #E5AE83;
+
+  .link {
+    color: #E5AE83;
+  }
+
+  svg {
+    stroke: #E5AE83;
+  }
+}
