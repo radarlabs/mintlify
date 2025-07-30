@@ -49,7 +49,7 @@ All integration delivery can be monitored via the integration's event logs by cl
 
 ## Example use cases
 
-### Send a personalized push notification when a user arrives at a store[#](#send-a-personalized-push-notification-when-a-user-arrives-at-a-store)
+### Send a personalized push notification when a user arrives at a store
 
 1. Create [Geofences](/geofencing/geofences) in Radar with the geofence tag set to `store`. The geofence tag will be used to trigger messages for the subset of geofence entries where this tag is present.
 2. Set up a Braze campaign triggered from the Radar geofence entry event, the `entered_geofence` custom event in Braze, and add property filtering where `geofence_tag` is `store`. These same events can be used as part of a Braze [Canvas](https://www.braze.com/docs/user_guide/engagement_tools/canvas) and the event properties can be used in message personalization with [Liquid](https://www.braze.com/docs/user_guide/personalization_and_dynamic_content/liquid).
