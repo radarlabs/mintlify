@@ -1,20 +1,12 @@
 ---
 title: "Maps"
 ---
-import Map from '/snippets/components/Map.mdx'
-import FitBoundsMap from '/snippets/components/examples/FitBoundsMap.mdx'
-import CustomImageMarkerMap from '/snippets/components/examples/CustomImageMarkerMap.mdx'
-import CustomLanguageMap from '/snippets/components/examples/CustomLanguageMap.mdx'
-import CustomPopupMap from '/snippets/components/examples/CustomPopupMap.mdx'
-import RouteMap from '/snippets/components/examples/RouteMap.mdx'
-import PolygonMap from '/snippets/components/examples/PolygonMap.mdx'
-import GlobeMap from '/snippets/components/examples/GlobeMap.mdx'
 
 Radar Maps is a cost-effective alternative to Google Maps Platform and Mapbox.
 
 For example, here's a Radar Map displaying a marker for Radar HQ:
 
-<Map />
+<iframe src="https://dashboard.radar.com/maps" width="100%" height="500" frameBorder="0" allowFullScreen />
 
 You can also check out the [maps explorer](https://radar.com/dashboard/maps/maps-explorer/maps) in the dashboard, or check out a full-page [maps demo](https://radar.com/demo/maps) and [store locator demo](https://radar.com/demo/locator).
 
@@ -359,7 +351,7 @@ Use the `map.fitToMarkers()` function to center and zoom the map to encompass al
 
 In the example below, clicking the map will place a new marker, and refit the map so all markers are visible. Clicking a marker will remove it.
 
-<FitBoundsMap />
+<iframe src="https://dashboard.radar.com/maps?type=fitBounds" width="100%" height="500" frameBorder="0" allowFullScreen />
 
 <CodeGroup>
 
@@ -461,7 +453,7 @@ export default RadarMap;
 
 Add a `Marker` with a custom image to the map by specifying the image URL.
 
-<CustomImageMarkerMap />
+<iframe src="https://dashboard.radar.com/maps?type=customImageMarker" width="100%" height="500" frameBorder="0" allowFullScreen />
 
 <CodeGroup>
 
@@ -557,7 +549,7 @@ export default RadarMap;
 
 Display a popup with customized HTML.
 
-<CustomPopupMap />
+<iframe src="https://dashboard.radar.com/maps?type=customPopup" width="100%" height="500" frameBorder="0" allowFullScreen />
 
 ### Union Square
 
@@ -703,7 +695,7 @@ Polylines can be added to the map with the `map.addPolyline` function, and accep
 
 Lines can be styled according to the MapLibre [Line Layer properties](https://maplibre.org/maplibre-style-spec/layers/#line).
 
-<RouteMap />
+<iframe src="https://dashboard.radar.com/maps?type=route" width="100%" height="500" frameBorder="0" allowFullScreen />
 
 <CodeGroup>
 
@@ -857,7 +849,7 @@ Polygons or complex shapes can be drawn on a Radar Map by providing a GeoJSON Po
 
 Polygon features can be styled according to the polygon options highlighted above.
 
-<PolygonMap />
+<iframe src="https://dashboard.radar.com/maps?type=polygon" width="100%" height="500" frameBorder="0" allowFullScreen />
 
 <CodeGroup>
 
@@ -981,7 +973,7 @@ Display a Radar Map with an interactive globe projection.
 
 Only available on MapLibre v5 and above.
 
-<GlobeMap />
+<iframe src="https://dashboard.radar.com/maps?type=globe" width="100%" height="500" frameBorder="0" allowFullScreen />
 
 <CodeGroup>
 
@@ -1079,7 +1071,7 @@ The map display language can be changed by setting the `language` option to the 
 
 You can also set `language: "local"` to use the device language by default.
 
-<CustomLanguageMap />
+<iframe src="https://dashboard.radar.com/maps?type=customLanguage" width="100%" height="500" frameBorder="0" allowFullScreen />
 
 Local (local)
 
