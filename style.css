@@ -77,19 +77,19 @@
 }
 
 .dark .callout[data-callout-type="warning"] {
-  color: #E5AE83;
+  color: #FFE2CC;
   background-color: #411D01;
   border-color: #E5AE83;
 
   .link {
-    color: #E5AE83;
+    color: #FFE2CC;
   }
 
   .prose {
-  color: #E5AE83;
+  color: #FFE2CC;
 }
 
   svg {
-    stroke: #E5AE83;
+    stroke: #FFE2CC;
   }
 }
