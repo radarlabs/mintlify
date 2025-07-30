@@ -11,9 +11,8 @@
 }
 
 /* Dark mode link styling */
-@media (prefers-color-scheme: dark) {
-  .link {
-    color: #0005FB;
+  .link:is(.dark *){
+    color: #BFD1FF;
     font-weight: normal;
     border-bottom: none;
   }
@@ -21,7 +20,6 @@
   .link:hover {
     text-decoration: underline;
   }
-}
 
 
 /* Info / Callout styling */
