@@ -11,16 +11,10 @@
 }
 
 /* Dark mode link styling */
-  .link:is(.dark *){
-    color: #BFD1FF;
-    font-weight: normal;
-    border-bottom: none;
-  }
 
-  .link:hover {
-    text-decoration: underline;
-  }
-
+.dark .link {
+  color: #BFD1FF;
+}
 
 /* Info / Callout styling */
 
