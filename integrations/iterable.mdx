@@ -107,64 +107,64 @@ Navigate to the **Users** page in Radar and select a user who exists in Iterable
 
 Note that Radar uses the special string `"(null)"` to represent `null` user data field values.
 
-| Radar User Field                     | Iterable User Data Field                 | Type          | Example Value                              | Context Type                    |
-| ------------------------------------ | ---------------------------------------- | ------------- | ------------------------------------------ | ------------------------------- |
-| `userId`                             | `userId`                                 | string        | `"1"`                                      |                                 |
-| `location.coordinates[0]`            | `radar_geo_location.lon`                 | number        | `-76.350663`                               |                                 |
-| `location.coordinates[1]`            | `radar_geo_location.lat`                 | number        | `39.525665`                                |                                 |
-| `locationAuthorization`              | `radarLocationAuthorization`             | string        | `"GRANTED_FOREGROUND"`                     |                                 |
-| `locationAccuracyAuthorization`      | `radarLocationAccuracyAuthorization`     | string        | `"FULL"`                                   |                                 |
-| `_id`                                | `radarId`                                | string        | `"5b2c0906f5874b001aecfd8d"`               |                                 |
-| `updatedAt`                          | `radarUpdatedAt`                         | timestamp     | `"2018-06-22T15:23:39.000Z"`               |                                 |
-| `segments[*].externalId`             | `radarSegmentExternalIds`                | array[string] | `["starbucks-visitors"]`                   |                                 |
-| `topChains[*].slug`                  | `radarTopChainSlugs`                     | array[string] | `["starbucks", "walmart"]`                 |                                 |
-| `topChains[*].externalId`            | `radarTopChainExternalIds`               | array[string] | `["123", "456"]`                           |                                 |
-| `geofences[*]._id`                   | `radarGeofenceIds`                       | array[string] | `["5b2c0906f5874b001aecfd8e"]`             | [Geofences](/geofences)         |
-| `geofences[*].description`           | `radarGeofenceDescriptions`              | array[string] | `["Store #123"]`                           | [Geofences](/geofences)         |
-| `geofences[*].tag`                   | `radarGeofenceTags`                      | array[string] | `["store"]`                                | [Geofences](/geofences)         |
-| `geofences[*].externalId`            | `radarGeofenceExternalIds`               | array[string] | `["123"]`                                  | [Geofences](/geofences)         |
-| `place._id`                          | `radarPlaceId`                           | string        | `"59302bcf8f27e8a156bd4f91"`               | [Places](/places)               |
-| `place.name`                         | `radarPlaceName`                         | string        | `"Starbucks"`                              | [Places](/places)               |
-| `place.categories`                   | `radarPlaceCategories`                   | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | [Places](/places)               |
-| `place.chain.slug`                   | `radarPlaceChainSlug`                    | string        | `"starbucks"`                              | [Places](/places)               |
-| `place.chain.name`                   | `radarPlaceChainName`                    | string        | `"Starbucks"`                              | [Places](/places)               |
-| `country.code`                       | `radarRegionCountryCode`                 | string        | `"US"`                                     | [Regions](/regions)             |
-| `country.name`                       | `radarRegionCountryName`                 | string        | `"United States"`                          | [Regions](/regions)             |
-| `state.code`                         | `radarRegionStateCode`                   | string        | `"MD"`                                     | [Regions](/regions)             |
-| `state.name`                         | `radarRegionStateName`                   | string        | `"Maryland"`                               | [Regions](/regions)             |
-| `dma.code`                           | `radarRegionDMACode`                     | string        | `"26"`                                     | [Regions](/regions)             |
-| `dma.name`                           | `radarRegionDMAName`                     | string        | `"Baltimore"`                              | [Regions](/regions)             |
-| `postalCode.code`                    | `radarRegionPostalCode`                  | string        | `"21014"`                                  | [Regions](/regions)             |
-| `trip.externalId`                    | `radarTripExternalId`                    | string        | `"299"`                                    | [Trip Tracking](/trip-tracking) |
-| `trip.destinationGeofenceTag`        | `radarTripDestinationGeofenceTag`        | string        | `"store"`                                  | [Trip Tracking](/trip-tracking) |
-| `trip.destinationGeofenceExternalId` | `radarTripDestinationGeofenceExternalId` | string        | `"123"`                                    | [Trip Tracking](/trip-tracking) |
-| `beacons[*]._id`                     | `radarBeaconIds`                         | array[string] | `["5b2c0906f5874b001aecfd8f"]`             | [Beacons](/beacons)             |
-| `beacons[*].description`             | `radarBeaconDescriptions`                | array[string] | `["Store #123 - Drive-Thru"]`              | [Beacons](/beacons)             |
-| `beacons[*].tag`                     | `radarBeaconTags`                        | array[string] | `["drive-thru"]`                           | [Beacons](/beacons)             |
-| `beacons[*].externalId`              | `radarBeaconExternalIds`                 | array[string] | `["123"]`                                  | [Beacons](/beacons)             |
+| Radar User Field                     | Iterable User Data Field                 | Type          | Example Value                              | Context Type                       |
+| ------------------------------------ | ---------------------------------------- | ------------- | ------------------------------------------ | ---------------------------------- |
+| `userId`                             | `userId`                                 | string        | `"1"`                                      |                                    |
+| `location.coordinates[0]`            | `radar_geo_location.lon`                 | number        | `-76.350663`                               |                                    |
+| `location.coordinates[1]`            | `radar_geo_location.lat`                 | number        | `39.525665`                                |                                    |
+| `locationAuthorization`              | `radarLocationAuthorization`             | string        | `"GRANTED_FOREGROUND"`                     |                                    |
+| `locationAccuracyAuthorization`      | `radarLocationAccuracyAuthorization`     | string        | `"FULL"`                                   |                                    |
+| `_id`                                | `radarId`                                | string        | `"5b2c0906f5874b001aecfd8d"`               |                                    |
+| `updatedAt`                          | `radarUpdatedAt`                         | timestamp     | `"2018-06-22T15:23:39.000Z"`               |                                    |
+| `segments[*].externalId`             | `radarSegmentExternalIds`                | array[string] | `["starbucks-visitors"]`                   |                                    |
+| `topChains[*].slug`                  | `radarTopChainSlugs`                     | array[string] | `["starbucks", "walmart"]`                 |                                    |
+| `topChains[*].externalId`            | `radarTopChainExternalIds`               | array[string] | `["123", "456"]`                           |                                    |
+| `geofences[*]._id`                   | `radarGeofenceIds`                       | array[string] | `["5b2c0906f5874b001aecfd8e"]`             | [Geofences](/geofencing/geofences) |
+| `geofences[*].description`           | `radarGeofenceDescriptions`              | array[string] | `["Store #123"]`                           | [Geofences](/geofencing/geofences) |
+| `geofences[*].tag`                   | `radarGeofenceTags`                      | array[string] | `["store"]`                                | [Geofences](/geofencing/geofences) |
+| `geofences[*].externalId`            | `radarGeofenceExternalIds`               | array[string] | `["123"]`                                  | [Geofences](/geofencing/geofences) |
+| `place._id`                          | `radarPlaceId`                           | string        | `"59302bcf8f27e8a156bd4f91"`               | [Places](/geofencing/places)       |
+| `place.name`                         | `radarPlaceName`                         | string        | `"Starbucks"`                              | [Places](/geofencing/places)       |
+| `place.categories`                   | `radarPlaceCategories`                   | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | [Places](/geofencing/places)       |
+| `place.chain.slug`                   | `radarPlaceChainSlug`                    | string        | `"starbucks"`                              | [Places](/geofencing/places)       |
+| `place.chain.name`                   | `radarPlaceChainName`                    | string        | `"Starbucks"`                              | [Places](/geofencing/places)       |
+| `country.code`                       | `radarRegionCountryCode`                 | string        | `"US"`                                     | [Regions](/geofencing/regions)     |
+| `country.name`                       | `radarRegionCountryName`                 | string        | `"United States"`                          | [Regions](/geofencing/regions)     |
+| `state.code`                         | `radarRegionStateCode`                   | string        | `"MD"`                                     | [Regions](/geofencing/regions)     |
+| `state.name`                         | `radarRegionStateName`                   | string        | `"Maryland"`                               | [Regions](/geofencing/regions)     |
+| `dma.code`                           | `radarRegionDMACode`                     | string        | `"26"`                                     | [Regions](/geofencing/regions)     |
+| `dma.name`                           | `radarRegionDMAName`                     | string        | `"Baltimore"`                              | [Regions](/geofencing/regions)     |
+| `postalCode.code`                    | `radarRegionPostalCode`                  | string        | `"21014"`                                  | [Regions](/geofencing/regions)     |
+| `trip.externalId`                    | `radarTripExternalId`                    | string        | `"299"`                                    | [Trip Tracking](/geofencing/trips) |
+| `trip.destinationGeofenceTag`        | `radarTripDestinationGeofenceTag`        | string        | `"store"`                                  | [Trip Tracking](/geofencing/trips) |
+| `trip.destinationGeofenceExternalId` | `radarTripDestinationGeofenceExternalId` | string        | `"123"`                                    | [Trip Tracking](/geofencing/trips) |
+| `beacons[*]._id`                     | `radarBeaconIds`                         | array[string] | `["5b2c0906f5874b001aecfd8f"]`             | [Beacons](/geofencing/beacons)     |
+| `beacons[*].description`             | `radarBeaconDescriptions`                | array[string] | `["Store #123 - Drive-Thru"]`              | [Beacons](/geofencing/beacons)     |
+| `beacons[*].tag`                     | `radarBeaconTags`                        | array[string] | `["drive-thru"]`                           | [Beacons](/geofencing/beacons)     |
+| `beacons[*].externalId`              | `radarBeaconExternalIds`                 | array[string] | `["123"]`                                  | [Beacons](/geofencing/beacons)     |
 
 ## Event mapping
 
-| Radar Event                         | Context Type                    | Iterable Event                    |
-| ----------------------------------- | ------------------------------- | --------------------------------- |
-| `user.entered_geofence`             | [Geofences](/geofences)         | `radarGeofenceEntered`            |
-| `user.exited_geofence`              | [Geofences](/geofences)         | `radarGeofenceExited`             |
-| `user.dwelled_in_geofence`          | [Geofences](/geofences)         | `radarDwelledInGeofence`          |
-| `user.entered_place`                | [Places](/places)               | `radarPlaceEntered`               |
-| `user.exited_place`                 | [Places](/places)               | `radarPlaceExited`                |
-| `user.entered_region_country`       | [Regions](/regions)             | `radarCountryEntered`             |
-| `user.exited_region_country`        | [Regions](/regions)             | `radarCountryExited`              |
-| `user.entered_region_state`         | [Regions](/regions)             | `radarStateEntered`               |
-| `user.exited_region_state`          | [Regions](/regions)             | `radarStateExited`                |
-| `user.entered_region_dma`           | [Regions](/regions)             | `radarDMAEntered`                 |
-| `user.exited_region_dma`            | [Regions](/regions)             | `radarDMAExited`                  |
-| `user.started_trip`                 | [Trip Tracking](/trip-tracking) | `radarTripStarted`                |
-| `user.updated_trip`                 | [Trip Tracking](/trip-tracking) | `radarTripUpdated`                |
-| `user.approaching_trip_destination` | [Trip Tracking](/trip-tracking) | `radarApproachingTripDestination` |
-| `user.arrived_at_trip_destination`  | [Trip Tracking](/trip-tracking) | `radarArrivedTripDestination`     |
-| `user.stopped_trip`                 | [Trip Tracking](/trip-tracking) | `radarTripStopped`                |
-| `user.entered_beacon`               | [Beacons](/beacons)             | `radarBeaconEntered`              |
-| `user.exited_beacon`                | [Beacons](/beacons)             | `radarBeaconExited`               |
+| Radar Event                         | Context Type                       | Iterable Event                    |
+| ----------------------------------- | ---------------------------------- | --------------------------------- |
+| `user.entered_geofence`             | [Geofences](/geofencing/geofences) | `radarGeofenceEntered`            |
+| `user.exited_geofence`              | [Geofences](/geofencing/geofences) | `radarGeofenceExited`             |
+| `user.dwelled_in_geofence`          | [Geofences](/geofencing/geofences) | `radarDwelledInGeofence`          |
+| `user.entered_place`                | [Places](/geofencing/places)       | `radarPlaceEntered`               |
+| `user.exited_place`                 | [Places](/geofencing/places)       | `radarPlaceExited`                |
+| `user.entered_region_country`       | [Regions](/geofencing/regions)     | `radarCountryEntered`             |
+| `user.exited_region_country`        | [Regions](/geofencing/regions)     | `radarCountryExited`              |
+| `user.entered_region_state`         | [Regions](/geofencing/regions)     | `radarStateEntered`               |
+| `user.exited_region_state`          | [Regions](/geofencing/regions)     | `radarStateExited`                |
+| `user.entered_region_dma`           | [Regions](/geofencing/regions)     | `radarDMAEntered`                 |
+| `user.exited_region_dma`            | [Regions](/geofencing/regions)     | `radarDMAExited`                  |
+| `user.started_trip`                 | [Trip Tracking](/geofencing/trips) | `radarTripStarted`                |
+| `user.updated_trip`                 | [Trip Tracking](/geofencing/trips) | `radarTripUpdated`                |
+| `user.approaching_trip_destination` | [Trip Tracking](/geofencing/trips) | `radarApproachingTripDestination` |
+| `user.arrived_at_trip_destination`  | [Trip Tracking](/geofencing/trips) | `radarArrivedTripDestination`     |
+| `user.stopped_trip`                 | [Trip Tracking](/geofencing/trips) | `radarTripStopped`                |
+| `user.entered_beacon`               | [Beacons](/geofencing/beacons)     | `radarBeaconEntered`              |
+| `user.exited_beacon`                | [Beacons](/geofencing/beacons)     | `radarBeaconExited`               |
 
 ### radarGeofenceEntered
 
