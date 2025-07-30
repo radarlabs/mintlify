@@ -12,8 +12,12 @@
 
 /* Dark mode link styling */
 
-.dark .link {
-  color: #BFD1FF;
+.dark .prose .link {
+  color: #BFD1FF !important;
+}
+
+.dark .prose .link:hover {
+  text-decoration: underline;
 }
 
 /* Info / Callout styling */
