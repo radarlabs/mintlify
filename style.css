@@ -4,6 +4,10 @@
   border-bottom: none;
 }
 
+.link:hover {
+  text-decoration: underline;
+}
+
 .callout {
   font-size: 1rem;
   font-weight: 400;
