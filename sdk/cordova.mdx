@@ -10,7 +10,7 @@ See the source on GitHub [here](https://github.com/radarlabs/cordova-plugin-rada
 
 Install the Cordova plugin:
 
-```
+```javascript
 cordova plugin add @radarlabs/cordova-plugin-radar
 ```
 
@@ -18,7 +18,7 @@ Before writing any JavaScript, you must integrate the Radar SDK with your iOS an
 
 On iOS, you must add location usage descriptions and background modes to your `Info.plist`. Initialize the SDK in `application:didFinishLaunchingWithOptions:` in `AppDelegate.m`, passing in your Radar publishable API key:
 
-```
+```c
 #import <RadarSDK/RadarSDK.h>
 @implementation AppDelegate
 -	(BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {  
@@ -29,7 +29,7 @@ On iOS, you must add location usage descriptions and background modes to your `I
 
 On Android, you must add the Google Play Services library to your project, then add the SDK to your project, preferably using Gradle. Finally, initialize the SDK in `onCreate()` in `MainActivity.java`, passing in your Radar publishable API key:
 
-```
+```kotlin
 import io.radar.sdk.Radar;
 
 public class MainActivity extends CordovaActivity {
@@ -56,7 +56,7 @@ Use your `Test Publishable` key for testing and non-production environments. Use
   Note that you should always use your publishable API keys, which are restricted in scope, in the SDK. Do not use your secret API keys, which are unrestricted in scope, in any client-side code.
 </Warning>
 
-```
+```swift
 cordova.plugins.radar.initialize(publishableKey);
 ```
 
@@ -64,7 +64,7 @@ cordova.plugins.radar.initialize(publishableKey);
 
 To identify the user when logged in, call:
 
-```
+```swift
 cordova.plugins.radar.setUserId(userId);
 ```
 
@@ -72,7 +72,7 @@ where `userId` is a stable unique ID for the user.
 
 To set an optional dictionary of custom metadata for the user, call:
 
-```
+```swift
 cordova.plugins.radar.setMetadata(metadata);
 ```
 
@@ -80,7 +80,7 @@ where `metadata` is a JSON object with up to 16 keys and values of type string, 
 
 Finally, to set an optional description for the user, displayed in the dashboard, call:
 
-```
+```swift
 cordova.plugins.radar.setDescription(description);
 ```
 
@@ -96,7 +96,7 @@ Before tracking the user's location, the user must have granted location permiss
 
 To determine the whether user has granted location permissions for the app, call:
 
-```
+```javascript
 cordova.plugins.radar.getPermissionsStatus((status) => {
   // do something with status
 });
@@ -111,7 +111,7 @@ cordova.plugins.radar.getPermissionsStatus((status) => {
 
 To request location permissions for the app, call:
 
-```
+```javascript
 cordova.plugins.radar.requestPermissions(background);
 ```
 
@@ -125,7 +125,7 @@ Once you have initialized the SDK and the user has granted permissions, you can 
 
 To track the user's location in the foreground, call:
 
-```
+```javascript
 cordova.plugins.radar.trackOnce((result) => {  // do something with result.status, result.location, result.events, result.user});
 ```
 
@@ -161,7 +161,7 @@ Learn about platform-specific implementations of these presets in the [iOS SDK d
 
 To start tracking the user's location in the background, call one of:
 
-```
+```javascript
 cordova.plugins.radar.startTrackingEfficient();
 
 cordova.plugins.radar.startTrackingResponsive();
@@ -173,7 +173,7 @@ You only need to call these methods once, as these settings will be persisted ac
 
 Though we recommend using presets for most use cases, you can customize the tracking options. See the [tracking options reference](/sdk/tracking).
 
-```
+```javascript
 // optionally adjust foreground service options for android
 cordova.plugins.radar.setForegroundServiceOptions({
   options: {
@@ -201,13 +201,13 @@ cordova.plugins.radar.startTrackingCustom({
 
 To determine whether tracking has been started, call:
 
-```
+```javascript
 cordova.plugins.radar.isTracking();
 ```
 
 To stop tracking the user's location in the background (e.g., when the user logs out), call:
 
-```
+```javascript
 cordova.plugins.radar.stopTracking();
 ```
 
@@ -215,7 +215,7 @@ Learn about platform-specific implementations of these functions in the [iOS SDK
 
 To listen for events, location updates, and errors, you can add event listeners:
 
-```
+```javascript
 cordova.plugins.radar.onClientLocation((location, stopped, source) => {
   // do something with location, stopped, source
 });
@@ -241,7 +241,7 @@ Add event listeners outside of your view lifecycle if you want them to work when
 
 You can also remove event listeners:
 
-```
+```javascript
 cordova.plugins.radar.offClientLocation();
 
 cordova.plugins.radar.offLocation();
@@ -255,7 +255,7 @@ cordova.plugins.radar.offError();
 
 On iOS and Android, to start a trip to a destination, call:
 
-```
+```javascript
 cordova.plugins.radar.startTrip({
   externalId: '299',
   destinationGeofenceTag: 'store',
@@ -269,7 +269,7 @@ cordova.plugins.radar.startTrackingContinuous();
 
 Update information about the trip. Status can be set to 'unknown' to leave the status unchanged as it will update via location tracking.
 
-```
+```javascript
 cordova.plugins.radar.updateTrip({
   status:'arrived',
   options: {
@@ -285,7 +285,7 @@ cordova.plugins.radar.updateTrip({
 
 Later, to complete the trip and stop tracking, call:
 
-```
+```javascript
 cordova.plugins.radar.completeTrip().then((result) => {
   // do something with result.status
 });
@@ -294,7 +294,7 @@ cordova.plugins.radar.stopTracking();
 
 Or, to cancel the trip and stop tracking, call:
 
-```
+```javascript
 cordova.plugins.radar.cancelTrip().then((result) => {
   // do something with result.status
 });
@@ -307,7 +307,7 @@ Learn more about [trip tracking](/trip-tracking).
 
 You can manually update the user's location by calling:
 
-```
+```javascript
 cordova.plugins.radar.trackOnce({  latitude: 39.2904,  longitude: -76.6122,  accuracy: 65}, (result) => {  // do something with result.status, result.location, result.events, result.user});
 ```
 
@@ -321,7 +321,7 @@ The Cordova plugin also exposes APIs for anonymous context, geocoding, search, a
 
 Get a single location update without sending it to the server:
 
-```
+```javascript
 cordova.plugins.radar.getLocation((result) => {
   // do something with result.status, result.location
 });
@@ -331,7 +331,7 @@ cordova.plugins.radar.getLocation((result) => {
 
 With the [context API](/api#context), get context for a location without sending device or user identifiers to the server:
 
-```
+```javascript
 cordova.plugins.radar.getContext({
   latitude: 40.783826,
   longitude: -73.975363,
@@ -345,7 +345,7 @@ cordova.plugins.radar.getContext({
 
 With the [forward geocoding API](/api#forward-geocode), geocode an address, converting address to coordinates:
 
-```
+```javascript
 cordova.plugins.radar.geocode('20 jay st brooklyn ny', (result) => {
   // do something with result.status, result.addresses
 });
@@ -353,7 +353,7 @@ cordova.plugins.radar.geocode('20 jay st brooklyn ny', (result) => {
 
 With the [reverse geocoding API](/api#reverse-geocode), reverse geocode a location, converting coordinates to address:
 
-```
+```javascript
 cordova.plugins.radar.reverseGeocode({
   latitude: 40.783826,
   longitude: -73.975363
@@ -364,7 +364,7 @@ cordova.plugins.radar.reverseGeocode({
 
 With the [IP geocoding API](/api#ip-geocode), geocode the device's current IP address, converting IP address to city, state, and country:
 
-```
+```javascript
 cordova.plugins.radar.ipGeocode((result) => {
   // do something with result.status, result.address
 });
