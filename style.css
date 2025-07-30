@@ -1,3 +1,5 @@
+/* Link styling */
+
 .link {
   color: #0005FB;
   font-weight: normal;
@@ -7,6 +9,22 @@
 .link:hover {
   text-decoration: underline;
 }
+
+/* Dark mode link styling */
+@media (prefers-color-scheme: dark) {
+  .link {
+    color: #0005FB;
+    font-weight: normal;
+    border-bottom: none;
+  }
+
+  .link:hover {
+    text-decoration: underline;
+  }
+}
+
+
+/* Info / Callout styling */
 
 .callout {
   font-size: 1rem;
@@ -43,3 +61,4 @@
     stroke: #662C00;
   }
 }
+
