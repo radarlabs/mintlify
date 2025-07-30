@@ -16,7 +16,7 @@ Once the webhook is setup, your Radar account team will setup the configuration 
 
 Finally, on the Radar [Geofences page](https://radar.com/dashboard/geofences), [import geofences](/geofencing/geofences#csv-import) for your restaurants. Use the tag from the Olo integration configuration for the geofence `tag` attribute.
 
-![Olo Webhook Configuration](/images/integrations/assets/images/olo_webhook_configuration-458f0f2bd2b1429164c93cadd79fe93d.png)
+![Olo Webhook Configuration Pn](/images/integrations/olo/olo_webhook_configuration.png)
 
 Radar will automatically create trips when new orders are placed, as well as complete or cancel trips when orders are completed or cancelled in Olo. Call `Radar.startTrip(tripOptions, trackingOptions)` with `tripOptions.externalId` set to the Olo order ID to start the Radar trip and enable tracking.
 
@@ -67,7 +67,7 @@ Sometimes, multiple orders are placed to the same store. To ensure that all orde
 
 ## Expo notifications
 
-Radar is a Customer Arrival Olo partner and can automatically provide _Approaching_ and _Arrival_ status updates to Olo Expo based on Radar trip tracking [events](/trip-tracking#trip-events). This keeps in-store teams up-to-date with real-time status updates on tracked mobile orders. Additionally, if your team utilizes the _Picked Up_ button in Olo Expo, this will automatically complete the Radar trip and capture completion time for trip duration and wait time analytics.
+Radar is a Customer Arrival Olo partner and can automatically provide _Approaching_ and _Arrival_ status updates to Olo Expo based on Radar trip tracking [events](/geofencing/trips#trip-events). This keeps in-store teams up-to-date with real-time status updates on tracked mobile orders. Additionally, if your team utilizes the _Picked Up_ button in Olo Expo, this will automatically complete the Radar trip and capture completion time for trip duration and wait time analytics.
 
 Configure Radar as a Customer Arrival Partnership Type via the Partner Management section of the Olo Dashboard if this was not completed to enable order firing. Select stores in the configuration where order firing will be enabled. Upon completion, reach out to your Radar account team to complete the order firing integration.
 
