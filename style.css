@@ -13,7 +13,7 @@
 /* Dark mode link styling */
 
 .dark .prose .link {
-  color: #BFD1FF !important;
+  color: #BFD1FF;
 }
 
 .dark .prose .link:hover {
