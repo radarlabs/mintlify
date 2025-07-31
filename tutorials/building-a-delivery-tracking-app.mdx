@@ -258,13 +258,13 @@ In this tutorial, we will build a delivery tracking iOS application which uses [
 
     Then initialize a `LocalNotificationManager` in the `LocationManager` class.
 
-    ```
+    ```swift
     var notificationManager = LocalNotificationManager()
     ```
 
     Finally, we need to update the listener logic from Step 6 in `LocationManager` to the following in order to send notifications:
 
-    ```
+    ```swift
     func didReceiveEvents(_ events: [RadarEvent], user: RadarUser?) {
         for event in events {
             if event.type == RadarEventType.userStartedTrip {
