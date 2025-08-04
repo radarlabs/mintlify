@@ -9,7 +9,7 @@ For example, here's a Radar Static Map displaying a marker for Radar HQ:
 <img src="https://api.radar.io/maps/static?width=910&height=320&center=40.73430,-73.99110&zoom=15&style=radar-default-v1&scale=2&markers=color:0x000257|40.73430,-73.99110&publishableKey=prj_live_pk_..." alt="Radar static map over New York City" />
 ```
 
-![Radar static map over New York City](/images/maps/maps/static)
+![Static Map Pn](/images/maps/static-map.png)
 
 ## How it works
 
@@ -23,7 +23,7 @@ Static Map images can be used inline with HTML `<img>` tags by setting the `src`
 
 `GET` `https://api.radar.io/maps/static`
 
-### [Parameters](#parameters)
+### Parameters
 
 | Name             | Default                                                     | Possible values                                                          | Description                                                                                                                                                                                                                           |
 | ---------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -32,7 +32,7 @@ Static Map images can be used inline with HTML `<img>` tags by setting the `src`
 | `center`         | none (required, unless markers are provided)                | string                                                                   | The coordinates specified in `latitude,longitude` format for the center of the map. If `center` is not provided then the map will be centered to visibly fit all markers in view.                                                     |
 | `zoom`           | none (required, unless bbox, markers, or path are provided) | number                                                                   | The `zoom` position of the map which is a number between `1` and `23`. If `zoom` is not provided then the map will fit the view to the markers.                                                                                       |
 | `scale`          | 1                                                           | number                                                                   | The scale or resolution of the map as a number between `1` and `3`. This is useful for high-density displays and will affect the width and height parameters by returning an image that is the product of the width/height and scale. |
-| `style`          | `radar-default-v1`                                          | `radar-default-v1`, `radar-light-v1`, `radar-dark-v1`, `CUSTOM_STYLE_ID` | The style of the map. One of Radar's out-of-the box styles, or a [custom style](/maps/maps#custom-styles) ID. See [map styles](https://radar.com/maps/maps#styles) for more details.                                                  |
+| `style`          | `radar-default-v1`                                          | `radar-default-v1`, `radar-light-v1`, `radar-dark-v1`, `CUSTOM_STYLE_ID` | The style of the map. One of Radar's out-of-the box styles, or a [custom style](/maps/maps#custom-styles) ID. See [map styles](/maps/maps#styles) for more details.                                                  |
 | `bbox`           | none                                                        | string                                                                   | The bbox or latitude and longitude bounds of the image. Specified as `min_latitude,min_longitude,max_latitude,max_longitude`. The image returned will fit the specified bounding box.                                                 |
 | `markers`        | none                                                        | string                                                                   | For rendering markers on the map. See [markers](#markers) for more details.                                                                                                                                                           |
 | `path`           | none                                                        | string                                                                   | For rendering paths on the map. See [paths](#paths) for more details.                                                                                                                                                                 |
@@ -62,7 +62,7 @@ For instance, to apply a single marker styling to multiple pins:
 https://api.radar.io/maps/static?width=900&height=600&style=radar-light-v1&scale=2&markers=color:0x000257|40.73430,-73.99110|40.706436,-73.997271&publishableKey=prj_live_pk_...
 ```
 
-![Radar Static Map over New York City](/images/maps/maps/static)
+![Static Map Two Pins Pn](/images/maps/static-map-two-pins.png)
 
 Additionally, if you want more than one marker style in an image, you can provide multiple `markers` parameters in the request. `markers=markerStyle1|markerLocation1|...&markers=markerStyle2|markerLocation2|...`
 
@@ -72,7 +72,7 @@ An example request with two different styles is defined below.
 https://api.radar.io/maps/static?width=900&height=600&center=37.80176,-122.42376&zoom=13&style=radar-dark-v1&scale=2&markers=color:0xD1F3E0|size:small|37.808387,-122.409673&markers=color:0xBFD1FF|37.822503,-122.478923&publishableKey=prj_live_pk_...
 ```
 
-![Radar Static Map over San Francisco](/images/maps/maps/static)
+![Static Map Two Pins Different Pn](/images/maps/static-map-two-pins-different.png)
 
 ### Paths
 
@@ -103,7 +103,7 @@ _pathStyle_ are specified in the following format `optionName:optionValue` and a
 https://api.radar.io/maps/static?width=900&height=600&style=radar-light-v1&scale=2&path=stroke:0xFF0000|width:3|border:0xFFFFFF|borderwidth:2|40.715442411463755,-74.01477925566485|40.71536228528052,-74.0135811740668|40.70948610234797,-74.01499068182932|40.70491834742046,-74.01675256653202|40.701953145830515,-74.01583638648677|40.70120514620143,-74.0143916410303|40.701819575084386,-74.01051549468332|40.70409024134315,-74.006357446784|40.706975211514106,-74.00167083347398|40.70871147591237,-73.99786516251531|40.709405968996606,-73.99455281927393|40.70961965771903,-73.99289664765297|40.71023400897673,-73.9875052804617|40.710901775653895,-73.9812682086125|40.711168880450145,-73.97918918466307|40.712798196502035,-73.97735682457207|40.71418709018175,-73.97682825916088|40.71765919762373,-73.97527780062218|40.72105100464597,-73.97464352212923|40.72334772071008,-73.97407971902413|40.72513696783835,-73.97267021126159|40.727032983196096,-73.97185974429856|40.728501692329786,-73.97566548297984|40.72588470062763,-73.97763879384702|40.72460287122638,-73.97837878542222|40.725671064108695,-73.98077494861835&path=|stroke:0x000257|width:3|border:0xFFFFFF|borderwidth:2|40.70376498115374,-73.98661916459334|40.700657698018915,-73.98670300220783|40.70003622399656,-73.9863583364594|40.70003622399656,-73.98677752453152|40.70514908788235,-73.98957211168081|40.71508654363487,-73.99501313325952|40.71646714228771,-73.99607566267477|40.72020611986693,-73.99421623619756|40.71750257248871,-73.98518473616696|40.71128974971751,-73.96465514996301|40.71005286858238,-73.9601393999477|40.710486585375435,-73.95607565049288|40.71330547192764,-73.95433006645362|40.71577909038294,-73.95155990047758|40.71934554124928,-73.95243269249747&publishableKey=prj_live_pk_...
 ```
 
-![Radar Static Map with multiple paths](/images/maps/maps/static)
+![Static Map Paths Pn](/images/maps/static-map-paths.png)
 
 ## Examples
 
@@ -127,7 +127,7 @@ We can specify these options as query parameters in the image `src`.
 https://api.radar.io/maps/static?width=900&height=600&center=43.64259,-79.387087&zoom=13&style=radar-default-v1&scale=2&markers=color:0x000257|43.64259,-79.387087&publishableKey=prj_live_pk_...
 ```
 
-![Radar Static Map centered around the CN Tower](/images/maps/maps/static)
+![Static Map Embed Pn](/images/maps/static-map-embed.png)
 
 ### Autofitting map bounds to markers or paths
 
@@ -139,7 +139,7 @@ By omitting the `center` and `zoom` parameters, the map's position will be calcu
 https://api.radar.io/maps/static?width=900&height=600&style=radar-default-v1&scale=2&markers=color:0xFF428E|40.781196,-73.974075|40.782938,-73.959041&markers=color:0xE2052C|size:small|40.779344,-73.962486|40.76144,-73.977597|40.753664,-73.981905&path=stroke:0x000257|width:3|border:white|borderwidth:2|enc:qwwwF|cqbMIG@CBIMKIEeBiAKIKGeBkAIGMIs@e@q@c@IGKGeBgAKGMIcBiAECECKIGEw@g@c@YKGKIcBiAMIKGIGa@Wy@i@AAIGIEgBkAGESMAAi@]u@g@QKSOiAs@[UOKKGeBeASKHW[EEGOSEKIOEQAMOa@W]WQYQMIKKKKIMUg@COGc@GUIYU]W]]g@MSGGGCGAIAGEGKEKIKIIGGEKEOEOEKEIGIGEQKKEMIQKMIKGCYAOIMCIAG?G@G@K@I?GAI?GMQ?GM_@EUCOCQ?MAK?S?U?K@K@I@I@IBI@IBGBKBGBGDKDIDK@EBIHQDOBSBQ?O?Q?MAOAMAMEOIUEMKSIQGMS]EGMKSMc@UKEWGIESKUMOMSSQWMSKUMYM_@KYKUIWKSEKIMKMGIMMMKWOSMQGQI@G@IF_@QO[SSSMMGEEMCOAS@QD[RaAb@yAJWQKSMkBoAGEKGiBmAIEIGgBkAKGIGiBmAIGMGa@YgAs@IGGEgBkAKGKImAw@]UOKUOk@_@[SIEWQCCCCMGFSj@gB&publishableKey=prj_live_pk_...
 ```
 
-![Radar Static Map over New York City museums](/images/maps/maps/static)
+![Static Map Autofit Pn](/images/maps/static-map-autofit.png)
 
 ### Using a custom marker image
 
@@ -151,7 +151,7 @@ Note: images will be capped at 64 x 64 pixels.
 https://api.radar.io/maps/static?width=900&height=600&style=radar-default-v1&scale=2&markers=icon:https://radar.com/static/image/logo.png|40.73430,-73.99110&publishableKey=prj_live_pk_...
 ```
 
-![Radar Static Map with custom marker images](/images/maps/maps/static)
+![Static Map Custom Marker Pn](/images/maps/static-map-custom-marker.png)
 
 ### Rendering a route
 
@@ -161,7 +161,7 @@ Radar [Routing API](/api#routing) responses include the shape of the route in ei
 https://api.radar.io/maps/static?width=900&height=600&style=radar-light-v1&scale=2&markers=size:small|icon:https://radar.com/static/image/maps/map-pin-origin@3x.png|40.70425,-73.9865&markers=size:small|icon:https://radar.com/static/image/maps/map-pin-destination@3x.png|40.73412,-73.99128&path=borderwidth:2|border:0xFFFFFF|width:3|stroke:0x000257|enc:g{rwFnlrbMkArDENGRiCfIEJCJHFpA|@VPHFDOBGdC_IFQDO|BiHHUJBb@FxARLBH@l@HbANB?LDJF@@vAfAJHHF|AnAHFHHhA|@RNJJ|@r@LJJFHHh@`@p@h@JJJF~ApAJHFFzAlADDHFJHbAx@^XJHHHrB~ADDBBJFl@f@@@ZVb@%08Av@LJVRBURsAN}@BQ@K?AN_AFWDUPq@BMBKj@wBBMDMh@sBBMBMTy@Pu@BIDQPDd@NnATtBh@`@Ll@NJBD@`Cl@HBFBjBj@D@JBHBTFx@TJDVFTF`@LZAnA`@JBJDlDfALDLD~@`@fAd@hAf@JFHDjBbAJD@@LFj@ZJFVLZQtA}@ZUHGJKHKV]HKFIHIFGJIHGLILGjAg@t|Aks@H?JCJCRIFEHCHCH?FAF@F@HBFDFHDHBJ@L@JALAJCHEFEHE@C@C@I@I?I@G@I@KAc@AeACy@AG?I@KBODIBGBOF}@b@OFBgA?IM?Q?_@Ai@Cs@AI?I@K?yCKK?MAsAC_@AG?IAmBEI?[A&publishableKey=prj_live_pk_...
 ```
 
-![Radar Static Map with route](/images/maps/maps/static)
+![Static Map Routing Pn](/images/maps/static-map-routing.png)
 
 ### Images for high resolution device
 
@@ -173,13 +173,13 @@ The `scale` parameter can be used to increase the resolution of an image, while 
 https://api.radar.io/maps/static?width=200&height=200&center=40.71257,-74.00260&zoom=12.5&style=radar-default-v1&scale=2&publishableKey=prj_live_pk_...
 ```
 
-| 200x200 @ 1x scale                                               | 200x200 @ 2x scale                                               |
-| ---------------------------------------------------------------- | ---------------------------------------------------------------- |
-| ![Radar Static Map over New York City](/images/maps/maps/static) | ![Radar Static Map over New York City](/images/maps/maps/static) |
+| 200x200 @ 1x scale | 200x200 @ 2x scale |
+| ------------------ | ------------------ |
+| ![Static Map 1x scale](/images/maps/static-map-high-res-1x.png)     | ![Static Map 2x scale](/images/maps/static-map-high-res-2x.png)      |
 
 ## Coverage
 
-See [Maps coverage](https://radar.com/maps/maps#coverage) for more details.
+See [Maps coverage](/maps/maps#coverage) for more details.
 
 ## Support
 
