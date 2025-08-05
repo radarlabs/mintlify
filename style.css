@@ -33,9 +33,10 @@
   .link {
     font-weight: bold;
   }
-  > *:last-child {
-    padding-bottom: 0rem;
-  }
+}
+
+div[data-component-part="callout-content"] {
+  height: fit-content;
 }
 
 /* === Light mode callouts === */
