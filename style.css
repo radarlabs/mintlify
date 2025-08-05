@@ -39,6 +39,11 @@ div[data-component-part="callout-content"] {
   height: fit-content;
 }
 
+div[data-component-part="callout-icon"] {
+  height: 1rem;
+  width: 1rem;
+}
+
 /* === Light mode callouts === */
 
 .callout[data-callout-type="info"] {
