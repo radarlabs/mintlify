@@ -6,7 +6,7 @@ The Radar SDK abstracts away cross-platform differences between location service
 
 Learn how to integrate the iOS SDK below. You can also see the [source](https://github.com/radarlabs/radar-sdk-ios) and a [detailed SDK reference](https://radarlabs.github.io/radar-sdk-ios/Classes/Radar.html) on GitHub.
 
-## **Install SDK**
+## Install SDK
 
 The best way to install the SDK is via [CocoaPods](https://cocoapods.org/) or [Carthage](https://github.com/Carthage/Carthage).
 
@@ -16,7 +16,7 @@ The best way to install the SDK is via [CocoaPods](https://cocoapods.org/) or [C
 
 The SDK is small and typically adds less than 500 KB to your compiled app.
 
-### **CocoaPods**
+### CocoaPods
 
 Install [CocoaPods](https://cocoapods.org/). If you don't have an existing `Podfile`, run `pod init` in your project directory. Add the following to your `Podfile`:
 
@@ -28,7 +28,7 @@ Then, run `pod install`. You may also need to run `pod repo update`.
 
 After installing, use the `.xcworkspace` file to open your project in Xcode instead of the `.xcproject` file.
 
-### **Swift Package Manager**
+### Swift Package Manager
 
 In Xcode, go to _File_ \> _Swift Packages_ \> _Add Package Dependency_. Enter `https://github.com/radarlabs/radar-sdk-ios-spm.git` for the _Package Repository URL_. This URL points to our [SPM optimized repo](https://github.com/radarlabs/radar-sdk-ios-spm), which has a smaller binary size to facilitate faster build times.
 
@@ -42,7 +42,7 @@ In Xcode, go to _File_ \> _Swift Packages_ \> _Add Package Dependency_. Enter `h
   Only select `RadarSDK` unless you are also intending to use the location metadata feature. Refer to [**this section**](#location-metadata) for more information.
 </Info>
 
-### **Carthage**
+### Carthage
 
 Install [Carthage](https://github.com/Carthage/Carthage). To include Radar as a `github` origin, add the following to your `Cartfile`:
 
@@ -58,17 +58,17 @@ binary "https://raw.githubusercontent.com/radarlabs/radar-sdk-ios/master/RadarSD
 
 Then, run `carthage update` and drag `Build/iOS/RadarSDK.framework` into the _Linked Frameworks and Libraries_ section of your target. Do not add the framework as an input to your `copy-frameworks` run script.
 
-### **Add manually**
+### Add manually
 
 You can also add the SDK to your project manually. Download [the current release](https://github.com/radarlabs/radar-sdk-ios/releases), unzip the package, and drag `RadarSDK.xcframework` into your Xcode project. It will automatically appear in the _Frameworks, Libraries, and Embedded Content_ section of your target settings. Switch _Do Not Embed_ to _Embed & Sign_.
 
-## **Dependencies**
+## Dependencies
 
 The SDK depends on Apple's `CoreLocation` framework. In your target settings, go to _General_ \> _Frameworks, Libraries, and Embedded Content_ and add `CoreLocation` if you haven't already.
 
 The SDK currently supports iOS 10 and higher.
 
-## **Initialize SDK**
+## Initialize SDK
 
 When your app starts, initialize the SDK with your publishable API key, found on the [Settings page](https://radar.com/dashboard/settings).
 
@@ -114,7 +114,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 </CodeGroup>
 
-## **Request permissions**
+## Request permissions
 
 Radar respects [standard iOS location permissions](https://developer.apple.com/documentation/corelocation/requesting_authorization_for_location_services).
 
@@ -229,7 +229,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, CLLocationManagerDelegate
   Not seeing permissions prompts? First, make sure your location manager is in memory when you request permissions. Second, make sure you've added location usage strings to your `Info.plist` file. Finally, check your device settings to make sure you haven't already granted location permissions
 </Info>
 
-### **Background modes**
+### Background modes
 
 If you are planning to use `RadarTrackingOptions.presetContinuous` or `RadarTrackingOptions.presetResponsive`, or if you are planning to [range beacons by UUID only](/geofencing/beacons#ranging-by-uuid-only), you must enable the _Location updates_ and _Background fetch_ background modes.
 
@@ -239,7 +239,7 @@ Note that this requires additional justification during App Store review. Learn 
 
 ![Background Modes Pn](/images/sdk/background-modes.png)
 
-## **Foreground tracking**
+## Foreground tracking
 
 Once the user has granted foreground permissions, you can track the user's location in the foreground.
 
@@ -282,7 +282,7 @@ You may provide an optional `completionHandler` that receives the request status
   Build and run the app, then find your user on the [**Users page**](https://radar.com/dashboard/geofencing/users)\! To trigger an event, you'll need to [**create a geofence**](https://radar.com/dashboard/geofencing/geofences) if you haven't already. Not seeing your user on the Users page? Check `status` in the `completionHandler` to see what went wrong.
 </Warning>
 
-## **Background tracking for geofencing**
+## Background tracking for geofencing
 
 Once you have initialized the SDK and the user has authorized background permissions, you can start tracking the user's location in the background.
 
@@ -355,7 +355,7 @@ You only need to call these methods once, as these settings will be persisted ac
   Don't forget\! You can always find your user on the [**Users page**](https://radar.com/dashboard/users) or events on the [**Events page**](https://radar.com/dashboard/events). To trigger an event, you'll need to [**create a geofence**](https://radar.com/dashboard/geofencing/geofences) if you haven't already.
 </Info>
 
-## **Background tracking for trips**
+## Background tracking for trips
 
 For trips, we recommend using `RadarTrackingOptions.presetContinuous`. This preset tells the SDK to send location updates to the server every 30 seconds, regardless of whether the device is moving.
 
@@ -424,7 +424,7 @@ Learn more about starting, completing, and canceling trips in the [trip tracking
   Don't forget\! You can always find your user on the [**Users page**](https://radar.com/dashboard/users) or events on the [**Events page**](https://radar.com/dashboard/events). To trigger an event, you'll need to [**create a geofence**](https://radar.com/dashboard/geofencing/geofences) or [**start a trip**](https://docs.radar.com/trip-tracking) if you haven't already. Also, check your device settings to make sure you've granted location permissions.
 </Info>
 
-## **Mock tracking for testing**
+## Mock tracking for testing
 
 Can't go for a walk or a drive? You can simulate a sequence of location updates. For example, to simulate a sequence of 10 location updates every 3 seconds by car from an origin to a destination, call:
 
@@ -459,7 +459,7 @@ Radar.mockTracking(
   Don't forget\! You can always find your user on the [**Users page**](https://radar.com/dashboard/users) or events on the [**Events page**](https://radar.com/dashboard/events). To trigger an event, you'll need to [**create a geofence**](https://radar.com/dashboard/geofencing/geofences) if you haven't already.
 </Info>
 
-## **Location metadata**
+## Location metadata
 
 The SDK can also pass along information like motion activity detection, speed and heading via the location metadata field. Turn on `useLocationMetadata` in your `sdkConfiguration` to enable this feature.
 
@@ -473,7 +473,7 @@ pod 'RadarSDKMotion', '~> 3.21.5'
 
 or add the `RadarSDKMotion` package product to your target via SPM.
 
-## **Listening for events with a delegate**
+## Listening for events with a delegate
 
 To listen for events, location updates, and errors client-side, set a `RadarDelegate`. Set your `RadarDelegate` in a codepath that will be initialized and executed in the background. For example, make your `AppDelegate` implement `RadarDelegate`, not a `ViewController`. `AppDelegate` will be initialized in the background, whereas a `ViewController` may not be.
 
@@ -571,7 +571,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, RadarDelegate {
   To listen for events server-side instead, add a [**webhook**](https://docs.radar.com/integrations/webhooks) or enable an [**integration**](https://docs.radar.com/integrations).
 </Info>
 
-## **Manual tracking**
+## Manual tracking
 
 If you want to manage location services yourself, you can manually update the user's location instead by calling:
 
@@ -658,7 +658,7 @@ You only need to call these methods once, as these settings will be persisted ac
 
 Learn more about when Radar creates new user records [here](https://docs.radar.com/faqs#what-are-privacy-best-practices-for-radar).
 
-## **Debug logging**
+## Debug logging
 
 By default, only critical errors are logged to the console. To enable debug logging, call:
 
@@ -748,7 +748,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, RadarDelegate {
   Contact your customer success manager to enable logging app lifecycle events.
 </Info>
 
-## **Submit to App Store**
+## Submit to App Store
 
 Apple requires that you justify your use of background location. Add something materially similar to the following to the bottom of your App Store description: _This app uses background location to (insert use case here). Continued use of background location may decrease battery life._
 
@@ -756,7 +756,7 @@ If you turned on the _Location updates_ background mode, Apple requires addition
 
 Learn more about this requirement in section 2.5.4 of the App Store Review Guidelines [here](https://developer.apple.com/app-store/review/guidelines/#software-requirements).
 
-## **Other APIs**
+## Other APIs
 
 The iOS SDK also exposes APIs for beacons, anonymous context, geocoding, search, and distance.
 
