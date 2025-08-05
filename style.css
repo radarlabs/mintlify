@@ -25,8 +25,8 @@
 .callout {
   font-size: 1rem;
   font-weight: 400;
-  padding-top: .5rem;
-  padding-bottom: .5rem;
+  padding-top: .675rem;
+  padding-bottom: .675rem;
   margin: 1rem 0 2rem;
   border-radius: 4px;
   border: 1px solid;
@@ -34,6 +34,8 @@
     font-weight: bold;
   }
 }
+
+/* both of these div styles override some weird veritcal spacing */
 
 div[data-component-part="callout-content"] {
   height: fit-content;
