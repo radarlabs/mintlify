@@ -20,6 +20,12 @@
   text-decoration: underline;
 }
 
+/* code text styling */
+
+.code {
+  font-family: Basis Grotesque;
+}
+
 /* Info / Callout styling */
 
 .callout {
