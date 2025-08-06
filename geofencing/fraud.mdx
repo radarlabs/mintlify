@@ -61,7 +61,7 @@ Together, Fraud and Regions provide the following user context:
 
 First, [sign up](https://radar.com/signup) for Radar and get an API key.
 
-Then, enable Fraud on the [Settings page](https://radar.com/dashboard/settings#fraud-settings).
+Then, enable Fraud on the [Settings page](https://dashboard.radar.com/settings#fraud-settings).
 
 From there, [integrate the SDK](/sdk/sdk), complete the steps below, and call `Radar.trackVerified()` or `Radar.startTrackingVerified()`. Radar will perform fraud and jurisdiction checks as described below.
 
@@ -137,7 +137,7 @@ Radar.initialize(
 
 #### Play Integrity API
 
-To support the `compromised` flag on Android, enable the [Play Integrity API](https://developer.android.com/google/play/integrity) on the [Settings page](https://radar.com/dashboard/settings#fraud-settings).
+To support the `compromised` flag on Android, enable the [Play Integrity API](https://developer.android.com/google/play/integrity) on the [Settings page](https://dashboard.radar.com/settings#fraud-settings).
 
 If the user's device or app does not meet [basic integrity checks](https://developer.android.com/google/play/integrity/verdict#device-integrity-field), `user.fraud.compromised = true`.
 
@@ -182,7 +182,7 @@ Learn more about [Network Security Configuration on Android](https://developer.a
 
 #### App Attest
 
-To support the `compromised` flag on iOS, enable [App Attest](https://developer.apple.com/documentation/devicecheck/preparing-to-use-the-app-attest-service) and configure a list of valid [App IDs](https://developer.apple.com/library/archive/documentation/General/Conceptual/DevPedia-CocoaCore/AppID.html) (e.g., `A1B2C3D4E5.com.yourapp.app1,A1B2C3D4E5.com.yourapp.app2`) on the [Settings page](https://radar.com/dashboard/settings#fraud-settings).
+To support the `compromised` flag on iOS, enable [App Attest](https://developer.apple.com/documentation/devicecheck/preparing-to-use-the-app-attest-service) and configure a list of valid [App IDs](https://developer.apple.com/library/archive/documentation/General/Conceptual/DevPedia-CocoaCore/AppID.html) (e.g., `A1B2C3D4E5.com.yourapp.app1,A1B2C3D4E5.com.yourapp.app2`) on the [Settings page](https://dashboard.radar.com/settings#fraud-settings).
 
 If App Attest indicates that the user's device or app has been compromised, `user.fraud.compromised = true`.
 
@@ -247,7 +247,7 @@ Choose your implementation pattern depending on your use cases:
 You can call `Radar.trackVerified()` to manually perform a location check. `Radar.trackVerified()` returns a `RadarVerifiedLocationToken` with:
 
 - `passed`: A boolean indicating whether the user passed all fraud and jurisdiction checks (`user.fraud.passed && user.country.passed && user.state.passed`).
-- `token`: A tamper-proof JSON Web Token (JWT) that you can send to your server to validate the signature, signed with the _JSON Web Token (JWT) Secret Key_ found under _Fraud_ on the [Settings page](https://radar.com/dashboard/settings#fraud-settings).
+- `token`: A tamper-proof JSON Web Token (JWT) that you can send to your server to validate the signature, signed with the _JSON Web Token (JWT) Secret Key_ found under _Fraud_ on the [Settings page](https://dashboard.radar.com/settings#fraud-settings).
 - `failureReasons`: If `passed == false`, an array of more detailed [failure reasons](#failure-reasons).
 - `expiresAt`: The datetime when the token expires, by default in 20 minutes, but earlier when close to the border based on compliance requirements.
 - `expiresIn`: The number of seconds until the token expires.
@@ -522,7 +522,7 @@ If `passed == false`, responses include an array of more detailed [failure reaso
 
 ### Troubleshooting
 
-To troubleshoot a failed geolocation check, go to the [Fraud page](https://dashboard.radar.com/geofencing/). Use the _Filters_ button to filter down to specific user IDs, IP addresses, or jurisdictions, and use the _date filters_ to filter down to specific dates or times.
+To troubleshoot a failed geolocation check, go to the [Locations page](https://dashboard.radar.com/geofencing/locations). Use the _Filters_ button to filter down to specific user IDs, IP addresses, or jurisdictions, and use the _date filters_ to filter down to specific dates or times.
 
 Click on a specific geolocation check to see all the details, including a map view, [failure reasons](#failure-reasons), detailed user, device, IP, and jurisdiction information, and more.
 
@@ -549,7 +549,7 @@ When the risk score changes for a user or device, it also changes for all associ
 
 The fraud signals, number of strikes per fraud signal, and lookback period are configurable.
 
-To receive real-time email alerts when users reach high risk, and to receive a weekly report with high risk users, set a _Notification email_ under _Fraud_ on the [Settings page](https://radar.com/dashboard/settings#fraud-settings).
+To receive real-time email alerts when users reach high risk, and to receive a weekly report with high risk users, set a _Notification email_ under _Fraud_ on the [Settings page](https://dashboard.radar.com/settings#fraud-settings).
 
 You can also automatically block high risk users.
 

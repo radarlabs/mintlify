@@ -64,7 +64,7 @@ From there, [integrate the SDK](/sdk) and call `Radar.startTrip()`. Radar will g
 
 When it's time to start a trip (e.g., when a user taps "I'm on my way" for a pickup, or when a delivery starts), start a trip with trip options (including an external ID for the trip, a destination geofence, a travel mode, and any custom metadata) and tracking options to be used during the trip (usually `RadarTrackingOptions.CONTINUOUS`).
 
-As the trip progresses, the status will update from `started` to `approaching` (based on the _Approaching threshold_ on the [Settings page](https://radar.com/dashboard/settings)), then `arrived` (on destination geofence entry).
+As the trip progresses, the status will update from `started` to `approaching` (based on the _Approaching threshold_ on the [Settings page](https://dashboard.radar.com/settings)), then `arrived` (on destination geofence entry).
 
 <CodeGroup>
 
@@ -228,7 +228,7 @@ Radar.updateTrip(tripOptions, RadarTrip.RadarTripStatus.ARRIVED, (status, trip, 
 
 Finally, when the trip is complete (e.g., when an order is picked up or a delivery is dropped off), stop the trip. This can be done either using the SDK or the [API](/api#stop-or-restart-trip).
 
-You can set trips to expire after a set period if not manually stopped using the _Expiration threshold_ on the [Settings page](https://radar.com/dashboard/settings).
+You can set trips to expire after a set period if not manually stopped using the _Expiration threshold_ on the [Settings page](https://dashboard.radar.com/settings).
 
 If tracking was started before the trip was started, the previous tracking options will be restored. Otherwise, tracking will be stopped.
 
@@ -351,11 +351,11 @@ You can receive events client-side via the [SDK](/sdk) or server-side via [event
 
 The wrong destination arrival detection feature identifies when a user on a trip may have entered a different destination than the one intended. Specifically, it triggers an event when the user enters a geofence that shares the same `tag` as the destination geofence, but possesses a different `externalId`.
 
-To enable this feature, navigate to the [Settings page](https://radar.com/dashboard/settings#trips-settings) and enable the `user.arrived_at_wrong_trip_destination` event under _Trips_ section.
+To enable this feature, navigate to the [Settings page](https://dashboard.radar.com/settings#trips-settings) and enable the `user.arrived_at_wrong_trip_destination` event under _Trips_ section.
 
 ### Delay detection
 
-Delay detection identifies trips at risk of being delayed or incomplete. To enable this feature, configure a _Delay threshold_ on the [Settings page](https://radar.com/dashboard/settings#trips-settings) under _Trips_.
+Delay detection identifies trips at risk of being delayed or incomplete. To enable this feature, configure a _Delay threshold_ on the [Settings page](https://dashboard.radar.com/settings#trips-settings) under _Trips_.
 
 If `scheduledArrivalAt` is set for a trip, delay information is captured in the trip's `delay` field. The `scheduledArrivalTimeDelay` is the predicted arrival delay from the `scheduledArrivalAt` time in minutes. The `delayed` flag is `true` when `scheduledArrivalTimeDelay` exceeds the delay threshold.
 
@@ -379,7 +379,7 @@ Or, listen for [trip events](#trip-events) sent to a webhook. From there, forwar
 
 ## Analytics
 
-Radar offers analytics on trip data and location opt-in rates from [users](/api#users) in your project. [Analytics](https://radar.com/dashboard/analytics) on trip data can be found on the Analytics page and grouped under the Trips tab. Analytics on location permission opt-in rates is grouped under the Permissions tab. Read more about Permissions [here](/faqs#location-permissions).
+Radar offers analytics on trip data and location opt-in rates from [users](/api#users) in your project. [Analytics](https://dashboard.radar.com/geofencing/trips/analytics) on trip data can be found on the Analytics page and grouped under the Trips tab. Analytics on location permission opt-in rates is grouped under the Permissions tab. Read more about Permissions [here](/faqs#location-permissions).
 
 ### How to filter your data
 

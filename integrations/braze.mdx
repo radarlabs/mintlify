@@ -14,7 +14,7 @@ Use the Braze integration to send location-triggered and location-targeted messa
 
 On the Braze _API Keys_ page under _Rest API Keys_, create and copy a new workspace API key with `users.track` permissions. Under _Identification_, copy your iOS and Android app identifiers.
 
-Then, on the Radar [Integrations page](https://radar.com/dashboard/integrations#braze) under _Braze_, set _Enabled_ to _Yes_ and paste your API key and app identifiers. Note that you can set separate API keys and app identifiers for the _Test_ and _Live_ environments. Finally, if your account is not on `https://rest.iad-01.braze.com`, select the appropriate _API Endpoint_.
+Then, on the Radar [Integrations page](https://dashboard.radar.com/integrations#braze) under _Braze_, set _Enabled_ to _Yes_ and paste your API key and app identifiers. Note that you can set separate API keys and app identifiers for the _Test_ and _Live_ environments. Finally, if your account is not on `https://rest.iad-01.braze.com`, select the appropriate _API Endpoint_.
 
 Whenever events are generated, Radar will send custom events and user attributes to Braze. Events and user attributes from iOS devices will be sent using your iOS app identifiers, and events and user attributes from Android devices will be sent using your Android app identifiers.
 
@@ -41,11 +41,11 @@ Radar.setMetadata(JSONObject().put("brazeExternalId", userId))Braze.getInstance(
 
 ## Verify integration data delivery
 
-To test that the integration is configured correctly and can deliver data, use the [Simulator](https://radar.com/dashboard/simulate) to generate events. Click _View_ on an event row and scroll down to the _Logs_ section on the details page to verify delivery. Perform a similar process via a test app build with Radar location tracking enabled by spoofing location or moving into the relevant boundary.
+To test that the integration is configured correctly and can deliver data, use the [Simulator](https://dashboard.radar.com/geofencing/simulate) to generate events. Click _View_ on an event row and scroll down to the _Logs_ section on the details page to verify delivery. Perform a similar process via a test app build with Radar location tracking enabled by spoofing location or moving into the relevant boundary.
 
 ![Verify Integration Braze Gi](/images/verify_integration_braze.gif)
 
-All integration delivery can be monitored via the integration's event logs by clicking _View event logs_ on the [Integrations page](https://radar.com/dashboard/integrations#braze).
+All integration delivery can be monitored via the integration's event logs by clicking _View event logs_ on the [Integrations page](https://dashboard.radar.com/integrations#braze).
 
 ## Example use cases
 
@@ -129,7 +129,7 @@ class MyRadarReceiver: RadarReceiver() {
 
 ### Connected content
 
-[Radar APIs](/api) can be used in Braze connected content. See Braze's [documentation](https://www.braze.com/docs/partners/message_personalization/location/radar/#connected-content) for a connected content example. Use the [API explorer](https://radar.com/dashboard/explore) in the dashboard to test relevant APIs.
+[Radar APIs](/api) can be used in Braze connected content. See Braze's [documentation](https://www.braze.com/docs/partners/message_personalization/location/radar/#connected-content) for a connected content example. Use the [API explorer](https://dashboard.radar.com/explore) in the dashboard to test relevant APIs.
 
 ## User mapping
 
