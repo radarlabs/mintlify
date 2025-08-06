@@ -22,6 +22,12 @@
 
 /* code text styling */
 
+
+@font-face {
+  font-family: 'Basis Grotesque';
+  src: url('https://static.radar.io/fonts/basis-grotesque-regular.woff') format('woff2');
+}
+
 .code {
   font-family: Basis Grotesque;
 }
