@@ -28,8 +28,8 @@
   src: url('https://static.radar.io/fonts/basis-grotesque-regular.woff') format('woff2');
 }
 
-.code {
-  font-family: Basis Grotesque;
+code, pre, kbd, samp {
+  font-family: 'Basis Grotesque', monospace;
 }
 
 /* Info / Callout styling */
