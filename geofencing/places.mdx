@@ -46,7 +46,7 @@ Places also provides the following events:
 
 You can receive events client-side via the [SDK](/sdk) or server-side via [event integrations](/integrations/integrations), including webhooks.
 
-You can enable Places on the [Settings page](https://radar.com/dashboard/settings).
+You can enable Places on the [Settings page](https://dashboard.radar.com/settings).
 
 Alternatively, if you have your own custom place data, you can create geofences instead. Learn more about [Geofences](/geofencing/geofences).
 
@@ -54,7 +54,7 @@ Alternatively, if you have your own custom place data, you can create geofences 
 
 First, [sign up](https://radar.com/signup) for Radar and get an API key.
 
-Then, enable Places events and enable chains or categories on the [Settings page](https://radar.com/dashboard/settings).
+Then, enable Places events and enable chains or categories on the [Settings page](https://dashboard.radar.com/settings).
 
 From there, [integrate the SDK](/sdk) and call `Radar.trackOnce()` or `Radar.startTracking()`, depending on your use case. Radar will generate an entry event on the first stopped location update at a place matching your enabled chains or categories.
 
@@ -107,7 +107,7 @@ public void onEventsReceived(Context context,
 
 ### Mappings
 
-To map Radar chain slugs to custom IDs, set _Chain mappings_ under _Places_ on the [Settings page](https://radar.com/dashboard/settings).
+To map Radar chain slugs to custom IDs, set _Chain mappings_ under _Places_ on the [Settings page](https://dashboard.radar.com/settings).
 
 You can set a JSON string representing a dictionary with keys and values of type string.
 
@@ -121,7 +121,7 @@ Custom chain IDs will be exposed as `place.chain.externalId` in user context and
 
 ### Metadata
 
-To map Radar chain slugs to custom metadata, set _Chain metadata_ under _Places_ on the [Settings page](https://radar.com/dashboard/settings).
+To map Radar chain slugs to custom metadata, set _Chain metadata_ under _Places_ on the [Settings page](https://dashboard.radar.com/settings).
 
 You can set a JSON string with values of type dictionary, each with between 1 and 16 keys and values of type string, boolean, or number.
 
@@ -138,7 +138,7 @@ Custom chain metadata will be exposed as `place.chain.metadata` in user context 
 
 ## Place filters
 
-We recommend filtering events to specific categories or chains under _Places_ on the [Settings page](https://radar.com/dashboard/settings).
+We recommend filtering events to specific categories or chains under _Places_ on the [Settings page](https://dashboard.radar.com/settings).
 
 For example, to monitor only fast food restaurants, you might add `fast-food-restaurant` to category filters, or add `burger-king`, `mcdonalds`, and others to chain filters.
 
@@ -146,7 +146,7 @@ View the [full list of categories](#categories) and the [full list of chains](#c
 
 ## State blocklist
 
-To suppress tracking specific place categories in certain states, set _Category state blocklist mapping_ under _Places_ on the [Settings page](https://radar.com/dashboard/settings).
+To suppress tracking specific place categories in certain states, set _Category state blocklist mapping_ under _Places_ on the [Settings page](https://dashboard.radar.com/settings).
 
 For example, blocking the `fast-food-restaurant` category in New York would bypass visits to `fast-food-restaurant` places in New York.
 
@@ -170,12 +170,12 @@ Radar.acceptEventId(event._id, verifiedPlaceId: event.alternatePlaces[0]._id)
 
 Place matching is the easiest way to make sure your geofence coordinates and geometries are accurate and stay up-to-date over time. Place matching will ensure that entry and exit events are reliable, trip approaching and arrived signals are precise, and messaging for nearby locations is relevant.
 
-Navigate to the [Geofences page](https://radar.com/dashboard/geofences) and select _Import_. If [Places](/geofencing/places) are enabled for your project, toggle _Enable place matching_ on.
+Navigate to the [Geofences page](https://dashboard.radar.com/geofencing/geofences) and select _Import_. If [Places](/geofencing/places) are enabled for your project, toggle _Enable place matching_ on.
 
 ### How it works
 
 1. **Import your geofences against Radar's places data.** Select [chains](#chains) to match your geofences against while importing your geofences into Radar.
-2. **View the results of place matching.** After the import has completed, look at the results on the [Import history page](https://radar.com/dashboard/geofences/imports). Click _View import_ to see a summary and logs that indicate the outcome for each row. If the place match was successful, the import log will contain a link to the Radar place and the distance that the geofence center was corrected.
+2. **View the results of place matching.** After the import has completed, look at the results on the [Import history page](https://dashboard.radar.com/geofencing/geofences/imports). Click _View import_ to see a summary and logs that indicate the outcome for each row. If the place match was successful, the import log will contain a link to the Radar place and the distance that the geofence center was corrected.
 3. **Filter and export the results for further analysis.** Apply _Filters_ to isolate rows that were not place matched, geofences that have large center correction values, or errors. Click _Export rows_ to download a CSV of the results.
 
 ![Place Matching Gi](/images/place-matching.gif)

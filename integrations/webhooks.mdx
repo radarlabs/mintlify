@@ -6,7 +6,7 @@ You can use webhooks to send events and user state from Radar to your server, a 
 
 ## Configuration
 
-Create a webhook on the Radar [Integrations page](https://radar.com/dashboard/integrations) under _Webhooks_. For _Environment_, choose _Test_ to receive callbacks for events in the _Test_ environment, or choose _Live_ to receive callbacks for events in the _Live_ environment. For _Event Delivery_, choose _Single Event_ to receive a single event in each request, or choose _Multiple Events_ to receive multiple events in each request when events occur simultaneously. Finally, enter a URL.
+Create a webhook on the Radar [Integrations page](https://dashboard.radar.com/integrations) under _Webhooks_. For _Environment_, choose _Test_ to receive callbacks for events in the _Test_ environment, or choose _Live_ to receive callbacks for events in the _Live_ environment. For _Event Delivery_, choose _Single Event_ to receive a single event in each request, or choose _Multiple Events_ to receive multiple events in each request when events occur simultaneously. Finally, enter a URL.
 
 Whenever events are generated, Radar will send a `POST` request containing event and user data to the specified URL. You can also click the _Test_ button to send test event and user data. If you chose _Single Event_, the request body will contain an `event` dictionary and a `user` dictionary. If you chose _Multiple Events_, the request body will contain an `events` array and a `user` dictionary. For multiple events, if there are over 5 events, the events will be chunked out in groups of 5 into separate `POST` requests.
 

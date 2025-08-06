@@ -23,11 +23,11 @@ In this tutorial, we will build a delivery tracking iOS application which uses [
   <Step title="Set up your Radar account">
     You will need a Radar account to get started with the location building blocks used in this application. [Log in](https://radar.com/login) to your account, or [Sign up](https://radar.com/signup) for a free account if you don't have one yet.
 
-    Find your API keys on the [Get Started](https://radar.com/dashboard) page. We will be using your Test publishable (client) key in the iOS app.
+    Find your API keys on the [Get Started](https://dashboard.radar.com) page. We will be using your Test publishable (client) key in the iOS app.
 
     [**Get API keys**](https://radar.com/signup)
 
-    Finally, let's create your first geofences if you haven't done so already. We will use them as trip destinations during app development and testing. To create a geofence via the [dashboard](https://radar.com/dashboard), go to the [Geofences page](https://radar.com/dashboard/geofences) and click the _New_ button. Search for an address or a place, then enter a `description`, `tag`, `external ID`, and optional `metadata`.
+    Finally, let's create your first geofences if you haven't done so already. We will use them as trip destinations during app development and testing. To create a geofence via the [dashboard](https://dashboard.radar.com), go to the [Geofences page](https://dashboard.radar.com/geofencing/geofences) and click the _New_ button. Search for an address or a place, then enter a `description`, `tag`, `external ID`, and optional `metadata`.
   </Step>
   <Step title="Install the Radar iOS SDK">
     Create an Xcode project with a SwiftUI interface, named `DeliveryTracker`.
@@ -47,7 +47,7 @@ In this tutorial, we will build a delivery tracking iOS application which uses [
     </Info>
   </Step>
   <Step title="Initialize the SDK">
-    Create a new Swift file named `LocationManager.swift`, where we define a `LocationManager` class to handle location-related logic, and create a shared instance to be used across the app. Initialize the SDK in this class with your publishable [API key](https://radar.com/dashboard), and set this class to be the `CLLocationManager` delegate.
+    Create a new Swift file named `LocationManager.swift`, where we define a `LocationManager` class to handle location-related logic, and create a shared instance to be used across the app. Initialize the SDK in this class with your publishable [API key](https://dashboard.radar.com), and set this class to be the `CLLocationManager` delegate.
 
     ```swift
     import Foundation
@@ -202,7 +202,7 @@ In this tutorial, we will build a delivery tracking iOS application which uses [
     ```
   </Step>
   <Step title="Checkpoint: Create a trip!" icon="check">
-    With the steps we've covered so far, you are ready to create your first trip in the app\! Run the app, and click the start button in the DispatchJobView. Now head to the [Trips](https://radar.com/dashboard/trips) page where you will find all current and past trips. Ensure that a new trip appears in the started state at the top of your dashboard. With mock tracking automatically making progress on the trip in the background, the trip status should change to completed within the next minute.
+    With the steps we've covered so far, you are ready to create your first trip in the app\! Run the app, and click the start button in the DispatchJobView. Now head to the [Trips](https://dashboard.radar.com/geofencing/trips) page where you will find all current and past trips. Ensure that a new trip appears in the started state at the top of your dashboard. With mock tracking automatically making progress on the trip in the background, the trip status should change to completed within the next minute.
 
     ![Trips Dashboard Pn](/images/trips-dashboard.png)
 

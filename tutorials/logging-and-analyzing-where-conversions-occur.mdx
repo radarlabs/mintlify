@@ -85,7 +85,7 @@ When these events are enriched with Radar's location context, they can be used t
     | `product_search`    | Understand where customers are searching for products (i.e., in specific stores or at competitor locations) | After a user searches for a product    | `section` (string)                                                        |
   </Step>
   <Step title="Set up Radar geofences or places">
-    On the [Geofences page](https://radar.com/dashboard/geofences), import geofences for your locations. For places, on the [Settings page](https://radar.com/dashboard/settings), monitor your desired place chains and categories. When processing conversions, Radar will determine if they happen at any of these geofences or places.
+    On the [Geofences page](https://dashboard.radar.com/geofencing/geofences), import geofences for your locations. For places, on the [Settings page](https://dashboard.radar.com/settings), monitor your desired place chains and categories. When processing conversions, Radar will determine if they happen at any of these geofences or places.
   </Step>
   <Step title="Log conversions via the Radar SDK">
     The following example demonstrates how to log a conversion when a user makes a purchase.
@@ -118,15 +118,16 @@ When these events are enriched with Radar's location context, they can be used t
 
     </CodeGroup>
   </Step>
+
   <Step title="Conversions overview in the Radar dashboard">
-    The [Report](https://radar.com/dashboard/report?view=conversions) page of the Radar dashboard has a _Conversions_ tab that provides an overview of all conversions logged for a project. Understand how engagement with your app differs between opted-in and opted-out users. See the total revenue across all conversions that have been logged with `revenue`.
+    The [Report](https://dashboard.radar.com/geofencing/analytics/conversions) page of the Radar dashboard has a _Conversions_ tab that provides an overview of all conversions logged for a project. Understand how engagement with your app differs between opted-in and opted-out users. See the total revenue across all conversions that have been logged with `revenue`.
 
     Below is an example of a fully populated _Conversions_ page for a project that has logged conversions for `purchase` and `opened_notification` events:
 
     ![Conversions Report Page 0b467fbf731440f46fab841b3ebcee68 Pn](/images/tutorials/assets/images/conversions-report-page-0b467fbf731440f46fab841b3ebcee68.png)
   </Step>
   <Step title="Analyze conversions across location context types">
-    You can see when and where conversions were generated directly in the Radar dashboard. On the [Events](https://radar.com/dashboard/events) page, watch as conversions start to stream in:
+    You can see when and where conversions were generated directly in the Radar dashboard. On the [Events](https://dashboard.radar.com/geofencing/events) page, watch as conversions start to stream in:
 
     ![Conversion Events Feed 61fa7247b3e1dc0a1b91a4492f3d7687 Pn](/images/tutorials/assets/images/conversion-events-feed-61fa7247b3e1dc0a1b91a4492f3d7687.png)
 
@@ -134,7 +135,7 @@ When these events are enriched with Radar's location context, they can be used t
 
     ![Conversion Event Detail Page Gi](/images/conversion-event-detail-page.gif)
 
-    Finally, select _Analysis_ within the dropdown on the [Events](https://radar.com/dashboard/events) page to view all of your conversions sliced by different dimensions, such as place chain or geofence tag:
+    Finally, select _Analysis_ within the dropdown on the [Events](https://dashboard.radar.com/geofencing/events) page to view all of your conversions sliced by different dimensions, such as place chain or geofence tag:
 
     ![Conversion Events Analysis 0252a5def813edf16b7ac1c4ce50ff80 Pn](/images/tutorials/assets/images/conversion-events-analysis-0252a5def813edf16b7ac1c4ce50ff80.png)
   </Step>

@@ -75,7 +75,7 @@ Beacon entry and exit events are sent to the SDK, to [webhooks](/integrations#we
 
 By default, Radar will sync nearby beacons to the SDK on every location update using the `coordinates` specified for each beacon. The SDK will then range nearby beacons based on `uuid`, `major`, and `minor` for iBeacon or `uid` and `instance` for Eddystone.
 
-Alternatively, the SDK can range beacons based on `uuid` or `uid` only, regardless of the `coordinates` specified for each beacon. To enable this, set _iBeacon UUIDs_ and/or `Eddystone UIDs` on the [Settings page](https://radar.com/dashboard/settings), under _Beacons_. On iOS, you must also enable the _Location updates_ [background mode](/sdk/ios#background-modes).
+Alternatively, the SDK can range beacons based on `uuid` or `uid` only, regardless of the `coordinates` specified for each beacon. To enable this, set _iBeacon UUIDs_ and/or `Eddystone UIDs` on the [Settings page](https://dashboard.radar.com/settings), under _Beacons_. On iOS, you must also enable the _Location updates_ [background mode](/sdk/ios#background-modes).
 
 ## Create beacons
 
@@ -89,11 +89,11 @@ You also specify the identifiers used to range the beacon, including `uuid`, `ma
 
 ### Dashboard
 
-To create a beacon via the dashboard, go to the [Beacons page](https://radar.com/dashboard/beacons) and click the _New_ button. Optionally search for an address or place, then enter a type, tag, external ID, UUID, major, minor, and optional metadata. Click _Create_ to create the beacon.
+To create a beacon via the dashboard, go to the [Beacons page](https://dashboard.radar.com/geofencing/beacons) and click the _New_ button. Optionally search for an address or place, then enter a type, tag, external ID, UUID, major, minor, and optional metadata. Click _Create_ to create the beacon.
 
 ### CSV import
 
-To import beacons via CSV import, go to the [Beacons page](https://radar.com/dashboard/beacons) and click the _Import_ button. Then, select a CSV to upload.
+To import beacons via CSV import, go to the [Beacons page](https://dashboard.radar.com/geofencing/beacons) and click the _Import_ button. Then, select a CSV to upload.
 
 <Info>
   Headers are required as the first row of the CSV.
@@ -130,7 +130,7 @@ description,tag,externalId,type,uuid,major,minor,uid,instance,coordinates,enable
 
 **Again, note that longitude comes before latitude, a GeoJSON convention.**
 
-You can find a history of past imports on the [Beacons import history page](https://radar.com/dashboard/beacons/imports).
+You can find a history of past imports on the [Beacons import history page](https://dashboard.radar.com/geofencing/beacons/imports).
 
 ### API
 
