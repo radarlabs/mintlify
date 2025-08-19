@@ -27,7 +27,6 @@
 
 /* code text styling */
 
-
 @font-face {
   font-family: 'Basis Grotesque';
   src: url('https://static.radar.io/fonts/basis-grotesque-regular.woff') format('woff2');
@@ -35,6 +34,8 @@
 
 code, pre, kbd, samp {
   font-family: 'Basis Grotesque', monospace;
+  color: #051723;
+  background-color: #F6FAFC;
 }
 
 /* Info / Callout styling */
