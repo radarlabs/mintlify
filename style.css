@@ -2,17 +2,15 @@
 .link,
 .prose a[download] {
   color: #0005FB !important;
+  font-weight: normal !important;
   border-bottom: none !important;
   text-decoration: none !important;
 }
-.link,
-.prose a[download] {
-  font-weight: normal !important;
-}
+
 /* Allow .link elements to be bold when explicitly marked */
 .link strong,
 strong .link {
-  font-weight: bold !important;
+  font-weight: 600 !important;
 }
 .link:hover,
 .prose a[download]:hover {
