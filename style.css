@@ -32,10 +32,11 @@
   src: url('https://static.radar.io/fonts/basis-grotesque-regular.woff') format('woff2');
 }
 
-code, pre, kbd, samp {
-  font-family: 'Basis Grotesque', monospace;
-  color: #051723;
-  background-color: #F6FAFC;
+code, pre, kbd, samp,
+.prose code, .prose pre, .prose kbd, .prose samp {
+  font-family: 'Basis Grotesque', monospace !important;
+  color: #051723 !important;
+  background-color: #F6FAFC !important;
 }
 
 /* Info / Callout styling */
