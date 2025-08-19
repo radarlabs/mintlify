@@ -1,27 +1,22 @@
 /* Link styling */
-
 .link,
-.prose a {
+.prose a[download] {
   color: #0005FB !important;
   font-weight: normal !important;
   border-bottom: none !important;
   text-decoration: none !important;
 }
-
 .link:hover,
-.prose a:hover {
+.prose a[download]:hover {
   text-decoration: underline !important;
 }
-
 /* Dark mode link styling */
-
 .dark .prose .link,
-.dark .prose a {
+.dark .prose a[download] {
   color: #BFD1FF !important;
 }
-
 .dark .prose .link:hover,
-.dark .prose a:hover {
+.dark .prose a[download]:hover {
   text-decoration: underline !important;
 }
 
