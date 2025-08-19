@@ -40,6 +40,11 @@ code, pre, kbd, samp,
   background-color: #F6FAFC !important;
 }
 
+.code-block code, pre, kbd, samp,
+.prose code, .prose pre, .prose kbd, .prose samp {
+  background-color: unset !important;
+}
+
 /* Info / Callout styling */
 
 .callout {
