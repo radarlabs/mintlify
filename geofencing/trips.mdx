@@ -363,7 +363,9 @@ If `scheduledArrivalAt` is set for a trip, delay information is captured in the 
 
 ### In the Radar trip tracking dashboard
 
-<Info>The trip tracking dashboard is available on the [Enterprise plan](https://radar.com/pricing).</Info>
+<Info>
+  The trip tracking dashboard is available on the [Enterprise plan](https://radar.com/pricing).
+</Info>
 
 The Radar trip tracking dashboard displays active trips for a specific destination geofence, including ID, custom metadata, and ETA.
 
@@ -385,13 +387,13 @@ Radar offers analytics on trip data and location opt-in rates from [users](/api#
 
 The Filters button at the top of the page offers ways to look at more granular views of your trip data. The filters will apply to the statistics cards and graphs as well as the data in the By Destination table.
 
-**Date Range:** A date range can be selected from the drop-down date picker. Make sure that the date in the left-hand box falls before the date in the right-hand box. When accessing the Analytics page, the default date range encompasses all trip data in your project, meaning that you'll see a default range from the date of your earliest trip to yesterday. All trip analytics are updated nightly and trip analytics from today will not be shown in the Analytics page until tomorrow.
+**Date range:** A date range can be selected from the drop-down date picker. Make sure that the date in the left-hand box falls before the date in the right-hand box. When accessing the Analytics page, the default date range encompasses all trip data in your project, meaning that you'll see a default range from the date of your earliest trip to yesterday. All trip analytics are updated nightly and trip analytics from today will not be shown in the Analytics page until tomorrow.
 
-**Destination Geofence Tag:** Each geofence has a geofence tag. You can find the tag to a specific geofence in the "Tag" column on the Geofences page in the sidebar, or you can navigate to the trips page in the sidebar and click on the external ID listed under "Destination", which will show the details of the destination geofence. This field can be used alone or in tandem with the Destination Geofence External ID field.
+**Destination Geofence tag:** Each geofence has a geofence tag. You can find the tag to a specific geofence in the "Tag" column on the Geofences page in the sidebar, or you can navigate to the trips page in the sidebar and click on the external ID listed under "Destination", which will show the details of the destination geofence. This field can be used alone or in tandem with the Destination Geofence External ID field.
 
-**Destination Geofence External ID**: Each geofence has an external ID. You can find the external ID for a specific geofence in the "External ID" column on the Geofences page in the sidebar, or you can navigate to the Trips page and click on the external ID listed under "Destination". This field can be used alone or in tandem with the Destination Geofence Tag field.
+**Destination Geofence external ID**: Each geofence has an external ID. You can find the external ID for a specific geofence in the "External ID" column on the Geofences page in the sidebar, or you can navigate to the Trips page and click on the external ID listed under "Destination". This field can be used alone or in tandem with the Destination Geofence Tag field.
 
-**Travel Mode:** Select a specific mode of travel to filter all trip data in the Analytics view to only a specific mode. If there is no mode selected, all trip data, regardless of travel mode, will be shown.
+**Travel mode:** Select a specific mode of travel to filter all trip data in the Analytics view to only a specific mode. If there is no mode selected, all trip data, regardless of travel mode, will be shown.
 
 Trip analytics apply to the environment in which you view the metrics. For example, when viewing the metrics in the test environment, the metrics only include trip data from the test environment.
 
@@ -404,14 +406,14 @@ Trip analytics apply to the environment in which you view the metrics. For examp
 
 The graphs for each card show the change over time in each statistic. The time windows of each graph are automatically determined by the dates set in the Filters button. To see data grouped by hour, set the date range to encompass 2 days or fewer. To see data grouped by day, set the date range to encompass 21 days or fewer. To see data grouped by weeks, set the date range to encompass 60 days or fewer. To see data grouped by month, the date range must encompass more than 60 days of data.
 
-| Number of Days | Time Grouping |
+| Number of days | Time grouping |
 | -------------- | ------------- |
 | 2              | Hour          |
 | 21             | Day           |
 | 60             | Week          |
 | 60\+           | Month         |
 
-### By Destination table
+### By destination table
 
 The By Destination table groups your trip data by individual destination geofence and allows you to identify your **slowest and fastest stores** by wait time as well as your **most popular stores** by the number of trips made to the store.
 
@@ -426,7 +428,7 @@ The table has 6 sortable headers:
 - **`Trips Completed`**: the number of completed trips to that destination, given the filters applied.
 - **`Trip Time`**: the median trip time of all qualifying trips to that destination, given the filters applied.
 
-**By Destination table filter box:** The text box in the By Destination table on the Analytics page also allows you to filter only the data in the table. You can filter by Destination, Tag, or Geofence ID. (The filters set in text box only apply to data in the By Destination table and do not apply to the overall trip metrics at the top of the page.)
+**By destination table filter box:** The text box in the By Destination table on the Analytics page also allows you to filter only the data in the table. You can filter by Destination, Tag, or Geofence ID. (The filters set in text box only apply to data in the By Destination table and do not apply to the overall trip metrics at the top of the page.)
 
 **Additional options in the table:** On the right side of each row, there is an icon with three dots that allows viewers to select additional options. Clicking on this icon offers two actions:
 
