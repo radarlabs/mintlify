@@ -76,7 +76,7 @@ code, pre, kbd, samp {
   }
 }
 
-/* both of these div styles override some weird veritcal spacing */
+/* both of these div styles override some weird vertical spacing */
 
 div[data-component-part="callout-content"] {
   height: fit-content;

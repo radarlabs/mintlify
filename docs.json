@@ -10,7 +10,7 @@
   "fonts": {
     "heading": {
       "family": "Graphik",
-      "source": "https://static.radar.io/fonts/graphik-semibold.woff",
+      "source": "https://assets.ctfassets.net/f2vbu16fzuly/3N2NdLJ70xOGVbCy6qPZ61/7a6000253e9191689b2550fbe31c6213/Graphik-700-Bold.woff2",
       "format": "woff"
     },
     "body": {
