@@ -1,22 +1,22 @@
 /* Link styling */
 
-.link .a{
+.link {
   color: #0005FB;
   font-weight: normal;
   border-bottom: none;
 }
 
-.link:hover .a:hover{
+.link:hover {
   text-decoration: underline;
 }
 
 /* Dark mode link styling */
 
-.dark .prose .link .a{
+.dark .prose .link{
   color: #BFD1FF;
 }
 
-.dark .prose .link:hover .a:hover{
+.dark .prose .link:hover {
   text-decoration: underline;
 }
 
