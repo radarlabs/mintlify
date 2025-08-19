@@ -33,6 +33,8 @@ strong .link {
   src: url('https://static.radar.io/fonts/basis-grotesque-regular.woff') format('woff2');
 }
 
+/* light mode code styling */
+
 code, pre, kbd, samp {
   font-family: 'Basis Grotesque', monospace !important;
   color: #051723 !important;
@@ -40,6 +42,22 @@ code, pre, kbd, samp {
 }
 
 .code-block code, .code-block pre, .code-block kbd, .code-block samp {
+  background-color: unset !important;
+}
+
+/* dark mode code styling */
+.dark code, 
+.dark pre, 
+.dark kbd, 
+.dark samp {
+  color: #F6FAFC !important;
+  background-color: #465159 !important;
+}
+
+.dark .code-block code, 
+.dark .code-block pre, 
+.dark .code-block kbd, 
+.dark .code-block samp {
   background-color: unset !important;
 }
 
