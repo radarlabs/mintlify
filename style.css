@@ -33,15 +33,13 @@ strong .link {
   src: url('https://static.radar.io/fonts/basis-grotesque-regular.woff') format('woff2');
 }
 
-code, pre, kbd, samp,
-.prose code, .prose pre, .prose kbd, .prose samp {
+code, pre, kbd, samp {
   font-family: 'Basis Grotesque', monospace !important;
   color: #051723 !important;
   background-color: #F6FAFC !important;
 }
 
-.code-block code, pre, kbd, samp,
-.prose code, .prose pre, .prose kbd, .prose samp {
+.code-block code, .code-block pre, .code-block kbd, .code-block samp {
   background-color: unset !important;
 }
 
