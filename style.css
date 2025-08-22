@@ -30,7 +30,16 @@ strong .link {
 
 @font-face {
   font-family: 'Basis Grotesque';
-  src: url('https://static.radar.io/fonts/basis-grotesque-regular.woff') format('woff2');
+  src: url('https://assets.ctfassets.net/f2vbu16fzuly/2mbvOzmlrpROxd81MYVMEJ/88014dbc406e6dc9fb7d4b8f6d56aa7c/Basis-Grotesque-Mono-Regular.woff') format('woff2');
+}
+
+@font-face {
+  font-family: 'Basis Grotesque Bold';
+  src: url('https://assets.ctfassets.net/f2vbu16fzuly/4itlYebJGpZ4T5iO8uLU6H/3d554756701cc0c399964a4e32412207/Basis-Grotesque-Mono-Bold.woff') format('woff2');
+}
+
+.eyebrow {
+  font-family: 'Basis Grotesque Bold', monospace !important;
 }
 
 /* light mode code styling */
