@@ -9,12 +9,12 @@
   },
   "fonts": {
     "heading": {
-      "family": "Graphik",
-      "source": "https://assets.ctfassets.net/f2vbu16fzuly/3N2NdLJ70xOGVbCy6qPZ61/7a6000253e9191689b2550fbe31c6213/Graphik-700-Bold.woff2",
-      "format": "woff2"
+      "family": "Graphik Semibold",
+      "source": "https://assets.ctfassets.net/f2vbu16fzuly/6nh7vNtiZnKn2IOhRDkCw1/cbbf45efd9c45501dabe66c1001f8933/Graphik-Semibold.woff",
+      "format": "woff"
     },
     "body": {
-      "family": "Graphik",
+      "family": "Graphik Regular",
       "source": "https://assets.ctfassets.net/f2vbu16fzuly/3LuvqYuUhLyJ7h2ih6sADM/a775d1598429b02ec344badff0285996/Graphik-400-Regular.woff2",
       "format": "woff2"
     }

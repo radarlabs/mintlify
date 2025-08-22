@@ -30,7 +30,16 @@ strong .link {
 
 @font-face {
   font-family: 'Basis Grotesque';
-  src: url('https://static.radar.io/fonts/basis-grotesque-regular.woff') format('woff2');
+  src: url('https://assets.ctfassets.net/f2vbu16fzuly/2mbvOzmlrpROxd81MYVMEJ/88014dbc406e6dc9fb7d4b8f6d56aa7c/Basis-Grotesque-Mono-Regular.woff') format('woff2');
+}
+
+@font-face {
+  font-family: 'Basis Grotesque Bold';
+  src: url('https://assets.ctfassets.net/f2vbu16fzuly/4itlYebJGpZ4T5iO8uLU6H/3d554756701cc0c399964a4e32412207/Basis-Grotesque-Mono-Bold.woff') format('woff2');
+}
+
+.eyebrow {
+  font-family: 'Basis Grotesque Bold', monospace !important;
 }
 
 /* light mode code styling */
@@ -87,6 +96,22 @@ div[data-component-part="callout-icon"] {
   width: 1rem;
 }
 
+/* custom callout icon styling */
+
+.callout [data-component-part="callout-icon"] {
+  svg {
+    display: none;
+  }
+}
+
+.callout [data-component-part="callout-icon"]::before {
+  content: "";
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-bottom: 0.5rem;
+}
+
 /* === Light mode callouts === */
 
 .callout[data-callout-type="info"] {
@@ -99,6 +124,9 @@ div[data-component-part="callout-icon"] {
   svg {
     fill: #051723;
   }
+  [data-component-part="callout-icon"]::before {
+    background: url("/images/svg/circleInfoLight.svg") no-repeat center / contain;
+  }
 }
 
 .callout[data-callout-type="warning"] {
@@ -110,6 +138,9 @@ div[data-component-part="callout-icon"] {
   }
   svg {
     stroke: #662C00;
+  }
+  [data-component-part="callout-icon"]::before {
+    background: url("/images/svg/warningLight.svg") no-repeat center / contain;
   }
 }
 
@@ -128,6 +159,10 @@ div[data-component-part="callout-icon"] {
   svg {
     fill: #DBE5EB;
   }
+
+  [data-component-part="callout-icon"]::before {
+    background: url("/images/svg/circleInfoDark.svg") no-repeat center / contain;
+  }
 }
 
 .dark .callout[data-callout-type="warning"] {
@@ -141,9 +176,17 @@ div[data-component-part="callout-icon"] {
 
   .prose {
   color: #FFE2CC;
-}
+  }
 
   svg {
     stroke: #FFE2CC;
   }
+
+  [data-component-part="callout-icon"]::before {
+    background: url("/images/svg/warningDark.svg") no-repeat center / contain;
+  }
+}
+
+.nav-logo {
+  height: 24px !important;
 }
