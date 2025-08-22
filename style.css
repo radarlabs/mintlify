@@ -156,3 +156,7 @@ div[data-component-part="callout-icon"] {
     stroke: #FFE2CC;
   }
 }
+
+.nav-logo {
+  height: 24px !important;
+}
