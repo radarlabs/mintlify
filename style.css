@@ -7,11 +7,11 @@
   text-decoration: none !important;
 }
 
-/* Allow .link elements to be bold when explicitly marked */
-.link strong,
-strong .link {
-  font-weight: 600 !important;
+strong {
+  font-family: 'Graphik Semibold', sans-serif !important;
+  font-weight: 400 !important;
 }
+
 .link:hover,
 .prose a[download]:hover {
   text-decoration: underline !important;
@@ -38,9 +38,15 @@ strong .link {
   src: url('https://assets.ctfassets.net/f2vbu16fzuly/4itlYebJGpZ4T5iO8uLU6H/3d554756701cc0c399964a4e32412207/Basis-Grotesque-Mono-Bold.woff') format('woff2');
 }
 
+h1, h2, h3, h4, h5, h6 {
+  &.font-semibold {
+    font-weight: 400 !important;
+  }
+}
+
 .eyebrow {
   font-family: 'Basis Grotesque Bold', monospace !important;
-  font-weight: 500 !important;
+  font-weight: 400 !important;
 }
 
 /* light mode code styling */
@@ -90,6 +96,7 @@ code, pre, kbd, samp {
 
 div[data-component-part="callout-content"] {
   height: fit-content;
+  font-size: 1rem !important;
 }
 
 div[data-component-part="callout-icon"] {

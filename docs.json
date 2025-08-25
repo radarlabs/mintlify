@@ -11,6 +11,7 @@
     "heading": {
       "family": "Graphik Semibold",
       "source": "https://assets.ctfassets.net/f2vbu16fzuly/6nh7vNtiZnKn2IOhRDkCw1/cbbf45efd9c45501dabe66c1001f8933/Graphik-Semibold.woff",
+      "weight": 400,
       "format": "woff"
     },
     "body": {
