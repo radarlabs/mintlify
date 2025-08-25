@@ -74,7 +74,7 @@ code, pre, kbd, samp {
 /* Info / Callout styling */
 
 .callout {
-  font-size: 1rem;
+  font-size: 1rem !important;
   font-weight: 400;
   padding-top: .675rem;
   padding-bottom: .675rem;
