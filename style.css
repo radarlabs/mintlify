@@ -17,11 +17,11 @@ strong {
   text-decoration: underline !important;
 }
 /* Dark mode link styling */
-.dark .prose .link,
+.dark .link,
 .dark .prose a[download] {
   color: #BFD1FF !important;
 }
-.dark .prose .link:hover,
+.dark .link:hover,
 .dark .prose a[download]:hover {
   text-decoration: underline !important;
 }
