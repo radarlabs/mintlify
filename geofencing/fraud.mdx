@@ -242,6 +242,22 @@ Choose your implementation pattern depending on your use cases:
 - Less regulated gaming implementations, non-US gaming implementations, and non-gaming implementations should generally choose [Manual location checks](#manual-location-checks) and, on web, the no-download solution.
 - US sportsbook and iGaming implementations should generally choose [Automatic location checks with caching](#automatic-location-checks-with-caching) and, on web, the companion app solution.
 
+### Segmenting products
+
+Radar lets you segment products within your platform, where each product can have its own fraud settings, including allowed jurisdictions, configurable directly in your dashboard.
+
+To add a new product, go to your dashboard and click **“\+ Add Product”** under your default Fraud settings: https://dashboard.radar.com/settings#fraud-settings.
+
+Once a product is added, you can switch between products in your code using:
+
+```swift
+Radar.setProduct("sportsbook" | "casino" | ...)
+```
+
+This ensures that the appropriate fraud settings are applied automatically for each product type.
+
+For more advanced product management and configuration, contact your Customer Success Manager to discuss best practices for your implementation.Manual location checks
+
 ### Manual location checks
 
 You can call `Radar.trackVerified()` to manually perform a location check. `Radar.trackVerified()` returns a `RadarVerifiedLocationToken` with:
@@ -567,4 +583,3 @@ On errors or failed fraud checks, you may want to display a message to the end u
 - On **`country.allowed == false`** or **`state.allowed == false`**: Unable to verify your location. Please make sure you're in an allowed area and try again.
 - On **`fraud.proxy == true`**: Unable to verify your location. Please disconnect from any VPNs or proxy servers you may be using and try again.
 - On other error cases, or as a fallback: Unable to verify your location. Please contact support.
-
