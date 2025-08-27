@@ -25,18 +25,18 @@ Whenever events are generated, Radar will send custom events and user attributes
 
 Set `metadata[moengage:customer_id]` to map Radar users to their respective MoEngage User. For example:
 
-<Tabs>
-  <Tab title="Tab">
-    ```swift
-    Radar.setMetadata(["moengage:customer_id": "example@radar.com"])
-    ```
-  </Tab>
-  <Tab title="Tab">
-    ```kotlin
-    Radar.setMetadata(JSONObject().put("moengage:customer_id", "example@radar.com"))
-    ```
-  </Tab>
-</Tabs>
+<CodeGroup>
+
+```swift Swift
+Radar.setMetadata(["moengage:customer_id": "example@radar.com"])
+```
+
+
+```kotlin Java
+Radar.setMetadata(JSONObject().put("moengage:customer_id", "example@radar.com"))
+```
+
+</CodeGroup>
 
 ## User mapping
 
