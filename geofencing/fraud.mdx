@@ -344,7 +344,7 @@ try {
 
 ### Automatic location checks with caching
 
-You can call `Radar.startTrackingVerified()` automatically perform location checks on connection changes, on the specified `interval`, or more frequently if `token.expiresIn < interval` (based on current state, distance to border, and so on).
+You can call `Radar.startTrackingVerified()` to automatically perform location checks on connection changes, on the specified `interval`, or more frequently if `token.expiresIn < interval` (based on current state, distance to border, and so on).
 
 Instead of calling `Radar.trackVerified()`, which always fetches a fresh location token, you can call `Radar.getVerifiedLocationToken()`, which returns a cached location token immediately if the last location token is still valid, or fetches a fresh location token if not.
 
