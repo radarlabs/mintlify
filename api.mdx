@@ -1306,7 +1306,7 @@ Calculates the most efficient route between two or more locations to visit in or
 - `avoid` (string, optional): The features that calculated routes should avoid. A string, comma-separated, including one or more of `tolls`, `highways`, `ferries` and `borderCrossings`. No features are avoided if not provided.
 - `geometry` (string, optional): The format of the `geometry` in the response. Valid values are `linestring`, `polyline5` and `polyline6`. `linestring` returns a GeoJSON `LineString`, `polyline5` returns a polyline with 5 decimal places of precision (compatible with other mapping providers) and `polyline6` returns a polyline with 6 decimal places of precision. Defaults to `polyline6` if not provided.
 - `departureTime` (string, optional): The date and time of the route provided as an ISO 8601 date string (e.g., `2025-01-01T14:30:00Z`) which will be used for historical traffic times. If not provided, the current date and time will be used.
-- `heading` (number, optional): Initial heading of travel where north is 0°, east is 90°, south is 180°, and west is 270°. If not provided no initial heading is used.
+- `heading` (number, optional): Initial heading of travel where north is 0°, east is 90°, south is 180°, and west is 270°. If not provided, no initial heading will be used.
 
 
 
