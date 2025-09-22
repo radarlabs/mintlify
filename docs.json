@@ -9,23 +9,32 @@
   },
   "fonts": {
     "heading": {
-      "family": "Graphik",
-      "weight": 700,
-      "source": "https://assets.ctfassets.net/f2vbu16fzuly/3LuvqYuUhLyJ7h2ih6sADM/a775d1598429b02ec344badff0285996/Graphik-700-Regular.woff2",
-      "format": "woff2"
+      "family": "Graphik Semibold",
+      "source": "https://assets.ctfassets.net/f2vbu16fzuly/6nh7vNtiZnKn2IOhRDkCw1/cbbf45efd9c45501dabe66c1001f8933/Graphik-Semibold.woff",
+      "weight": 400,
+      "format": "woff"
     },
     "body": {
-      "family": "Graphik",
-      "weight": 400,
+      "family": "Graphik Regular",
       "source": "https://assets.ctfassets.net/f2vbu16fzuly/3LuvqYuUhLyJ7h2ih6sADM/a775d1598429b02ec344badff0285996/Graphik-400-Regular.woff2",
       "format": "woff2"
     }
   },
+    "background": {
+    "color": {
+      "light": "#FFFFFF",
+      "dark": "#131415"
+    }
+  },
+  
   "logo": {
     "light": "https://images.ctfassets.net/f2vbu16fzuly/3GdUvTpZ1Z3y3vlmNqVBd9/7b08514631b38b7a9a8e56a489ce6c50/logo_light.svg",
     "dark": "https://images.ctfassets.net/f2vbu16fzuly/4j8jsEaoBpw7yjXfrUNPfk/3e9d1053dd22cba1919581c242e17c92/logo_dark.svg"
   },
-  "favicon": "/favicon.svg",
+  "favicon": {
+    "light": "/images/radar-dark.png",
+    "dark": "/images/radar-light.png"
+  },
   "navigation": {
     "groups": [
       {
@@ -48,7 +57,7 @@
           {
             "group": "Integrations",
             "pages": [
-              "integrations",
+              "integrations/integrations",
               "integrations/webhooks",
               "integrations/airship",
               "integrations/amplitude",
@@ -64,6 +73,7 @@
               "integrations/leanplum",
               "integrations/lytics",
               "integrations/mixpanel",
+              "integrations/moengage",
               "integrations/mparticle",
               "integrations/olo",
               "integrations/onesignal",
@@ -105,7 +115,7 @@
         ]
       },
       {
-        "group": "Api",
+        "group": "API",
         "pages": [
           "api"
         ]
@@ -113,21 +123,7 @@
       {
         "group": "Tutorials",
         "pages": [
-          "tutorials",
-          "tutorials/building-an-on-premise-mode",
-          "tutorials/building-menuboard-detection-with-in-geofence-tracking-options",
-          "tutorials/showing-a-notification-when-a-user-enters-a-geofence",
-          "tutorials/building-an-app-with-location-enabled-curbside-pickup",
-          "tutorials/building-a-delivery-tracking-app",
-          "tutorials/building-a-store-locator-on-ios",
-          "tutorials/localizing-a-website-based-on-current-country-or-city",
-          "tutorials/logging-and-analyzing-where-conversions-occur",
-          "tutorials/migrate-from-google-maps",
-          "tutorials/displaying-radar-maps-on-ios",
-          "tutorials/displaying-radar-maps-on-android",
-          "tutorials/displaying-radar-maps-with-react-native",
-          "tutorials/displaying-radar-maps-with-flutter",
-          "tutorials/create-a-custom-map-style"
+          "tutorials"
         ]
       },
       {
@@ -137,7 +133,7 @@
         ]
       },
       {
-        "group": "Faqs",
+        "group": "FAQs",
         "pages": [
           "faqs"
         ]
