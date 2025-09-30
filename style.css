@@ -62,17 +62,17 @@ code, pre, kbd, samp {
 }
 
 /* dark mode code styling */
-.dark code, 
-.dark pre, 
-.dark kbd, 
+.dark code,
+.dark pre,
+.dark kbd,
 .dark samp {
   color: #F6FAFC !important;
   background-color: #051723 !important;
 }
 
-.dark .code-block code, 
-.dark .code-block pre, 
-.dark .code-block kbd, 
+.dark .code-block code,
+.dark .code-block pre,
+.dark .code-block kbd,
 .dark .code-block samp {
   background-color: unset !important;
 }
@@ -197,4 +197,11 @@ div[data-component-part="callout-icon"] {
 
 .nav-logo {
   height: 21px !important;
+}
+
+a[id] {
+  display: block;
+  position: relative;
+  top: -80px;
+  visibility: hidden;
 }
