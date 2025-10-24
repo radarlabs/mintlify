@@ -111,7 +111,8 @@
           "sdk/flutter",
           "sdk/maui",
           "sdk/tracking",
-          "sdk/remote-configuration"
+          "sdk/remote-configuration",
+          "sdk/push-notification"
         ]
       },
       {
