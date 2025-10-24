@@ -44,16 +44,10 @@ In Xcode, go to _File_ \> _Swift Packages_ \> _Add Package Dependency_. Enter `h
 
 ### Carthage
 
-Install [Carthage](https://github.com/Carthage/Carthage). To include Radar as a `github` origin, add the following to your `Cartfile`:
+Install [Carthage](https://github.com/Carthage/Carthage) by adding the following to your `Cartfile`:
 
 ```
 github "radarlabs/radar-sdk-ios" ~> 3.21.5
-```
-
-To include Radar as a `binary` origin, add the following to your `Cartfile`:
-
-```
-binary "https://raw.githubusercontent.com/radarlabs/radar-sdk-ios/master/RadarSDK.json" ~> 3.21.5
 ```
 
 Then, run `carthage update` and drag `Build/iOS/RadarSDK.framework` into the _Linked Frameworks and Libraries_ section of your target. Do not add the framework as an input to your `copy-frameworks` run script.
