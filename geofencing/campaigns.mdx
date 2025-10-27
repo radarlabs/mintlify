@@ -14,7 +14,7 @@ First, [sign up](https://radar.com/signup) for Radar and get an API key.
 
 To use campaigns with [Geofences](/geofencing/geofences), start by [creating geofences](/geofences#create-geofences) through the dashboard, a CSV import, or the API.
 
-To use campaigns with [Places](/geofencing/places), enabled Places through the [settings page](https://radar.com/dashboard/settings#places-settings) and `nearby places` is activated. Reach out to your account manager to enable `nearby places` for your project. Then setup nearby places for the project via the [settings page](https://radar.com/dashboard/settings).
+To use campaigns with [Places](/geofencing/places), enable Places through the [settings page](https://radar.com/dashboard/settings#places-settings) and `nearby places` is activated. Reach out to your account manager to enable `nearby places` for your project. Then setup nearby places for the project via the [settings page](https://radar.com/dashboard/settings).
 
 To use campaigns with events, ensure that the desired trigger events are enabled through the [settings page](https://dashboard.radar.com/settings).
 
@@ -234,7 +234,7 @@ Analytics for in app messaging are available out of the box for both Android and
 #### Deep linking
 
 The CTA button on the in app message can be used to perform deep linking. Simply define the `CTA link` field during campaign creation
-Deep linking is available for both Android and iOS without any Radar specific setup. However, developer should register the scheme and handle deep linking as described in this [section](#deep-linking-1)
+Deep linking is available for both Android and iOS without any Radar specific setup. However, developers should register the scheme and handle deep linking as described in this [section](#deep-linking-1)
 
 ## Campaign targeting
 
@@ -250,7 +250,7 @@ Campaigns allow you to target users based on different triggers. Note not all tr
 
 **Place categories -** allow you to target categories like shopping malls (shopping-mall) or restaurants (restaurant)
 
-**Place chains -** allow you to target specific chains like Starbucks or TargetFor event based campaigns, you can target users based on their device type (iOS, Android, or both). 
+**Place chains -** allow you to target specific chains like Starbucks or Target. For event based campaigns, you can target users based on their device type (iOS, Android, or both). 
 
 ### User targeting options
 
@@ -483,7 +483,7 @@ Alternatively perform the manual setup if you are setting the `AppDelegate` as t
 
 ```objc
 - (void)userNotificationCenter:(UNUserNotificationCenter *)center didReceiveNotificationResponse:(UNNotificationResponse *)response withCompletionHandler:(void (^)(void))completionHandler {
-    [Radar openURLFromNotification:notification:response.notification];
+    [Radar openURLFromNotification:response.notification];
     completionHandler();
 }
 ```
