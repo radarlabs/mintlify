@@ -2,11 +2,26 @@
 Title: "Push notification"
 ---
 
-Push notifications allows you to request a location from a user remotely via their userId.
+Push notifications allows you to request a location from a user remotely via their userId. 
+There are two types of push notifications that can be sent to a device: silent push and location extension
+
+**Silent push notifications** can be used to wake the app to perform a track if the app is in the foreground or background. 
+This can be used to restart tracking if tracking was stopped due to iOS cpu/memory resource constraints. 
+However the silent push notification will not work if the app has been killed by the user.
+
+**Location extension service** can be used to request a location for devices even if the app is terminated. 
+The app will wake for ~30 seconds to respond to the request and perform a track. 
+The location extension service acts as a separate app, so it can only restart continuous tracking for 30 seconds before the extension is shutdown.
+
+## Radar dashboard setup
+
+[Obtain an encryption key for APN](https://developer.apple.com/help/account/keys/create-a-private-key) (Apple push notification)
+
+Navigate to Settings tab, and enable push notifications.
+
+Then enter in the app's bundle ID, team ID, key ID, and key. Then save the settings.
 
 ## App setup (automated setup)
-
-
 
 * Enable remote notifications in app capabilities
 
@@ -43,7 +58,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 * Initialize Radar with `RadarInitializeOptions.pushNotification = false` this is the default value
 
 
-## Location extension service
+## Location extension service setup
 
 Main app
 
@@ -75,6 +90,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 </CodeGroup>
 
+Location extension
 
 <CodeGroup>
 
@@ -91,3 +107,9 @@ class LocationPushService: NSObject, CLLocationPushServiceExtension {
 ```
 
 </CodeGroup>
+
+## Usage
+
+Silent push or location extension push notifications can be triggered by sending an POST API request to the `/users/refresh` endpoint
+
+[See API reference](/api#send-remote-track-requests-to-users)
