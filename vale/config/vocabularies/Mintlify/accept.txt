@@ -1,3 +1,5 @@
+# https://www.mintlify.com/docs/deploy/ci#vale
+
 Mintlify
 mintlify
 VSCode
