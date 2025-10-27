@@ -80,6 +80,16 @@ You can also use our Expo plugin to take care of the native setup. Add `react-na
           "iosNSMotionUsageDescription": "Your motion usage description."
         }
       ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            ...
+            "useFrameworks": "static"
+          },
+          "android": ...
+        }
+      ],
       // optional, only required if using Radar Maps
       [
         "@maplibre/maplibre-react-native"
