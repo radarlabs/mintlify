@@ -1162,6 +1162,26 @@ Radar.logConversion(
 
 </CodeGroup>
 
+### User tags
+
+With the [user tag API](/campaigns#advanced-targeting-options), you can configure [campaigns](/campaigns) to only target users with the corresponding tags:
+
+<CodeGroup>
+```java Java
+Radar.addTags(new String[]{"tag1", "tag2"});
+Radar.removeTags(new String[]{"tag1", "tag2"});
+Radar.setTags(new String[]{"tag1", "tag2"});
+Radar.getTags();
+```
+
+```kotlin Kotlin
+Radar.addTags(arrayOf("tag1", "tag2"))
+Radar.removeTags(arrayOf("tag1", "tag2"))
+Radar.setTags(arrayOf("tag1", "tag2"))
+Radar.getTags()
+```
+</CodeGroup>
+
 ## Notifications
 
 With `setNotificationOptions`, set the icon and the background color of foreground service and event notifications:
