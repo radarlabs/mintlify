@@ -250,7 +250,9 @@ Campaigns allow you to target users based on different triggers. Note not all tr
 
 **Place categories -** allow you to target categories like shopping malls (shopping-mall) or restaurants (restaurant)
 
-**Place chains -** allow you to target specific chains like Starbucks or Target. For event based campaigns, you can target users based on their device type (iOS, Android, or both). 
+**Place chains -** allow you to target specific chains like Starbucks or Target.
+
+**Device types -** allow you to target users based on their device type (iOS, Android, or both). 
 
 ### User targeting options
 
@@ -266,8 +268,7 @@ Target users based on their device's location-authorization status. For example,
 
 ### Beacon region targeting
 
-Target beacons based on their tag or their beacon ID. Radar converts those targeting options and converts them into an iBeacon region under the hood to trigger notifications as users enter iBeacon regions. 
-You can add metadata to the campaign, which will be accessible when the notification is triggered. In iOS the metadata can be accessed from `userNotificationCenter(_:didReceive response:)` with `response.notification.request.content.userInfo["campaignMetadata"]`.
+Target beacons based on their tag or their beacon ID. Radar converts those targeting options and converts them into an iBeacon region under the hood to trigger notifications as users enter iBeacon regions.
 
 ## Frequency Capping
 
@@ -288,6 +289,31 @@ Additionally, at the campaign level, you can configure each campaign to ignore t
 ## Additional setup for notification based campaign
 
 Client side geofence, Event based notifications, Beacon based notifications are considered notification based campaigns. Some additional setup are required for advanced features like analytics and deep linking.
+
+### Custom data
+
+You can add custom metadata to the campaign, which will be accessible when the notification is triggered. On notification clicked, the metadata can be accessed from notification delegate on iOS and activity lifecycle on Android.
+
+<CodeGroup>
+```swift Swift
+class MyApp: UNUserNotificationCenterDelegate {
+  ...
+  func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+    let metadata = response.notification.request.content.userInfo["campaignMetadata"]
+  }
+}
+```
+
+```kotlin Kotlin
+class MyActivityLifecycleCallbacks : Application.ActivityLifecycleCallbacks {
+  override fun onActivityResumed(activity: Activity) {
+    val campaignMetadata = try {
+      activity.intent.getStringExtra("radar_campaign_metadata")?.let { JSONObject(it) }
+    }
+  }
+}
+```
+</CodeGroup>
 
 ### Analytics
 
