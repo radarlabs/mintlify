@@ -292,7 +292,7 @@ Client side geofence, Event based notifications, Beacon based notifications are 
 
 ### Custom data
 
-You can add custom metadata to the campaign, which will be accessible when the notification is triggered. On notification clicked, the metadata can be accessed from notification delegate on iOS and activity lifecycle on Android.
+You can add custom metadata to the campaign, which will be accessible when the notification is triggered. On notification clicked, the metadata can be accessed from notification delegate on iOS{/* and activity lifecycle on Android */}.
 
 <CodeGroup>
 ```swift Swift
@@ -304,6 +304,7 @@ class MyApp: UNUserNotificationCenterDelegate {
 }
 ```
 
+{/*
 ```kotlin Kotlin
 class MyActivityLifecycleCallbacks : Application.ActivityLifecycleCallbacks {
   override fun onActivityResumed(activity: Activity) {
@@ -313,6 +314,7 @@ class MyActivityLifecycleCallbacks : Application.ActivityLifecycleCallbacks {
   }
 }
 ```
+*/}
 </CodeGroup>
 
 ### Analytics
