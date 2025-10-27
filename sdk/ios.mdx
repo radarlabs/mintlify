@@ -44,16 +44,10 @@ In Xcode, go to _File_ \> _Swift Packages_ \> _Add Package Dependency_. Enter `h
 
 ### Carthage
 
-Install [Carthage](https://github.com/Carthage/Carthage). To include Radar as a `github` origin, add the following to your `Cartfile`:
+Install [Carthage](https://github.com/Carthage/Carthage) by adding the following to your `Cartfile`:
 
 ```
 github "radarlabs/radar-sdk-ios" ~> 3.21.5
-```
-
-To include Radar as a `binary` origin, add the following to your `Cartfile`:
-
-```
-binary "https://raw.githubusercontent.com/radarlabs/radar-sdk-ios/master/RadarSDK.json" ~> 3.21.5
 ```
 
 Then, run `carthage update` and drag `Build/iOS/RadarSDK.framework` into the _Linked Frameworks and Libraries_ section of your target. Do not add the framework as an input to your `copy-frameworks` run script.
@@ -222,7 +216,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, CLLocationManagerDelegate
 </CodeGroup>
 
 <Info>
-  Build and run the app to make sure permissions prompts are displayed\!
+  Build and run the app to make sure permissions prompts are displayed!
 </Info>
 
 <Info>
@@ -279,7 +273,7 @@ You may provide an optional `completionHandler` that receives the request status
 - `.errorUnknown`: unknown error
 
 <Warning>
-  Build and run the app, then find your user on the [**Users page**](https://dashboard.radar.com/geofencing/users)\! To trigger an event, you'll need to [**create a geofence**](https://dashboard.radar.com/geofencing/geofences) if you haven't already. Not seeing your user on the Users page? Check `status` in the `completionHandler` to see what went wrong.
+  Build and run the app, then find your user on the [**Users page**](https://dashboard.radar.com/geofencing/users)! To trigger an event, you'll need to [**create a geofence**](https://dashboard.radar.com/geofencing/geofences) if you haven't already. Not seeing your user on the Users page? Check `status` in the `completionHandler` to see what went wrong.
 </Warning>
 
 ## Background tracking for geofencing
@@ -297,7 +291,7 @@ Assuming the user has authorized background permissions, background tracking wil
 </Warning>
 
 <Info>
-  Though we recommend using presets for most use cases, you can modify the presets. See the [**tracking options reference**](/sdk/sdk/tracking).
+  Though we recommend using presets for most use cases, you can modify the presets. See the [**tracking options reference**](/sdk/tracking).
 </Info>
 
 To start tracking for geofencing, call:
@@ -348,11 +342,11 @@ Radar.stopTracking()
 You only need to call these methods once, as these settings will be persisted across app sessions.
 
 <Warning>
-  To test, go for a walk or a drive\! Not seeing location updates or events? Remember that, once stopped, the device will need to move more than 100 meters to wake up and start moving again. Also, check your device settings to make sure you've granted background location permissions.
+  To test, go for a walk or a drive! Not seeing location updates or events? Remember that, once stopped, the device will need to move more than 100 meters to wake up and start moving again. Also, check your device settings to make sure you've granted background location permissions.
 </Warning>
 
 <Info>
-  Don't forget\! You can always find your user on the [**Users page**](https://dashboard.radar.com/geofencing/users) or events on the [**Events page**](https://dashboard.radar.com/geofencing/events). To trigger an event, you'll need to [**create a geofence**](https://dashboard.radar.com/geofencing/geofences) if you haven't already.
+  Don't forget! You can always find your user on the [**Users page**](https://dashboard.radar.com/geofencing/users) or events on the [**Events page**](https://dashboard.radar.com/geofencing/events). To trigger an event, you'll need to [**create a geofence**](https://dashboard.radar.com/geofencing/geofences) if you haven't already.
 </Info>
 
 ## Background tracking for trips
@@ -421,7 +415,7 @@ Radar.cancelTrip()
 Learn more about starting, completing, and canceling trips in the [trip tracking documentation](/geofencing/trips).
 
 <Info>
-  Don't forget\! You can always find your user on the [**Users page**](https://dashboard.radar.com/geofencing/users) or events on the [**Events page**](https://dashboard.radar.com/geofencing/events). To trigger an event, you'll need to [**create a geofence**](https://dashboard.radar.com/geofencing/geofences) or [**start a trip**](https://docs.radar.com/trip-tracking) if you haven't already. Also, check your device settings to make sure you've granted location permissions.
+  Don't forget! You can always find your user on the [**Users page**](https://dashboard.radar.com/geofencing/users) or events on the [**Events page**](https://dashboard.radar.com/geofencing/events). To trigger an event, you'll need to [**create a geofence**](https://dashboard.radar.com/geofencing/geofences) or [**start a trip**](https://docs.radar.com/trip-tracking) if you haven't already. Also, check your device settings to make sure you've granted location permissions.
 </Info>
 
 ## Mock tracking for testing
@@ -456,7 +450,7 @@ Radar.mockTracking(
 </CodeGroup>
 
 <Info>
-  Don't forget\! You can always find your user on the [**Users page**](https://dashboard.radar.com/geofencing/users) or events on the [**Events page**](https://dashboard.radar.com/geofencing/events). To trigger an event, you'll need to [**create a geofence**](https://dashboard.radar.com/geofencing/geofences) if you haven't already.
+  Don't forget! You can always find your user on the [**Users page**](https://dashboard.radar.com/geofencing/users) or events on the [**Events page**](https://dashboard.radar.com/geofencing/events). To trigger an event, you'll need to [**create a geofence**](https://dashboard.radar.com/geofencing/geofences) if you haven't already.
 </Info>
 
 ## Location metadata
