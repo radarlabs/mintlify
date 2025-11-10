@@ -20,13 +20,12 @@
       "format": "woff2"
     }
   },
-    "background": {
+  "background": {
     "color": {
       "light": "#FFFFFF",
       "dark": "#131415"
     }
   },
-  
   "logo": {
     "light": "https://images.ctfassets.net/f2vbu16fzuly/3GdUvTpZ1Z3y3vlmNqVBd9/7b08514631b38b7a9a8e56a489ce6c50/logo_light.svg",
     "dark": "https://images.ctfassets.net/f2vbu16fzuly/4j8jsEaoBpw7yjXfrUNPfk/3e9d1053dd22cba1919581c242e17c92/logo_dark.svg"
@@ -137,10 +136,6 @@
         "pages": [
           "faqs"
         ]
-      },
-      {
-        "group": "Radar.com",
-        "pages": []
       }
     ]
   }
