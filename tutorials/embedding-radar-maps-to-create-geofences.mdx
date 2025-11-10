@@ -1,0 +1,93 @@
+---
+title: "Embedding Radar Maps to create geofences"
+---
+
+This tutorial walks you through building a geofence creation tool using Radar Maps and Radar's geofence API.
+
+## Features used
+
+- [Radar Maps](https://docs.radar.com/maps/maps)
+- [Geofence API](https://docs.radar.com/geofencing/geofences#api)
+- 
+- Polygon drawing tool of your choice
+
+## Getting started
+
+If you haven't already, sign up for Radar to get your API key. Then add the Radar SDK to your application.
+
+```
+npm install radar-sdk-js
+```
+
+You'll also need to choose and install a polygon drawing library that works with your map implementation.
+
+## Initialize the map
+
+First, import the necessary libraries and initialize Radar.
+
+```javascript
+import React from 'react';
+import Radar from 'radar-sdk-js';
+import 'radar-sdk-js/dist/radar.css';
+
+componentDidMount() {
+  // initialize with your publishable key
+  Radar.initialize('prj_test_pk_...');
+  
+  // create map instance
+  this.mapInstance = Radar.ui.map({
+    container: 'map',
+    center: [-73.9911, 40.7342], // NYC
+    zoom: 14,
+  });
+
+  this.mapInstance.on('load', () => {
+    this.initializeDrawTools();
+  });
+}
+```
+
+## Set up drawing tools
+
+Initialize your chosen polygon drawing tool. Enable drawing modes for both polygons and circles.
+
+```javascript
+initializeDrawTools = () => {
+  // initialize your drawing tool here
+  // set up event listeners for draw events
+  
+  this.mapInstance.on('draw.create', this.handleDrawCreated);
+  this.mapInstance.on('draw.delete', this.handleDrawDeleted);
+}
+```
+
+### Implement polygon drawing
+
+Enable polygon drawing mode.
+
+```javascript
+startDrawing = () => {
+  // enable polygon drawing mode with your tool
+  // example pattern:
+  this.setState({ isDrawingMode: true });
+}
+
+handleDrawCreated = (e) => {
+  // handle completed drawing
+  this.setState({ 
+    isDrawingMode: false, 
+    hasPolygon: true 
+  });
+}
+
+clearMap = () => {
+  // clear all drawn features
+  // reset state
+  this.setState({ hasPolygon: false });
+  this.startDrawing();
+}
+```
+
+### Implement circle drawing
+
+Create circles by calculating points around a center.
