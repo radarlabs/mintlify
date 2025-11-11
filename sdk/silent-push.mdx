@@ -1,11 +1,11 @@
 ---
-Title: "Push notification"
+Title: "Silent push"
 ---
 
-Push notifications allow you to request a location from a user remotely via their userId. 
-There are two types of push notifications that can be sent to a device: silent push and location extension
+Silent push notifications allow you to request a location from a user remotely by their userId. 
+There are two types of silent push notifications that can be sent to a device: regular app silent push and location service extension push.
 
-**Silent push notifications** can be used to wake the app to perform a track if the app is in the foreground or background. 
+**App silent push** can be used to wake the app to perform a track if the app is in the foreground or background. 
 This can be used to restart tracking if tracking was stopped due to iOS cpu/memory resource constraints. 
 However the silent push notification will not work if the app has been killed by the user.
 
@@ -57,9 +57,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 * Initialize Radar with `RadarInitializeOptions.pushNotification = false` this is the default value
 
-
-## Location extension service setup
-
 Main app
 
 <CodeGroup>
@@ -88,9 +85,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 ```
 
-</CodeGroup>
+## Location extension service setup
 
-Location extension
+When a location payload is received by the location service extension, pass the payload to Radar to handle the notification.
 
 <CodeGroup>
 

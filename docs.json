@@ -112,7 +112,7 @@
           "sdk/maui",
           "sdk/tracking",
           "sdk/remote-configuration",
-          "sdk/push-notification"
+          "sdk/silent-push"
         ]
       },
       {

@@ -2757,7 +2757,7 @@ curl "https://api.radar.io/v1/users/56db1f4613012711002229f4" \
 
 #### **Send remote track requests to users**
 
-Sends a remote track request to a list of users via push notifications.
+Sends a remote track request to a list of users via silent push notifications.
 
 **Definition**
 
@@ -2780,7 +2780,7 @@ Secret
 
 ```
 curl "https://api.radar.io/v1/users/refresh" \
-  -H "Authorization: prj_test_sk_d53c63ed63d8f493b87e765254be84d1cc3e1992" \
+  -H "Authorization: prj_test_sk_..." \
   -H "Content-Type: application/json" \
   -X POST \
   -d '{"externalIds": ["userId1", "userId2", "userId3"]}'
