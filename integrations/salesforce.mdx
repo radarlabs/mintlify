@@ -16,7 +16,7 @@ On the Salesforce Marketing Cloud _Setup_ menu, under _Installed Packages_, clic
 
 Then, on the Radar [Integrations page](https://dashboard.radar.com/integrations#salesforce) under _Salesforce Marketing Cloud_, set _Enabled_ to _Yes_ and paste these values. When you click _Save_, Radar will create an event definition and data extension with the specified event definition key (`radar-event` by default). Whenever events are generated, Radar will send events to your Salesforce Marketing Cloud data extension to trigger journeys.
 
-In Salesforce Marketing Cloud's _Contact Builder_, under _Data Designer_, connect the Radar data extension to your data model by linking the Customer Data's _Contact Key_ field to the Radar Data Extension's _contactKey_ field in a one to many relationship.
+In Salesforce Marketing Cloud, hover over _Audience Builder_, then select_Contact Builder_ . Under _Data Designer_, connect the Radar data extension to your data model by linking the Customer Data's _Contact Key_ field to the Radar Data Extension's _contactKey_ field in a one to many relationship.
 
 To map a Radar user to a Salesforce Marketing Cloud contact, you must specify a custom mapping by setting Radar `metadata.salesforceContactKey`.
 
@@ -354,4 +354,3 @@ If [Regions](/geofencing/regions) is enabled, Radar will also send the following
 | `confidence`          | `confidence`               | string                    | `"high"`                     |
 | `duration`            | `duration`                 | number (minutes)          | `1.42`                       |
 | `foreground`          | `foreground`               | boolean                   | `true`                       |
-
