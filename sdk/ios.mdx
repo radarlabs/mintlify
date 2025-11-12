@@ -544,10 +544,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, RadarDelegate {
     // print message for debug logs
 }
 
-- (void)didUpdateLocationPermissionStatus:(RadarLocationPermissionStatus *_Nonnull)status {
-  // do something with location permission status 
-}
-
 @end
 ```
 
@@ -1172,6 +1168,29 @@ func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive respo
     [Radar logConversionWithNotificationResponse:response];
     completionHandler();
 }
+```
+
+</CodeGroup>
+
+### User tags
+
+With the [user tag API](/campaigns#advanced-targeting-options), you can configure [campaigns](/campaigns) to only target users with the corresponding tags:
+
+
+<CodeGroup>
+
+```swift Swift
+Radar.addTags(["tag1", "tag2"])
+Radar.removeTags(["tag1", "tag2"])
+Radar.setTags(["tag1", "tag2"])
+Radar.getTags()
+```
+
+```objc Objective-C
+[Radar addTags:@[@"tag1", @"tag2"]];
+[Radar removeTags:@[@"tag1", @"tag2"]];
+[Radar setTags:@[@"tag1", @"tag2"]];
+[Radar getTags];
 ```
 
 </CodeGroup>
