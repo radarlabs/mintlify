@@ -2,20 +2,21 @@
 Title: "Silent push"
 ---
 
-Silent push notifications allow you to request a location from a user remotely by their userId. 
+Silent push notifications allow us to remotely request a fresh location from a user. Radar supports requesting these locations through an API endpoint.
+
 There are two types of silent push notifications that can be sent to a device: regular app silent push and location service extension push.
 
 **App silent push** can be used to wake the app to perform a track if the app is in the foreground or background. 
-This can be used to restart tracking if tracking was stopped due to iOS cpu/memory resource constraints. 
-However the silent push notification will not work if the app has been killed by the user.
+This can be used to restart tracking if tracking was stopped due to device memory or CPU resource constraints. 
+However the silent push notification will not work if the app has been manually killed by the user.
 
-**Location extension service** can be used to request a location for devices even if the app is terminated. 
-The app will wake for ~30 seconds to respond to the request and perform a track. 
+**Location extension service** can be used to request a location for devices even if the app was manually terminated. 
+The app will wake for ~30 seconds to respond to the request and perform a track request with a fresh location. 
 The location extension service acts as a separate app, so it can only restart continuous tracking for 30 seconds before the extension is shutdown.
 
 ## Radar dashboard setup
 
-[Obtain an encryption key for APN](https://developer.apple.com/help/account/keys/create-a-private-key) (Apple push notification)
+[Obtain an encryption key for APN](https://developer.apple.com/help/account/keys/create-a-private-key) (Apple push notification).
 
 Navigate to Settings tab, and enable push notifications.
 
@@ -23,9 +24,9 @@ Then enter in the app's bundle ID, team ID, key ID, and key. Then save the setti
 
 ## App setup (automated setup)
 
-* Enable remote notifications in app capabilities
+* Enable remote notifications in app capabilities.
 
-* Initialize Radar with `RadarInitializeOptions.pushNotification = true`
+* Initialize Radar with `RadarInitializeOptions.pushNotification = true`.
 
 
 <CodeGroup>
@@ -53,11 +54,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 ## Manual setup
 
 
-* Enable remote notifications in app capabilities
+* Enable remote notifications in app capabilities.
 
-* Initialize Radar with `RadarInitializeOptions.pushNotification = false` this is the default value
-
-Main app
+* Initialize Radar with `RadarInitializeOptions.pushNotification = false` this is the default value.
 
 <CodeGroup>
 
@@ -72,7 +71,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         let radarInitializeOptions = RadarInitializeOptions()
-        radarInitializeOptions.pushNotification = true
+        radarInitializeOptions.pushNotification = false
         Radar.initialize(publishableKey: "prj_test_pk_...", options: radarInitializeOptions)
 
         locationManager.startMonitoringLocationPushes() { data, error in
@@ -84,6 +83,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 }
 ```
+</CodeGroup>
 
 ## Location extension service setup
 
@@ -97,7 +97,7 @@ import RadarSDK
 
 class LocationPushService: NSObject, CLLocationPushServiceExtension {
     func didReceiveLocationPushPayload(_ payload: [String : Any], completion: @escaping () -> Void) {
-        Radar.initialize(withAppGroup: "group.waypoint.data")
+        Radar.initialize(withAppGroup: "group.yourApp.data")
         Radar.didReceivePushNotificationPayload(payload, completionHandler: completion)
     }
 }
@@ -107,6 +107,4 @@ class LocationPushService: NSObject, CLLocationPushServiceExtension {
 
 ## Usage
 
-Silent push or location extension push notifications can be triggered by sending a POST API request to the `/users/refresh` endpoint
-
-[See API reference](/api#send-remote-track-requests-to-users)
+Silent push or location extension push notifications can be triggered by sending a POST API request to the `/users/refresh` endpoint. See the [API reference](/api#send-remote-track-requests-to-users) for full details.
