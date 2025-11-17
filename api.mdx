@@ -2755,6 +2755,49 @@ curl "https://api.radar.io/v1/users/56db1f4613012711002229f4" \
 }
 ```
 
+#### **Send remote track requests to users**
+
+Sends a remote track request to a list of users via silent push notifications.
+
+**Definition**
+
+`POST https://api.radar.io/v1/users/refresh`
+
+**Body parameters**
+
+- `externalIds` (array, required): An array of user IDs to send the track request to. Limit to a maximum of 10 users per request.
+- `type` (string, optional): Choose which type of notification is used, one of `silentPush` or `pushExtension`.
+
+**Default rate limit**
+
+10 requests per second
+
+**Authentication level**
+
+Secret
+
+**Sample request**
+
+```
+curl "https://api.radar.io/v1/users/refresh" \
+  -H "Authorization: prj_test_sk_..." \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"externalIds": ["userId1", "userId2", "userId3"]}'
+```
+
+**Sample response**
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "sent": ["userId1", "userId2"],
+  "failed": [{"externalId":"userId3","reason":"Rate limit exceeded"}]
+}
+```
+
 ### **Trips**
 
 A trip is a sequence of location updates with metadata and a unique ID, optionally with an ETA to a destination geofence. Depending on your use case, a trip may represent a pickup, a delivery, or something else.

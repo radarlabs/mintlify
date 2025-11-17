@@ -1,0 +1,110 @@
+---
+Title: "Silent push"
+---
+
+Silent push notifications allow us to remotely request a fresh location from a user. Radar supports requesting these locations through an API endpoint, starting with iOS SDK version `3.24.0`.
+
+There are two types of silent push notifications that can be sent to a device: regular app silent push and location service extension push.
+
+**App silent push** can be used to wake the app to perform a track if the app is in the foreground or background. 
+This can be used to restart tracking if tracking was stopped due to device memory or CPU resource constraints. 
+However the silent push notification will not work if the app has been manually killed by the user.
+
+**Location extension service** can be used to request a location for devices even if the app was manually terminated. 
+The app will wake for ~30 seconds to respond to the request and perform a track request with a fresh location. 
+The location extension service acts as a separate app, so it can only restart continuous tracking for 30 seconds before the extension is shutdown.
+
+## Radar dashboard setup
+
+[Obtain an encryption key for APN](https://developer.apple.com/help/account/keys/create-a-private-key) (Apple push notification).
+
+Navigate to Settings tab, and enable push notifications.
+
+Then enter in the app's bundle ID, team ID, key ID, and key. Then save the settings.
+
+## App setup (automated setup)
+
+* Enable remote notifications in app capabilities.
+
+* Initialize Radar with `RadarInitializeOptions.pushNotification = true`.
+
+
+<CodeGroup>
+
+```swift Swift
+import UIKit
+import RadarSDK
+
+@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {
+
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        let radarInitializeOptions = RadarInitializeOptions()
+        radarInitializeOptions.silentPush = true
+        Radar.initialize(publishableKey: "prj_test_pk_...", options: radarInitializeOptions)
+
+        return true
+    }
+
+}
+```
+
+</CodeGroup>
+
+## Manual setup
+
+
+* Enable remote notifications in app capabilities.
+
+* Initialize Radar with `RadarInitializeOptions.silentPush = false` this is the default value.
+
+<CodeGroup>
+
+```swift Swift
+import UIKit
+import RadarSDK
+
+@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {
+
+    let locationManager = CLLocationManager()
+
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        let radarInitializeOptions = RadarInitializeOptions()
+        radarInitializeOptions.silentPush = false
+        Radar.initialize(publishableKey: "prj_test_pk_...", options: radarInitializeOptions)
+
+        locationManager.startMonitoringLocationPushes() { data, error in
+            Radar.setLocationExtensionToken(data?.map { String(format: "%02x", $0) }.joined())
+        }
+
+        return true
+    }
+
+}
+```
+</CodeGroup>
+
+## Location extension service setup
+
+When a location payload is received by the location service extension, pass the payload to Radar to handle the notification.
+
+<CodeGroup>
+
+```swift Swift
+import CoreLocation
+import RadarSDK
+
+class LocationPushService: NSObject, CLLocationPushServiceExtension {
+    func didReceiveLocationPushPayload(_ payload: [String : Any], completion: @escaping () -> Void) {
+        Radar.initialize(withAppGroup: "group.yourApp.data")
+        Radar.didReceivePushNotificationPayload(payload, completionHandler: completion)
+    }
+}
+```
+
+</CodeGroup>
+
+## Usage
+
+Silent push or location extension push notifications can be triggered by sending a POST API request to the `/users/refresh` endpoint. See the [API reference](/api#send-remote-track-requests-to-users) for full details.
