@@ -2765,7 +2765,7 @@ Sends a remote track request to a list of users via silent push notifications.
 
 **Body parameters**
 
-- `externalIds` (array, required): An array of user IDs to send the track request to. Limit to a maximum of 10 users per request.
+- `userIds` (array, required): An array of user IDs to send the track request to. Limit to a maximum of 10 users per request.
 - `type` (string, optional): Choose which type of notification is used, one of `silentPush` or `pushExtension`.
 
 **Default rate limit**
@@ -2783,7 +2783,7 @@ curl "https://api.radar.io/v1/users/refresh" \
   -H "Authorization: prj_test_sk_..." \
   -H "Content-Type: application/json" \
   -X POST \
-  -d '{"externalIds": ["userId1", "userId2", "userId3"]}'
+  -d '{"userIds": ["userId1", "userId2", "userId3"]}'
 ```
 
 **Sample response**
@@ -2793,8 +2793,8 @@ curl "https://api.radar.io/v1/users/refresh" \
   "meta": {
     "code": 200
   },
-  "sent": ["userId1", "userId2"],
-  "failed": [{"externalId":"userId3","reason":"Rate limit exceeded"}]
+  "sent": [{"userId": "userId1"}, {"userId": "userId2"}],
+  "failed": [{"userId": "userId3", "reason": "Rate limit exceeded"}]
 }
 ```
 
