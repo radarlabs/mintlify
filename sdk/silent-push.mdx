@@ -24,27 +24,47 @@ Then enter in the app's bundle ID, team ID, key ID, and key for iOS. Enter the p
 
 ## App setup (automated setup)
 
-* Enable remote notifications in app capabilities.
+for iOS, Enable remote notifications in app capabilities.
 
-[Add Firebase to your project](https://firebase.google.com/docs/android/setup) and then generate a service account from the Firebase console. You'll need the account details to send silent push notifications.
+for Android, [Add Firebase to your project](https://firebase.google.com/docs/android/setup) and then generate a service account from the Firebase console. You'll need the account details to send silent push notifications.
 
+Add the following firebase messaging service configuration to your project
+```
+<manifest>
+    ...
+    <application>
+        ...
+        <service android:name="io.radar.sdk.RadarFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>
 ```
 
+Add firebase messaging dependency to gradle
+```
+dependencies {
+    ...
+    implementation platform('com.google.firebase:firebase-bom:34.5.0')
+    implementation "com.google.firebase:firebase-messaging"
+}
 ```
 
-
-* Initialize Radar with `RadarInitializeOptions.pushNotification = true`.
+* Initialize Radar with `RadarInitializeOptions.silentPush = true`.
 
 <CodeGroup>
 
 ```swift Swift
-import UIKit
 import RadarSDK
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // initialization Radar with the silent push option
         let radarInitializeOptions = RadarInitializeOptions()
         radarInitializeOptions.silentPush = true
         Radar.initialize(publishableKey: "prj_test_pk_...", options: radarInitializeOptions)
@@ -55,11 +75,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 ```
 ```kotlin Kotlin
+import com.google.firebase.FirebaseApp
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarInitializeOptions
 
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // optional initialization options
+        // first the firebase app needs to be initialized
+        FirebaseApp.initializeApp(this)
+
+        // initialization Radar with the silent push option
         val radarInitializeOptions = RadarInitializeOptions(
             silentPush = true,
         )
@@ -87,9 +113,8 @@ import RadarSDK
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        let radarInitializeOptions = RadarInitializeOptions()
-        radarInitializeOptions.silentPush = false
-        Radar.initialize(publishableKey: "prj_test_pk_...", options: radarInitializeOptions)
+        // initialize Radar, silent push option defaults to false
+        Radar.initialize(publishableKey: "prj_test_pk_...")
 
         application.registerForRemoteNotifications()
 
@@ -107,11 +132,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // optional initialization options parameter, silentPush defaults to false
-        val radarInitializeOptions = RadarInitializeOptions()
-        Radar.initialize(this, "prj_test_pk_...", radarInitializeOptions)
+        // first the firebase app needs to be initialized
+        FirebaseApp.initializeApp(this)
+
+        // initialize Radar, silent push option defaults to false
+        Radar.initialize(this, "prj_test_pk_...")
         
-        // register 
+        // register push notification with firebase, then pass the push token to Radar
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
             Radar.setSilentPushToken(token)
         }
