@@ -1,5 +1,5 @@
 ---
-Title: "Silent push"
+title: "Silent push"
 ---
 
 Silent push notifications allow us to remotely request a fresh location from a user. Radar supports requesting these locations through an API endpoint, starting with iOS SDK version `3.24.0`.
@@ -24,9 +24,9 @@ Then enter in the app's bundle ID, team ID, key ID, and key for iOS. Enter the p
 
 ## App setup (automated setup)
 
-for iOS, Enable remote notifications in app capabilities.
+For iOS, Enable remote notifications in app capabilities.
 
-for Android, [Add Firebase to your project](https://firebase.google.com/docs/android/setup) and then generate a service account from the Firebase console. You'll need the account details to send silent push notifications.
+For Android, [Add Firebase to your project](https://firebase.google.com/docs/android/setup) and then generate a service account from the Firebase console. You'll need the account details to send silent push notifications.
 
 Add the following firebase messaging service configuration to your project
 ```
@@ -91,6 +91,7 @@ class MainActivity : AppCompatActivity() {
         )
         Radar.initialize(this, "prj_test_pk_...", radarInitializeOptions)
     }
+
 }
 ```
 
