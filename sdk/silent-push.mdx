@@ -164,7 +164,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     let locationManager = CLLocationManager()
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        Radar.setAppGroup("group.yourApp.data") // app group must be set before all other calls to radar
+        Radar.setAppGroup("group.yourApp.data") // app group must be set before all other calls to Radar
         
         let radarInitializeOptions = RadarInitializeOptions()
         radarInitializeOptions.silentPush = true // (or true if you only want location extension)
