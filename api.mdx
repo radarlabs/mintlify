@@ -415,11 +415,11 @@ Geocodes an address, converting address to coordinates.
 
 This endpoint is best for complete addresses. For partial addresses or place names, call the [autocomplete](#autocomplete) endpoint instead.
 
-Returns a confidence level, as defined below:
+Returns a confidence level indicating the certainty of the result's latitude and longitude:
 
-- **`exact`**: The result matches the query sent.
-- **`interpolated`**: A result where there is a record for the street but not the exact building number, so the value is calculated between two known building numbers.
-- **`fallback`**: A result where Radar does not have a matching record and cannot interpolate the results. Radar falls back to the region containing the query.
+- **`exact`**: Precise coordinates for a known address location.
+- **`interpolated`**: Estimated coordinates between two known address points when an exact address location is unavailable.
+- **`fallback`**: Coarse coordinates (e.g., postal code/city) for the containing region when no precise location is available.
 
 **Definitions**
 
