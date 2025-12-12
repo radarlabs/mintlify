@@ -22,9 +22,11 @@ Navigate to Settings tab, and enable push notifications.
 
 Then enter in the app's bundle ID, team ID, key ID, and key for iOS. Enter the project ID, client email, and private key for Android. Then save the settings.
 
+Your private key should begin and end with `-----BEGIN/END PRIVATE KEY-----`, include this in your key.
+
 ## Build configuration
 
-For iOS, Enable remote notifications in app capabilities.
+For iOS, Add the "Push Notifications" app capabilities, and turn on "Remote notifications" in the "Background Modes" capability.
 
 For Android, [Add Firebase to your project](https://firebase.google.com/docs/android/setup) and then generate a service account from the Firebase console. You'll need the account details to send silent push notifications.
 
@@ -200,3 +202,11 @@ class LocationPushService: NSObject, CLLocationPushServiceExtension {
 ## Usage
 
 Silent push or location extension push notifications can be triggered by sending a POST API request to the `/users/refresh` endpoint. See the [API reference](/api#send-remote-track-requests-to-users) for full details.
+
+## iOS Environments
+
+APN operate in two separate environments for production and non-production app builds. 
+When using the live Radar environment, Radar sends silent push notifications to the production APN environment, 
+and when using the test Radar environment, Radar sends silent push notificaitons to the non-production environment.
+
+When using the live Radar environment, your device must be in a production build, and vice versa. You will receive "BadDeviceToken" if there is a mismatch.
