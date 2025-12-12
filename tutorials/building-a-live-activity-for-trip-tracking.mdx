@@ -342,7 +342,7 @@ In this tutorial, we will leverage [Trips](/geofencing/trips) to build a Live Ac
         }
     
         // MARK: - Status
-        
+
         private var statusText: some View {
             let step = TripFormatters.mapStatusToStep(context.state.status)
             return Text(TripFormatters.statusMessage(for: step))
@@ -617,7 +617,7 @@ In this tutorial, we will leverage [Trips](/geofencing/trips) to build a Live Ac
   </Step>
   <Step title="Add UIColor extension">
     
-    Add `Helpers/UIColor+Hex.swift`
+    Add `Extensions/UIColor+Hex.swift`
 
     ```swift
     import UIKit
@@ -810,7 +810,7 @@ In this tutorial, we will leverage [Trips](/geofencing/trips) to build a Live Ac
     **Dynamic Island**
     ![Live Activity example dynamic island](/images/tutorials/live-activity/live-activity-island.jpg)
 
-    **Expanded Dymanic Island**
+    **Expanded Dynamic Island**
     ![Live Activity example dynamic island expanded](/images/tutorials/live-activity/live-activity-expanded-island.png)
 
 
