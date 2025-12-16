@@ -180,10 +180,9 @@ Then, reference this file in your manifest:
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
-<manifest ... >
+<manifest>
     <application android:networkSecurityConfig="@xml/network_security_config"
-                    ... >
-        ...
+                <!-- other items -->
     </application>
 </manifest>
 ```
@@ -579,4 +578,3 @@ On errors or failed fraud checks, you may want to display a message to the end u
 - On **`country.allowed == false`** or **`state.allowed == false`**: Unable to verify your location. Please make sure you're in an allowed area and try again.
 - On **`fraud.proxy == true`**: Unable to verify your location. Please disconnect from any VPNs or proxy servers you may be using and try again.
 - On other error cases, or as a fallback: Unable to verify your location. Please contact support.
-
