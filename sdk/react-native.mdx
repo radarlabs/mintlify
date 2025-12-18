@@ -215,7 +215,7 @@ Radar.requestPermissions(false).then((status) => {
 Learn about platform-specific permissions in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
 
 <Info>
-  Build and run the app to make sure permissions prompts are displayed\!
+  Build and run the app to make sure permissions prompts are displayed!
 </Info>
 
 ### Foreground tracking
@@ -319,19 +319,19 @@ Learn about platform-specific implementations of these functions in the [iOS SDK
 To listen for events, location updates, and errors, you can add event listeners:
 
 ```javascript
-Radar.on('clientLocation', (result) => {
+Radar.onClientLocationUpdated((result) => {
   // do something with result.location
 });
 
-Radar.on('location', (result) => {
+Radar.onLocationUpdated((result) => {
   // do something with result.location, result.user
 });
 
-Radar.on('events', (result) => {
+Radar.onEventsReceived((result) => {
   // do something with result.events, result.user
 });
 
-Radar.on('error', (err) => {
+Radar.onError((err) => {
   // do something with err
 });
 ```
@@ -345,10 +345,10 @@ Add event listeners outside of your component lifecycle (e.g., outside of `compo
 You can also remove event listeners:
 
 ```javascript
-Radar.off('clientLocation');
-Radar.off('location');
-Radar.off('events');
-Radar.off('error');
+Radar.onClientLocationUpdated(null);
+Radar.onLocationUpdated(null);
+Radar.onEventsReceived(null);
+Radar.onError(null);
 ```
 
 ### Battery usage
@@ -726,5 +726,4 @@ The React Native SDK also has UI components for maps and address autocomplete. L
 
 ## Support
 
-Have questions? We're here to help\! Contact us at [radar.com/support](https://radar.com/support).
-
+Have questions? We're here to help! Contact us at [radar.com/support](https://radar.com/support).
