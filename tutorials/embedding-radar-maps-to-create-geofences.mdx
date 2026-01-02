@@ -2,14 +2,22 @@
 title: "Embedding Radar Maps to create geofences"
 ---
 
-This tutorial walks you through building a geofence creation tool using Radar Maps and Radar's geofence API.
+Prefer to create and manage geofences in your own dashboard? This tutorial shows you how to embed a Radar Map in your application and build a custom geofence creation interface. Geofences created through your dashboard will automatically appear in Radar's dashboard as well.
+
+## What you'll build
+
+You'll create a geofence creation tool that allows users to:
+
+- Draw polygons and circles directly on an embedded Radar Map
+- Fill out a form with geofence details (external ID, description, tag)
+- Create geofences programmatically using Radar's API
 
 ## Features used
 
 - [Radar Maps](https://docs.radar.com/maps/maps)
-- [Geofence API](https://docs.radar.com/geofencing/geofences#api)
-- 
+- [Create Geofence API](https://docs.radar.com/geofencing/geofences#api)
 - Polygon drawing tool of your choice
+- Circle drawing tool of your choice
 
 ## Getting started
 
@@ -19,7 +27,7 @@ If you haven't already, sign up for Radar to get your API key. Then add the Rada
 npm install radar-sdk-js
 ```
 
-You'll also need to choose and install a polygon drawing library that works with your map implementation.
+You'll also need to choose and install polygon and circle drawing libraries that are compatible with Radar Maps and MapLibre.
 
 ## Initialize the map
 
@@ -53,41 +61,296 @@ Initialize your chosen polygon drawing tool. Enable drawing modes for both polyg
 
 ```javascript
 initializeDrawTools = () => {
-  // initialize your drawing tool here
-  // set up event listeners for draw events
+  // Initialize your drawing tool here
+  // Set up event listeners for draw events
   
   this.mapInstance.on('draw.create', this.handleDrawCreated);
+  this.mapInstance.on('draw.update', this.handleDrawUpdated);
   this.mapInstance.on('draw.delete', this.handleDrawDeleted);
+  this.mapInstance.on('draw.modechange', this.handleModeChange);
 }
 ```
 
 ### Implement polygon drawing
 
-Enable polygon drawing mode.
+Enable polygon drawing mode when the user selects the polygon option.
+
+<video autoPlay muted loop playsInline className="w-full aspect-video rounded-xl" src="/images/PolygonGeofenceMap.mp4" />
 
 ```javascript
 startDrawing = () => {
-  // enable polygon drawing mode with your tool
-  // example pattern:
-  this.setState({ isDrawingMode: true });
+  if (this.drawInstance) {
+    const { geofenceType } = this.state;
+    
+    if (geofenceType === 'polygon') {
+      // Enable polygon drawing mode with your tool
+      this.drawInstance.changeMode('draw_polygon');
+      this.setState({ isDrawingMode: true });
+    } else if (geofenceType === 'circle') {
+      this.startCircleDrawing();
+    }
+  }
 }
 
 handleDrawCreated = (e) => {
-  // handle completed drawing
+  // Handle completed drawing
   this.setState({ 
     isDrawingMode: false, 
     hasPolygon: true 
   });
 }
 
+handleDrawDeleted = (e) => {
+  // Check if any features remain
+  const remainingFeatures = this.drawInstance.getAll();
+  const hasFeatures = remainingFeatures.features.length > 0;
+  this.setState({ hasPolygon: hasFeatures });
+}
+
 clearMap = () => {
-  // clear all drawn features
-  // reset state
-  this.setState({ hasPolygon: false });
-  this.startDrawing();
+  if (this.drawInstance) {
+    // Clear all drawn features
+    this.drawInstance.deleteAll();
+    
+    // Reset state
+    this.setState({ 
+      hasPolygon: false, 
+      isDrawingMode: false 
+    });
+    
+    // Restart drawing mode
+    this.startDrawing();
+  }
 }
 ```
 
 ### Implement circle drawing
 
-Create circles by calculating points around a center.
+Create circles by calculating points around a center. When the user clicks to set the center, track mouse movement to calculate the radius, then generate a circle polygon.
+
+```javascript
+startCircleDrawing = () => {
+  this.setState({ isDrawingCircle: true, circleCenter: null });
+  this.mapInstance.getCanvas().style.cursor = 'crosshair';
+
+  const onMapClick = (e) => {
+    if (!this.state.circleCenter) {
+      // First click sets the center
+      const center = [e.lngLat.lng, e.lngLat.lat];
+      this.setState({ circleCenter: center });
+      
+      // Display center point on map
+      // Your drawing tool's method to show center point
+      
+      this.mapInstance.on('mousemove', onMouseMove);
+    } else {
+      // Second click finalizes the circle
+      this.finalizeCircle(e);
+      this.mapInstance.off('click', onMapClick);
+      this.mapInstance.off('mousemove', onMouseMove);
+    }
+  };
+
+  const onMouseMove = (e) => {
+    if (this.state.circleCenter) {
+      const center = this.state.circleCenter;
+      const currentPos = [e.lngLat.lng, e.lngLat.lat];
+      
+      // Calculate distance between center and current mouse position
+      // Use your geospatial library to calculate distance in meters
+      const radius = calculateDistance(center, currentPos, 'meters');
+
+      // Generate circle polygon with multiple points (64+ recommended for smooth circles)
+      // Use your geospatial library to create a circle polygon
+      const circlePolygon = createCirclePolygon(center, radius / 1000, {
+        steps: 64,
+        units: 'kilometers'
+      });
+
+      // Update map display with circle preview
+      // Your drawing tool's method to update the circle preview
+    }
+  };
+
+  this.mapInstance.on('click', onMapClick);
+}
+
+finalizeCircle = (e) => {
+  const center = this.state.circleCenter;
+  const currentPos = [e.lngLat.lng, e.lngLat.lat];
+  
+  // Calculate final radius
+  const radius = calculateDistance(center, currentPos, 'meters');
+
+  // Create final circle polygon
+  const circlePolygon = createCirclePolygon(center, radius / 1000, {
+    steps: 64,
+    units: 'kilometers'
+  });
+
+  // Add circle to your drawing tool
+  this.drawInstance.add(circlePolygon);
+
+  // Clear preview layers
+  this.mapInstance.getSource('circle-source').setData({
+    type: 'FeatureCollection',
+    features: []
+  });
+
+  this.setState({ 
+    isDrawingCircle: false, 
+    circleCenter: null, 
+    hasPolygon: true,
+    isDrawingMode: false
+  });
+}
+```
+
+## Create geofences via API
+
+The geofence shape is a key part of creating the geofence; however, before calling the API, you must pass a geofence description, external ID, and tag as well.
+
+To make sure users successfully pass these values, we recommend adding a form in this interface. This must collect three fields:
+
+- External ID: A unique identifier for the geofence in your system
+- Description: A description of the geofence
+- Tag: A tag for organizing geofences
+
+```javascript
+// Store form data in component state
+this.state = {
+  formData: {
+    name: '',        // External ID
+    description: '', // Description
+    tag: ''         // Tag
+  },
+  isSubmitting: false
+};
+
+// Handle form input changes
+handleFormChange = (e) => {
+  const { name, value } = e.target;
+  this.setState(prevState => ({
+    formData: {
+      ...prevState.formData,
+      [name]: value
+    }
+  }));
+}
+```
+
+When the user submits the form, you'll pass these values to the API, as well as the geometry from the drawn geofence. Detect whether the geofence is a circle or polygon, and format the coordinates accordingly.
+
+```javascript
+handleFormSubmit = async (e) => {
+  e.preventDefault();
+  
+  const { formData } = this.state;
+  const { geofenceData } = this.props;
+  
+  // Validate that geofence data exists
+  if (!geofenceData || !geofenceData.features || geofenceData.features.length === 0) {
+    alert('No geofence data found');
+    return;
+  }
+
+  // Get the drawn feature from your drawing tool
+  const feature = geofenceData.features[0];
+  const geometry = feature.geometry;
+  
+  // Prepare API payload
+  let apiPayload = {
+    description: formData.description,
+  };
+
+  // Detect circle vs polygon
+  if (geometry.type === 'Polygon') {
+    const coordinates = geometry.coordinates[0];
+    
+    // Detect if this is a circle (typically 64+ points in a regular pattern)
+    const isCircle = coordinates.length >= 64;
+    
+    if (isCircle) {
+      // Calculate center and radius for circle
+      const center = this.calculatePolygonCenter(coordinates);
+      const radius = this.calculateAverageRadius(center, coordinates);
+      
+      apiPayload.type = 'circle';
+      apiPayload.coordinates = [center[0], center[1]];
+      apiPayload.radius = Math.round(radius);
+    } else {
+      // Regular polygon
+      apiPayload.type = 'polygon';
+      apiPayload.coordinates = coordinates.map(coord => [coord[0], coord[1]]);
+    }
+  }
+
+  try {
+    this.setState({ isSubmitting: true });
+    
+    const tag = formData.tag || 'default';
+    const externalId = formData.name;
+    
+    const response = await fetch(`https://api.radar.io/v1/geofences/${tag}/${externalId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': 'prj_test_sk_...', // Your secret key
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(apiPayload)
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log('Geofence created successfully:', result);
+      // Handle success - navigate away or show success message
+    } else {
+      const error = await response.json();
+      console.error('Error creating geofence:', error);
+      alert(`Error creating geofence: ${error.message || 'Unknown error'}`);
+    }
+  } catch (error) {
+    console.error('Network error:', error);
+    alert('Network error occurred. Please try again.');
+  } finally {
+    this.setState({ isSubmitting: false });
+  }
+}
+
+// Helper function to calculate polygon center
+calculatePolygonCenter = (coordinates) => {
+  let totalLng = 0;
+  let totalLat = 0;
+  const validCoords = coordinates.slice(0, -1); // Exclude last coord (same as first)
+  
+  validCoords.forEach(coord => {
+    totalLng += coord[0];
+    totalLat += coord[1];
+  });
+  
+  return [
+    totalLng / validCoords.length,
+    totalLat / validCoords.length
+  ];
+}
+
+// Helper function to calculate average radius
+calculateAverageRadius = (center, coordinates) => {
+  const validCoords = coordinates.slice(0, -1);
+  let totalDistance = 0;
+  
+  validCoords.forEach(coord => {
+    // Use your geospatial library to calculate distance
+    const distance = calculateDistance(
+      [center[0], center[1]],
+      [coord[0], coord[1]],
+      { units: 'meters' }
+    );
+    totalDistance += distance;
+  });
+  
+  return totalDistance / validCoords.length;
+}
+```
+
+The API will return the created geofence object on success. The geofence will now appear in both your dashboard and Radar's dashboard.
