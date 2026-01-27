@@ -698,6 +698,21 @@ To enable logging of app opens through notifications taps on iOS, perform the fo
 }
 ```
 
+### User tags
+
+With the [user tag API](/campaigns#advanced-targeting-options), you can configure [campaigns](/campaigns) to only target users with the corresponding tags:
+
+<CodeGroup>
+
+```java Javascript
+Radar.addTags(new String[]{"tag1", "tag2"});
+Radar.removeTags(new String[]{"tag1", "tag2"});
+Radar.setTags(new String[]{"tag1", "tag2"});
+Radar.getTags();
+```
+
+</CodeGroup>
+
 ### Notification options
 
 On Android, you can call `setNotificationOptions` to set the icon and the background color of the foreground service and event notifications:
