@@ -44,6 +44,49 @@ Radar only controls the registration of notifications on the device. Once that h
 
 If the device is already inside the geofence when its client-side geofence notification is being synced, it will fire upon subsequent entry, not immediately.
 
+#### Message customization
+
+The title, body, and button text can all be customized for each user, geofence, and place that triggers the notification or in-app-message. For example, a notification title of "Hello! {{ user.userId }}" will be send as "Hello! Alice" and "Hello! Bob" for user Alice or Bob
+
+`user` will be available for all campaigns, `geofence` will be available for geofence targeting campaigns and `place` will be available for place targeting campaign.
+
+```json
+{
+  user: {
+    userId: string;
+    description: string;
+    metadata: {
+      Your custom metadata set from Radar.setMetadata()
+    }
+  },
+  geofence: {
+    description: string;
+    tag: string;
+    externalId: string;
+  },
+  place: {
+    name: string;
+    address: string;
+    street: string;
+    categories: string[];
+    chain: {
+      domain: string;
+      name: string;
+      slug: string;
+    },
+    country: string;
+    state: string;
+    city: string;
+    zip: string;
+  }
+}
+```
+
+Some variables may not be available, you can use {{ default user.userId "Random Citizen" }} to configure a simple fallback.
+
+For more complex fallback and indexing, refer to our templating engine [Handlebars docs](https://handlebarsjs.com/).
+
+
 #### Beacon based notifications
 
 Use Radar's client side beacon notifications to display a notification on iOS devices when a user enters a beacon region. These notifications work with foreground or <b>"when in use"</b> permissions.
