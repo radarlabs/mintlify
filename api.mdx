@@ -89,6 +89,8 @@ This endpoint is stateful. For anonymous or stateless context, call the [context
 - **`deviceOS`** (string, optional): The operating system of the device.
 - **`deviceMake`** (string, optional): The manufacturer of the device.
 - **`deviceModel`** (string, optional): The model of the device.
+- `altitude` (number, optional): An altitude in meters.
+- `verticalAccuracy` (number, optional): A vertical accuracy in meters.
 
 **Authentication level**
 
@@ -415,11 +417,11 @@ Geocodes an address, converting address to coordinates.
 
 This endpoint is best for complete addresses. For partial addresses or place names, call the [autocomplete](#autocomplete) endpoint instead.
 
-Returns a confidence level, as defined below:
+Returns a confidence level indicating the certainty of the result's latitude and longitude:
 
-- **`exact`**: The result matches the query sent.
-- **`interpolated`**: A result where there is a record for the street but not the exact building number, so the value is calculated between two known building numbers.
-- **`fallback`**: A result where Radar does not have a matching record and cannot interpolate the results. Radar falls back to the region containing the query.
+- **`exact`**: Precise coordinates for a known address location.
+- **`interpolated`**: Estimated coordinates between two known address points when an exact address location is unavailable.
+- **`fallback`**: Coarse coordinates (e.g., postal code/city) for the containing region when no precise location is available.
 
 **Definitions**
 
@@ -637,7 +639,6 @@ Autocompletes partial addresses and place names, sorted by relevance and proximi
 - `layers` (string, optional): Optional layer filters. A string, comma-separated, including one or more of `place`, `address`, `postalCode`, `locality`, `county`, `state`, `country`, `coarse`, and `fine`. Note that `coarse` includes all of `postalCode`, `locality`, `county`, `state`, and `country`, whereas `fine` includes `address` and `place`. If not provided, results from `address` and `coarse` layers will be returned.
 - `limit` (number, optional): The max number of addresses to return. A number between 1 and 100. Defaults to 10.
 - `countryCode` (string, optional): An optional countries filter. A string of comma-separated countries, the unique 2-letter [country code](/regions/countries).
-- `lang` (string, optional): Specifies the language for the results. A string, one of `ar`, `de`, `en`, `es`, `fr`, `ja`, `ko`, `pt`, `ru`, `zh`. Defaults to `en`.
 
 **Query best practices**
 
@@ -820,10 +821,10 @@ Searches for places near a location, sorted by distance.
 
 **Query parameters**
 
-- `chains` (string, optional): [Chain slug](/places#chains) filters. A string, comma-separated. If your project has a [chain mapping](/places#mappings), the mapped ID can be used in place of the chain slug. If not provided, `categories` must be provided.
-- `categories` (string, optional): [Category](/places#categories) filters. A string, comma-separated. If not provided, `chains` must be provided.
+- `chains` (string, optional): [Chain slug](/places/chains) filters. A string, comma-separated. If your project has a [chain mapping](/geofencing/places#mappings), the mapped ID can be used in place of the chain slug. If not provided, `categories` must be provided.
+- `categories` (string, optional): [Category](/places/categories) filters. A string, comma-separated. If not provided, `chains` must be provided.
 - `iataCode` (string, optional): The 3-letter IATA code for the airport to search. If provided, no other parameters are required.
-- `chainMetadata[key]` (optional): Optional [chain metadata](/places#metadata) filters. Values may be of type string, boolean, or number. Type will be automatically inferred. For example, to match on `offers == true`, use `&chainMetadata[offers]=true`.
+- `chainMetadata[key]` (optional): Optional [chain metadata](/geofencing/places#metadata) filters. Values may be of type string, boolean, or number. Type will be automatically inferred. For example, to match on `offers == true`, use `&chainMetadata[offers]=true`.
 - `near` (string, required): A location for the search. A string in the format `latitude,longitude`.
 - `radius` (number, optional): The radius to search, in meters. A number between 1 and 10000. Defaults to 1000.
 - `limit` (number, optional): The max number of places to return. A number between 1 and 100. Defaults to 10.
@@ -984,7 +985,6 @@ Calculates the travel distance and duration between an origin and a destination.
 - `avoid` (string, optional): The features that calculated routes should avoid. A string, comma-separated, including one or more of `tolls`, `highways`, `ferries` and `borderCrossings`. No features are avoided if not provided.
 - `geometry` (string, optional): The format of the `geometry` in the response. Valid values are `linestring`, `polyline5` and `polyline6`. `linestring` returns a GeoJSON `LineString`, `polyline5` returns a polyline with 5 decimal places of precision (compatible with other mapping providers) and `polyline6` returns a polyline with 6 decimal places of precision. Defaults to none if not provided.
 - `departureTime` (string, optional): The date and time of the route provided as an ISO 8601 date string (e.g., `2025-01-01T14:30:00Z`) which will be used for historical traffic times. If not provided, the current date and time will be used.
-
 
 **Authentication level**
 
@@ -1307,8 +1307,6 @@ Calculates the most efficient route between two or more locations to visit in or
 - `geometry` (string, optional): The format of the `geometry` in the response. Valid values are `linestring`, `polyline5` and `polyline6`. `linestring` returns a GeoJSON `LineString`, `polyline5` returns a polyline with 5 decimal places of precision (compatible with other mapping providers) and `polyline6` returns a polyline with 6 decimal places of precision. Defaults to `polyline6` if not provided.
 - `departureTime` (string, optional): The date and time of the route provided as an ISO 8601 date string (e.g., `2025-01-01T14:30:00Z`) which will be used for historical traffic times. If not provided, the current date and time will be used.
 - `heading` (number, optional): Initial heading of travel where north is 0°, east is 90°, south is 180°, and west is 270°. If not provided, no initial heading will be used.
-
-
 
 **Turn by Turn**
 
@@ -2327,6 +2325,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
   ]
 }
 ```
+
 </div>
 
 #### **Optimize route**
@@ -2752,6 +2751,49 @@ curl "https://api.radar.io/v1/users/56db1f4613012711002229f4" \
   "meta": {
     "code": 200
   }
+}
+```
+
+#### **Send remote track requests to users**
+
+Sends a remote track request to a list of users via silent push notifications.
+
+**Definition**
+
+`POST https://api.radar.io/v1/users/refresh`
+
+**Body parameters**
+
+- `userIds` (array, required): An array of user IDs to send the track request to. Limit to a maximum of 10 users per request.
+- `type` (string, optional): Choose which type of notification is used, one of `silentPush` or `pushExtension`.
+
+**Default rate limit**
+
+10 requests per second
+
+**Authentication level**
+
+Secret
+
+**Sample request**
+
+```
+curl "https://api.radar.io/v1/users/refresh" \
+  -H "Authorization: prj_test_sk_..." \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"userIds": ["userId1", "userId2", "userId3"]}'
+```
+
+**Sample response**
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "sent": [{"userId": "userId1"}, {"userId": "userId2"}],
+  "failed": [{"userId": "userId3", "reason": "Rate limit exceeded"}]
 }
 ```
 
@@ -4017,4 +4059,3 @@ curl "https://api.radar.io/v1/settings" \
   }
 }
 ```
-

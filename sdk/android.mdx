@@ -483,7 +483,7 @@ Radar.mockTracking(
 
 ## Location metadata
 
-The SDK can also pass along information like motion activity detection, speed and heading via the location metadata field. Turn on `useLocationMetadata` in your `sdkConfiguration` to enable this feature. Include permissions for motion activity detection in your manifest
+The SDK can also pass along information like motion activity detection, speed and heading via the location metadata field. Turn on `useMotion` in your `sdkConfiguration` to enable this feature. Include permissions for motion activity detection in your manifest
 
 ```xml
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -1160,6 +1160,26 @@ Radar.logConversion(
 }
 ```
 
+</CodeGroup>
+
+### User tags
+
+With the [user tag API](/campaigns#advanced-targeting-options), you can configure [campaigns](/campaigns) to only target users with the corresponding tags:
+
+<CodeGroup>
+```java Java
+Radar.addTags(new String[]{"tag1", "tag2"});
+Radar.removeTags(new String[]{"tag1", "tag2"});
+Radar.setTags(new String[]{"tag1", "tag2"});
+Radar.getTags();
+```
+
+```kotlin Kotlin
+Radar.addTags(arrayOf("tag1", "tag2"))
+Radar.removeTags(arrayOf("tag1", "tag2"))
+Radar.setTags(arrayOf("tag1", "tag2"))
+Radar.getTags()
+```
 </CodeGroup>
 
 ## Notifications

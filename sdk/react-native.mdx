@@ -80,6 +80,16 @@ You can also use our Expo plugin to take care of the native setup. Add `react-na
           "iosNSMotionUsageDescription": "Your motion usage description."
         }
       ],
+      [
+        "expo-build-properties",
+        {
+          ...
+          "ios": {
+            ...
+            "useFrameworks": "static"
+          }
+        }
+      ],
       // optional, only required if using Radar Maps
       [
         "@maplibre/maplibre-react-native"
@@ -205,7 +215,7 @@ Radar.requestPermissions(false).then((status) => {
 Learn about platform-specific permissions in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
 
 <Info>
-  Build and run the app to make sure permissions prompts are displayed\!
+  Build and run the app to make sure permissions prompts are displayed!
 </Info>
 
 ### Foreground tracking
@@ -309,19 +319,19 @@ Learn about platform-specific implementations of these functions in the [iOS SDK
 To listen for events, location updates, and errors, you can add event listeners:
 
 ```javascript
-Radar.on('clientLocation', (result) => {
+Radar.onClientLocationUpdated((result) => {
   // do something with result.location
 });
 
-Radar.on('location', (result) => {
+Radar.onLocationUpdated((result) => {
   // do something with result.location, result.user
 });
 
-Radar.on('events', (result) => {
+Radar.onEventsReceived((result) => {
   // do something with result.events, result.user
 });
 
-Radar.on('error', (err) => {
+Radar.onError((err) => {
   // do something with err
 });
 ```
@@ -335,10 +345,10 @@ Add event listeners outside of your component lifecycle (e.g., outside of `compo
 You can also remove event listeners:
 
 ```javascript
-Radar.off('clientLocation');
-Radar.off('location');
-Radar.off('events');
-Radar.off('error');
+Radar.onClientLocationUpdated(null);
+Radar.onLocationUpdated(null);
+Radar.onEventsReceived(null);
+Radar.onError(null);
 ```
 
 ### Battery usage
@@ -688,6 +698,21 @@ To enable logging of app opens through notifications taps on iOS, perform the fo
 }
 ```
 
+#### User tags
+
+With the [user tag API](/geofencing/campaigns#advanced-targeting-options), you can configure [campaigns](/geofencing/campaigns) to only target users with the corresponding tags:
+
+<CodeGroup>
+
+```java Javascript
+Radar.addTags(new String[]{"tag1", "tag2"});
+Radar.removeTags(new String[]{"tag1", "tag2"});
+Radar.setTags(new String[]{"tag1", "tag2"});
+Radar.getTags();
+```
+
+</CodeGroup>
+
 ### Notification options
 
 On Android, you can call `setNotificationOptions` to set the icon and the background color of the foreground service and event notifications:
@@ -716,5 +741,4 @@ The React Native SDK also has UI components for maps and address autocomplete. L
 
 ## Support
 
-Have questions? We're here to help\! Contact us at [radar.com/support](https://radar.com/support).
-
+Have questions? We're here to help! Contact us at [radar.com/support](https://radar.com/support).
