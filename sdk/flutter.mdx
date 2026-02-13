@@ -404,7 +404,7 @@ Learn about platform-specific implementation of this function in the [iOS SDK do
 
 ### Other APIs
 
-The Flutter package also exposes APIs for anonymous context, geocoding, search, and distance.
+The Flutter package also exposes APIs for geocoding, search, and distance.
 
 #### Get location
 
@@ -412,19 +412,6 @@ Get a single location update without sending it to the server:
 
 ```dart
 var coordinates = await Radar.getLocation();
-```
-
-#### Context
-
-With the [context API](/api#context), get context for a location without sending device or user identifiers to the server:
-
-```dart
-var res = await Radar.getContext({ 
-  'latitude': 40.783826,
-  'longitude': -73.975363, 
-  'accuracy': 65
-});
-// do something with res['status'], res['context']
 ```
 
 #### Geocoding
@@ -507,5 +494,4 @@ var res = await Radar.getDistance(
 
 ## Support
 
-Have questions? We're here to help\! Contact us at [radar.com/support](https://radar.com/support).
-
+Have questions? We're here to help! Contact us at [radar.com/support](https://radar.com/support).

@@ -66,8 +66,6 @@ On iOS and Android, use the [SDK](/sdk/sdk) to track user locations in the foreg
 
 Do not send any PII, like names, email addresses, or publicly available IDs, for `userId`. See [privacy best practices](/faqs#what-are-privacy-best-practices-for-radar) for more information.
 
-This endpoint is stateful. For anonymous or stateless context, call the [context](#context) endpoint instead.
-
 **Definition**
 
 `POST` `https://api.radar.io/v1/track`
@@ -318,92 +316,6 @@ curl "https://api.radar.io/v1/track" \
     "fraud": {
       "proxy": false,
       "mocked": false
-    }
-  }
-}
-```
-
-### Context
-
-Gets context for a location, depending on project settings.
-
-This endpoint is anonymous by default and stateless. For stateful context, call the [track](#track) endpoint instead.
-
-**Definitions**
-
-`GET` `https://api.radar.io/v1/context`
-
-**Query parameters**
-
-- **`coordinates`** (string, required): The coordinates. A string in the format `latitude,longitude`.
-- **`userId`** (string, optional): A stable unique ID for the user. Required for MTU-based pricing.
-
-**Authentication level**
-
-Publishable
-
-**Default rate limit**
-
-10 requests per second
-
-**Sample request**
-
-```bash
-curl "https://api.radar.io/v1/context?coordinates=40.78382,-73.97536" \
-  -H "Authorization: prj_live_pk_..."
-```
-
-**Sample response**
-
-```sh
-{
-  "meta": {
-    "code": 200
-  },
-  "context": {
-    "geofences": [
-      {
-        "tag": "store",
-        "externalId": "123",
-        "description": "Store #123",
-        "metadata": {
-          "parking": false
-        }
-      }
-    ],
-    "place": {
-      "name": "Starbucks",
-      "chain": {
-        "name": "Starbucks",
-        "slug": "starbucks"
-      },
-      "categories": [
-        "food-beverage",
-        "coffee-shop"
-      ],
-      "location": {
-        "type": "Point",
-        "coordinates": [
-          -73.977797,
-          40.783826
-        ]
-      }
-    },
-    "country": {
-      "code": "US",
-      "name": "United States",
-      "flag": "🇺🇸"
-    },
-    "state": {
-      "code": "MD",
-      "name": "Maryland"
-    },
-    "dma": {
-      "code": "26",
-      "name": "Baltimore"
-    },
-    "postalCode": {
-      "code": "21014"
     }
   }
 }
@@ -1333,999 +1245,998 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
 **Sample response**
 
 <div style={{ height:"400px",overflow:"auto",padding:"10px",fontFamily:"monospace",whiteSpace:"pre" }}>
-```json
-{
-  "meta": {
-    "code": 200
-  },
-  "routes": [
-    {
-      "duration": {
-        "value": 52.07845,
-        "text": "52 mins"
-      },
-      "distance": {
-        "value": 62683.72904,
-        "text": "11.9 mi"
-      },
-      "legs": [
-        {
-          "startLocation": {
-            "latitude": 40.73425,
-            "longitude": -73.990934
-          },
-          "endLocation": {
-            "latitude": 40.712971,
-            "longitude": -73.951385
-          },
-          "duration": {
-            "value": 20.394166666666667,
-            "text": "20 mins"
-          },
-          "distance": {
-            "value": 19639.10824,
-            "text": "3.7 mi"
-          },
-          "geometry": {
-            "polyline": "kafulAnn`clCfKxAhCF`CJdg@vGtB\\|BZfJrAh[lEhC^dBThMjBjRjCdBZn@Pd@Nh@PzAuE|EoO`HqT`CuHl@mBbCkHxBkGhYk}@v@oCfBuFvB_H~c@avAbLm^ZgAj@kB`BmFlBnAvYlRjAv@nBrAdC~AvVdPdEnCfBhAtBvAj^~UrBtAlBnAn\\dTbBfAtBtAl^zUzAbAjCfBv]tUbBfAjBlAf^pUhBlAnBnAfSzMhLxHrBrAlBrAlFnDzXnRnBrAtBxAjFfDtFx@jEZ|BRzDh@xFtAjD`AvAj@|Ap@lQnH~ZjMhIhDzAl@bBp@nBt@pAh@l{@r]xAf@rBr@xAf@vAd@xItDbVrKvVjKz@^hBr@rEdBzGlC`AwEX}AnG}Zd@}B~@uEj@uCtKyh@XsAh@gCd@yBbJ{c@\\aBr@iD~AeIz@yDn@wCpD}PVmAf@eCf@eC`Joc@VsAf@aCd@}BpHm^r@kDXoAfAkFbA{EtIsb@Z}A`@uBR_AXeAd@}A`AwCtEsNrAsEjAeEb@aBd@aBr@sCz@cDjBcHbIoY|@kD\\qAXkAxDgRzAmHzSgdA~J_g@|\\gcBpb@_uB|U{kAlDqUxWysA`~DirRd_@ufBrJk^ts@spDzH{TrEcU`AoFjCkOd@yC`@}CToCTwChAeTx@}PRkCb@eDd@gCn@sCrP_r@\\wAjAsEmCuAsP}I}KsG}@i@kAq@QeFo@uTAMiBy_@wBac@KkBOkBQiDk@mIs@{Io@aMmBs]{AmXS}EQ{CoBac@OeDeA{ScAoTUmEUeEsA{X}@yPoAcW_Cef@WkF}AcPScFG}AUkFaDXg[dCmKx@aCRec@hD_CP{CZo]bD"
-          },
-          "steps": [
-            {
-              "distance": {
-                "value": 931.75856,
-                "text": "0.2 mi"
-              },
-              "duration": {
-                "value": 1.4142833333333333,
-                "text": "1 min"
-              },
-              "start_location": {
-                "latitude": 40.734246,
-                "longitude": -73.990904
-              },
-              "end_location": {
-                "latitude": 40.731744,
-                "longitude": -73.991464
-              },
-              "bearing_before": 0,
-              "bearing_after": 189,
-              "instructions": "Drive south on Broadway. Then, in 300 meters, Turn left onto East 10th Street.",
-              "banner_instructions": "Drive south on Broadway.",
-              "voice_instructions": "Drive south on Broadway.",
-              "geometry": {
-                "polyline": "kafulAnn`clCfKxAhCF`CJdg@vGtB\\|BZfJrAh[lEhC^dBThMjBjRjCdBZn@Pd@Nh@P"
-              },
-              "mode": "car",
-              "manuever": "start",
-              "street_name": "Broadway"
-            },
-            {
-              "distance": {
-                "value": 1473.09716,
-                "text": "0.3 mi"
-              },
-              "duration": {
-                "value": 2.5110666666666663,
-                "text": "3 mins"
-              },
-              "start_location": {
-                "latitude": 40.731744,
-                "longitude": -73.991464
-              },
-              "end_location": {
-                "latitude": 40.729779,
-                "longitude": -73.986812
-              },
-              "bearing_before": 197,
-              "bearing_after": 119,
-              "instructions": "Turn left onto East 10th Street.",
-              "banner_instructions": "Turn left onto East 10th Street.",
-              "voice_instructions": "Turn left onto East 10th Street.",
-              "geometry": {
-                "polyline": "_eaulAnqaclCzAuE|EoO`HqT`CuHl@mBbCkHxBkGhYk}@v@oCfBuFvB_H~c@avAbLm^ZgAj@kB`BmF"
-              },
-              "mode": "car",
-              "manuever": "left",
-              "street_name": "East 10th Street"
-            },
-            {
-              "distance": {
-                "value": 3992.78228,
-                "text": "0.8 mi"
-              },
-              "duration": {
-                "value": 4.9593,
-                "text": "5 mins"
-              },
-              "start_location": {
-                "latitude": 40.729779,
-                "longitude": -73.986812
-              },
-              "end_location": {
-                "latitude": 40.719911,
-                "longitude": -73.992948
-              },
-              "bearing_before": 118,
-              "bearing_after": 208,
-              "instructions": "Turn right onto 2nd Avenue.",
-              "banner_instructions": "Turn right onto 2nd Avenue.",
-              "voice_instructions": "Turn right onto 2nd Avenue.",
-              "geometry": {
-                "polyline": "ej}tlAvnxblClBnAvYlRjAv@nBrAdC~AvVdPdEnCfBhAtBvAj^~UrBtAlBnAn\\dTbBfAtBtAl^zUzAbAjCfBv]tUbBfAjBlAf^pUhBlAnBnAfSzMhLxHrBrAlBrAlFnDzXnRnBrAtBxAjFfDtFx@jEZ|BRzDh@xFtAjD`AvAj@|Ap@lQnH~ZjMhIhDzAl@bBp@nBt@pAh@l{@r]xAf@rBr@xAf@vAd@xItDbVrKvVjKz@^hBr@rEdBzGlC"
-              },
-              "mode": "car",
-              "manuever": "right",
-              "street_name": "2nd Avenue"
-            },
-            {
-              "distance": {
-                "value": 4215.8794,
-                "text": "0.8 mi"
-              },
-              "duration": {
-                "value": 5.349966666666666,
-                "text": "5 mins"
-              },
-              "start_location": {
-                "latitude": 40.719911,
-                "longitude": -73.992948
-              },
-              "end_location": {
-                "latitude": 40.715536,
-                "longitude": -73.978895
-              },
-              "bearing_before": 200,
-              "bearing_after": 111,
-              "instructions": "Turn left onto Delancey Street.",
-              "banner_instructions": "Turn left onto Delancey Street.",
-              "voice_instructions": "Turn left onto Delancey Street.",
-              "geometry": {
-                "polyline": "majtlAfndclC`AwEX}AnG}Zd@}B~@uEj@uCtKyh@XsAh@gCd@yBbJ{c@\\aBr@iD~AeIz@yDn@wCpD}PVmAf@eCf@eC`Joc@VsAf@aCd@}BpHm^r@kDXoAfAkFbA{EtIsb@Z}A`@uBR_AXeAd@}A`AwCtEsNrAsEjAeEb@aBd@aBr@sCz@cDjBcHbIoY|@kD\\qAXkAxDgRzAmHzSgdA~J_g@|\\gcBpb@_uB|U{kA"
-              },
-              "mode": "car",
-              "manuever": "left",
-              "street_name": "Delancey Street"
-            },
-            {
-              "distance": {
-                "value": 5000.00016,
-                "text": "0.9 mi"
-              },
-              "duration": {
-                "value": 1.6442666666666668,
-                "text": "2 mins"
-              },
-              "start_location": {
-                "latitude": 40.715536,
-                "longitude": -73.978895
-              },
-              "end_location": {
-                "latitude": 40.710451,
-                "longitude": -73.962137
-              },
-              "bearing_before": 111,
-              "bearing_after": 107,
-              "instructions": "Keep left to take Interstate 2 78 East toward Queens, Bronx.",
-              "banner_instructions": "Keep left to take I 278 East toward Queens/Bronx.",
-              "voice_instructions": "Keep left to take I 278 East toward Queens/Bronx.",
-              "geometry": {
-                "polyline": "_patlA|_iblClDqUxWysA`~DirRd_@ufBrJk^ts@spD"
-              },
-              "mode": "car",
-              "manuever": "stay-left",
-              "street_name": "Williamsburg Bridge"
-            },
-            {
-              "distance": {
-                "value": 213.2546,
-                "text": "213.3 ft"
-              },
-              "duration": {
-                "value": 0.07093333333333333,
-                "text": "0.1 min"
-              },
-              "start_location": {
-                "latitude": 40.710451,
-                "longitude": -73.962137
-              },
-              "end_location": {
-                "latitude": 40.710187,
-                "longitude": -73.961433
-              },
-              "bearing_before": 111,
-              "bearing_after": 120,
-              "instructions": "Keep right toward Interstate 2 78 West, Broadway West. Then Keep left toward Broadway East.",
-              "banner_instructions": "Keep right toward I 278 West/Broadway West.",
-              "voice_instructions": "Keep right toward I 278 West/Broadway West.",
-              "geometry": {
-                "polyline": "erwslAphhalCzH{TrEcU"
-              },
-              "mode": "car",
-              "manuever": "stay-right",
-              "street_name": "I 278 West/Broadway West"
-            },
-            {
-              "distance": {
-                "value": 757.87404,
-                "text": "757.9 ft"
-              },
-              "duration": {
-                "value": 0.6236166666666667,
-                "text": "1 min"
-              },
-              "start_location": {
-                "latitude": 40.710187,
-                "longitude": -73.961433
-              },
-              "end_location": {
-                "latitude": 40.709554,
-                "longitude": -73.95886
-              },
-              "bearing_before": 111,
-              "bearing_after": 109,
-              "instructions": "Keep left toward Broadway East, South 5th Street.",
-              "banner_instructions": "Keep left toward Broadway East/South 5th Street.",
-              "voice_instructions": "Keep left toward Broadway East/South 5th Street.",
-              "geometry": {
-                "polyline": "uawslAp|falC`AoFjCkOd@yC`@}CToCTwChAeTx@}PRkCb@eDd@gCn@sCrP_r@\\wAjAsE"
-              },
-              "mode": "car",
-              "manuever": "stay-left",
-              "street_name": "Broadway East/South 5th Street"
-            },
-            {
-              "distance": {
-                "value": 259.18636,
-                "text": "259.2 ft"
-              },
-              "duration": {
-                "value": 0.5566333333333334,
-                "text": "1 min"
-              },
-              "start_location": {
-                "latitude": 40.709554,
-                "longitude": -73.95886
-              },
-              "end_location": {
-                "latitude": 40.710183,
-                "longitude": -73.958458
-              },
-              "bearing_before": 115,
-              "bearing_after": 24,
-              "instructions": "Turn left onto Havemeyer Street. Then Turn right onto Borinquen Place.",
-              "banner_instructions": "Turn left onto Havemeyer Street.",
-              "voice_instructions": "Turn left onto Havemeyer Street.",
-              "geometry": {
-                "polyline": "czuslAv{aalCmCuAsP}I}KsG}@i@kAq@"
-              },
-              "mode": "car",
-              "manuever": "left",
-              "street_name": "Havemeyer Street"
-            },
-            {
-              "distance": {
-                "value": 2050.525,
-                "text": "0.4 mi"
-              },
-              "duration": {
-                "value": 1.8798333333333335,
-                "text": "2 mins"
-              },
-              "start_location": {
-                "latitude": 40.710183,
-                "longitude": -73.958458
-              },
-              "end_location": {
-                "latitude": 40.710961,
-                "longitude": -73.951119
-              },
-              "bearing_before": 26,
-              "bearing_after": 84,
-              "instructions": "Turn right onto Borinquen Place.",
-              "banner_instructions": "Turn right onto Borinquen Place.",
-              "voice_instructions": "Turn right onto Borinquen Place.",
-              "geometry": {
-                "polyline": "mawslArbaalCQeFo@uTAMiBy_@wBac@KkBOkBQiDk@mIs@{Io@aMmBs]{AmXS}EQ{CoBac@OeDeA{ScAoTUmEUeEsA{X}@yPoAcW_Cef@WkF}AcPScFG}AUkF"
-              },
-              "mode": "car",
-              "manuever": "right",
-              "street_name": "Borinquen Place"
-            },
-            {
-              "distance": {
-                "value": 734.90816,
-                "text": "734.9 ft"
-              },
-              "duration": {
-                "value": 1.3842166666666667,
-                "text": "1 min"
-              },
-              "start_location": {
-                "latitude": 40.710961,
-                "longitude": -73.951119
-              },
-              "end_location": {
-                "latitude": 40.712967,
-                "longitude": -73.951428
-              },
-              "bearing_before": 82,
-              "bearing_after": 353,
-              "instructions": "Turn left onto Union Avenue.",
-              "banner_instructions": "Turn left onto Union Avenue.",
-              "voice_instructions": "Turn left onto Union Avenue.",
-              "geometry": {
-                "polyline": "arxslA|wr`lCaDXg[dCmKx@aCRec@hD_CP{CZo]bD"
-              },
-              "mode": "car",
-              "manuever": "left",
-              "street_name": "Union Avenue"
-            },
-            {
-              "distance": {
-                "value": 0,
-                "text": "0.0 ft"
-              },
-              "duration": {
-                "value": 0,
-                "text": "0 min"
-              },
-              "start_location": {
-                "latitude": 40.712967,
-                "longitude": -73.951428
-              },
-              "end_location": {
-                "latitude": 40.712967,
-                "longitude": -73.951428
-              },
-              "bearing_before": 352,
-              "bearing_after": 0,
-              "instructions": "You have arrived at your destination.",
-              "banner_instructions": "You have arrived at your destination.",
-              "voice_instructions": "You have arrived at your destination.",
-              "geometry": {
-                "polyline": "mo|slAfks`lC"
-              },
-              "mode": "car",
-              "manuever": "destination"
-            }
-          ]
+  ```json
+  {
+    "meta": {
+      "code": 200
+    },
+    "routes": [
+      {
+        "duration": {
+          "value": 52.07845,
+          "text": "52 mins"
         },
-        {
-          "startLocation": {
-            "latitude": 40.712971,
-            "longitude": -73.951385
-          },
-          "endLocation": {
-            "latitude": 40.74558,
-            "longitude": -73.903162
-          },
-          "duration": {
-            "value": 20.06063333333333,
-            "text": "20 mins"
-          },
-          "distance": {
-            "value": 21571.523,
-            "text": "4.1 mi"
-          },
-          "geometry": {
-            "polyline": "mo|slAfks`lCyGn@wk@tGgIz@}CTwDVuVnByXvB_DX}CwDqNeTkt@yhAkKiR}BoDiBeDsZoj@oY}f@cBaDqBkDsVyc@y^mo@_B_DsAmCqJcRuKiTaV{`@oBwC}AuCoc@}{@{CsGeBgDkm@wnA{AsCaB_DkJySiCsFiCuFuBgEYk@iBmDyAyC{AgC_CqDsLaRyG}KmDeGmDwFgC_EiNyTcCuDcCeEyC_GwCoGsSse@_DwGsBmEsBoEsHePaCoFgBsEiBgFqBmFcB}FsAsFyAgGyAmGoAmG{AmHqAyGeFwX{@yEkCcPuBsMyBkOqSstAsDgWgKos@aAuGcC{NeA_GuAeHqAoGqAeG}A}GcBwG_KoU_CcH}BsGiBeFuCeHmCiG{CwGoCsFkCkFwCkFqCmE{CaFwCmE{CiEqEeGocBctBiI_KcHuIiGsHuEaFeFuFcEgEoEkE{FoFkFuEmGaFwEoD}EoDqFaE{GyEoFoDuEuCgEmCoaAwk@ef@qVam@o]oFeDyEsC}DkCsDiCqFiEgFwE}E}E}DmEiD}DuDwE}DsF{DiGoDiGuCsFcDyGgEwJ_MiYy@gCyDqMcDyLgEwMqBoJmB_JkBsImAcHaBiJmAoHiA{GcAwG}@iGu@uFw@{Gw@mGu@qHs@sH_A{L{@uQeAcQy@yPo@qPi@iQ_Bml@[aPu@kQ_AiP}}@s{McB}Wi@mHs@qHu@wHm@eFy@uG{@eGaAsGaAeGkAoGkAcGuAoGuAeGsAuFaBeGaByFcBuFmB}Fwd@{sAqEqM}E_OsE_OwDoM_@wAcCiJy@{CSw@uBcIcHmXwEo_@yEcZgAeF{AwFuAmEqAyDsPad@iC{GuHwRiCyLsFsP[_Cq@kFwCQySeBiU{B_DSmHw@kHu@{BW{Ek@sEk@oDe@mEk@}BW{AQwJiAcq@{HoYkD{m@uHuCa@w@~DWpAsDrRkFbYu@jDq@pCyGvWmGxYwB|H{DlNY`Ai@pBkGrWmHdYiEfWiIhf@sD~Tk@bDeDaAq]kKcFiBUiEYgG"
-          },
-          "steps": [
-            {
-              "distance": {
-                "value": 757.87404,
-                "text": "757.9 ft"
-              },
-              "duration": {
-                "value": 1.42635,
-                "text": "1 min"
-              },
-              "start_location": {
-                "latitude": 40.712967,
-                "longitude": -73.951428
-              },
-              "end_location": {
-                "latitude": 40.715031,
-                "longitude": -73.951773
-              },
-              "bearing_before": 0,
-              "bearing_after": 352,
-              "instructions": "Drive north on Union Avenue. Then, in 200 meters, Turn right onto Meeker Avenue.",
-              "banner_instructions": "Drive north on Union Avenue.",
-              "voice_instructions": "Drive north on Union Avenue.",
-              "geometry": {
-                "polyline": "mo|slAfks`lCyGn@wk@tGgIz@}CTwDVuVnByXvB_DX"
-              },
-              "mode": "car",
-              "manuever": "start",
-              "street_name": "Union Avenue"
-            },
-            {
-              "distance": {
-                "value": 5150.9188,
-                "text": "1.0 mi"
-              },
-              "duration": {
-                "value": 5.7953,
-                "text": "6 mins"
-              },
-              "start_location": {
-                "latitude": 40.715031,
-                "longitude": -73.951773
-              },
-              "end_location": {
-                "latitude": 40.723834,
-                "longitude": -73.937366
-              },
-              "bearing_before": 352,
-              "bearing_after": 41,
-              "instructions": "Turn right onto Meeker Avenue.",
-              "banner_instructions": "Turn right onto Meeker Avenue.",
-              "voice_instructions": "Turn right onto Meeker Avenue.",
-              "geometry": {
-                "polyline": "mp`tlAx`t`lC}CwDqNeTkt@yhAkKiR}BoDiBeDsZoj@oY}f@cBaDqBkDsVyc@y^mo@_B_DsAmCqJcRuKiTaV{`@oBwC}AuCoc@}{@{CsGeBgDkm@wnA{AsCaB_DkJySiCsFiCuFuBgEYk@iBmDyAyC{AgC_CqDsLaRyG}KmDeGmDwFgC_EiNyTcCuDcCeEyC_GwCoGsSse@_DwGsBmEsBoEsHePaCoFgBsEiBgFqBmFcB}FsAsFyAgGyAmGoAmG{AmHqAyG"
-              },
-              "mode": "car",
-              "manuever": "right",
-              "street_name": "Meeker Avenue"
-            },
-            {
-              "distance": {
-                "value": 4366.79804,
-                "text": "0.8 mi"
-              },
-              "duration": {
-                "value": 2.5965,
-                "text": "3 mins"
-              },
-              "start_location": {
-                "latitude": 40.723834,
-                "longitude": -73.937366
-              },
-              "end_location": {
-                "latitude": 40.731092,
-                "longitude": -73.92567
-              },
-              "bearing_before": 69,
-              "bearing_after": 69,
-              "instructions": "Take the Interstate 2 78 East ramp on the left toward Brooklyn-Queens Expressway, Queens.",
-              "banner_instructions": "Take the I 278 East ramp on the left toward Brooklyn-Queens Expressway/Queens/Bronx.",
-              "voice_instructions": "Take the I 278 East ramp on the left toward Brooklyn-Queens Expressway/Queens/Bronx.",
-              "geometry": {
-                "polyline": "svqtlAj|w_lCeFwX{@yEkCcPuBsMyBkOqSstAsDgWgKos@aAuGcC{NeA_GuAeHqAoGqAeG}A}GcBwG_KoU_CcH}BsGiBeFuCeHmCiG{CwGoCsFkCkFwCkFqCmE{CaFwCmE{CiEqEeGocBctBiI_KcHuIiGsHuEaFeFuFcEgEoEkE{FoFkFuEmGaFwEoD}EoDqFaE{GyEoFoDuEuCgEmCoaAwk@"
-              },
-              "mode": "car",
-              "manuever": "ramp-left",
-              "street_name": "I 278 East/Brooklyn-Queens Expressway"
-            },
-            {
-              "distance": {
-                "value": 7165.35456,
-                "text": "1.4 mi"
-              },
-              "duration": {
-                "value": 5.1314166666666665,
-                "text": "5 mins"
-              },
-              "start_location": {
-                "latitude": 40.731092,
-                "longitude": -73.92567
-              },
-              "end_location": {
-                "latitude": 40.738404,
-                "longitude": -73.902957
-              },
-              "bearing_before": 27,
-              "bearing_after": 24,
-              "instructions": "Keep left to stay on Interstate 2 78 East, Brooklyn-Queens Expressway.",
-              "banner_instructions": "Keep left to stay on I 278 East/Brooklyn-Queens Expressway.",
-              "voice_instructions": "Keep left to stay on I 278 East/Brooklyn-Queens Expressway.",
-              "geometry": {
-                "polyline": "g|_ulAjaa_lCef@qVam@o]oFeDyEsC}DkCsDiCqFiEgFwE}E}E}DmEiD}DuDwE}DsF{DiGoDiGuCsFcDyGgEwJ_MiYy@gCyDqMcDyLgEwMqBoJmB_JkBsImAcHaBiJmAoHiA{GcAwG}@iGu@uFw@{Gw@mGu@qHs@sH_A{L{@uQeAcQy@yPo@qPi@iQ_Bml@[aPu@kQ_AiP}}@s{McB}Wi@mHs@qHu@wHm@eFy@uG{@eGaAsGaAeGkAoGkAcGuAoGuAeGsAuFaBeGaByFcBuFmB}Fwd@{sAqEqM}E_OsE_OwDoM_@wAcCiJy@{CSw@uBcIcHmX"
-              },
-              "mode": "car",
-              "manuever": "stay-left",
-              "street_name": "I 278 East/Brooklyn-Queens Expressway"
-            },
-            {
-              "distance": {
-                "value": 961.28612,
-                "text": "0.2 mi"
-              },
-              "duration": {
-                "value": 0.62875,
-                "text": "1 min"
-              },
-              "start_location": {
-                "latitude": 40.738404,
-                "longitude": -73.902957
-              },
-              "end_location": {
-                "latitude": 40.739523,
-                "longitude": -73.899832
-              },
-              "bearing_before": 64,
-              "bearing_after": 74,
-              "instructions": "Take exit 39 onto 65th Place.",
-              "banner_instructions": "Take exit 39 onto 65th Place.",
-              "voice_instructions": "Take exit 39 onto 65th Place.",
-              "geometry": {
-                "polyline": "genulAxut}kCwEo_@yEcZgAeF{AwFuAmEqAyDsPad@iC{GuHwRiCyLsFsP[_Cq@kF"
-              },
-              "mode": "car",
-              "manuever": "exit-right",
-              "street_name": "Laurel Hill Boulevard",
-              "exit_name": "39"
-            },
-            {
-              "distance": {
-                "value": 1459.9738,
-                "text": "0.3 mi"
-              },
-              "duration": {
-                "value": 1.9234166666666668,
-                "text": "2 mins"
-              },
-              "start_location": {
-                "latitude": 40.739523,
-                "longitude": -73.899832
-              },
-              "end_location": {
-                "latitude": 40.743487,
-                "longitude": -73.899074
-              },
-              "bearing_before": 74,
-              "bearing_after": 5,
-              "instructions": "Turn left onto 65th Place.",
-              "banner_instructions": "Turn left onto 65th Place.",
-              "voice_instructions": "Turn left onto 65th Place.",
-              "geometry": {
-                "polyline": "ekpulAnrn}kCwCQySeBiU{B_DSmHw@kHu@{BW{Ek@sEk@oDe@mEk@}BW{AQwJiAcq@{HoYkD{m@uHuCa@"
-              },
-              "mode": "car",
-              "manuever": "left",
-              "street_name": "65th Place"
-            },
-            {
-              "distance": {
-                "value": 1374.67196,
-                "text": "0.3 mi"
-              },
-              "duration": {
-                "value": 1.9673666666666667,
-                "text": "2 mins"
-              },
-              "start_location": {
-                "latitude": 40.743487,
-                "longitude": -73.899074
-              },
-              "end_location": {
-                "latitude": 40.744914,
-                "longitude": -73.903687
-              },
-              "bearing_before": 9,
-              "bearing_after": 291,
-              "instructions": "Turn left onto Woodside Avenue.",
-              "banner_instructions": "Turn left onto Woodside Avenue.",
-              "voice_instructions": "Turn left onto Woodside Avenue.",
-              "geometry": {
-                "polyline": "}bxulAbcm}kCw@~DWpAsDrRkFbYu@jDq@pCyGvWmGxYwB|H{DlNY`Ai@pBkGrWmHdYiEfWiIhf@sD~Tk@bD"
-              },
-              "mode": "car",
-              "manuever": "left",
-              "street_name": "Woodside Avenue"
-            },
-            {
-              "distance": {
-                "value": 262.4672,
-                "text": "262.5 ft"
-              },
-              "duration": {
-                "value": 0.4638,
-                "text": "0.5 min"
-              },
-              "start_location": {
-                "latitude": 40.744914,
-                "longitude": -73.903687
-              },
-              "end_location": {
-                "latitude": 40.7456,
-                "longitude": -73.903403
-              },
-              "bearing_before": 289,
-              "bearing_after": 16,
-              "instructions": "Turn right onto 61st Street. Then Turn right onto Roosevelt Avenue.",
-              "banner_instructions": "Turn right onto 61st Street.",
-              "voice_instructions": "Turn right onto 61st Street.",
-              "geometry": {
-                "polyline": "c|zulAlcv}kCeDaAq]kKcFiB"
-              },
-              "mode": "car",
-              "manuever": "right",
-              "street_name": "61st Street"
-            },
-            {
-              "distance": {
-                "value": 65.6168,
-                "text": "65.6 ft"
-              },
-              "duration": {
-                "value": 0.12766666666666668,
-                "text": "0.1 min"
-              },
-              "start_location": {
-                "latitude": 40.7456,
-                "longitude": -73.903403
-              },
-              "end_location": {
-                "latitude": 40.745624,
-                "longitude": -73.90317
-              },
-              "bearing_before": 19,
-              "bearing_after": 81,
-              "instructions": "Turn right onto Roosevelt Avenue. Then You will arrive at your destination.",
-              "banner_instructions": "Turn right onto Roosevelt Avenue.",
-              "voice_instructions": "Turn right onto Roosevelt Avenue.",
-              "geometry": {
-                "polyline": "_g|ulAtqu}kCUiEYgG"
-              },
-              "mode": "car",
-              "manuever": "right",
-              "street_name": "Roosevelt Avenue"
-            },
-            {
-              "distance": {
-                "value": 0,
-                "text": "0.0 ft"
-              },
-              "duration": {
-                "value": 0,
-                "text": "0 min"
-              },
-              "start_location": {
-                "latitude": 40.745624,
-                "longitude": -73.90317
-              },
-              "end_location": {
-                "latitude": 40.745624,
-                "longitude": -73.90317
-              },
-              "bearing_before": 82,
-              "bearing_after": 0,
-              "instructions": "You have arrived at your destination.",
-              "banner_instructions": "You have arrived at your destination.",
-              "voice_instructions": "You have arrived at your destination.",
-              "geometry": {
-                "polyline": "oh|ulAbcu}kC"
-              },
-              "mode": "car",
-              "manuever": "destination"
-            }
-          ]
+        "distance": {
+          "value": 62683.72904,
+          "text": "11.9 mi"
         },
-        {
-          "startLocation": {
-            "latitude": 40.74558,
-            "longitude": -73.903162
+        "legs": [
+          {
+            "startLocation": {
+              "latitude": 40.73425,
+              "longitude": -73.990934
+            },
+            "endLocation": {
+              "latitude": 40.712971,
+              "longitude": -73.951385
+            },
+            "duration": {
+              "value": 20.394166666666667,
+              "text": "20 mins"
+            },
+            "distance": {
+              "value": 19639.10824,
+              "text": "3.7 mi"
+            },
+            "geometry": {
+              "polyline": "kafulAnn`clCfKxAhCF`CJdg@vGtB\\|BZfJrAh[lEhC^dBThMjBjRjCdBZn@Pd@Nh@PzAuE|EoO`HqT`CuHl@mBbCkHxBkGhYk}@v@oCfBuFvB_H~c@avAbLm^ZgAj@kB`BmFlBnAvYlRjAv@nBrAdC~AvVdPdEnCfBhAtBvAj^~UrBtAlBnAn\\dTbBfAtBtAl^zUzAbAjCfBv]tUbBfAjBlAf^pUhBlAnBnAfSzMhLxHrBrAlBrAlFnDzXnRnBrAtBxAjFfDtFx@jEZ|BRzDh@xFtAjD`AvAj@|Ap@lQnH~ZjMhIhDzAl@bBp@nBt@pAh@l{@r]xAf@rBr@xAf@vAd@xItDbVrKvVjKz@^hBr@rEdBzGlC`AwEX}AnG}Zd@}B~@uEj@uCtKyh@XsAh@gCd@yBbJ{c@\\aBr@iD~AeIz@yDn@wCpD}PVmAf@eCf@eC`Joc@VsAf@aCd@}BpHm^r@kDXoAfAkFbA{EtIsb@Z}A`@uBR_AXeAd@}A`AwCtEsNrAsEjAeEb@aBd@aBr@sCz@cDjBcHbIoY|@kD\\qAXkAxDgRzAmHzSgdA~J_g@|\\gcBpb@_uB|U{kAlDqUxWysA`~DirRd_@ufBrJk^ts@spDzH{TrEcU`AoFjCkOd@yC`@}CToCTwChAeTx@}PRkCb@eDd@gCn@sCrP_r@\\wAjAsEmCuAsP}I}KsG}@i@kAq@QeFo@uTAMiBy_@wBac@KkBOkBQiDk@mIs@{Io@aMmBs]{AmXS}EQ{CoBac@OeDeA{ScAoTUmEUeEsA{X}@yPoAcW_Cef@WkF}AcPScFG}AUkFaDXg[dCmKx@aCRec@hD_CP{CZo]bD"
+            },
+            "steps": [
+              {
+                "distance": {
+                  "value": 931.75856,
+                  "text": "0.2 mi"
+                },
+                "duration": {
+                  "value": 1.4142833333333333,
+                  "text": "1 min"
+                },
+                "start_location": {
+                  "latitude": 40.734246,
+                  "longitude": -73.990904
+                },
+                "end_location": {
+                  "latitude": 40.731744,
+                  "longitude": -73.991464
+                },
+                "bearing_before": 0,
+                "bearing_after": 189,
+                "instructions": "Drive south on Broadway. Then, in 300 meters, Turn left onto East 10th Street.",
+                "banner_instructions": "Drive south on Broadway.",
+                "voice_instructions": "Drive south on Broadway.",
+                "geometry": {
+                  "polyline": "kafulAnn`clCfKxAhCF`CJdg@vGtB\\|BZfJrAh[lEhC^dBThMjBjRjCdBZn@Pd@Nh@P"
+                },
+                "mode": "car",
+                "manuever": "start",
+                "street_name": "Broadway"
+              },
+              {
+                "distance": {
+                  "value": 1473.09716,
+                  "text": "0.3 mi"
+                },
+                "duration": {
+                  "value": 2.5110666666666663,
+                  "text": "3 mins"
+                },
+                "start_location": {
+                  "latitude": 40.731744,
+                  "longitude": -73.991464
+                },
+                "end_location": {
+                  "latitude": 40.729779,
+                  "longitude": -73.986812
+                },
+                "bearing_before": 197,
+                "bearing_after": 119,
+                "instructions": "Turn left onto East 10th Street.",
+                "banner_instructions": "Turn left onto East 10th Street.",
+                "voice_instructions": "Turn left onto East 10th Street.",
+                "geometry": {
+                  "polyline": "_eaulAnqaclCzAuE|EoO`HqT`CuHl@mBbCkHxBkGhYk}@v@oCfBuFvB_H~c@avAbLm^ZgAj@kB`BmF"
+                },
+                "mode": "car",
+                "manuever": "left",
+                "street_name": "East 10th Street"
+              },
+              {
+                "distance": {
+                  "value": 3992.78228,
+                  "text": "0.8 mi"
+                },
+                "duration": {
+                  "value": 4.9593,
+                  "text": "5 mins"
+                },
+                "start_location": {
+                  "latitude": 40.729779,
+                  "longitude": -73.986812
+                },
+                "end_location": {
+                  "latitude": 40.719911,
+                  "longitude": -73.992948
+                },
+                "bearing_before": 118,
+                "bearing_after": 208,
+                "instructions": "Turn right onto 2nd Avenue.",
+                "banner_instructions": "Turn right onto 2nd Avenue.",
+                "voice_instructions": "Turn right onto 2nd Avenue.",
+                "geometry": {
+                  "polyline": "ej}tlAvnxblClBnAvYlRjAv@nBrAdC~AvVdPdEnCfBhAtBvAj^~UrBtAlBnAn\\dTbBfAtBtAl^zUzAbAjCfBv]tUbBfAjBlAf^pUhBlAnBnAfSzMhLxHrBrAlBrAlFnDzXnRnBrAtBxAjFfDtFx@jEZ|BRzDh@xFtAjD`AvAj@|Ap@lQnH~ZjMhIhDzAl@bBp@nBt@pAh@l{@r]xAf@rBr@xAf@vAd@xItDbVrKvVjKz@^hBr@rEdBzGlC"
+                },
+                "mode": "car",
+                "manuever": "right",
+                "street_name": "2nd Avenue"
+              },
+              {
+                "distance": {
+                  "value": 4215.8794,
+                  "text": "0.8 mi"
+                },
+                "duration": {
+                  "value": 5.349966666666666,
+                  "text": "5 mins"
+                },
+                "start_location": {
+                  "latitude": 40.719911,
+                  "longitude": -73.992948
+                },
+                "end_location": {
+                  "latitude": 40.715536,
+                  "longitude": -73.978895
+                },
+                "bearing_before": 200,
+                "bearing_after": 111,
+                "instructions": "Turn left onto Delancey Street.",
+                "banner_instructions": "Turn left onto Delancey Street.",
+                "voice_instructions": "Turn left onto Delancey Street.",
+                "geometry": {
+                  "polyline": "majtlAfndclC`AwEX}AnG}Zd@}B~@uEj@uCtKyh@XsAh@gCd@yBbJ{c@\\aBr@iD~AeIz@yDn@wCpD}PVmAf@eCf@eC`Joc@VsAf@aCd@}BpHm^r@kDXoAfAkFbA{EtIsb@Z}A`@uBR_AXeAd@}A`AwCtEsNrAsEjAeEb@aBd@aBr@sCz@cDjBcHbIoY|@kD\\qAXkAxDgRzAmHzSgdA~J_g@|\\gcBpb@_uB|U{kA"
+                },
+                "mode": "car",
+                "manuever": "left",
+                "street_name": "Delancey Street"
+              },
+              {
+                "distance": {
+                  "value": 5000.00016,
+                  "text": "0.9 mi"
+                },
+                "duration": {
+                  "value": 1.6442666666666668,
+                  "text": "2 mins"
+                },
+                "start_location": {
+                  "latitude": 40.715536,
+                  "longitude": -73.978895
+                },
+                "end_location": {
+                  "latitude": 40.710451,
+                  "longitude": -73.962137
+                },
+                "bearing_before": 111,
+                "bearing_after": 107,
+                "instructions": "Keep left to take Interstate 2 78 East toward Queens, Bronx.",
+                "banner_instructions": "Keep left to take I 278 East toward Queens/Bronx.",
+                "voice_instructions": "Keep left to take I 278 East toward Queens/Bronx.",
+                "geometry": {
+                  "polyline": "_patlA|_iblClDqUxWysA`~DirRd_@ufBrJk^ts@spD"
+                },
+                "mode": "car",
+                "manuever": "stay-left",
+                "street_name": "Williamsburg Bridge"
+              },
+              {
+                "distance": {
+                  "value": 213.2546,
+                  "text": "213.3 ft"
+                },
+                "duration": {
+                  "value": 0.07093333333333333,
+                  "text": "0.1 min"
+                },
+                "start_location": {
+                  "latitude": 40.710451,
+                  "longitude": -73.962137
+                },
+                "end_location": {
+                  "latitude": 40.710187,
+                  "longitude": -73.961433
+                },
+                "bearing_before": 111,
+                "bearing_after": 120,
+                "instructions": "Keep right toward Interstate 2 78 West, Broadway West. Then Keep left toward Broadway East.",
+                "banner_instructions": "Keep right toward I 278 West/Broadway West.",
+                "voice_instructions": "Keep right toward I 278 West/Broadway West.",
+                "geometry": {
+                  "polyline": "erwslAphhalCzH{TrEcU"
+                },
+                "mode": "car",
+                "manuever": "stay-right",
+                "street_name": "I 278 West/Broadway West"
+              },
+              {
+                "distance": {
+                  "value": 757.87404,
+                  "text": "757.9 ft"
+                },
+                "duration": {
+                  "value": 0.6236166666666667,
+                  "text": "1 min"
+                },
+                "start_location": {
+                  "latitude": 40.710187,
+                  "longitude": -73.961433
+                },
+                "end_location": {
+                  "latitude": 40.709554,
+                  "longitude": -73.95886
+                },
+                "bearing_before": 111,
+                "bearing_after": 109,
+                "instructions": "Keep left toward Broadway East, South 5th Street.",
+                "banner_instructions": "Keep left toward Broadway East/South 5th Street.",
+                "voice_instructions": "Keep left toward Broadway East/South 5th Street.",
+                "geometry": {
+                  "polyline": "uawslAp|falC`AoFjCkOd@yC`@}CToCTwChAeTx@}PRkCb@eDd@gCn@sCrP_r@\\wAjAsE"
+                },
+                "mode": "car",
+                "manuever": "stay-left",
+                "street_name": "Broadway East/South 5th Street"
+              },
+              {
+                "distance": {
+                  "value": 259.18636,
+                  "text": "259.2 ft"
+                },
+                "duration": {
+                  "value": 0.5566333333333334,
+                  "text": "1 min"
+                },
+                "start_location": {
+                  "latitude": 40.709554,
+                  "longitude": -73.95886
+                },
+                "end_location": {
+                  "latitude": 40.710183,
+                  "longitude": -73.958458
+                },
+                "bearing_before": 115,
+                "bearing_after": 24,
+                "instructions": "Turn left onto Havemeyer Street. Then Turn right onto Borinquen Place.",
+                "banner_instructions": "Turn left onto Havemeyer Street.",
+                "voice_instructions": "Turn left onto Havemeyer Street.",
+                "geometry": {
+                  "polyline": "czuslAv{aalCmCuAsP}I}KsG}@i@kAq@"
+                },
+                "mode": "car",
+                "manuever": "left",
+                "street_name": "Havemeyer Street"
+              },
+              {
+                "distance": {
+                  "value": 2050.525,
+                  "text": "0.4 mi"
+                },
+                "duration": {
+                  "value": 1.8798333333333335,
+                  "text": "2 mins"
+                },
+                "start_location": {
+                  "latitude": 40.710183,
+                  "longitude": -73.958458
+                },
+                "end_location": {
+                  "latitude": 40.710961,
+                  "longitude": -73.951119
+                },
+                "bearing_before": 26,
+                "bearing_after": 84,
+                "instructions": "Turn right onto Borinquen Place.",
+                "banner_instructions": "Turn right onto Borinquen Place.",
+                "voice_instructions": "Turn right onto Borinquen Place.",
+                "geometry": {
+                  "polyline": "mawslArbaalCQeFo@uTAMiBy_@wBac@KkBOkBQiDk@mIs@{Io@aMmBs]{AmXS}EQ{CoBac@OeDeA{ScAoTUmEUeEsA{X}@yPoAcW_Cef@WkF}AcPScFG}AUkF"
+                },
+                "mode": "car",
+                "manuever": "right",
+                "street_name": "Borinquen Place"
+              },
+              {
+                "distance": {
+                  "value": 734.90816,
+                  "text": "734.9 ft"
+                },
+                "duration": {
+                  "value": 1.3842166666666667,
+                  "text": "1 min"
+                },
+                "start_location": {
+                  "latitude": 40.710961,
+                  "longitude": -73.951119
+                },
+                "end_location": {
+                  "latitude": 40.712967,
+                  "longitude": -73.951428
+                },
+                "bearing_before": 82,
+                "bearing_after": 353,
+                "instructions": "Turn left onto Union Avenue.",
+                "banner_instructions": "Turn left onto Union Avenue.",
+                "voice_instructions": "Turn left onto Union Avenue.",
+                "geometry": {
+                  "polyline": "arxslA|wr`lCaDXg[dCmKx@aCRec@hD_CP{CZo]bD"
+                },
+                "mode": "car",
+                "manuever": "left",
+                "street_name": "Union Avenue"
+              },
+              {
+                "distance": {
+                  "value": 0,
+                  "text": "0.0 ft"
+                },
+                "duration": {
+                  "value": 0,
+                  "text": "0 min"
+                },
+                "start_location": {
+                  "latitude": 40.712967,
+                  "longitude": -73.951428
+                },
+                "end_location": {
+                  "latitude": 40.712967,
+                  "longitude": -73.951428
+                },
+                "bearing_before": 352,
+                "bearing_after": 0,
+                "instructions": "You have arrived at your destination.",
+                "banner_instructions": "You have arrived at your destination.",
+                "voice_instructions": "You have arrived at your destination.",
+                "geometry": {
+                  "polyline": "mo|slAfks`lC"
+                },
+                "mode": "car",
+                "manuever": "destination"
+              }
+            ]
           },
-          "endLocation": {
-            "latitude": 40.774419,
-            "longitude": -73.872746
+          {
+            "startLocation": {
+              "latitude": 40.712971,
+              "longitude": -73.951385
+            },
+            "endLocation": {
+              "latitude": 40.74558,
+              "longitude": -73.903162
+            },
+            "duration": {
+              "value": 20.06063333333333,
+              "text": "20 mins"
+            },
+            "distance": {
+              "value": 21571.523,
+              "text": "4.1 mi"
+            },
+            "geometry": {
+              "polyline": "mo|slAfks`lCyGn@wk@tGgIz@}CTwDVuVnByXvB_DX}CwDqNeTkt@yhAkKiR}BoDiBeDsZoj@oY}f@cBaDqBkDsVyc@y^mo@_B_DsAmCqJcRuKiTaV{`@oBwC}AuCoc@}{@{CsGeBgDkm@wnA{AsCaB_DkJySiCsFiCuFuBgEYk@iBmDyAyC{AgC_CqDsLaRyG}KmDeGmDwFgC_EiNyTcCuDcCeEyC_GwCoGsSse@_DwGsBmEsBoEsHePaCoFgBsEiBgFqBmFcB}FsAsFyAgGyAmGoAmG{AmHqAyGeFwX{@yEkCcPuBsMyBkOqSstAsDgWgKos@aAuGcC{NeA_GuAeHqAoGqAeG}A}GcBwG_KoU_CcH}BsGiBeFuCeHmCiG{CwGoCsFkCkFwCkFqCmE{CaFwCmE{CiEqEeGocBctBiI_KcHuIiGsHuEaFeFuFcEgEoEkE{FoFkFuEmGaFwEoD}EoDqFaE{GyEoFoDuEuCgEmCoaAwk@ef@qVam@o]oFeDyEsC}DkCsDiCqFiEgFwE}E}E}DmEiD}DuDwE}DsF{DiGoDiGuCsFcDyGgEwJ_MiYy@gCyDqMcDyLgEwMqBoJmB_JkBsImAcHaBiJmAoHiA{GcAwG}@iGu@uFw@{Gw@mGu@qHs@sH_A{L{@uQeAcQy@yPo@qPi@iQ_Bml@[aPu@kQ_AiP}}@s{McB}Wi@mHs@qHu@wHm@eFy@uG{@eGaAsGaAeGkAoGkAcGuAoGuAeGsAuFaBeGaByFcBuFmB}Fwd@{sAqEqM}E_OsE_OwDoM_@wAcCiJy@{CSw@uBcIcHmXwEo_@yEcZgAeF{AwFuAmEqAyDsPad@iC{GuHwRiCyLsFsP[_Cq@kFwCQySeBiU{B_DSmHw@kHu@{BW{Ek@sEk@oDe@mEk@}BW{AQwJiAcq@{HoYkD{m@uHuCa@w@~DWpAsDrRkFbYu@jDq@pCyGvWmGxYwB|H{DlNY`Ai@pBkGrWmHdYiEfWiIhf@sD~Tk@bDeDaAq]kKcFiBUiEYgG"
+            },
+            "steps": [
+              {
+                "distance": {
+                  "value": 757.87404,
+                  "text": "757.9 ft"
+                },
+                "duration": {
+                  "value": 1.42635,
+                  "text": "1 min"
+                },
+                "start_location": {
+                  "latitude": 40.712967,
+                  "longitude": -73.951428
+                },
+                "end_location": {
+                  "latitude": 40.715031,
+                  "longitude": -73.951773
+                },
+                "bearing_before": 0,
+                "bearing_after": 352,
+                "instructions": "Drive north on Union Avenue. Then, in 200 meters, Turn right onto Meeker Avenue.",
+                "banner_instructions": "Drive north on Union Avenue.",
+                "voice_instructions": "Drive north on Union Avenue.",
+                "geometry": {
+                  "polyline": "mo|slAfks`lCyGn@wk@tGgIz@}CTwDVuVnByXvB_DX"
+                },
+                "mode": "car",
+                "manuever": "start",
+                "street_name": "Union Avenue"
+              },
+              {
+                "distance": {
+                  "value": 5150.9188,
+                  "text": "1.0 mi"
+                },
+                "duration": {
+                  "value": 5.7953,
+                  "text": "6 mins"
+                },
+                "start_location": {
+                  "latitude": 40.715031,
+                  "longitude": -73.951773
+                },
+                "end_location": {
+                  "latitude": 40.723834,
+                  "longitude": -73.937366
+                },
+                "bearing_before": 352,
+                "bearing_after": 41,
+                "instructions": "Turn right onto Meeker Avenue.",
+                "banner_instructions": "Turn right onto Meeker Avenue.",
+                "voice_instructions": "Turn right onto Meeker Avenue.",
+                "geometry": {
+                  "polyline": "mp`tlAx`t`lC}CwDqNeTkt@yhAkKiR}BoDiBeDsZoj@oY}f@cBaDqBkDsVyc@y^mo@_B_DsAmCqJcRuKiTaV{`@oBwC}AuCoc@}{@{CsGeBgDkm@wnA{AsCaB_DkJySiCsFiCuFuBgEYk@iBmDyAyC{AgC_CqDsLaRyG}KmDeGmDwFgC_EiNyTcCuDcCeEyC_GwCoGsSse@_DwGsBmEsBoEsHePaCoFgBsEiBgFqBmFcB}FsAsFyAgGyAmGoAmG{AmHqAyG"
+                },
+                "mode": "car",
+                "manuever": "right",
+                "street_name": "Meeker Avenue"
+              },
+              {
+                "distance": {
+                  "value": 4366.79804,
+                  "text": "0.8 mi"
+                },
+                "duration": {
+                  "value": 2.5965,
+                  "text": "3 mins"
+                },
+                "start_location": {
+                  "latitude": 40.723834,
+                  "longitude": -73.937366
+                },
+                "end_location": {
+                  "latitude": 40.731092,
+                  "longitude": -73.92567
+                },
+                "bearing_before": 69,
+                "bearing_after": 69,
+                "instructions": "Take the Interstate 2 78 East ramp on the left toward Brooklyn-Queens Expressway, Queens.",
+                "banner_instructions": "Take the I 278 East ramp on the left toward Brooklyn-Queens Expressway/Queens/Bronx.",
+                "voice_instructions": "Take the I 278 East ramp on the left toward Brooklyn-Queens Expressway/Queens/Bronx.",
+                "geometry": {
+                  "polyline": "svqtlAj|w_lCeFwX{@yEkCcPuBsMyBkOqSstAsDgWgKos@aAuGcC{NeA_GuAeHqAoGqAeG}A}GcBwG_KoU_CcH}BsGiBeFuCeHmCiG{CwGoCsFkCkFwCkFqCmE{CaFwCmE{CiEqEeGocBctBiI_KcHuIiGsHuEaFeFuFcEgEoEkE{FoFkFuEmGaFwEoD}EoDqFaE{GyEoFoDuEuCgEmCoaAwk@"
+                },
+                "mode": "car",
+                "manuever": "ramp-left",
+                "street_name": "I 278 East/Brooklyn-Queens Expressway"
+              },
+              {
+                "distance": {
+                  "value": 7165.35456,
+                  "text": "1.4 mi"
+                },
+                "duration": {
+                  "value": 5.1314166666666665,
+                  "text": "5 mins"
+                },
+                "start_location": {
+                  "latitude": 40.731092,
+                  "longitude": -73.92567
+                },
+                "end_location": {
+                  "latitude": 40.738404,
+                  "longitude": -73.902957
+                },
+                "bearing_before": 27,
+                "bearing_after": 24,
+                "instructions": "Keep left to stay on Interstate 2 78 East, Brooklyn-Queens Expressway.",
+                "banner_instructions": "Keep left to stay on I 278 East/Brooklyn-Queens Expressway.",
+                "voice_instructions": "Keep left to stay on I 278 East/Brooklyn-Queens Expressway.",
+                "geometry": {
+                  "polyline": "g|_ulAjaa_lCef@qVam@o]oFeDyEsC}DkCsDiCqFiEgFwE}E}E}DmEiD}DuDwE}DsF{DiGoDiGuCsFcDyGgEwJ_MiYy@gCyDqMcDyLgEwMqBoJmB_JkBsImAcHaBiJmAoHiA{GcAwG}@iGu@uFw@{Gw@mGu@qHs@sH_A{L{@uQeAcQy@yPo@qPi@iQ_Bml@[aPu@kQ_AiP}}@s{McB}Wi@mHs@qHu@wHm@eFy@uG{@eGaAsGaAeGkAoGkAcGuAoGuAeGsAuFaBeGaByFcBuFmB}Fwd@{sAqEqM}E_OsE_OwDoM_@wAcCiJy@{CSw@uBcIcHmX"
+                },
+                "mode": "car",
+                "manuever": "stay-left",
+                "street_name": "I 278 East/Brooklyn-Queens Expressway"
+              },
+              {
+                "distance": {
+                  "value": 961.28612,
+                  "text": "0.2 mi"
+                },
+                "duration": {
+                  "value": 0.62875,
+                  "text": "1 min"
+                },
+                "start_location": {
+                  "latitude": 40.738404,
+                  "longitude": -73.902957
+                },
+                "end_location": {
+                  "latitude": 40.739523,
+                  "longitude": -73.899832
+                },
+                "bearing_before": 64,
+                "bearing_after": 74,
+                "instructions": "Take exit 39 onto 65th Place.",
+                "banner_instructions": "Take exit 39 onto 65th Place.",
+                "voice_instructions": "Take exit 39 onto 65th Place.",
+                "geometry": {
+                  "polyline": "genulAxut}kCwEo_@yEcZgAeF{AwFuAmEqAyDsPad@iC{GuHwRiCyLsFsP[_Cq@kF"
+                },
+                "mode": "car",
+                "manuever": "exit-right",
+                "street_name": "Laurel Hill Boulevard",
+                "exit_name": "39"
+              },
+              {
+                "distance": {
+                  "value": 1459.9738,
+                  "text": "0.3 mi"
+                },
+                "duration": {
+                  "value": 1.9234166666666668,
+                  "text": "2 mins"
+                },
+                "start_location": {
+                  "latitude": 40.739523,
+                  "longitude": -73.899832
+                },
+                "end_location": {
+                  "latitude": 40.743487,
+                  "longitude": -73.899074
+                },
+                "bearing_before": 74,
+                "bearing_after": 5,
+                "instructions": "Turn left onto 65th Place.",
+                "banner_instructions": "Turn left onto 65th Place.",
+                "voice_instructions": "Turn left onto 65th Place.",
+                "geometry": {
+                  "polyline": "ekpulAnrn}kCwCQySeBiU{B_DSmHw@kHu@{BW{Ek@sEk@oDe@mEk@}BW{AQwJiAcq@{HoYkD{m@uHuCa@"
+                },
+                "mode": "car",
+                "manuever": "left",
+                "street_name": "65th Place"
+              },
+              {
+                "distance": {
+                  "value": 1374.67196,
+                  "text": "0.3 mi"
+                },
+                "duration": {
+                  "value": 1.9673666666666667,
+                  "text": "2 mins"
+                },
+                "start_location": {
+                  "latitude": 40.743487,
+                  "longitude": -73.899074
+                },
+                "end_location": {
+                  "latitude": 40.744914,
+                  "longitude": -73.903687
+                },
+                "bearing_before": 9,
+                "bearing_after": 291,
+                "instructions": "Turn left onto Woodside Avenue.",
+                "banner_instructions": "Turn left onto Woodside Avenue.",
+                "voice_instructions": "Turn left onto Woodside Avenue.",
+                "geometry": {
+                  "polyline": "}bxulAbcm}kCw@~DWpAsDrRkFbYu@jDq@pCyGvWmGxYwB|H{DlNY`Ai@pBkGrWmHdYiEfWiIhf@sD~Tk@bD"
+                },
+                "mode": "car",
+                "manuever": "left",
+                "street_name": "Woodside Avenue"
+              },
+              {
+                "distance": {
+                  "value": 262.4672,
+                  "text": "262.5 ft"
+                },
+                "duration": {
+                  "value": 0.4638,
+                  "text": "0.5 min"
+                },
+                "start_location": {
+                  "latitude": 40.744914,
+                  "longitude": -73.903687
+                },
+                "end_location": {
+                  "latitude": 40.7456,
+                  "longitude": -73.903403
+                },
+                "bearing_before": 289,
+                "bearing_after": 16,
+                "instructions": "Turn right onto 61st Street. Then Turn right onto Roosevelt Avenue.",
+                "banner_instructions": "Turn right onto 61st Street.",
+                "voice_instructions": "Turn right onto 61st Street.",
+                "geometry": {
+                  "polyline": "c|zulAlcv}kCeDaAq]kKcFiB"
+                },
+                "mode": "car",
+                "manuever": "right",
+                "street_name": "61st Street"
+              },
+              {
+                "distance": {
+                  "value": 65.6168,
+                  "text": "65.6 ft"
+                },
+                "duration": {
+                  "value": 0.12766666666666668,
+                  "text": "0.1 min"
+                },
+                "start_location": {
+                  "latitude": 40.7456,
+                  "longitude": -73.903403
+                },
+                "end_location": {
+                  "latitude": 40.745624,
+                  "longitude": -73.90317
+                },
+                "bearing_before": 19,
+                "bearing_after": 81,
+                "instructions": "Turn right onto Roosevelt Avenue. Then You will arrive at your destination.",
+                "banner_instructions": "Turn right onto Roosevelt Avenue.",
+                "voice_instructions": "Turn right onto Roosevelt Avenue.",
+                "geometry": {
+                  "polyline": "_g|ulAtqu}kCUiEYgG"
+                },
+                "mode": "car",
+                "manuever": "right",
+                "street_name": "Roosevelt Avenue"
+              },
+              {
+                "distance": {
+                  "value": 0,
+                  "text": "0.0 ft"
+                },
+                "duration": {
+                  "value": 0,
+                  "text": "0 min"
+                },
+                "start_location": {
+                  "latitude": 40.745624,
+                  "longitude": -73.90317
+                },
+                "end_location": {
+                  "latitude": 40.745624,
+                  "longitude": -73.90317
+                },
+                "bearing_before": 82,
+                "bearing_after": 0,
+                "instructions": "You have arrived at your destination.",
+                "banner_instructions": "You have arrived at your destination.",
+                "voice_instructions": "You have arrived at your destination.",
+                "geometry": {
+                  "polyline": "oh|ulAbcu}kC"
+                },
+                "mode": "car",
+                "manuever": "destination"
+              }
+            ]
           },
-          "duration": {
-            "value": 11.62365,
-            "text": "12 mins"
-          },
-          "distance": {
-            "value": 21473.0978,
-            "text": "4.1 mi"
-          },
-          "geometry": {
-            "polyline": "oh|ulAbcu}kCqEg_AwDiz@QaEOoCwDmu@ScEOyCkD{r@[oGQoDyAwXsAcX{Dkv@}Dew@wC\\ea@vEwAPgBTc_@jEqBTgCXg@Fef@pF_@D}C~@M}Cc@{Ke@}IoAqC_AaBeAy@kAm@oBg@s@UiAQcA?g@Pk@@_AZaAXu@\\qG~Cq^dRgHrDgHjDoI|D}G~CeGnCaDfA{DhAaE`AiEx@sNzFsHl@aVnAm_@nD}ShDaQ`EiQfIs~@vg@mc@|V}CfBkZbJaa@pM_UlGwWpFkGxAe^|GkS`BaMz@qLQuM{@wQeDwM}DeNeFqQkGwg@q[e^_Ti_C}wA}l@i`@sE_DuDsCsDaDyDeEwCkDuCyD_DwEkLqRmCwDuDuEoDeE{CuC{CoC}EkDaAm@wBsAmF_CuDcAwEuAyQkEoEuAsDoAeD}A}CsBkCsByCyC}DqEiCyD}BsEuBwEeBmFkAkEeAaFs@_Gg@kG[sFSsHaAyh@c@eRm@cRcCyl@kAcVqIqs@{A_Q_B{PaBgPgBwPmBoPuBkPwBcPiCoQsBuMeCwOoC}OyCiPqCyO{C_PcDaPcDsOiDoOqDoOuDkO_EqOiEaOcEaOoE_OuE_O}E{N{EqNgFkNiFgNoFcNuF_NwFuMgGcNw{@glB_GiMeGyMsFmM}BuFuBkFuBwFoBqFqBuFmB}FcBqFgBcG{AyFcBgG}AkG{AaGuAkGqA_GqAqGoAoG{@kEqCq_@IgA}B_]UeEe@}Ic@}Ke@kL[yLKuMAwPBsNHkMH}K|D_oBHkED{ECuEM{FUuF]sF}@iJeFgi@[iDYwDIwDBmENeEb@gEd@gDv@wDr@kCfAaDfK_Y`Lq_@pw@g_BdTkc@t_@yq@fBaDz@iBh@sAf@_Bb@yATsARaBJgBFsBA}BK}BSuB]{Bo@yB}@}BeAmBoAaBiAmAuAeAqAs@sAc@_B]wAMyAEaBD}AX_Bd@uAp@}AbAoAdA_AbAw@bAmO|T{Rt[eHbMoAnC_AfCcB~EaBjFcAvDs@`Da@|B]bD]zDYjEUxEeDnr@[vE_@tEi@hEu@bFeAbFaAhEw@tCgAfD{BhGkBbEkDdH{GtNiH`OyLjVcC|GqCdIkCpI}CfKaB`GyA~FcBjH_BhIgA~GoAzIkAjJy@`Hu@fIm@hH]~F]|GWjIOhHIdHEtH?Z"
-          },
-          "steps": [
-            {
-              "distance": {
-                "value": 1909.44888,
-                "text": "0.4 mi"
-              },
-              "duration": {
-                "value": 2.5659,
-                "text": "3 mins"
-              },
-              "start_location": {
-                "latitude": 40.745624,
-                "longitude": -73.90317
-              },
-              "end_location": {
-                "latitude": 40.746333,
-                "longitude": -73.896325
-              },
-              "bearing_before": 0,
-              "bearing_after": 82,
-              "instructions": "Drive east on Roosevelt Avenue.",
-              "banner_instructions": "Drive east on Roosevelt Avenue.",
-              "voice_instructions": "Drive east on Roosevelt Avenue.",
-              "geometry": {
-                "polyline": "oh|ulAbcu}kCqEg_AwDiz@QaEOoCwDmu@ScEOyCkD{r@[oGQoDyAwXsAcX{Dkv@}Dew@"
-              },
-              "mode": "car",
-              "manuever": "start",
-              "street_name": "Roosevelt Avenue"
+          {
+            "startLocation": {
+              "latitude": 40.74558,
+              "longitude": -73.903162
             },
-            {
-              "distance": {
-                "value": 777.55908,
-                "text": "777.6 ft"
-              },
-              "duration": {
-                "value": 1.1424999999999998,
-                "text": "1 min"
-              },
-              "start_location": {
-                "latitude": 40.746333,
-                "longitude": -73.896325
-              },
-              "end_location": {
-                "latitude": 40.748433,
-                "longitude": -73.896754
-              },
-              "bearing_before": 82,
-              "bearing_after": 351,
-              "instructions": "Turn left onto 69th Street.",
-              "banner_instructions": "Turn left onto 69th Street.",
-              "voice_instructions": "Turn left onto 69th Street.",
-              "geometry": {
-                "polyline": "yt}ulAhwg}kCwC\\ea@vEwAPgBTc_@jEqBTgCXg@Fef@pF_@D}C~@"
-              },
-              "mode": "car",
-              "manuever": "left",
-              "street_name": "69th Street"
+            "endLocation": {
+              "latitude": 40.774419,
+              "longitude": -73.872746
             },
-            {
-              "distance": {
-                "value": 127.95276,
-                "text": "128.0 ft"
-              },
-              "duration": {
-                "value": 0.27251666666666663,
-                "text": "0.3 min"
-              },
-              "start_location": {
-                "latitude": 40.748433,
-                "longitude": -73.896754
-              },
-              "end_location": {
-                "latitude": 40.748477,
-                "longitude": -73.896294
-              },
-              "bearing_before": 342,
-              "bearing_after": 83,
-              "instructions": "Turn right onto 37th Avenue. Then Turn left to take the Interstate 2 78 East ramp.",
-              "banner_instructions": "Turn right onto 37th Avenue.",
-              "voice_instructions": "Turn right onto 37th Avenue.",
-              "geometry": {
-                "polyline": "axavlAbrh}kCM}Cc@{Ke@}I"
-              },
-              "mode": "car",
-              "manuever": "right",
-              "street_name": "37th Avenue"
+            "duration": {
+              "value": 11.62365,
+              "text": "12 mins"
             },
-            {
-              "distance": {
-                "value": 2388.45152,
-                "text": "0.5 mi"
-              },
-              "duration": {
-                "value": 0.9872,
-                "text": "1 min"
-              },
-              "start_location": {
-                "latitude": 40.748477,
-                "longitude": -73.896294
-              },
-              "end_location": {
-                "latitude": 40.754551,
-                "longitude": -73.898787
-              },
-              "bearing_before": 81,
-              "bearing_after": 54,
-              "instructions": "Turn left to take the Interstate 2 78 East ramp toward Brooklyn Queens Expressway, LaGuardia.",
-              "banner_instructions": "Turn left to take the I 278 East ramp toward Brooklyn Queens Expressway/LaGuardia/Robert F. Kennedy Bridge.",
-              "voice_instructions": "Turn left to take the I 278 East ramp toward Brooklyn Queens Expressway/LaGuardia/Robert F. Kennedy Bridge.",
-              "geometry": {
-                "polyline": "yzavlAjug}kCoAqC_AaBeAy@kAm@oBg@s@UiAQcA?g@Pk@@_AZaAXu@\\qG~Cq^dRgHrDgHjDoI|D}G~CeGnCaDfA{DhAaE`AiEx@sNzFsHl@aVnAm_@nD}ShDaQ`EiQfIs~@vg@mc@|V}CfB"
-              },
-              "mode": "car",
-              "manuever": "ramp-left",
-              "street_name": "I 278 East/Brooklyn-Queens Expressway"
+            "distance": {
+              "value": 21473.0978,
+              "text": "4.1 mi"
             },
-            {
-              "distance": {
-                "value": 4025.59068,
-                "text": "0.8 mi"
-              },
-              "duration": {
-                "value": 1.3148833333333334,
-                "text": "1 min"
-              },
-              "start_location": {
-                "latitude": 40.754551,
-                "longitude": -73.898787
-              },
-              "end_location": {
-                "latitude": 40.764487,
-                "longitude": -73.894912
-              },
-              "bearing_before": 333,
-              "bearing_after": 342,
-              "instructions": "Keep right to take exit 42 to stay on Brooklyn-Queens Expressway East toward La Guardia Airport.",
-              "banner_instructions": "Keep right to take exit 42 to stay on Brooklyn-Queens Expressway East toward La Guardia Airport.",
-              "voice_instructions": "Keep right to take exit 42 to stay on Brooklyn-Queens Expressway East toward La Guardia Airport.",
-              "geometry": {
-                "polyline": "mvmvlAdql}kCkZbJaa@pM_UlGwWpFkGxAe^|GkS`BaMz@qLQuM{@wQeDwM}DeNeFqQkGwg@q[e^_Ti_C}wA}l@i`@sE_DuDsCsDaDyDeEwCkDuCyD_DwEkLqRmCwDuDuEoDeE{CuC{CoC}EkDaAm@wBsAmF_C"
-              },
-              "mode": "car",
-              "manuever": "stay-right",
-              "street_name": "Brooklyn-Queens Expressway East",
-              "exit_name": "42"
+            "geometry": {
+              "polyline": "oh|ulAbcu}kCqEg_AwDiz@QaEOoCwDmu@ScEOyCkD{r@[oGQoDyAwXsAcX{Dkv@}Dew@wC\\ea@vEwAPgBTc_@jEqBTgCXg@Fef@pF_@D}C~@M}Cc@{Ke@}IoAqC_AaBeAy@kAm@oBg@s@UiAQcA?g@Pk@@_AZaAXu@\\qG~Cq^dRgHrDgHjDoI|D}G~CeGnCaDfA{DhAaE`AiEx@sNzFsHl@aVnAm_@nD}ShDaQ`EiQfIs~@vg@mc@|V}CfBkZbJaa@pM_UlGwWpFkGxAe^|GkS`BaMz@qLQuM{@wQeDwM}DeNeFqQkGwg@q[e^_Ti_C}wA}l@i`@sE_DuDsCsDaDyDeEwCkDuCyD_DwEkLqRmCwDuDuEoDeE{CuC{CoC}EkDaAm@wBsAmF_CuDcAwEuAyQkEoEuAsDoAeD}A}CsBkCsByCyC}DqEiCyD}BsEuBwEeBmFkAkEeAaFs@_Gg@kG[sFSsHaAyh@c@eRm@cRcCyl@kAcVqIqs@{A_Q_B{PaBgPgBwPmBoPuBkPwBcPiCoQsBuMeCwOoC}OyCiPqCyO{C_PcDaPcDsOiDoOqDoOuDkO_EqOiEaOcEaOoE_OuE_O}E{N{EqNgFkNiFgNoFcNuF_NwFuMgGcNw{@glB_GiMeGyMsFmM}BuFuBkFuBwFoBqFqBuFmB}FcBqFgBcG{AyFcBgG}AkG{AaGuAkGqA_GqAqGoAoG{@kEqCq_@IgA}B_]UeEe@}Ic@}Ke@kL[yLKuMAwPBsNHkMH}K|D_oBHkED{ECuEM{FUuF]sF}@iJeFgi@[iDYwDIwDBmENeEb@gEd@gDv@wDr@kCfAaDfK_Y`Lq_@pw@g_BdTkc@t_@yq@fBaDz@iBh@sAf@_Bb@yATsARaBJgBFsBA}BK}BSuB]{Bo@yB}@}BeAmBoAaBiAmAuAeAqAs@sAc@_B]wAMyAEaBD}AX_Bd@uAp@}AbAoAdA_AbAw@bAmO|T{Rt[eHbMoAnC_AfCcB~EaBjFcAvDs@`Da@|B]bD]zDYjEUxEeDnr@[vE_@tEi@hEu@bFeAbFaAhEw@tCgAfD{BhGkBbEkDdH{GtNiH`OyLjVcC|GqCdIkCpI}CfKaB`GyA~FcBjH_BhIgA~GoAzIkAjJy@`Hu@fIm@hH]~F]|GWjIOhHIdHEtH?Z"
             },
-            {
-              "distance": {
-                "value": 5774.2784,
-                "text": "1.1 mi"
+            "steps": [
+              {
+                "distance": {
+                  "value": 1909.44888,
+                  "text": "0.4 mi"
+                },
+                "duration": {
+                  "value": 2.5659,
+                  "text": "3 mins"
+                },
+                "start_location": {
+                  "latitude": 40.745624,
+                  "longitude": -73.90317
+                },
+                "end_location": {
+                  "latitude": 40.746333,
+                  "longitude": -73.896325
+                },
+                "bearing_before": 0,
+                "bearing_after": 82,
+                "instructions": "Drive east on Roosevelt Avenue.",
+                "banner_instructions": "Drive east on Roosevelt Avenue.",
+                "voice_instructions": "Drive east on Roosevelt Avenue.",
+                "geometry": {
+                  "polyline": "oh|ulAbcu}kCqEg_AwDiz@QaEOoCwDmu@ScEOyCkD{r@[oGQoDyAwXsAcX{Dkv@}Dew@"
+                },
+                "mode": "car",
+                "manuever": "start",
+                "street_name": "Roosevelt Avenue"
               },
-              "duration": {
-                "value": 2.5493333333333337,
-                "text": "3 mins"
+              {
+                "distance": {
+                  "value": 777.55908,
+                  "text": "777.6 ft"
+                },
+                "duration": {
+                  "value": 1.1424999999999998,
+                  "text": "1 min"
+                },
+                "start_location": {
+                  "latitude": 40.746333,
+                  "longitude": -73.896325
+                },
+                "end_location": {
+                  "latitude": 40.748433,
+                  "longitude": -73.896754
+                },
+                "bearing_before": 82,
+                "bearing_after": 351,
+                "instructions": "Turn left onto 69th Street.",
+                "banner_instructions": "Turn left onto 69th Street.",
+                "voice_instructions": "Turn left onto 69th Street.",
+                "geometry": {
+                  "polyline": "yt}ulAhwg}kCwC\\ea@vEwAPgBTc_@jEqBTgCXg@Fef@pF_@D}C~@"
+                },
+                "mode": "car",
+                "manuever": "left",
+                "street_name": "69th Street"
               },
-              "start_location": {
-                "latitude": 40.764487,
-                "longitude": -73.894912
+              {
+                "distance": {
+                  "value": 127.95276,
+                  "text": "128.0 ft"
+                },
+                "duration": {
+                  "value": 0.27251666666666663,
+                  "text": "0.3 min"
+                },
+                "start_location": {
+                  "latitude": 40.748433,
+                  "longitude": -73.896754
+                },
+                "end_location": {
+                  "latitude": 40.748477,
+                  "longitude": -73.896294
+                },
+                "bearing_before": 342,
+                "bearing_after": 83,
+                "instructions": "Turn right onto 37th Avenue. Then Turn left to take the Interstate 2 78 East ramp.",
+                "banner_instructions": "Turn right onto 37th Avenue.",
+                "voice_instructions": "Turn right onto 37th Avenue.",
+                "geometry": {
+                  "polyline": "axavlAbrh}kCM}Cc@{Ke@}I"
+                },
+                "mode": "car",
+                "manuever": "right",
+                "street_name": "37th Avenue"
               },
-              "end_location": {
-                "latitude": 40.771256,
-                "longitude": -73.876885
+              {
+                "distance": {
+                  "value": 2388.45152,
+                  "text": "0.5 mi"
+                },
+                "duration": {
+                  "value": 0.9872,
+                  "text": "1 min"
+                },
+                "start_location": {
+                  "latitude": 40.748477,
+                  "longitude": -73.896294
+                },
+                "end_location": {
+                  "latitude": 40.754551,
+                  "longitude": -73.898787
+                },
+                "bearing_before": 81,
+                "bearing_after": 54,
+                "instructions": "Turn left to take the Interstate 2 78 East ramp toward Brooklyn Queens Expressway, LaGuardia.",
+                "banner_instructions": "Turn left to take the I 278 East ramp toward Brooklyn Queens Expressway/LaGuardia/Robert F. Kennedy Bridge.",
+                "voice_instructions": "Turn left to take the I 278 East ramp toward Brooklyn Queens Expressway/LaGuardia/Robert F. Kennedy Bridge.",
+                "geometry": {
+                  "polyline": "yzavlAjug}kCoAqC_AaBeAy@kAm@oBg@s@UiAQcA?g@Pk@@_AZaAXu@\\qG~Cq^dRgHrDgHjDoI|D}G~CeGnCaDfA{DhAaE`AiEx@sNzFsHl@aVnAm_@nD}ShDaQ`EiQfIs~@vg@mc@|V}CfB"
+                },
+                "mode": "car",
+                "manuever": "ramp-left",
+                "street_name": "I 278 East/Brooklyn-Queens Expressway"
               },
-              "bearing_before": 22,
-              "bearing_after": 15,
-              "instructions": "Keep left to take GCP, Grand Central Parkway.",
-              "banner_instructions": "Keep left to take GCP/Grand Central Parkway.",
-              "voice_instructions": "Keep left to take GCP/Grand Central Parkway.",
-              "geometry": {
-                "polyline": "mcawlA~~d}kCuDcAwEuAyQkEoEuAsDoAeD}A}CsBkCsByCyC}DqEiCyD}BsEuBwEeBmFkAkEeAaFs@_Gg@kG[sFSsHaAyh@c@eRm@cRcCyl@kAcVqIqs@{A_Q_B{PaBgPgBwPmBoPuBkPwBcPiCoQsBuMeCwOoC}OyCiPqCyO{C_PcDaPcDsOiDoOqDoOuDkO_EqOiEaOcEaOoE_OuE_O}E{N{EqNgFkNiFgNoFcNuF_NwFuMgGcNw{@glB_GiMeGyMsFmM}BuFuBkFuBwFoBqFqBuFmB}FcBqFgBcG{AyFcBgG}AkG{AaGuAkGqA_GqAqGoAoG{@kE"
+              {
+                "distance": {
+                  "value": 4025.59068,
+                  "text": "0.8 mi"
+                },
+                "duration": {
+                  "value": 1.3148833333333334,
+                  "text": "1 min"
+                },
+                "start_location": {
+                  "latitude": 40.754551,
+                  "longitude": -73.898787
+                },
+                "end_location": {
+                  "latitude": 40.764487,
+                  "longitude": -73.894912
+                },
+                "bearing_before": 333,
+                "bearing_after": 342,
+                "instructions": "Keep right to take exit 42 to stay on Brooklyn-Queens Expressway East toward La Guardia Airport.",
+                "banner_instructions": "Keep right to take exit 42 to stay on Brooklyn-Queens Expressway East toward La Guardia Airport.",
+                "voice_instructions": "Keep right to take exit 42 to stay on Brooklyn-Queens Expressway East toward La Guardia Airport.",
+                "geometry": {
+                  "polyline": "mvmvlAdql}kCkZbJaa@pM_UlGwWpFkGxAe^|GkS`BaMz@qLQuM{@wQeDwM}DeNeFqQkGwg@q[e^_Ti_C}wA}l@i`@sE_DuDsCsDaDyDeEwCkDuCyD_DwEkLqRmCwDuDuEoDeE{CuC{CoC}EkDaAm@wBsAmF_C"
+                },
+                "mode": "car",
+                "manuever": "stay-right",
+                "street_name": "Brooklyn-Queens Expressway East",
+                "exit_name": "42"
               },
-              "mode": "car",
-              "manuever": "stay-left",
-              "street_name": "GCP/Grand Central Parkway"
-            },
-            {
-              "distance": {
-                "value": 2906.82424,
-                "text": "0.6 mi"
+              {
+                "distance": {
+                  "value": 5774.2784,
+                  "text": "1.1 mi"
+                },
+                "duration": {
+                  "value": 2.5493333333333337,
+                  "text": "3 mins"
+                },
+                "start_location": {
+                  "latitude": 40.764487,
+                  "longitude": -73.894912
+                },
+                "end_location": {
+                  "latitude": 40.771256,
+                  "longitude": -73.876885
+                },
+                "bearing_before": 22,
+                "bearing_after": 15,
+                "instructions": "Keep left to take GCP, Grand Central Parkway.",
+                "banner_instructions": "Keep left to take GCP/Grand Central Parkway.",
+                "voice_instructions": "Keep left to take GCP/Grand Central Parkway.",
+                "geometry": {
+                  "polyline": "mcawlA~~d}kCuDcAwEuAyQkEoEuAsDoAeD}A}CsBkCsByCyC}DqEiCyD}BsEuBwEeBmFkAkEeAaFs@_Gg@kG[sFSsHaAyh@c@eRm@cRcCyl@kAcVqIqs@{A_Q_B{PaBgPgBwPmBoPuBkPwBcPiCoQsBuMeCwOoC}OyCiPqCyO{C_PcDaPcDsOiDoOqDoOuDkO_EqOiEaOcEaOoE_OuE_O}E{N{EqNgFkNiFgNoFcNuF_NwFuMgGcNw{@glB_GiMeGyMsFmM}BuFuBkFuBwFoBqFqBuFmB}FcBqFgBcG{AyFcBgG}AkG{AaGuAkGqA_GqAqGoAoG{@kE"
+                },
+                "mode": "car",
+                "manuever": "stay-left",
+                "street_name": "GCP/Grand Central Parkway"
               },
-              "duration": {
-                "value": 1.0503500000000001,
-                "text": "1 min"
+              {
+                "distance": {
+                  "value": 2906.82424,
+                  "text": "0.6 mi"
+                },
+                "duration": {
+                  "value": 1.0503500000000001,
+                  "text": "1 min"
+                },
+                "start_location": {
+                  "latitude": 40.771256,
+                  "longitude": -73.876885
+                },
+                "end_location": {
+                  "latitude": 40.770136,
+                  "longitude": -73.867012
+                },
+                "bearing_before": 68,
+                "bearing_after": 79,
+                "instructions": "Take exit 7 toward LaGuardia Airport, Terminals B-C.",
+                "banner_instructions": "Take exit 7 toward LaGuardia Airport/Terminals B-C.",
+                "voice_instructions": "Take exit 7 toward LaGuardia Airport/Terminals B-C.",
+                "geometry": {
+                  "polyline": "ojnwlAhxa|kCqCq_@IgA}B_]UeEe@}Ic@}Ke@kL[yLKuMAwPBsNHkMH}K|D_oBHkED{ECuEM{FUuF]sF}@iJeFgi@[iDYwDIwDBmENeEb@gEd@gDv@wDr@kCfAaDfK_Y`Lq_@pw@g_B"
+                },
+                "mode": "car",
+                "manuever": "exit-right",
+                "street_name": "LaGuardia Road",
+                "exit_name": "7"
               },
-              "start_location": {
-                "latitude": 40.771256,
-                "longitude": -73.876885
+              {
+                "distance": {
+                  "value": 1489.50136,
+                  "text": "0.3 mi"
+                },
+                "duration": {
+                  "value": 0.5813166666666666,
+                  "text": "1 min"
+                },
+                "start_location": {
+                  "latitude": 40.770136,
+                  "longitude": -73.867012
+                },
+                "end_location": {
+                  "latitude": 40.770698,
+                  "longitude": -73.865902
+                },
+                "bearing_before": 127,
+                "bearing_after": 127,
+                "instructions": "Take the exit on the left toward Terminal B, Parking B.",
+                "banner_instructions": "Take the exit on the left toward Terminal B/Parking B/Rental Car Return.",
+                "voice_instructions": "Take the exit on the left toward Terminal B/Parking B/Rental Car Return.",
+                "geometry": {
+                  "polyline": "odlwlAfon{kCdTkc@t_@yq@fBaDz@iBh@sAf@_Bb@yATsARaBJgBFsBA}BK}BSuB]{Bo@yB}@}BeAmBoAaBiAmAuAeAqAs@sAc@_B]wAMyAEaBD}AX_Bd@uAp@}AbAoAdA_AbAw@bAmO|T{Rt[eHbMoAnC_AfC"
+                },
+                "mode": "car",
+                "manuever": "exit-left",
+                "street_name": "Terminal B/Parking B/Rental Car Return"
               },
-              "end_location": {
-                "latitude": 40.770136,
-                "longitude": -73.867012
+              {
+                "distance": {
+                  "value": 2066.9292,
+                  "text": "0.4 mi"
+                },
+                "duration": {
+                  "value": 1.1596,
+                  "text": "1 min"
+                },
+                "start_location": {
+                  "latitude": 40.770698,
+                  "longitude": -73.865902
+                },
+                "end_location": {
+                  "latitude": 40.772666,
+                  "longitude": -73.872746
+                },
+                "bearing_before": 301,
+                "bearing_after": 300,
+                "instructions": "Keep right to take Terminal B Arrivals toward Terminal B Arrivals.",
+                "banner_instructions": "Keep right to take Terminal B Arrivals toward Terminal B Arrivals.",
+                "voice_instructions": "Keep right to take Terminal B Arrivals toward Terminal B Arrivals.",
+                "geometry": {
+                  "polyline": "sgmwlAzil{kCcB~EaBjFcAvDs@`Da@|B]bD]zDYjEUxEeDnr@[vE_@tEi@hEu@bFeAbFaAhEw@tCgAfD{BhGkBbEkDdH{GtNiH`OyLjVcC|GqCdIkCpI}CfKaB`GyA~FcBjH_BhIgA~GoAzIkAjJy@`Hu@fIm@hH]~F]|GWjIOhHIdHEtH?Z"
+                },
+                "mode": "car",
+                "manuever": "stay-right",
+                "street_name": "Terminal B Arrivals"
               },
-              "bearing_before": 68,
-              "bearing_after": 79,
-              "instructions": "Take exit 7 toward LaGuardia Airport, Terminals B-C.",
-              "banner_instructions": "Take exit 7 toward LaGuardia Airport/Terminals B-C.",
-              "voice_instructions": "Take exit 7 toward LaGuardia Airport/Terminals B-C.",
-              "geometry": {
-                "polyline": "ojnwlAhxa|kCqCq_@IgA}B_]UeEe@}Ic@}Ke@kL[yLKuMAwPBsNHkMH}K|D_oBHkED{ECuEM{FUuF]sF}@iJeFgi@[iDYwDIwDBmENeEb@gEd@gDv@wDr@kCfAaDfK_Y`Lq_@pw@g_B"
-              },
-              "mode": "car",
-              "manuever": "exit-right",
-              "street_name": "LaGuardia Road",
-              "exit_name": "7"
-            },
-            {
-              "distance": {
-                "value": 1489.50136,
-                "text": "0.3 mi"
-              },
-              "duration": {
-                "value": 0.5813166666666666,
-                "text": "1 min"
-              },
-              "start_location": {
-                "latitude": 40.770136,
-                "longitude": -73.867012
-              },
-              "end_location": {
-                "latitude": 40.770698,
-                "longitude": -73.865902
-              },
-              "bearing_before": 127,
-              "bearing_after": 127,
-              "instructions": "Take the exit on the left toward Terminal B, Parking B.",
-              "banner_instructions": "Take the exit on the left toward Terminal B/Parking B/Rental Car Return.",
-              "voice_instructions": "Take the exit on the left toward Terminal B/Parking B/Rental Car Return.",
-              "geometry": {
-                "polyline": "odlwlAfon{kCdTkc@t_@yq@fBaDz@iBh@sAf@_Bb@yATsARaBJgBFsBA}BK}BSuB]{Bo@yB}@}BeAmBoAaBiAmAuAeAqAs@sAc@_B]wAMyAEaBD}AX_Bd@uAp@}AbAoAdA_AbAw@bAmO|T{Rt[eHbMoAnC_AfC"
-              },
-              "mode": "car",
-              "manuever": "exit-left",
-              "street_name": "Terminal B/Parking B/Rental Car Return"
-            },
-            {
-              "distance": {
-                "value": 2066.9292,
-                "text": "0.4 mi"
-              },
-              "duration": {
-                "value": 1.1596,
-                "text": "1 min"
-              },
-              "start_location": {
-                "latitude": 40.770698,
-                "longitude": -73.865902
-              },
-              "end_location": {
-                "latitude": 40.772666,
-                "longitude": -73.872746
-              },
-              "bearing_before": 301,
-              "bearing_after": 300,
-              "instructions": "Keep right to take Terminal B Arrivals toward Terminal B Arrivals.",
-              "banner_instructions": "Keep right to take Terminal B Arrivals toward Terminal B Arrivals.",
-              "voice_instructions": "Keep right to take Terminal B Arrivals toward Terminal B Arrivals.",
-              "geometry": {
-                "polyline": "sgmwlAzil{kCcB~EaBjFcAvDs@`Da@|B]bD]zDYjEUxEeDnr@[vE_@tEi@hEu@bFeAbFaAhEw@tCgAfD{BhGkBbEkDdH{GtNiH`OyLjVcC|GqCdIkCpI}CfKaB`GyA~FcBjH_BhIgA~GoAzIkAjJy@`Hu@fIm@hH]~F]|GWjIOhHIdHEtH?Z"
-              },
-              "mode": "car",
-              "manuever": "stay-right",
-              "street_name": "Terminal B Arrivals"
-            },
-            {
-              "distance": {
-                "value": 0,
-                "text": "0.0 ft"
-              },
-              "duration": {
-                "value": 0,
-                "text": "0 min"
-              },
-              "start_location": {
-                "latitude": 40.772666,
-                "longitude": -73.872746
-              },
-              "end_location": {
-                "latitude": 40.772666,
-                "longitude": -73.872746
-              },
-              "bearing_before": 270,
-              "bearing_after": 0,
-              "instructions": "Your destination is on the right.",
-              "banner_instructions": "Your destination is on the right.",
-              "voice_instructions": "Your destination is on the right.",
-              "geometry": {
-                "polyline": "sbqwlAruy{kC"
-              },
-              "mode": "car",
-              "manuever": "destination-right"
-            }
-          ]
+              {
+                "distance": {
+                  "value": 0,
+                  "text": "0.0 ft"
+                },
+                "duration": {
+                  "value": 0,
+                  "text": "0 min"
+                },
+                "start_location": {
+                  "latitude": 40.772666,
+                  "longitude": -73.872746
+                },
+                "end_location": {
+                  "latitude": 40.772666,
+                  "longitude": -73.872746
+                },
+                "bearing_before": 270,
+                "bearing_after": 0,
+                "instructions": "Your destination is on the right.",
+                "banner_instructions": "Your destination is on the right.",
+                "voice_instructions": "Your destination is on the right.",
+                "geometry": {
+                  "polyline": "sbqwlAruy{kC"
+                },
+                "mode": "car",
+                "manuever": "destination-right"
+              }
+            ]
+          }
+        ],
+        "geometry": {
+          "polyline": "kafulAnn`clCfKxAhCF`CJdg@vGtB\\|BZfJrAh[lEhC^dBThMjBjRjCdBZn@Pd@Nh@PzAuE|EoO`HqT`CuHl@mBbCkHxBkGhYk}@v@oCfBuFvB_H~c@avAbLm^ZgAj@kB`BmFlBnAvYlRjAv@nBrAdC~AvVdPdEnCfBhAtBvAj^~UrBtAlBnAn\\dTbBfAtBtAl^zUzAbAjCfBv]tUbBfAjBlAf^pUhBlAnBnAfSzMhLxHrBrAlBrAlFnDzXnRnBrAtBxAjFfDtFx@jEZ|BRzDh@xFtAjD`AvAj@|Ap@lQnH~ZjMhIhDzAl@bBp@nBt@pAh@l{@r]xAf@rBr@xAf@vAd@xItDbVrKvVjKz@^hBr@rEdBzGlC`AwEX}AnG}Zd@}B~@uEj@uCtKyh@XsAh@gCd@yBbJ{c@\\aBr@iD~AeIz@yDn@wCpD}PVmAf@eCf@eC`Joc@VsAf@aCd@}BpHm^r@kDXoAfAkFbA{EtIsb@Z}A`@uBR_AXeAd@}A`AwCtEsNrAsEjAeEb@aBd@aBr@sCz@cDjBcHbIoY|@kD\\qAXkAxDgRzAmHzSgdA~J_g@|\\gcBpb@_uB|U{kAlDqUxWysA`~DirRd_@ufBrJk^ts@spDzH{TrEcU`AoFjCkOd@yC`@}CToCTwChAeTx@}PRkCb@eDd@gCn@sCrP_r@\\wAjAsEmCuAsP}I}KsG}@i@kAq@QeFo@uTAMiBy_@wBac@KkBOkBQiDk@mIs@{Io@aMmBs]{AmXS}EQ{CoBac@OeDeA{ScAoTUmEUeEsA{X}@yPoAcW_Cef@WkF}AcPScFG}AUkFaDXg[dCmKx@aCRec@hD_CP{CZo]bDyGn@wk@tGgIz@}CTwDVuVnByXvB_DX}CwDqNeTkt@yhAkKiR}BoDiBeDsZoj@oY}f@cBaDqBkDsVyc@y^mo@_B_DsAmCqJcRuKiTaV{`@oBwC}AuCoc@}{@{CsGeBgDkm@wnA{AsCaB_DkJySiCsFiCuFuBgEYk@iBmDyAyC{AgC_CqDsLaRyG}KmDeGmDwFgC_EiNyTcCuDcCeEyC_GwCoGsSse@_DwGsBmEsBoEsHePaCoFgBsEiBgFqBmFcB}FsAsFyAgGyAmGoAmG{AmHqAyGeFwX{@yEkCcPuBsMyBkOqSstAsDgWgKos@aAuGcC{NeA_GuAeHqAoGqAeG}A}GcBwG_KoU_CcH}BsGiBeFuCeHmCiG{CwGoCsFkCkFwCkFqCmE{CaFwCmE{CiEqEeGocBctBiI_KcHuIiGsHuEaFeFuFcEgEoEkE{FoFkFuEmGaFwEoD}EoDqFaE{GyEoFoDuEuCgEmCoaAwk@ef@qVam@o]oFeDyEsC}DkCsDiCqFiEgFwE}E}E}DmEiD}DuDwE}DsF{DiGoDiGuCsFcDyGgEwJ_MiYy@gCyDqMcDyLgEwMqBoJmB_JkBsImAcHaBiJmAoHiA{GcAwG}@iGu@uFw@{Gw@mGu@qHs@sH_A{L{@uQeAcQy@yPo@qPi@iQ_Bml@[aPu@kQ_AiP}}@s{McB}Wi@mHs@qHu@wHm@eFy@uG{@eGaAsGaAeGkAoGkAcGuAoGuAeGsAuFaBeGaByFcBuFmB}Fwd@{sAqEqM}E_OsE_OwDoM_@wAcCiJy@{CSw@uBcIcHmXwEo_@yEcZgAeF{AwFuAmEqAyDsPad@iC{GuHwRiCyLsFsP[_Cq@kFwCQySeBiU{B_DSmHw@kHu@{BW{Ek@sEk@oDe@mEk@}BW{AQwJiAcq@{HoYkD{m@uHuCa@w@~DWpAsDrRkFbYu@jDq@pCyGvWmGxYwB|H{DlNY`Ai@pBkGrWmHdYiEfWiIhf@sD~Tk@bDeDaAq]kKcFiBUiEYgGqEg_AwDiz@QaEOoCwDmu@ScEOyCkD{r@[oGQoDyAwXsAcX{Dkv@}Dew@wC\\ea@vEwAPgBTc_@jEqBTgCXg@Fef@pF_@D}C~@M}Cc@{Ke@}IoAqC_AaBeAy@kAm@oBg@s@UiAQcA?g@Pk@@_AZaAXu@\\qG~Cq^dRgHrDgHjDoI|D}G~CeGnCaDfA{DhAaE`AiEx@sNzFsHl@aVnAm_@nD}ShDaQ`EiQfIs~@vg@mc@|V}CfBkZbJaa@pM_UlGwWpFkGxAe^|GkS`BaMz@qLQuM{@wQeDwM}DeNeFqQkGwg@q[e^_Ti_C}wA}l@i`@sE_DuDsCsDaDyDeEwCkDuCyD_DwEkLqRmCwDuDuEoDeE{CuC{CoC}EkDaAm@wBsAmF_CuDcAwEuAyQkEoEuAsDoAeD}A}CsBkCsByCyC}DqEiCyD}BsEuBwEeBmFkAkEeAaFs@_Gg@kG[sFSsHaAyh@c@eRm@cRcCyl@kAcVqIqs@{A_Q_B{PaBgPgBwPmBoPuBkPwBcPiCoQsBuMeCwOoC}OyCiPqCyO{C_PcDaPcDsOiDoOqDoOuDkO_EqOiEaOcEaOoE_OuE_O}E{N{EqNgFkNiFgNoFcNuF_NwFuMgGcNw{@glB_GiMeGyMsFmM}BuFuBkFuBwFoBqFqBuFmB}FcBqFgBcG{AyFcBgG}AkG{AaGuAkGqA_GqAqGoAoG{@kEqCq_@IgA}B_]UeEe@}Ic@}Ke@kL[yLKuMAwPBsNHkMH}K|D_oBHkED{ECuEM{FUuF]sF}@iJeFgi@[iDYwDIwDBmENeEb@gEd@gDv@wDr@kCfAaDfK_Y`Lq_@pw@g_BdTkc@t_@yq@fBaDz@iBh@sAf@_Bb@yATsARaBJgBFsBA}BK}BSuB]{Bo@yB}@}BeAmBoAaBiAmAuAeAqAs@sAc@_B]wAMyAEaBD}AX_Bd@uAp@}AbAoAdA_AbAw@bAmO|T{Rt[eHbMoAnC_AfCcB~EaBjFcAvDs@`Da@|B]bD]zDYjEUxEeDnr@[vE_@tEi@hEu@bFeAbFaAhEw@tCgAfD{BhGkBbEkDdH{GtNiH`OyLjVcC|GqCdIkCpI}CfKaB`GyA~FcBjH_BhIgA~GoAzIkAjJy@`Hu@fIm@hH]~F]|GWjIOhHIdHEtH?Z"
         }
-      ],
-      "geometry": {
-        "polyline": "kafulAnn`clCfKxAhCF`CJdg@vGtB\\|BZfJrAh[lEhC^dBThMjBjRjCdBZn@Pd@Nh@PzAuE|EoO`HqT`CuHl@mBbCkHxBkGhYk}@v@oCfBuFvB_H~c@avAbLm^ZgAj@kB`BmFlBnAvYlRjAv@nBrAdC~AvVdPdEnCfBhAtBvAj^~UrBtAlBnAn\\dTbBfAtBtAl^zUzAbAjCfBv]tUbBfAjBlAf^pUhBlAnBnAfSzMhLxHrBrAlBrAlFnDzXnRnBrAtBxAjFfDtFx@jEZ|BRzDh@xFtAjD`AvAj@|Ap@lQnH~ZjMhIhDzAl@bBp@nBt@pAh@l{@r]xAf@rBr@xAf@vAd@xItDbVrKvVjKz@^hBr@rEdBzGlC`AwEX}AnG}Zd@}B~@uEj@uCtKyh@XsAh@gCd@yBbJ{c@\\aBr@iD~AeIz@yDn@wCpD}PVmAf@eCf@eC`Joc@VsAf@aCd@}BpHm^r@kDXoAfAkFbA{EtIsb@Z}A`@uBR_AXeAd@}A`AwCtEsNrAsEjAeEb@aBd@aBr@sCz@cDjBcHbIoY|@kD\\qAXkAxDgRzAmHzSgdA~J_g@|\\gcBpb@_uB|U{kAlDqUxWysA`~DirRd_@ufBrJk^ts@spDzH{TrEcU`AoFjCkOd@yC`@}CToCTwChAeTx@}PRkCb@eDd@gCn@sCrP_r@\\wAjAsEmCuAsP}I}KsG}@i@kAq@QeFo@uTAMiBy_@wBac@KkBOkBQiDk@mIs@{Io@aMmBs]{AmXS}EQ{CoBac@OeDeA{ScAoTUmEUeEsA{X}@yPoAcW_Cef@WkF}AcPScFG}AUkFaDXg[dCmKx@aCRec@hD_CP{CZo]bDyGn@wk@tGgIz@}CTwDVuVnByXvB_DX}CwDqNeTkt@yhAkKiR}BoDiBeDsZoj@oY}f@cBaDqBkDsVyc@y^mo@_B_DsAmCqJcRuKiTaV{`@oBwC}AuCoc@}{@{CsGeBgDkm@wnA{AsCaB_DkJySiCsFiCuFuBgEYk@iBmDyAyC{AgC_CqDsLaRyG}KmDeGmDwFgC_EiNyTcCuDcCeEyC_GwCoGsSse@_DwGsBmEsBoEsHePaCoFgBsEiBgFqBmFcB}FsAsFyAgGyAmGoAmG{AmHqAyGeFwX{@yEkCcPuBsMyBkOqSstAsDgWgKos@aAuGcC{NeA_GuAeHqAoGqAeG}A}GcBwG_KoU_CcH}BsGiBeFuCeHmCiG{CwGoCsFkCkFwCkFqCmE{CaFwCmE{CiEqEeGocBctBiI_KcHuIiGsHuEaFeFuFcEgEoEkE{FoFkFuEmGaFwEoD}EoDqFaE{GyEoFoDuEuCgEmCoaAwk@ef@qVam@o]oFeDyEsC}DkCsDiCqFiEgFwE}E}E}DmEiD}DuDwE}DsF{DiGoDiGuCsFcDyGgEwJ_MiYy@gCyDqMcDyLgEwMqBoJmB_JkBsImAcHaBiJmAoHiA{GcAwG}@iGu@uFw@{Gw@mGu@qHs@sH_A{L{@uQeAcQy@yPo@qPi@iQ_Bml@[aPu@kQ_AiP}}@s{McB}Wi@mHs@qHu@wHm@eFy@uG{@eGaAsGaAeGkAoGkAcGuAoGuAeGsAuFaBeGaByFcBuFmB}Fwd@{sAqEqM}E_OsE_OwDoM_@wAcCiJy@{CSw@uBcIcHmXwEo_@yEcZgAeF{AwFuAmEqAyDsPad@iC{GuHwRiCyLsFsP[_Cq@kFwCQySeBiU{B_DSmHw@kHu@{BW{Ek@sEk@oDe@mEk@}BW{AQwJiAcq@{HoYkD{m@uHuCa@w@~DWpAsDrRkFbYu@jDq@pCyGvWmGxYwB|H{DlNY`Ai@pBkGrWmHdYiEfWiIhf@sD~Tk@bDeDaAq]kKcFiBUiEYgGqEg_AwDiz@QaEOoCwDmu@ScEOyCkD{r@[oGQoDyAwXsAcX{Dkv@}Dew@wC\\ea@vEwAPgBTc_@jEqBTgCXg@Fef@pF_@D}C~@M}Cc@{Ke@}IoAqC_AaBeAy@kAm@oBg@s@UiAQcA?g@Pk@@_AZaAXu@\\qG~Cq^dRgHrDgHjDoI|D}G~CeGnCaDfA{DhAaE`AiEx@sNzFsHl@aVnAm_@nD}ShDaQ`EiQfIs~@vg@mc@|V}CfBkZbJaa@pM_UlGwWpFkGxAe^|GkS`BaMz@qLQuM{@wQeDwM}DeNeFqQkGwg@q[e^_Ti_C}wA}l@i`@sE_DuDsCsDaDyDeEwCkDuCyD_DwEkLqRmCwDuDuEoDeE{CuC{CoC}EkDaAm@wBsAmF_CuDcAwEuAyQkEoEuAsDoAeD}A}CsBkCsByCyC}DqEiCyD}BsEuBwEeBmFkAkEeAaFs@_Gg@kG[sFSsHaAyh@c@eRm@cRcCyl@kAcVqIqs@{A_Q_B{PaBgPgBwPmBoPuBkPwBcPiCoQsBuMeCwOoC}OyCiPqCyO{C_PcDaPcDsOiDoOqDoOuDkO_EqOiEaOcEaOoE_OuE_O}E{N{EqNgFkNiFgNoFcNuF_NwFuMgGcNw{@glB_GiMeGyMsFmM}BuFuBkFuBwFoBqFqBuFmB}FcBqFgBcG{AyFcBgG}AkG{AaGuAkGqA_GqAqGoAoG{@kEqCq_@IgA}B_]UeEe@}Ic@}Ke@kL[yLKuMAwPBsNHkMH}K|D_oBHkED{ECuEM{FUuF]sF}@iJeFgi@[iDYwDIwDBmENeEb@gEd@gDv@wDr@kCfAaDfK_Y`Lq_@pw@g_BdTkc@t_@yq@fBaDz@iBh@sAf@_Bb@yATsARaBJgBFsBA}BK}BSuB]{Bo@yB}@}BeAmBoAaBiAmAuAeAqAs@sAc@_B]wAMyAEaBD}AX_Bd@uAp@}AbAoAdA_AbAw@bAmO|T{Rt[eHbMoAnC_AfCcB~EaBjFcAvDs@`Da@|B]bD]zDYjEUxEeDnr@[vE_@tEi@hEu@bFeAbFaAhEw@tCgAfD{BhGkBbEkDdH{GtNiH`OyLjVcC|GqCdIkCpI}CfKaB`GyA~FcBjH_BhIgA~GoAzIkAjJy@`Hu@fIm@hH]~F]|GWjIOhHIdHEtH?Z"
       }
-    }
-  ]
-}
-```
-
+    ]
+  }
+  ```
 </div>
 
 #### **Optimize route**
