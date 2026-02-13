@@ -221,7 +221,7 @@ class MainActivity : AppCompatActivity() {
 </CodeGroup>
 
 <Info>
-  Build and run the app to make sure permissions prompts are displayed\!
+  Build and run the app to make sure permissions prompts are displayed!
 </Info>
 
 <Info>
@@ -271,7 +271,7 @@ You may provide an optional instance of `RadarTrackCallback` with an implementat
 - **`RadarStatus.ERROR_UNKNOWN`**: unknown error
 
 <Warning>
-  Build and run the app, then find your user on the [Users page](https://dashboard.radar.com/geofencing/users)\! To trigger an event, you'll need to [create a geofence](https://dashboard.radar.com/geofencing/geofences) if you haven't already. Not seeing your user on the Users page? Check `status` in the callback to see what went wrong.
+  Build and run the app, then find your user on the [Users page](https://dashboard.radar.com/geofencing/users)! To trigger an event, you'll need to [create a geofence](https://dashboard.radar.com/geofencing/geofences) if you haven't already. Not seeing your user on the Users page? Check `status` in the callback to see what went wrong.
 </Warning>
 
 ## Background tracking for geofencing
@@ -737,7 +737,7 @@ The Android SDK automatically logs lifecycle events without the additional setup
 
 ## Other APIs
 
-The Android SDK also exposes APIs for beacons, anonymous context, geocoding, search, and distance.
+The Android SDK also exposes APIs for beacons, geocoding, search, and distance.
 
 ### Beacons
 
@@ -816,30 +816,6 @@ Radar.getLocation(new RadarLocationCallback() {
 ```kotlin Kotlin
 Radar.getLocation { status, location, stopped ->
     // do something with location
-}
-```
-
-</CodeGroup>
-
-### Context
-
-With the [context API](/api#context), get context for a location without sending device or user identifiers to the server:
-
-<CodeGroup>
-
-```java Java
-Radar.getContext(new RadarContextCallback() {
-    @Override
-    public void onComplete(RadarStatus status, Location location, RadarContext context) {
-        // do something with context
-    }
-});
-```
-
-
-```kotlin Kotlin
-Radar.getContext { status, location, context ->
-    // do something with context
 }
 ```
 
@@ -1167,6 +1143,7 @@ Radar.logConversion(
 With the [user tag API](/campaigns#advanced-targeting-options), you can configure [campaigns](/campaigns) to only target users with the corresponding tags:
 
 <CodeGroup>
+
 ```java Java
 Radar.addTags(new String[]{"tag1", "tag2"});
 Radar.removeTags(new String[]{"tag1", "tag2"});
@@ -1174,12 +1151,14 @@ Radar.setTags(new String[]{"tag1", "tag2"});
 Radar.getTags();
 ```
 
+
 ```kotlin Kotlin
 Radar.addTags(arrayOf("tag1", "tag2"))
 Radar.removeTags(arrayOf("tag1", "tag2"))
 Radar.setTags(arrayOf("tag1", "tag2"))
 Radar.getTags()
 ```
+
 </CodeGroup>
 
 ## Notifications
@@ -1263,4 +1242,3 @@ Radar.initialize(context, publishableKey, receiver, RadarLocationServicesProvide
 ```
 
 </CodeGroup>
-

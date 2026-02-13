@@ -404,7 +404,7 @@ Learn about platform-specific implementation of this function in the [iOS SDK do
 
 ### Other APIs
 
-The Capacitor plugin also exposes APIs for anonymous context, geocoding, search, and distance.
+The Capacitor plugin also exposes APIs for geocoding, search, and distance.
 
 #### Get location
 
@@ -413,20 +413,6 @@ Get a single location update without sending it to the server:
 ```javascript
 Radar.getLocation((result) => { 
     // do something with result.status, result.location
-});
-```
-
-#### Context
-
-With the [context API](/api#context), get context for a location without sending device or user identifiers to the server:
-
-```javascript
-Radar.getContext({ 
-    latitude: 40.783826, 
-    longitude: -73.975363, 
-    accuracy: 65
-}, (result) => { 
-    // do something with result.status, result.context
 });
 ```
 
@@ -529,5 +515,4 @@ Radar.getDistance({
 
 ## Support
 
-Have questions? We're here to help\! Contact us at [radar.com/support](https://radar.com/support).
-
+Have questions? We're here to help! Contact us at [radar.com/support](https://radar.com/support).

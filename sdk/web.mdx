@@ -167,21 +167,6 @@ Radar.getLocation()
   });
 ```
 
-### Context
-
-With the [context API](/api#context), get context for a location without sending device or user identifiers to the server:
-
-```javascript
-Radar.getContext()
-  .then((result) => { 
-    const { location, geofences, place, country, state, dma, postalCode } = result; 
-    // do something with results 
-  })
-  .catch((err) => { 
-    // handle error 
-  });
-```
-
 ## Maps
 
 ### Geocoding
@@ -362,5 +347,4 @@ The React Native SDK also has UI components for maps and address autocomplete. L
 
 ## Support
 
-Have questions? We're here to help\! Contact us at [radar.com/support](https://radar.com/support).
-
+Have questions? We're here to help! Contact us at [radar.com/support](https://radar.com/support).

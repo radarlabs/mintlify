@@ -809,27 +809,6 @@ Radar.getLocation { (status: RadarStatus, location: CLLocation?, stopped: Bool) 
 
 </CodeGroup>
 
-### Context
-
-With the [context API](/api#context), get context for a location without sending device or user identifiers to the server:
-
-<CodeGroup>
-
-```swift Swift
-Radar.getContext { (status: RadarStatus, location: CLLocation?, context: RadarContext?) in
-    // do something with context
-}
-```
-
-
-```c Objective-C
-[Radar getContextWithCompletionHandler:^(RadarStatus status, CLLocation *location, RadarContext *context) {
-    // do something with context
-}];
-```
-
-</CodeGroup>
-
 ### Geocoding
 
 With the [forward geocoding API](/api#forward-geocode), geocode an address, converting address to coordinates:
@@ -1176,7 +1155,6 @@ func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive respo
 
 With the [user tag API](/campaigns#advanced-targeting-options), you can configure [campaigns](/campaigns) to only target users with the corresponding tags:
 
-
 <CodeGroup>
 
 ```swift Swift
@@ -1185,6 +1163,7 @@ Radar.removeTags(["tag1", "tag2"])
 Radar.setTags(["tag1", "tag2"])
 Radar.getTags()
 ```
+
 
 ```objc Objective-C
 [Radar addTags:@[@"tag1", @"tag2"]];

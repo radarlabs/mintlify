@@ -232,7 +232,7 @@ Learn about platform-specific implementation of this function in the [iOS SDK do
 
 ### Other APIs
 
-The MAUI SDK also exposes APIs for anonymous context, geocoding, search, and distance.
+The MAUI SDK also exposes APIs for geocoding, search, and distance.
 
 #### Get location
 
@@ -240,14 +240,6 @@ Get a single location update without sending it to the server:
 
 ```csharp
 var (status, location, stopped) = await Radar.GetLocation();
-```
-
-#### Context
-
-With the [context API](/api#context), get context for a location without sending device or user identifiers to the server:
-
-```csharp
-var (status, location, context) = await Radar.GetContext();
 ```
 
 #### Geocoding
@@ -319,5 +311,4 @@ var (status, routes) = await Radar.GetDistance(origins, destinations, new[] { Ra
 
 ## Support
 
-Have questions? We're here to help\! Contact us at [radar.com/support](https://radar.com/support).
-
+Have questions? We're here to help! Contact us at [radar.com/support](https://radar.com/support).

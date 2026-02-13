@@ -484,7 +484,7 @@ Learn about platform-specific implementation of this function in the [iOS SDK do
 
 ### Other APIs
 
-The React Native module also exposes APIs for anonymous context, geocoding, search, and distance.
+The React Native module also exposes APIs for geocoding, search, and distance.
 
 #### Get location
 
@@ -493,22 +493,6 @@ Get a single location update without sending it to the server:
 ```javascript
 Radar.getLocation().then((result) => {
   // do something with result.location
-}).catch((err) => {
-  // optionally, do something with err
-});
-```
-
-#### Context
-
-With the [context API](/api#context), get context for a location without sending device or user identifiers to the server:
-
-```javascript
-Radar.getContext({ 
-  latitude: 40.783826, 
-  longitude: -73.975363, 
-  accuracy: 65
-}).then((result) => {
-  // do something with result.context
 }).catch((err) => {
   // optionally, do something with err
 });
