@@ -24,24 +24,27 @@ You'll create a geofence creation tool that allows users to:
 If you haven't already, sign up for Radar to get your API key. Then add the Radar SDK to your application.
 
 ```
-npm install radar-sdk-js
+npm install radar-sdk-js @radarlabs/plugin-maps maplibre-gl
 ```
 
 You'll also need to choose and install polygon and circle drawing libraries that are compatible with Radar Maps and MapLibre.
 
 ## Initialize the map
 
-First, import the necessary libraries and initialize Radar.
+First, import the necessary libraries, register the maps plugin, and initialize Radar.
 
 ```javascript
 import React from 'react';
 import Radar from 'radar-sdk-js';
-import 'radar-sdk-js/dist/radar.css';
+import { createMapsPlugin } from '@radarlabs/plugin-maps';
+import '@radarlabs/plugin-maps/dist/radar-maps.css';
+
+Radar.registerPlugin(createMapsPlugin());
 
 componentDidMount() {
   // initialize with your publishable key
   Radar.initialize('prj_test_pk_...');
-  
+
   // create map instance
   this.mapInstance = Radar.ui.map({
     container: 'map',

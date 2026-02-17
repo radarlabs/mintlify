@@ -17,31 +17,41 @@ If you haven't already, sign up for Radar to get your API key. Then add the Rada
 
 ### With npm or yarn
 
-Add the `radar-sdk-js` and `maplibre-gl` packages:
+Install the core SDK along with the maps and autocomplete plugins:
 
 ```sh
-npm install --save radar-sdk-js maplibre-gl
+npm install radar-sdk-js @radarlabs/plugin-maps @radarlabs/plugin-autocomplete maplibre-gl
 ```
 
-Then import as an ES Module in your project:
+Then import and register the plugins in your project:
 
 ```javascript
 import Radar from 'radar-sdk-js';
-import 'radar-sdk-js/dist/radar.css'
+import { createMapsPlugin } from '@radarlabs/plugin-maps';
+import { createAutocompletePlugin } from '@radarlabs/plugin-autocomplete';
+import '@radarlabs/plugin-maps/dist/radar-maps.css';
+import '@radarlabs/plugin-autocomplete/dist/radar-autocomplete.css';
+
+Radar.registerPlugin(createMapsPlugin());
+Radar.registerPlugin(createAutocompletePlugin());
 
 // initialize with your test or live publishable key
 Radar.initialize('prj_test_pk_...', { /* map config options */ });
 ```
 
-Note: The Radar SDK has a dependency on [maplibre-gl](https://github.com/maplibre/maplibre-gl-js).
-
 ### With HTML
 
-Add the following script to your HTML file:
+Add the core SDK and plugin scripts to your HTML file:
 
 ```html
-<script src="https://js.radar.com/v4.5.3/radar.min.js"></script>
+<link href="https://js.radar.com/maps/v5.0.0/radar-maps.css" rel="stylesheet">
+<link href="https://js.radar.com/autocomplete/v5.0.0/radar-autocomplete.css" rel="stylesheet">
+<script src="https://js.radar.com/v5.0.0/radar.min.js"></script>
+<script src="https://js.radar.com/maps/v5.0.0/radar-maps.min.js"></script>
+<script src="https://js.radar.com/autocomplete/v5.0.0/radar-autocomplete.min.js"></script>
 ```
+
+The plugin CDN bundles auto-register with the core SDK when loaded.
 
 Then, initialize the Radar SDK:
 
@@ -64,8 +74,9 @@ Specify the HTML element where you want to render the map by providing the eleme
 ```html HTML
 <html>
   <head>
-    <link href="https://js.radar.com/v4.5.3/radar.css" rel="stylesheet"></link>
-    <script src="https://js.radar.com/v4.5.3/radar.min.js"></script>
+    <link href="https://js.radar.com/maps/v5.0.0/radar-maps.css" rel="stylesheet">
+    <script src="https://js.radar.com/v5.0.0/radar.min.js"></script>
+    <script src="https://js.radar.com/maps/v5.0.0/radar-maps.min.js"></script>
   </head>
 
   <body>
@@ -89,8 +100,11 @@ Specify the HTML element where you want to render the map by providing the eleme
 ```javascript React
 import React from 'react';
 import Radar from 'radar-sdk-js';
+import { createMapsPlugin } from '@radarlabs/plugin-maps';
 
-import 'radar-sdk-js/dist/radar.css';
+import '@radarlabs/plugin-maps/dist/radar-maps.css';
+
+Radar.registerPlugin(createMapsPlugin());
 
 class RadarMap extends React.Component {
   componentDidMount() {
@@ -105,7 +119,7 @@ class RadarMap extends React.Component {
     });
 
     // add a marker to the map
-    Radar.ui.marker({ text: 'Radar HQ' })
+    Radar.ui.marker({ popup: { text: 'Radar HQ' } })
       .setLngLat([-73.9910078, 40.7342465])
       .addTo(map);
   }
@@ -263,10 +277,11 @@ Add the autocomplete component using the example below.
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-    <link href="https://js.radar.com/v4.5.3/radar.css" rel="stylesheet">
-    <script src="https://js.radar.com/v4.5.3/radar.min.js"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://js.radar.com/autocomplete/v5.0.0/radar-autocomplete.css" rel="stylesheet">
+    <script src="https://js.radar.com/v5.0.0/radar.min.js"></script>
+    <script src="https://js.radar.com/autocomplete/v5.0.0/radar-autocomplete.min.js"></script>
   </head>
 
   <body>
@@ -291,7 +306,10 @@ Add the autocomplete component using the example below.
 ```javascript React
 import React, { useEffect, useRef } from 'react';
 import Radar from 'radar-sdk-js';
-import 'radar-sdk-js/dist/radar.css';
+import { createAutocompletePlugin } from '@radarlabs/plugin-autocomplete';
+import '@radarlabs/plugin-autocomplete/dist/radar-autocomplete.css';
+
+Radar.registerPlugin(createAutocompletePlugin());
 
 const RadarAutocomplete = () => {
   const autocompleteRef = useRef(null);
