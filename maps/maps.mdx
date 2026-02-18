@@ -24,33 +24,40 @@ Then add the Radar SDK to your application.
 
 ### With npm or yarn
 
-Add the radar-sdk-js and maplibre-gl packages
+Install the core SDK along with the maps plugin and MapLibre GL JS:
 
 ```sh
-npm install --save radar-sdk-js maplibre-gl
+npm install radar-sdk-js @radarlabs/plugin-maps maplibre-gl
 ```
 
-Then import as an ES Module in your project
+Then import and register the maps plugin in your project:
 
 ```javascript
 import Radar from 'radar-sdk-js';
-import 'radar-sdk-js/dist/radar.css'
+import { createMapsPlugin } from '@radarlabs/plugin-maps';
+import '@radarlabs/plugin-maps/dist/radar-maps.css';
+
+Radar.registerPlugin(createMapsPlugin());
 
 // initialize with your test or live publishable key
 Radar.initialize('prj_test_pk_...', { /* map config options */ });
 ```
 
-Note: The Radar SDK has a dependency on [maplibre-gl](https://github.com/maplibre/maplibre-gl-js).
+Note: The maps plugin has a peer dependency on [maplibre-gl](https://github.com/maplibre/maplibre-gl-js).
 
 ### With HTML
 
-Add the following script in your `html` file
+Add the core SDK and maps plugin scripts to your `html` file:
 
 ```html
-<script src="https://js.radar.com/v4.5.3/radar.min.js"></script>
+<link href="https://js.radar.com/maps/v5.0.0/radar-maps.css" rel="stylesheet">
+<script src="https://js.radar.com/v5.0.0/radar.min.js"></script>
+<script src="https://js.radar.com/maps/v5.0.0/radar-maps.min.js"></script>
 ```
 
-Then initialize the Radar SDK
+The maps plugin CDN bundle auto-registers with the core SDK when loaded.
+
+Then initialize the Radar SDK:
 
 ```html
 <script type="text/javascript">
@@ -67,12 +74,13 @@ Specify the HTML element where you want to render the map, by providing the elem
 ```html HTML
 <html>
   <head>
-    <link href="https://js.radar.com/v4.5.3/radar.css" rel="stylesheet"></link>
-    <script src="https://js.radar.com/v4.5.3/radar.min.js"></script>
+    <link href="https://js.radar.com/maps/v5.0.0/radar-maps.css" rel="stylesheet">
+    <script src="https://js.radar.com/v5.0.0/radar.min.js"></script>
+    <script src="https://js.radar.com/maps/v5.0.0/radar-maps.min.js"></script>
   </head>
 
   <body>
-    <div id="map" style="width: 100%; height: 500px;" />
+    <div id="map" style="width: 100%; height: 500px;"></div>
 
     <script type="text/javascript">
       Radar.initialize('prj_live_pk_...');
@@ -92,8 +100,11 @@ Specify the HTML element where you want to render the map, by providing the elem
 ```javascript React
 import React from 'react';
 import Radar from 'radar-sdk-js';
+import { createMapsPlugin } from '@radarlabs/plugin-maps';
 
-import 'radar-sdk-js/dist/radar.css';
+import '@radarlabs/plugin-maps/dist/radar-maps.css';
+
+Radar.registerPlugin(createMapsPlugin());
 
 class RadarMap extends React.Component {
   componentDidMount() {
@@ -108,7 +119,7 @@ class RadarMap extends React.Component {
     });
 
     // add a marker to the map
-    Radar.ui.marker({ text: 'Radar HQ' })
+    Radar.ui.marker({ popup: { text: 'Radar HQ' } })
       .setLngLat([-73.9910078, 40.7342465])
       .addTo(map);
   }
@@ -289,7 +300,7 @@ const geojson = {
   },
 };
 
-const feature = Radar.ui.addPolygon(geojson, {
+const feature = map.addPolygon(geojson, {
   paint: {
     'fill-color': 'blue',
     'fill-opacity': 0.4,
@@ -323,7 +334,7 @@ The following `paint` properties for styling.
 | `border-opacity` | number (0 - 1)                                                                 |
 
 ```javascript
-const feature = Radar.ui.addPolyline('iyeulAveaclCuVfw...', {
+const feature = map.addPolyline('iyeulAveaclCuVfw...', {
   precision: 6, /* encoded polyline precision */
   id: 'line-id-1',
   properties: {
@@ -355,10 +366,11 @@ In the example below, clicking the map will place a new marker, and refit the ma
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-    <link href="https://js.radar.com/v4.5.3/radar.css" rel="stylesheet">
-    <script src="https://js.radar.com/v4.5.3/radar.min.js"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://js.radar.com/maps/v5.0.0/radar-maps.css" rel="stylesheet">
+    <script src="https://js.radar.com/v5.0.0/radar.min.js"></script>
+    <script src="https://js.radar.com/maps/v5.0.0/radar-maps.min.js"></script>
   </head>
 
   <body>
@@ -399,8 +411,11 @@ In the example below, clicking the map will place a new marker, and refit the ma
 ```javascript React
 import React from 'react';
 import Radar from 'radar-sdk-js';
+import { createMapsPlugin } from '@radarlabs/plugin-maps';
 
-import 'radar-sdk-js/dist/radar.css';
+import '@radarlabs/plugin-maps/dist/radar-maps.css';
+
+Radar.registerPlugin(createMapsPlugin());
 
 class RadarMap extends React.Component {
   componentDidMount() {
@@ -457,14 +472,15 @@ Add a `Marker` with a custom image to the map by specifying the image URL.
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-    <link href="https://js.radar.com/v4.5.3/radar.css" rel="stylesheet">
-    <script src="https://js.radar.com/v4.5.3/radar.min.js"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://js.radar.com/maps/v5.0.0/radar-maps.css" rel="stylesheet">
+    <script src="https://js.radar.com/v5.0.0/radar.min.js"></script>
+    <script src="https://js.radar.com/maps/v5.0.0/radar-maps.min.js"></script>
   </head>
 
   <body>
-    <div id="map" style="width: 100%; height: 400px;" />
+    <div id="map" style="width: 100%; height: 400px;"></div>
 
     <script type="text/javascript">
       Radar.initialize('prj_live_pk_...');
@@ -498,8 +514,11 @@ Add a `Marker` with a custom image to the map by specifying the image URL.
 ```javascript React
 import React from 'react';
 import Radar from 'radar-sdk-js';
+import { createMapsPlugin } from '@radarlabs/plugin-maps';
 
-import 'radar-sdk-js/dist/radar.css';
+import '@radarlabs/plugin-maps/dist/radar-maps.css';
+
+Radar.registerPlugin(createMapsPlugin());
 
 class RadarMap extends React.Component {
   componentDidMount() {
@@ -553,18 +572,19 @@ Display a popup with customized HTML.
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-    <link href="https://js.radar.com/v4.5.3/radar.css" rel="stylesheet">
-    <script src="https://js.radar.com/v4.5.3/radar.min.js"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://js.radar.com/maps/v5.0.0/radar-maps.css" rel="stylesheet">
+    <script src="https://js.radar.com/v5.0.0/radar.min.js"></script>
+    <script src="https://js.radar.com/maps/v5.0.0/radar-maps.min.js"></script>
   </head>
 
   <body>
-    <div id="map" style="width: 100%; height: 400px;" />
+    <div id="map" style="width: 100%; height: 400px;"></div>
 
     <div id="custom-popup" style="visibility: hidden; text-align: center;">
       <h3>Union Square</h3>
-      <img width="100" src="https://images.ctfassets.net/f2vbu16fzuly/7BUSW7MAtT2abUQY8U3Ri6/11fb8b92fd24c326bfd5da3064d67666/union_square.jpg?w=600" />
+      <img width="100" src="https://images.ctfassets.net/f2vbu16fzuly/7BUSW7MAtT2abUQY8U3Ri6/11fb8b92fd24c326bfd5da3064d67666/union_square.jpg?w=600">
     </div>
 
     <script type="text/javascript">
@@ -615,8 +635,11 @@ Display a popup with customized HTML.
 ```javascript React
 import React from 'react';
 import Radar from 'radar-sdk-js';
+import { createMapsPlugin } from '@radarlabs/plugin-maps';
 
-import 'radar-sdk-js/dist/radar.css';
+import '@radarlabs/plugin-maps/dist/radar-maps.css';
+
+Radar.registerPlugin(createMapsPlugin());
 
 class RadarMap extends React.Component {
   componentDidMount() {
@@ -695,14 +718,15 @@ Lines can be styled according to the MapLibre [Line Layer properties](https://ma
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-    <link href="https://js.radar.com/v4.5.3/radar.css" rel="stylesheet">
-    <script src="https://js.radar.com/v4.5.3/radar.min.js"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://js.radar.com/maps/v5.0.0/radar-maps.css" rel="stylesheet">
+    <script src="https://js.radar.com/v5.0.0/radar.min.js"></script>
+    <script src="https://js.radar.com/maps/v5.0.0/radar-maps.min.js"></script>
   </head>
 
   <body>
-    <div id="map" style="width: 100%; height: 400px;" />
+    <div id="map" style="width: 100%; height: 400px;"></div>
 
     <script type="text/javascript">
       Radar.initialize('prj_live_pk_');
@@ -764,8 +788,11 @@ Lines can be styled according to the MapLibre [Line Layer properties](https://ma
 ```javascript React
 import React from 'react';
 import Radar from 'radar-sdk-js';
+import { createMapsPlugin } from '@radarlabs/plugin-maps';
 
-import 'radar-sdk-js/dist/radar.css';
+import '@radarlabs/plugin-maps/dist/radar-maps.css';
+
+Radar.registerPlugin(createMapsPlugin());
 
 class RadarMap extends React.Component {
   componentDidMount() {
@@ -849,14 +876,15 @@ Polygon features can be styled according to the polygon options highlighted abov
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-    <link href="https://js.radar.com/v4.5.3/radar.css" rel="stylesheet">
-    <script src="https://js.radar.com/v4.5.3/radar.min.js"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://js.radar.com/maps/v5.0.0/radar-maps.css" rel="stylesheet">
+    <script src="https://js.radar.com/v5.0.0/radar.min.js"></script>
+    <script src="https://js.radar.com/maps/v5.0.0/radar-maps.min.js"></script>
   </head>
 
   <body>
-    <div id="map" style="width: 100%; height: 400px;" />
+    <div id="map" style="width: 100%; height: 400px;"></div>
 
     <script type="text/javascript">
       Radar.initialize('prj_live_pk_');
@@ -903,8 +931,11 @@ Polygon features can be styled according to the polygon options highlighted abov
 ```javascript React
 import React from 'react';
 import Radar from 'radar-sdk-js';
+import { createMapsPlugin } from '@radarlabs/plugin-maps';
 
-import 'radar-sdk-js/dist/radar.css';
+import '@radarlabs/plugin-maps/dist/radar-maps.css';
+
+Radar.registerPlugin(createMapsPlugin());
 
 class RadarMap extends React.Component {
   componentDidMount() {
@@ -974,8 +1005,9 @@ Only available on MapLibre v5 and above.
 <head>
   <meta charset='utf-8'>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://js.radar.com/v4.5.3/radar.css" rel="stylesheet">
-  <script src="https://js.radar.com/v4.5.3/radar.min.js"></script>
+  <link href="https://js.radar.com/maps/v5.0.0/radar-maps.css" rel="stylesheet">
+  <script src="https://js.radar.com/v5.0.0/radar.min.js"></script>
+  <script src="https://js.radar.com/maps/v5.0.0/radar-maps.min.js"></script>
   <style>
     body {
       margin: 0;
@@ -1018,8 +1050,11 @@ Only available on MapLibre v5 and above.
 ```javascript React
 import React, { useEffect, useRef } from 'react';
 import Radar from 'radar-sdk-js';
+import { createMapsPlugin } from '@radarlabs/plugin-maps';
 
-import 'radar-sdk-js/dist/radar.css';
+import '@radarlabs/plugin-maps/dist/radar-maps.css';
+
+Radar.registerPlugin(createMapsPlugin());
 
 const RadarMap = () => {
   const mapRef = useRef(null);
@@ -1069,14 +1104,15 @@ You can also set `language: "local"` to use the device language by default.
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-    <link href="https://js.radar.com/v4.5.3/radar.css" rel="stylesheet">
-    <script src="https://js.radar.com/v4.5.3/radar.min.js"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://js.radar.com/maps/v5.0.0/radar-maps.css" rel="stylesheet">
+    <script src="https://js.radar.com/v5.0.0/radar.min.js"></script>
+    <script src="https://js.radar.com/maps/v5.0.0/radar-maps.min.js"></script>
   </head>
 
   <body>
-    <div id="map" style="width: 100%; height: 400px;" />
+    <div id="map" style="width: 100%; height: 400px;"></div>
 
     <script type="text/javascript">
       Radar.initialize('prj_live_pk_...');
@@ -1114,7 +1150,7 @@ https://api.radar.io/maps/styles/radar-default-v1?publishableKey=prj_live_pk_...
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@4.5.1/dist/maplibre-gl.css' />
+    <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@4.5.1/dist/maplibre-gl.css'>
     <script src='https://unpkg.com/maplibre-gl@4.5.1/dist/maplibre-gl.js'></script>
     <style>
         body { margin: 0; padding: 0; }
@@ -1154,11 +1190,11 @@ It uses the same style URL format as in the MapLibre example above.
     </style>
 
     <!-- Leaflet -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
 
     <!-- Maplibre GL -->
-    <link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel='stylesheet' />
+    <link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel='stylesheet'>
     <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
 
     <!-- Leaflet-Maplibre-GL -->
@@ -1241,4 +1277,3 @@ The following table describes data coverage for maps, by country, for consumer u
 ## Support
 
 Have questions? We're here to help\! Contact us at [radar.com/support](https://radar.com/support).
-

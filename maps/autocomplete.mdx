@@ -46,18 +46,19 @@ Then, get started with the sample code below.
 
 ### JavaScript
 
-```javascript
+```html
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-    <link href="https://js.radar.com/v4.5.3/radar.css" rel="stylesheet">
-    <script src="https://js.radar.com/v4.5.3/radar.min.js"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://js.radar.com/autocomplete/v5.0.0/radar-autocomplete.css" rel="stylesheet">
+    <script src="https://js.radar.com/v5.0.0/radar.min.js"></script>
+    <script src="https://js.radar.com/autocomplete/v5.0.0/radar-autocomplete.min.js"></script>
   </head>
 
   <body>
-    <div id="autocomplete" />
+    <div id="autocomplete"></div>
 
     <script type="text/javascript">
       Radar.initialize('prj_live_pk_...');
@@ -79,7 +80,10 @@ Then, get started with the sample code below.
 ```javascript
 import React, { useEffect, useRef } from 'react';
 import Radar from 'radar-sdk-js';
-import 'radar-sdk-js/dist/radar.css';
+import { createAutocompletePlugin } from '@radarlabs/plugin-autocomplete';
+import '@radarlabs/plugin-autocomplete/dist/radar-autocomplete.css';
+
+Radar.registerPlugin(createAutocompletePlugin());
 
 const RadarAutocomplete = () => {
   const autocompleteRef = useRef(null);
@@ -138,10 +142,15 @@ Below is an example of how you can use [Radar Maps](/maps/maps) with Radar Autoc
 ```javascript
 import React, { useEffect, useRef } from 'react';
 import Radar from 'radar-sdk-js';
-import 'radar-sdk-js/dist/radar.css';
+import { createMapsPlugin } from '@radarlabs/plugin-maps';
+import { createAutocompletePlugin } from '@radarlabs/plugin-autocomplete';
+import '@radarlabs/plugin-maps/dist/radar-maps.css';
+import '@radarlabs/plugin-autocomplete/dist/radar-autocomplete.css';
+
+Radar.registerPlugin(createMapsPlugin());
+Radar.registerPlugin(createAutocompletePlugin());
 
 const RadarMap = () => {
-  const radarInitialized = useRef(false);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
   const autocompleteRef = useRef(null);
@@ -159,8 +168,8 @@ const RadarMap = () => {
     mapRef.current = map;
 
     // Add a marker to the map
-    const marker = Radar.ui.marker({ text: 'Radar HQ' })
-      .setLngLat([-73.9910078, 40.7342465]) // default example.
+    const marker = Radar.ui.marker({ popup: { text: 'Radar HQ' } })
+      .setLngLat([-73.9910078, 40.7342465])
       .addTo(map);
     markerRef.current = marker;
 

@@ -123,15 +123,34 @@ Finally, more detailed [failure reasons](#failure-reasons) are also exposed.
 
 ### Android
 
+#### Install plugin
+
+If using [Android SDK](/sdk/android) version `3.25.0` or higher, you must install an additional plugin.
+
+Add the plugin to the `dependencies` section of your app's `build.gradle` file:
+
+```gradle
+dependencies {   
+  implementation 'io.radar:sdk:3.25.+'
+  implementation 'io.radar:sdk-fraud:1.0.0'
+}
+```
+
+If you do not install the plugin, `Radar.trackVerified()` will return `ERROR_PLUGIN`.
+
 #### Initialize SDK
 
-To support the `sharing` flag on Android, pass `fraud = true` to `Radar.initialize()`.
+To support the `sharing` flag on Android, pass `fraud = true` to `RadarInitializeOptions` in `Radar.initialize()`.
 
 ```java
+val options = RadarInitializeOptions(
+  fraud = true
+)
+
 Radar.initialize(
   context = this,
   publishableKey = "prj_test_pk_...",
-  fraud = true
+  options = options
 )
 ```
 
@@ -191,6 +210,14 @@ Learn more about [Network Security Configuration on Android](https://developer.a
 
 ### iOS
 
+#### Install plugin
+
+If using [iOS SDK](/sdk/ios) version `3.26.0` or higher, you must install an additional plugin.
+
+Add the `RadarSDKFraud` package using Swift Package Manager.
+
+If you do not install the plugin, `Radar.trackVerified()` will return `ERROR_PLUGIN`.
+
 #### App Attest
 
 To support the `compromised` flag on iOS, enable [App Attest](https://developer.apple.com/documentation/devicecheck/preparing-to-use-the-app-attest-service) and configure a list of valid [App IDs](https://developer.apple.com/library/archive/documentation/General/Conceptual/DevPedia-CocoaCore/AppID.html) (e.g., `A1B2C3D4E5.com.yourapp.app1,A1B2C3D4E5.com.yourapp.app2`) on the [Settings page](https://dashboard.radar.com/settings#fraud-settings).
@@ -233,6 +260,25 @@ To enable SSL pinning and prevent man-in-the-middle attacks, add the following t
 Learn more about [SSL pinning on iOS](https://developer.apple.com/news/?id=g9ejcf8y).
 
 ### Web and desktop
+
+#### Install plugin
+
+If using [web SDK](/sdk/web) version `5.0.0` or higher, you must install an additional plugin.
+
+In an HTML page, add the SDK script and the plugin script:
+
+```html
+<script src="https://js.radar.com/v5.0.0/radar.min.js"></script>
+<script src="https://js.radar.com/fraud/v5.0.0/radar-fraud.min.js"></script>
+```
+
+In a web app, install the SDK package and the plugin package from npm:
+
+```bash
+npm install @radarlabs/plugin-fraud radar-sdk-js
+```
+
+#### Companion app and no-download solution
 
 The web SDK supports a companion app solution and a pure-JavaScript no-download solution.
 

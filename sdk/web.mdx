@@ -8,26 +8,54 @@ The source can be found on GitHub [here](https://github.com/radarlabs/radar-sdk-
 
 ## Install
 
-In an HTML page, add the SDK script and stylesheet:
+In an HTML page, add the SDK script:
 
 ```html
-<link href="https://js.radar.com/v4.5.3/radar.css" rel="stylesheet">
-<script src="https://js.radar.com/v4.5.3/radar.min.js"></script>
+<script src="https://js.radar.com/v5.0.0/radar.min.js"></script>
+```
+
+If you use Maps or Autocomplete UI, add the corresponding plugin scripts:
+
+```html
+<!-- maps plugin (auto-registers) -->
+<link href="https://js.radar.com/maps/v5.0.0/radar-maps.css" rel="stylesheet">
+<script src="https://js.radar.com/maps/v5.0.0/radar-maps.min.js"></script>
+
+<!-- autocomplete plugin (auto-registers) -->
+<link href="https://js.radar.com/autocomplete/v5.0.0/radar-autocomplete.css" rel="stylesheet">
+<script src="https://js.radar.com/autocomplete/v5.0.0/radar-autocomplete.min.js"></script>
 ```
 
 In a web app, install the package from npm:
 
 ```bash
-npm install --save radar-sdk-js maplibre-gl
+npm install radar-sdk-js
 ```
 
-The SDK has a dependency on [maplibre-gl](https://github.com/maplibre/maplibre-gl-js).
+If you use Maps or Autocomplete UI, install the corresponding plugins:
 
-Then, import the library and stylesheet:
+```bash
+# maps (requires maplibre-gl as a peer dep)
+npm install @radarlabs/plugin-maps maplibre-gl
+
+# autocomplete
+npm install @radarlabs/plugin-autocomplete
+```
+
+Then, import the library and register any plugins:
 
 ```javascript
 import Radar from 'radar-sdk-js';
-import 'radar-sdk-js/dist/radar.css';
+
+// for maps
+import { createMapsPlugin } from '@radarlabs/plugin-maps';
+import '@radarlabs/plugin-maps/dist/radar-maps.css';
+Radar.registerPlugin(createMapsPlugin());
+
+// for autocomplete
+import { createAutocompletePlugin } from '@radarlabs/plugin-autocomplete';
+import '@radarlabs/plugin-autocomplete/dist/radar-autocomplete.css';
+Radar.registerPlugin(createAutocompletePlugin());
 ```
 
 ## Setup
