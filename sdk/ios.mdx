@@ -788,27 +788,6 @@ trackingOptions.beacons = YES;
 
 </CodeGroup>
 
-### Get location
-
-Get a single location update without sending it to the server:
-
-<CodeGroup>
-
-```swift Swift
-Radar.getLocation { (status: RadarStatus, location: CLLocation?, stopped: Bool) in
-    // do something with location
-}
-```
-
-
-```c Objective-C
-[Radar getLocationWithCompletionHandler:^(RadarStatus status, CLLocation *location, BOOL stopped) {
-    // do something with location
-}];
-```
-
-</CodeGroup>
-
 ### Geocoding
 
 With the [forward geocoding API](/api#forward-geocode), geocode an address, converting address to coordinates:

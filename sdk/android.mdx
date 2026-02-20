@@ -797,30 +797,6 @@ Radar.startTracking(trackingOptions)
 
 Learn more about [beacons](/geofencing/beacons).
 
-### Get location
-
-Get a single location update without sending it to the server:
-
-<CodeGroup>
-
-```java Java
-Radar.getLocation(new RadarLocationCallback() {
-    @Override
-    public void onComplete(RadarStatus status, Location location, boolean stopped) {
-        // do something with location
-    }
-});
-```
-
-
-```kotlin Kotlin
-Radar.getLocation { status, location, stopped ->
-    // do something with location
-}
-```
-
-</CodeGroup>
-
 ### Geocoding
 
 With the [forward geocoding API](/api#forward-geocode), geocode an address, converting address to coordinates:
