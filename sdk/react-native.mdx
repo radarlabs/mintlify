@@ -486,18 +486,6 @@ Learn about platform-specific implementation of this function in the [iOS SDK do
 
 The React Native module also exposes APIs for geocoding, search, and distance.
 
-#### Get location
-
-Get a single location update without sending it to the server:
-
-```javascript
-Radar.getLocation().then((result) => {
-  // do something with result.location
-}).catch((err) => {
-  // optionally, do something with err
-});
-```
-
 #### Geocoding
 
 With the [forward geocoding API](/api#forward-geocode), geocode an address, converting address to coordinates:

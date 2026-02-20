@@ -17,11 +17,11 @@ In an HTML page, add the SDK script:
 If you use Maps or Autocomplete UI, add the corresponding plugin scripts:
 
 ```html
-<!-- maps plugin (auto-registers) -->
+{/*  maps plugin (auto-registers)  */}
 <link href="https://js.radar.com/maps/v5.0.0/radar-maps.css" rel="stylesheet">
 <script src="https://js.radar.com/maps/v5.0.0/radar-maps.min.js"></script>
 
-<!-- autocomplete plugin (auto-registers) -->
+{/*  autocomplete plugin (auto-registers)  */}
 <link href="https://js.radar.com/autocomplete/v5.0.0/radar-autocomplete.css" rel="stylesheet">
 <script src="https://js.radar.com/autocomplete/v5.0.0/radar-autocomplete.min.js"></script>
 ```
@@ -178,21 +178,6 @@ Radar.trackOnce({
 }).catch((err) => { 
   // handle error
 });
-```
-
-### Get location
-
-You can also get a single location update without sending it to the server:
-
-```javascript
-Radar.getLocation()
-  .then((result) => { 
-    const { location } = result; 
-    // do something with location 
-  })
-  .catch((err) => { 
-    // handle error 
-  });
 ```
 
 ## Maps
