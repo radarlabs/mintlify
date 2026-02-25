@@ -16,7 +16,7 @@ On the OneSignal _Settings_ page under _Keys & IDs_, copy your REST API key.
 
 Then, on the Radar [Integrations page](https://dashboard.radar.com/integrations) under _OneSignal_, set _Enabled_ to _Yes_ and paste your API key. Note that you can set separate API keys for the _Test_ and _Live_ environments.
 
-Whenever events are generated, Radar will call the [edit user API](https://documentation.onesignal.com/reference/edit-device) and set tags in OneSignal. You can create notifications triggered by tag changes. 
+Whenever events are generated, Radar will call the [edit user API](https://documentation.onesignal.com/reference/update-user) and set tags in OneSignal. You can create notifications triggered by tag changes.
 
 By default, Radar `userId` and `deviceId` do not map to OneSignal. To map users in Radar to devices in OneSignal, you must send the OneSignal user ID to Radar by setting `metadata.oneSignalPlayerId`. For example, on iOS:
 
