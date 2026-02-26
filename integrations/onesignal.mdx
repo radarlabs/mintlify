@@ -23,8 +23,8 @@ By default, Radar `userId` and `deviceId` do not map to OneSignal. To map users 
 <CodeGroup>
 
 ```swift Swift
-let oneUserSignalId = OneSignal.getPermissionSubscriptionState().subscriptionStatus.userId
-Radar.setMetadata(["oneSignalId": oneSignalUserId])
+let oneSignalUserId = OneSignal.getPermissionSubscriptionState().subscriptionStatus.userId
+Radar.setMetadata(["oneSignalUserId": oneSignalUserId])
 ```
 
 
