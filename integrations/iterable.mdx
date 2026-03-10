@@ -24,7 +24,7 @@ User IDs must be aligned between Iterable and Radar for the integration to funct
 
 ```swift Swift
 IterableAPI.userId = userId
-Radar.setUserId(userId)
+Radar.setMetadata(["iterable:user_id": userId])
 let dataField = ["userId": userId]
 IterableAPI.updateUser(dataField, mergeNestedObjects: false)
 ```
@@ -109,7 +109,7 @@ Note that Radar uses the special string `"(null)"` to represent `null` user data
 
 | Radar User Field                     | Iterable User Data Field                 | Type          | Example Value                              | Context Type                       |
 | ------------------------------------ | ---------------------------------------- | ------------- | ------------------------------------------ | ---------------------------------- |
-| `userId`                             | `userId`                                 | string        | `"1"`                                      |                                    |
+| `metadata['iterable:user_id']`       | `userId`                                 | string        | `"e4b2a7d1-9c83-4f5a-8b12-d9e7632a10f4"`   |                                    |
 | `location.coordinates[0]`            | `radar_geo_location.lon`                 | number        | `-76.350663`                               |                                    |
 | `location.coordinates[1]`            | `radar_geo_location.lat`                 | number        | `39.525665`                                |                                    |
 | `locationAuthorization`              | `radarLocationAuthorization`             | string        | `"GRANTED_FOREGROUND"`                     |                                    |
@@ -351,4 +351,3 @@ Note that Radar uses the special string `"(null)"` to represent `null` user data
 | `confidence`             | `confidence`              | string           | `"high"`                     |
 | `duration`               | `duration`                | number (minutes) | `1.42`                       |
 | `foreground`             | `foreground`              | boolean          | `true`                       |
-
