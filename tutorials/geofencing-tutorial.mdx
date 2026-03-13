@@ -1,0 +1,1040 @@
+---
+title: "Geofencing end-to-end guide"
+description: "Install the Radar SDK, request location permissions, and handle geofence entry and exit events — from scratch, on any platform."
+---
+
+This guide walks you through everything you need to add geofencing to your app with Radar — from installing the SDK to handling real-time entry and exit events. By the end, your app will detect when a user enters or exits any location you define.
+
+## What you'll build
+
+- Install and initialize the Radar SDK on your platform
+- Request location permissions from the user
+- Track a user's location once (foreground) or continuously (background)
+- Listen for geofence entry and exit events in your app
+
+## Prerequisites
+
+- A Radar account
+- Your **publishable API key** from the [Settings page](https://dashboard.radar.com/settings). Use your `Test Publishable` key during development. **Never use your secret key in client-side code.**
+- At least one geofence created in the [Radar dashboard](https://dashboard.radar.com/geofencing/geofences). Geofences can be circles or polygons, grouped by `tag` (e.g. `store`, `venue`) and identified by `externalId`.
+
+---
+
+## Step 1: Install the SDK
+
+<Tabs>
+  <Tab title="iOS">
+    The best way to install the iOS SDK is via CocoaPods or Swift Package Manager.
+
+    **CocoaPods**
+
+    Add to your `Podfile`:
+
+    ```ruby
+    pod 'RadarSDK', '~> 3.26.0'
+    ```
+
+    Then run:
+
+    ```bash
+    pod install
+    ```
+
+    After installing, open your project using the `.xcworkspace` file.
+
+    **Swift Package Manager**
+
+    In Xcode, go to **File → Swift Packages → Add Package Dependency** and enter:
+
+    ```text
+    https://github.com/radarlabs/radar-sdk-ios-spm.git
+    ```
+
+    Pin to a minor version range to avoid unexpected breaking changes, e.g. `3.26.0..<3.27.0`. Select only `RadarSDK` unless you need the motion metadata feature.
+
+    The SDK requires iOS 10+ and depends on Apple's `CoreLocation` framework. In your target settings, go to **General → Frameworks, Libraries, and Embedded Content** and add `CoreLocation` if it isn't there already.
+  </Tab>
+  <Tab title="Android">
+    Add the SDK to the `dependencies` section of your app's `build.gradle`:
+
+    ```groovy
+    dependencies {
+        implementation 'io.radar:sdk:3.25.+'
+    }
+    ```
+
+    The SDK automatically pulls in [Google Play Services Location](https://developer.android.com/training/location) (`21.0.1` or higher) as a transitive dependency. Make sure your project is configured for Google Play Services. The SDK supports API level 16 and above.
+  </Tab>
+  <Tab title="Web (JS)">
+    **CDN (HTML page)**
+
+    ```html
+    <link href="https://js.radar.com/v4.5.3/radar.css" rel="stylesheet">
+    <script src="https://js.radar.com/v4.5.3/radar.min.js"></script>
+    ```
+
+    **npm (web app)**
+
+    ```bash
+    npm install --save radar-sdk-js maplibre-gl
+    ```
+
+    Then import:
+
+    ```js
+    import Radar from 'radar-sdk-js';
+    import 'radar-sdk-js/dist/radar.css';
+    ```
+  </Tab>
+  <Tab title="React Native">
+    ```bash
+    npm install --save react-native-radar
+    ```
+
+    Then install the iOS pod:
+
+    ```bash
+    cd ios && pod install
+    ```
+
+    **iOS setup:** Add location usage descriptions to your `Info.plist`:
+
+    - `NSLocationWhenInUseUsageDescription` — shown for foreground permission
+    - `NSLocationAlwaysAndWhenInUseUsageDescription` — shown for background permission
+
+    For background tracking, go to **Signing & Capabilities → Background Modes** and enable **Background fetch** and **Location updates**.
+
+    **Android setup:** Add Google Play Services Location to your Android `build.gradle`:
+
+    ```groovy
+    implementation "com.google.android.gms:play-services-location:21.0.1"
+    ```
+
+    For background tracking, add `ACCESS_BACKGROUND_LOCATION` to your manifest manually (see Step 3).
+
+    <Note>
+      **Expo:** Use the Radar Expo plugin in `app.json` to handle native setup automatically. See the [React Native SDK docs](/sdk/react-native#expo) for all plugin options.
+    </Note>
+  </Tab>
+  <Tab title="Flutter">
+    Add to your `pubspec.yaml`:
+
+    ```yaml
+    dependencies:
+      flutter_radar: ^3.12.4
+    ```
+
+    Then run:
+
+    ```bash
+    flutter pub get
+    ```
+
+    **iOS:** In your `Podfile`, set `platform :ios, '10.0'` or higher. Add location usage descriptions to `Info.plist`. Initialize the SDK in `AppDelegate.swift`:
+
+    ```swift
+    import RadarSDK
+    
+    @UIApplicationMain
+    @objc class AppDelegate: FlutterAppDelegate {
+      override func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+      ) -> Bool {
+        Radar.initialize(publishableKey: "prj_test_pk_...")
+        GeneratedPluginRegistrant.register(with: self)
+        return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+      }
+    }
+    ```
+
+    **Android:** Add the Android SDK to your app's `build.gradle` (match the version to your Flutter package version):
+
+    ```groovy
+    dependencies {
+        implementation 'io.radar:sdk:3.18.+'
+    }
+    ```
+
+    Initialize in `MainApplication.java` or `Application.kt`:
+
+    ```kotlin
+    import io.radar.sdk.Radar
+    
+    class MainApplication : FlutterApplication() {
+        override fun onCreate() {
+            super.onCreate()
+            Radar.initialize(this, "prj_test_pk_...")
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Step 2: Initialize the SDK
+
+Call `initialize` as early as possible in your app's startup — before any other Radar calls.
+
+<Tabs>
+  <Tab title="iOS">
+    ```swift
+    // AppDelegate.swift
+    import UIKit
+    import RadarSDK
+    
+    @UIApplicationMain
+    class AppDelegate: UIResponder, UIApplicationDelegate {
+    
+        func application(
+            _ application: UIApplication,
+            didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+        ) -> Bool {
+            Radar.initialize(publishableKey: "prj_test_pk_...")
+            return true
+        }
+    }
+    ```
+  </Tab>
+  <Tab title="Android">
+    ```kotlin
+    // MainApplication.kt
+    import android.app.Application
+    import io.radar.sdk.Radar
+    
+    class MainApplication : Application() {
+        override fun onCreate() {
+            super.onCreate()
+            Radar.initialize(this, "prj_test_pk_...")
+        }
+    }
+    ```
+  </Tab>
+  <Tab title="Web (JS)">
+    ```js
+    Radar.initialize('prj_test_pk_...');
+    
+    // Optional configuration:
+    Radar.initialize('prj_test_pk_...', {
+        logLevel: 'info',          // 'none' | 'info' | 'warn' | 'error'
+        desiredAccuracy: 'high',   // 'high' | 'medium' | 'low'
+        locationTimeout: 30000,    // ms before timeout (default: 30000)
+    });
+    ```
+
+    You must call `initialize` before any other SDK function.
+  </Tab>
+  <Tab title="React Native">
+    ```js
+    import Radar from 'react-native-radar';
+    
+    // Call at app startup, e.g. in your root component or App.js
+    Radar.initialize('prj_test_pk_...');
+    ```
+  </Tab>
+  <Tab title="Flutter">
+    ```dart
+    import 'package:flutter_radar/flutter_radar.dart';
+    
+    // Call at app startup, e.g. in main() or initState()
+    Radar.initialize('prj_test_pk_...');
+    ```
+  </Tab>
+</Tabs>
+
+### Identify the user
+
+After initializing, tell Radar who the current user is. This links location data to a user record in your dashboard and in downstream integrations.
+
+<Tabs>
+  <Tab title="iOS">
+    ```swift
+    Radar.setUserId("user-123")
+    Radar.setDescription("Jane Smith")                          // optional, shown in dashboard
+    Radar.setMetadata(["plan": "premium", "storeId": "42"])    // optional, up to 16 key/value pairs
+    ```
+  </Tab>
+  <Tab title="Android">
+    ```kotlin
+    Radar.setUserId("user-123")
+    Radar.setDescription("Jane Smith")
+    Radar.setMetadata(JSONObject().apply {
+        put("plan", "premium")
+        put("storeId", "42")
+    })
+    ```
+  </Tab>
+  <Tab title="Web (JS)">
+    ```js
+    Radar.setUserId('user-123');
+    Radar.setDescription('Jane Smith');
+    Radar.setMetadata({ plan: 'premium', storeId: '42' });
+    ```
+  </Tab>
+  <Tab title="React Native">
+    ```js
+    Radar.setUserId('user-123');
+    Radar.setDescription('Jane Smith');
+    Radar.setMetadata({ plan: 'premium', storeId: '42' });
+    ```
+  </Tab>
+  <Tab title="Flutter">
+    ```dart
+    Radar.setUserId('user-123');
+    Radar.setDescription('Jane Smith');
+    Radar.setMetadata({'plan': 'premium', 'storeId': '42'});
+    ```
+  </Tab>
+</Tabs>
+
+You only need to call these once — the values are persisted across app sessions.
+
+---
+
+## Step 3: Request location permissions
+
+Radar requires location permissions before it can track a user. The right permission level depends on your use case:
+
+| Use case                                   | Required permission      |
+| ------------------------------------------ | ------------------------ |
+| One-time foreground tracking (`trackOnce`) | When In Use (foreground) |
+| Continuous background geofencing           | Always (background)      |
+| Trip tracking with continuous preset       | When In Use (foreground) |
+
+<Tip>
+  Ask for foreground permission first, then ask for background permission only after the user understands the value. Showing the background prompt without context is a common reason users deny it permanently.
+</Tip>
+
+<Tabs>
+  <Tab title="iOS">
+    First, add usage strings to your `Info.plist`:
+
+    ```xml
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>We use your location to show you nearby stores and deals.</string>
+    
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>We use your location in the background to notify you when you arrive at a store.</string>
+    ```
+
+    Then request permissions — foreground first, then escalate to background:
+
+    ```swift
+    import CoreLocation
+    import RadarSDK
+    
+    class AppDelegate: UIResponder, UIApplicationDelegate, CLLocationManagerDelegate {
+    
+        let locationManager = CLLocationManager()
+    
+        func application(
+            _ application: UIApplication,
+            didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+        ) -> Bool {
+            Radar.initialize(publishableKey: "prj_test_pk_...")
+            locationManager.delegate = self
+            requestLocationPermissions()
+            return true
+        }
+    
+        func locationManager(
+            _ manager: CLLocationManager,
+            didChangeAuthorization status: CLAuthorizationStatus
+        ) {
+            requestLocationPermissions()
+        }
+    
+        func requestLocationPermissions() {
+            let status = locationManager.authorizationStatus
+            if status == .notDetermined {
+                locationManager.requestWhenInUseAuthorization()
+            } else if status == .authorizedWhenInUse {
+                // Foreground granted — now escalate to background
+                locationManager.requestAlwaysAuthorization()
+            }
+        }
+    }
+    ```
+
+    <Note>
+      If you plan to use `presetResponsive` or `presetContinuous`, go to **Signing & Capabilities → Background Modes** and enable **Location updates** and **Background fetch**.
+    </Note>
+  </Tab>
+  <Tab title="Android">
+    Add permissions to your `AndroidManifest.xml`. Foreground permissions are added automatically by the SDK, but you must manually add `ACCESS_BACKGROUND_LOCATION` and `FOREGROUND_SERVICE_LOCATION`:
+
+    ```xml
+    <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+        {/*  Added automatically by the SDK  */}
+        <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+        <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+        <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+        <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    
+        {/*  Add manually for background tracking  */}
+        <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    
+        {/*  Add manually if using the continuous preset  */}
+        <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    </manifest>
+    ```
+
+    Then request permissions at runtime. On Android 11+, background permission must be requested in a separate step from foreground:
+
+    ```kotlin
+    import android.Manifest
+    import android.content.pm.PackageManager
+    import android.os.Build
+    import androidx.core.app.ActivityCompat
+    import androidx.appcompat.app.AlertDialog
+    import androidx.appcompat.app.AppCompatActivity
+    
+    class MainActivity : AppCompatActivity() {
+        private val FOREGROUND_CODE = 1
+        private val BACKGROUND_CODE = 2
+    
+        override fun onCreate(savedInstanceState: Bundle?) {
+            super.onCreate(savedInstanceState)
+            requestLocationPermissions()
+        }
+    
+        private fun requestLocationPermissions() {
+            if (ActivityCompat.checkSelfPermission(this,
+                    Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ),
+                    FOREGROUND_CODE)
+            }
+        }
+    
+        override fun onRequestPermissionsResult(
+            requestCode: Int,
+            permissions: Array<String>,
+            grantResults: IntArray
+        ) {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+            if (requestCode == FOREGROUND_CODE &&
+                grantResults.isNotEmpty() &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                AlertDialog.Builder(this)
+                    .setTitle("Background location needed")
+                    .setMessage("Tap \"Allow all the time\" on the next screen to enable geofencing.")
+                    .setPositiveButton("OK") { _, _ ->
+                        ActivityCompat.requestPermissions(this,
+                            arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION),
+                            BACKGROUND_CODE)
+                    }
+                    .show()
+            }
+        }
+    }
+    ```
+  </Tab>
+  <Tab title="Web (JS)">
+    The Web SDK uses the browser's native [Geolocation API](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/Using_geolocation). There's no explicit permission request call — the browser prompts the user automatically when `trackOnce()` is first called.
+
+    For best results, trigger `trackOnce()` in response to a user gesture (e.g. a button click) rather than on page load, so the permission prompt appears in a clear context.
+
+    ```js
+    document.getElementById('check-in-btn').addEventListener('click', async () => {
+        try {
+            const { location, events, user } = await Radar.trackOnce();
+            // user is now tracked; check events for geofence matches
+        } catch (err) {
+            if (err.type === 'RadarLocationPermissionsError') {
+                // show UI explaining why location is needed
+            }
+        }
+    });
+    ```
+  </Tab>
+  <Tab title="React Native">
+    ```js
+    import Radar from 'react-native-radar';
+    
+    async function requestPermissions() {
+        // Step 1: request foreground
+        const foregroundStatus = await Radar.requestPermissions(false);
+    
+        if (foregroundStatus === 'GRANTED_FOREGROUND') {
+            // Step 2: request background only after foreground is granted
+            const backgroundStatus = await Radar.requestPermissions(true);
+            console.log('Background status:', backgroundStatus);
+        }
+    }
+    
+    // Check current status before requesting
+    const status = await Radar.getPermissionsStatus();
+    // 'GRANTED_BACKGROUND' | 'GRANTED_FOREGROUND' | 'NOT_DETERMINED' | 'DENIED'
+    
+    if (status === 'NOT_DETERMINED') {
+        requestPermissions();
+    }
+    ```
+  </Tab>
+  <Tab title="Flutter">
+    ```dart
+    // Check current status
+    String status = await Radar.getPermissionsStatus();
+    // 'GRANTED_FOREGROUND' | 'GRANTED_BACKGROUND' | 'DENIED' | 'NOT_DETERMINED'
+    
+    if (status == 'NOT_DETERMINED') {
+        // Request foreground first
+        String fgStatus = await Radar.requestPermissions(false);
+    
+        if (fgStatus == 'GRANTED_FOREGROUND') {
+            // Then request background
+            String bgStatus = await Radar.requestPermissions(true);
+            print('Background status: $bgStatus');
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Step 4: One-time tracking (foreground)
+
+`trackOnce` gets the user's current location, sends it to Radar, and returns any geofence events that match. Use this when you want to check location in response to a user action — like opening the app, tapping a button, or loading a screen.
+
+<Tabs>
+  <Tab title="iOS">
+    ```swift
+    Radar.trackOnce { (status, location, events, user) in
+        if status == .success {
+            // Check if the user is currently inside any geofences
+            if let geofences = user?.geofences, !geofences.isEmpty {
+                print("User is in \(geofences.count) geofence(s)")
+            }
+            // Handle any entry/exit events
+            events?.forEach { event in
+                switch event.type {
+                case .userEnteredGeofence:
+                    print("Entered: \(event.geofence?.description ?? "")")
+                case .userExitedGeofence:
+                    print("Exited: \(event.geofence?.description ?? "")")
+                default:
+                    break
+                }
+            }
+        } else {
+            print("trackOnce failed: \(status)")
+        }
+    }
+    ```
+  </Tab>
+  <Tab title="Android">
+    ```kotlin
+    Radar.trackOnce { status, location, events, user ->
+        if (status == Radar.RadarStatus.SUCCESS) {
+            user?.geofences?.let { geofences ->
+                println("User is in ${geofences.size} geofence(s)")
+            }
+            events?.forEach { event ->
+                when (event.type) {
+                    RadarEvent.RadarEventType.USER_ENTERED_GEOFENCE ->
+                        println("Entered: ${event.geofence?.description}")
+                    RadarEvent.RadarEventType.USER_EXITED_GEOFENCE ->
+                        println("Exited: ${event.geofence?.description}")
+                    else -> {}
+                }
+            }
+        } else {
+            println("trackOnce failed: $status")
+        }
+    }
+    ```
+  </Tab>
+  <Tab title="Web (JS)">
+    ```js
+    Radar.trackOnce()
+        .then(({ location, events, user }) => {
+            if (user.geofences && user.geofences.length > 0) {
+                console.log('User is in geofence:', user.geofences[0].description);
+            }
+            events.forEach(event => {
+                if (event.type === 'user.entered_geofence') {
+                    console.log('Entered:', event.geofence.description);
+                } else if (event.type === 'user.exited_geofence') {
+                    console.log('Exited:', event.geofence.description);
+                }
+            });
+        })
+        .catch((err) => {
+            console.error('trackOnce error:', err.type);
+        });
+    ```
+
+    You can also pass a manual location instead of using the browser's geolocation API:
+
+    ```js
+    Radar.trackOnce({ latitude: 40.7128, longitude: -74.0060, accuracy: 65 })
+        .then(({ events, user }) => { /* ... */ });
+    ```
+  </Tab>
+  <Tab title="React Native">
+    ```js
+    Radar.trackOnce()
+        .then(({ location, events, user }) => {
+            if (user.geofences?.length > 0) {
+                console.log('User is in:', user.geofences[0].description);
+            }
+            events.forEach(event => {
+                if (event.type === 'user.entered_geofence') {
+                    console.log('Entered:', event.geofence.description);
+                }
+            });
+        })
+        .catch((err) => {
+            console.error('trackOnce error:', err);
+        });
+    ```
+  </Tab>
+  <Tab title="Flutter">
+    ```dart
+    var res = await Radar.trackOnce();
+    
+    if (res['status'] == 'SUCCESS') {
+        final geofences = res['user']?['geofences'] as List? ?? [];
+        if (geofences.isNotEmpty) {
+            print('User is in ${geofences.length} geofence(s)');
+        }
+    
+        final events = res['events'] as List? ?? [];
+        for (final event in events) {
+            if (event['type'] == 'user.entered_geofence') {
+                print('Entered: ${event['geofence']['description']}');
+            }
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+After calling `trackOnce`, open the [Users page](https://dashboard.radar.com/geofencing/users) in your dashboard — you should see the user appear. If you don't, check the `status` value in the callback for a specific error code.
+
+---
+
+## Step 5: Continuous background tracking
+
+For real-time geofencing, you want the SDK to track location continuously in the background — even when the app is closed. Radar will wake your app and deliver events when the user enters or exits a geofence.
+
+### Choose a tracking preset
+
+Radar provides three presets. For most geofencing use cases, **Responsive** is the right choice:
+
+| Preset       | Update frequency                  | Battery usage | Best for                                  |
+| ------------ | --------------------------------- | ------------- | ----------------------------------------- |
+| `EFFICIENT`  | Low                               | Lowest        | Broad region detection, passive use cases |
+| `RESPONSIVE` | ~2–3 min moving, off when stopped | Low           | **Geofencing (recommended)**              |
+| `CONTINUOUS` | ~30 sec always                    | Higher        | Delivery tracking, trip tracking          |
+
+<Note>
+  **Android background limits:** On Android, location updates with the responsive preset may arrive every 5–10 minutes in practice due to Doze Mode and Background Location Limits. This applies to all apps using location services on Android, not just Radar. Use the `CONTINUOUS` preset with a foreground service if you need faster updates.
+</Note>
+
+<Tabs>
+  <Tab title="iOS">
+    ```swift
+    // Start background tracking for geofencing
+    Radar.startTracking(trackingOptions: RadarTrackingOptions.presetResponsive)
+    
+    // Check if tracking is currently active
+    let isTracking = Radar.isTracking()
+    
+    // Stop tracking (e.g., when the user logs out)
+    Radar.stopTracking()
+    ```
+
+    You only need to call `startTracking` once — the setting persists across app restarts.
+  </Tab>
+  <Tab title="Android">
+    ```kotlin
+    // Start background tracking for geofencing
+    Radar.startTracking(RadarTrackingOptions.RESPONSIVE)
+    
+    // Check if tracking is currently active
+    val isTracking = Radar.isTracking()
+    
+    // Stop tracking (e.g., when the user logs out)
+    Radar.stopTracking()
+    ```
+
+    If using the `CONTINUOUS` preset, configure a foreground service notification to prevent Android from killing the process:
+
+    ```kotlin
+    val options = RadarTrackingOptionsForegroundService()
+    options.text = "Location tracking active"
+    options.title = "MyApp"
+    options.importance = 2
+    Radar.setForegroundServiceOptions(options)
+    
+    Radar.startTracking(RadarTrackingOptions.CONTINUOUS)
+    ```
+  </Tab>
+  <Tab title="Web (JS)">
+    <Info>
+      The Web SDK does not support background tracking — browsers cannot run location services when a tab is closed. Use `trackOnce()` for foreground location checks, or consider a server-side integration for background use cases.
+    </Info>
+  </Tab>
+  <Tab title="React Native">
+    ```js
+    // Pick one preset:
+    Radar.startTrackingResponsive();   // recommended for geofencing
+    Radar.startTrackingEfficient();    // lowest battery usage
+    Radar.startTrackingContinuous();   // highest update frequency
+    
+    // Check if tracking is currently active
+    const isTracking = await Radar.isTracking();
+    
+    // Stop tracking (e.g., when the user logs out)
+    Radar.stopTracking();
+    ```
+  </Tab>
+  <Tab title="Flutter">
+    ```dart
+    // Pick one preset:
+    Radar.startTracking('responsive');   // recommended for geofencing
+    Radar.startTracking('efficient');    // lowest battery usage
+    Radar.startTracking('continuous');   // highest update frequency
+    
+    // Check if tracking is currently active
+    bool isTracking = await Radar.isTracking();
+    
+    // Stop tracking (e.g., when the user logs out)
+    Radar.stopTracking();
+    ```
+
+    For continuous tracking on Android, set foreground service options first:
+
+    ```dart
+    Radar.setForegroundServiceOptions({
+        'text': 'Location tracking active',
+        'title': 'MyApp',
+        'importance': 2,
+        'updatesOnly': false,
+        'activity': 'com.yourapp.MainActivity',
+    });
+    Radar.startTracking('continuous');
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Step 6: Handle geofence events
+
+When a user enters or exits a geofence, Radar generates an event. You can receive events two ways: **client-side** (in-app listeners) and **server-side** (webhooks).
+
+### Client-side listeners
+
+Use client-side listeners to update your UI, show a notification, or trigger an in-app action in real time.
+
+<Tabs>
+  <Tab title="iOS">
+    Make your `AppDelegate` implement `RadarDelegate`. Set the delegate before calling `startTracking` so no events are missed when the app is backgrounded or killed.
+
+    ```swift
+    import UIKit
+    import RadarSDK
+    import UserNotifications
+    
+    @UIApplicationMain
+    class AppDelegate: UIResponder, UIApplicationDelegate, RadarDelegate {
+    
+        let locationManager = CLLocationManager()
+    
+        func application(
+            _ application: UIApplication,
+            didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+        ) -> Bool {
+            Radar.initialize(publishableKey: "prj_test_pk_...")
+            Radar.setDelegate(self)              // set before startTracking
+            Radar.setUserId("user-123")
+            locationManager.delegate = self
+            locationManager.requestAlwaysAuthorization()
+            Radar.startTracking(trackingOptions: .presetResponsive)
+            return true
+        }
+    
+        func didReceiveEvents(_ events: [RadarEvent], user: RadarUser) {
+            for event in events {
+                switch event.type {
+                case .userEnteredGeofence:
+                    showNotification("You entered \(event.geofence?.description ?? "a geofence")")
+                case .userExitedGeofence:
+                    showNotification("You exited \(event.geofence?.description ?? "a geofence")")
+                default:
+                    break
+                }
+            }
+        }
+    
+        func didUpdateLocation(_ location: CLLocation, user: RadarUser) {
+            print("Updated: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+        }
+    
+        func didFail(status: RadarStatus) {
+            print("Radar error: \(status)")
+        }
+    
+        private func showNotification(_ body: String) {
+            let content = UNMutableNotificationContent()
+            content.body = body
+            content.sound = .default
+            let request = UNNotificationRequest(
+                identifier: UUID().uuidString, content: content, trigger: nil)
+            UNUserNotificationCenter.current().add(request)
+        }
+    }
+    ```
+  </Tab>
+  <Tab title="Android">
+    Create a `RadarReceiver` subclass and register it in your `AndroidManifest.xml` so it works even when the app is killed.
+
+    ```kotlin
+    // RadarEventReceiver.kt
+    import android.content.Context
+    import android.location.Location
+    import io.radar.sdk.Radar
+    import io.radar.sdk.RadarReceiver
+    import io.radar.sdk.model.RadarEvent
+    import io.radar.sdk.model.RadarUser
+    
+    class RadarEventReceiver : RadarReceiver() {
+    
+        override fun onEventsReceived(
+            context: Context,
+            events: Array<RadarEvent>,
+            user: RadarUser?
+        ) {
+            for (event in events) {
+                when (event.type) {
+                    RadarEvent.RadarEventType.USER_ENTERED_GEOFENCE ->
+                        showNotification(context, "Entered ${event.geofence?.description}")
+                    RadarEvent.RadarEventType.USER_EXITED_GEOFENCE ->
+                        showNotification(context, "Exited ${event.geofence?.description}")
+                    else -> {}
+                }
+            }
+        }
+    
+        override fun onLocationUpdated(context: Context, location: Location, user: RadarUser) {
+            // optional: react to each location update
+        }
+    
+        override fun onError(context: Context, status: Radar.RadarStatus) {
+            // handle errors
+        }
+    
+        private fun showNotification(context: Context, message: String) {
+            // build and post a notification using NotificationManager
+        }
+    }
+    ```
+
+    Register the receiver in your `AndroidManifest.xml`:
+
+    ```xml
+    <receiver
+        android:name=".RadarEventReceiver"
+        android:enabled="true"
+        android:exported="false">
+        <intent-filter>
+            <action android:name="io.radar.sdk.RECEIVED" />
+        </intent-filter>
+    </receiver>
+    ```
+  </Tab>
+  <Tab title="Web (JS)">
+    The Web SDK is foreground-only. Events are returned directly from the `trackOnce()` promise — there is no persistent background listener.
+
+    ```js
+    const { events } = await Radar.trackOnce();
+    
+    events.forEach(event => {
+        switch (event.type) {
+            case 'user.entered_geofence':
+                console.log('Entered:', event.geofence.tag, event.geofence.externalId);
+                break;
+            case 'user.exited_geofence':
+                console.log('Exited:', event.geofence.tag, event.geofence.externalId);
+                break;
+        }
+    });
+    ```
+  </Tab>
+  <Tab title="React Native">
+    Add event listeners before calling `startTracking`. Place them outside your component render lifecycle so they survive backgrounding.
+
+    ```js
+    import Radar from 'react-native-radar';
+    
+    Radar.on('events', ({ events, user }) => {
+        events.forEach(event => {
+            if (event.type === 'user.entered_geofence') {
+                console.log('Entered:', event.geofence.description);
+            } else if (event.type === 'user.exited_geofence') {
+                console.log('Exited:', event.geofence.description);
+            }
+        });
+    });
+    
+    Radar.on('location', ({ location, user }) => {
+        // optional: react to each location update
+    });
+    
+    Radar.on('error', (err) => {
+        console.error('Radar error:', err);
+    });
+    
+    // Remove a listener when no longer needed:
+    // Radar.off('events');
+    ```
+  </Tab>
+  <Tab title="Flutter">
+    Register listeners before calling `startTracking`. Use `@pragma('vm:entry-point')` so Dart doesn't tree-shake these callbacks in release builds.
+
+    ```dart
+    @pragma('vm:entry-point')
+    static void onEvents(Map result) {
+        final events = result['events'] as List? ?? [];
+        for (final event in events) {
+            if (event['type'] == 'user.entered_geofence') {
+                print('Entered: ${event['geofence']['description']}');
+            } else if (event['type'] == 'user.exited_geofence') {
+                print('Exited: ${event['geofence']['description']}');
+            }
+        }
+    }
+    
+    @pragma('vm:entry-point')
+    static void onLocation(Map result) {
+        // optional: react to each location update
+    }
+    
+    @pragma('vm:entry-point')
+    static void onError(Map err) {
+        print('Radar error: $err');
+    }
+    
+    // Register before startTracking
+    Radar.onEvents(onEvents);
+    Radar.onLocation(onLocation);
+    Radar.onError(onError);
+    
+    Radar.startTracking('responsive');
+    ```
+  </Tab>
+</Tabs>
+
+### Server-side webhooks
+
+For backend workflows — updating databases, triggering fulfillment, sending push notifications via your own service — configure a webhook in the Radar dashboard under **Settings → Webhooks**. Radar will `POST` a JSON payload to your endpoint whenever an event fires.
+
+A geofence entry event payload looks like:
+
+```json
+{
+  "type": "user.entered_geofence",
+  "createdAt": "2024-03-01T12:00:00.000Z",
+  "user": {
+    "userId": "user-123",
+    "metadata": { "plan": "premium" }
+  },
+  "geofence": {
+    "tag": "store",
+    "externalId": "store-456",
+    "description": "Brooklyn Store"
+  }
+}
+```
+
+---
+
+## Step 7: Test your integration
+
+### Simulate location in the dashboard
+
+The Radar dashboard includes a built-in simulator. Go to **Geofences**, select a geofence, and use **Simulate** to fire a test entry or exit event without moving a physical device.
+
+### Mock tracking in code
+
+You can simulate a route between two coordinates programmatically:
+
+<Tabs>
+  <Tab title="iOS">
+    ```swift
+    Radar.mockTracking(
+        origin: CLLocation(latitude: 40.714708, longitude: -74.035807),
+        destination: CLLocation(latitude: 40.717410, longitude: -74.053334),
+        mode: .car,
+        steps: 10,
+        interval: 3
+    ) { (status, location, events, user) in
+        // called at each simulated step
+    }
+    ```
+  </Tab>
+  <Tab title="Android">
+    ```kotlin
+    Radar.mockTracking(
+        origin = Location("").apply { latitude = 40.714708; longitude = -74.035807 },
+        destination = Location("").apply { latitude = 40.717410; longitude = -74.053334 },
+        mode = Radar.RadarRouteMode.CAR,
+        steps = 10,
+        interval = 3
+    ) { status, location, events, user ->
+        // called at each simulated step
+    }
+    ```
+  </Tab>
+  <Tab title="React Native">
+    ```js
+    Radar.mockTracking({
+        origin: { latitude: 40.714708, longitude: -74.035807 },
+        destination: { latitude: 40.717410, longitude: -74.053334 },
+        mode: 'car',
+        steps: 10,
+        interval: 3,
+    });
+    ```
+  </Tab>
+  <Tab title="Flutter">
+    ```dart
+    Radar.mockTracking(
+        origin: {'latitude': 40.714708, 'longitude': -74.035807},
+        destination: {'latitude': 40.717410, 'longitude': -74.053334},
+        mode: 'car',
+        steps: 10,
+        interval: 3,
+    );
+    ```
+  </Tab>
+</Tabs>
+
+### Verify in the dashboard
+
+| Page                                                          | What to check                                  |
+| ------------------------------------------------------------- | ---------------------------------------------- |
+| [Users](https://dashboard.radar.com/geofencing/users)         | User's location is being received              |
+| [Events](https://dashboard.radar.com/geofencing/events)       | Geofence entry/exit events appear in real time |
+| [Geofences](https://dashboard.radar.com/geofencing/geofences) | Which users are currently inside each geofence |
+
+---
+
+## Troubleshooting
+
+| Symptom                                   | Likely cause                                      | Fix                                                                                             |
+| ----------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| User not appearing on Users page          | SDK not initialized or `trackOnce` not called     | Check `status` in callback — `ERROR_PUBLISHABLE_KEY` means `initialize` wasn't called           |
+| Events not firing in background           | Missing background permission or background modes | Ensure `Always` permission is granted; enable Location updates background mode on iOS           |
+| Android location delayed 5–10 min         | Doze Mode / Background Location Limits            | Expected Android behavior; use `CONTINUOUS` preset with a foreground service for faster updates |
+| `ERROR_PERMISSIONS` on `trackOnce`        | Permissions not yet granted                       | Call permission request flow before `trackOnce`                                                 |
+| No events despite being inside a geofence | Geofence not active or wrong tag/externalId       | Verify the geofence is active on the Geofences page and the tag/externalId match                |
