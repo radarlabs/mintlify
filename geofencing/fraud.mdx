@@ -278,7 +278,7 @@ In a web app, install the SDK package and the plugin package from npm:
 npm install @radarlabs/plugin-fraud radar-sdk-js
 ```
 
-#### Companion app and no-download solution
+#### Companion apps and no-download solution
 
 The web SDK supports a companion app solution and a pure-JavaScript no-download solution.
 
@@ -289,6 +289,14 @@ To skip the Radar Verify app and use the no-download solution, pass `{ skipVerif
 <Info>
   Contact your customer success manager to learn how you can customize the Radar Verify app installer or branding.
 </Info>
+
+#### Native desktop SDKs
+
+A native Mac SDK (supporting macOS 12.4+), a native Windows SDK (supporting Windows 10+ and .NET 8+), and an Electron plugin are available. 
+
+<Info>
+  Contact your customer success manager for access to desktop SDKs.
+</Info>>
 
 ## Verifying user locations
 
@@ -336,7 +344,7 @@ Radar.trackVerified { status, token ->
 
 
 ```javascript Web
-const skipVerifyApp = false // use true for no-download solution
+const skipVerifyApp = false; // use true for no-download solution
 
 Radar.trackVerified({ skipVerifyApp }).then((result) => {
   const { passed, token, expiresIn, user } = result;
@@ -540,6 +548,93 @@ Radar.onToken(onToken);
 ```
 
 </CodeGroup>
+
+
+### Setting product type
+
+You can configure multiple product types within a project, each with its own [allowed states and countries](#allowed-states-and-countries) and other settings. Call `Radar.setProduct(product)` to pass the product type before performing a location check.
+
+<Info>
+  Contact your customer success manager for help configuring product types and allowed jurisdictions.
+</Info>
+
+### Setting expected jurisdiction
+
+In addition to setting [allowed states and countries](#allowed-states-and-countries), you can optionally set an expected jurisdiction and fail location checks outside of that jurisdiction regardless of whether that jurisdiction is allowed in settings. Call `Radar.setExpectedJurisdiction(expectedCountryCode, expectedStateCode)` to set the expected jurisdiction before performing a location check.
+
+### Temporary auth tokens
+
+<Info>
+  Contact your customer success manager to access temporary auth tokens and/or disable publishable API keys on your project.
+</Info>
+
+As an alternative to publishable API keys, you can create temporary auth tokens. Auth tokens have a `ttl` and optional constraints as claims (e.g., `product`, `expectedCountryCode`, `expectedStateCode`, and/or `userId).
+
+To create auth tokens, first create a public-private key pair. Save your private key and ensure that it never leaves your server. Copy your public key. For example:
+
+```bash
+openssl ecparam -genkey -name prime256v1 -noout -out private-key.pem
+openssl ec -in private-key.pem -pubout -out public-key.pem
+cat public-key.pem | pbcopy
+``
+
+On the [Settings](https://radar.com/dashboard/settings) page, under *Auth tokens*, add a new public key. Paste the full contents of your public key PEM file, including the `BEGIN` and `END` lines. Copy the *Key ID*.
+
+An auth token is a JSON Web Token (JWT). To create an auth token, create a JWT signed with your private key on your server. Pass `now` for `iat`, `now + ttl` for `exp`, `radar-api-v1` as `aud` (audience), a custom value for `iss` (issuer), your public key *Key ID* for `kid`, and any optional constraints as claims. For example:
+
+```javascript
+const jwt = require('jsonwebtoken');
+
+const payload = {
+  iss,
+  aud: 'radar-api-v1',
+  iat: now,
+  exp: now + ttl,
+  constraints: { // optional
+    expectedCountryCode: constraints.expectedCountryCode,
+    expectedStateCode: constraints.expectedStateCode,
+    product: constraints.product,
+  },
+};
+
+const authToken = jwt.sign(payload, PRIVATE_KEY, {
+  algorithm: 'ES256',
+  header: {
+    typ: 'JWT',
+    kid: PUBLIC_KEY_ID,
+  },
+});
+```
+
+Send the auth token to your client and use it to initialize the SDK instead of your publishable API key.
+
+<CodeGroup>
+
+```swift Swift
+Radar.initialize(authToken: authToken)
+```
+
+
+```kotlin Kotlin
+Radar.initialize(
+  authToken = authToken,
+  options = RadarInitializeOptions(fraud = true)
+)
+```
+
+
+```javascript Web
+Radar.initialize({ authToken });
+```
+
+
+```javascript React Native
+Radar.initialize({ authToken, fraud: true });
+```
+
+</CodeGroup>
+
+If the auth token is invalid, the signature is invalid, or any of the claims don't match, `Radar.trackVerified()` will return `ERROR_FORBIDDEN`.
 
 ### Failure reasons
 
