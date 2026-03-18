@@ -296,7 +296,7 @@ A native Mac SDK (supporting macOS 12.4+), a native Windows SDK (supporting Wind
 
 <Info>
   Contact your customer success manager for access to desktop SDKs.
-</Info>>
+</Info>
 
 ## Verifying user locations
 
@@ -318,6 +318,8 @@ You can call `Radar.trackVerified()` to manually perform a location check. `Rada
 - `expiresIn`: The number of seconds until the token expires.
 - `user`: The user, with detailed information in `user.fraud`, `user.country`, and `user.state`.
 - `events`: The events generated, if any.
+
+You can optionally pass a `reason` to `Radar.trackVerified()` to specify the reason for performing the location check (e.g., `"login"`, `"signup"`, `"withdrawal"). Location check reasons are exposed in filters, reports, and rules.
 
 <CodeGroup>
 
