@@ -580,7 +580,7 @@ openssl ec -in private-key.pem -pubout -out public-key.pem
 cat public-key.pem | pbcopy
 ```
 
-On the [Settings](https://radar.com/dashboard/settings) page, under *Auth tokens*, add a new public key. Paste the full contents of your public key PEM file, including the `BEGIN` and `END` lines. Copy the *Key ID*.
+On the [Settings page](https://dashboard.radar.com/settings), under *Auth tokens*, add a new public key. Paste the full contents of your public key PEM file, including the `BEGIN` and `END` lines. Copy the *Key ID*.
 
 An auth token is a JSON Web Token (JWT). To create an auth token, create a JWT signed with your private key on your server. Pass `now` for `iat`, `now + ttl` for `exp`, `radar-api-v1` as `aud` (audience), a custom value for `iss` (issuer), your public key *Key ID* for `kid`, and any optional constraints as claims. For example:
 
