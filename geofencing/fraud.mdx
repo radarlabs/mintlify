@@ -578,7 +578,7 @@ To create auth tokens, first create a public-private key pair. Save your private
 openssl ecparam -genkey -name prime256v1 -noout -out private-key.pem
 openssl ec -in private-key.pem -pubout -out public-key.pem
 cat public-key.pem | pbcopy
-``
+```
 
 On the [Settings](https://radar.com/dashboard/settings) page, under *Auth tokens*, add a new public key. Paste the full contents of your public key PEM file, including the `BEGIN` and `END` lines. Copy the *Key ID*.
 
