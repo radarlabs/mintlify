@@ -572,7 +572,7 @@ In addition to setting [allowed states and countries](#allowed-states-and-countr
 
 As an alternative to publishable API keys, you can create temporary auth tokens. Auth tokens have a `ttl` and optional constraints (e.g., `product`, `expectedCountryCode`, `expectedStateCode`, and/or `userId`).
 
-First, create a public-private key pair. Save your private key. You private key should never leave your server. Copy your public key. For example:
+First, create an EC P-256 key pair. Save your private key. You private key should never leave your server. Copy your public key. For example:
 
 ```bash
 openssl ecparam -genkey -name prime256v1 -noout -out private-key.pem
