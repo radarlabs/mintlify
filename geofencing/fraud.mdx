@@ -278,7 +278,7 @@ In a web app, install the SDK package and the plugin package from npm:
 npm install @radarlabs/plugin-fraud radar-sdk-js
 ```
 
-#### Companion app and no-download solution
+#### Companion apps and no-download solution
 
 The web SDK supports a companion app solution and a pure-JavaScript no-download solution.
 
@@ -288,6 +288,14 @@ To skip the Radar Verify app and use the no-download solution, pass `{ skipVerif
 
 <Info>
   Contact your customer success manager to learn how you can customize the Radar Verify app installer or branding.
+</Info>
+
+#### Native desktop SDKs
+
+A native Mac SDK (supporting macOS 12.4+), a native Windows SDK (supporting Windows 10+ and .NET 8+), and an Electron plugin are available. 
+
+<Info>
+  Contact your customer success manager for access to desktop SDKs.
 </Info>
 
 ## Verifying user locations
@@ -310,6 +318,8 @@ You can call `Radar.trackVerified()` to manually perform a location check. `Rada
 - `expiresIn`: The number of seconds until the token expires.
 - `user`: The user, with detailed information in `user.fraud`, `user.country`, and `user.state`.
 - `events`: The events generated, if any.
+
+You can optionally pass a `reason` to `Radar.trackVerified()` to specify the reason for performing the location check (e.g., `"login"`, `"signup"`, `"withdrawal"`). Location check reasons are exposed in filters, reports, and rules.
 
 <CodeGroup>
 
@@ -336,7 +346,7 @@ Radar.trackVerified { status, token ->
 
 
 ```javascript Web
-const skipVerifyApp = false // use true for no-download solution
+const skipVerifyApp = false; // use true for no-download solution
 
 Radar.trackVerified({ skipVerifyApp }).then((result) => {
   const { passed, token, expiresIn, user } = result;
@@ -385,14 +395,14 @@ var res = await Radar.trackVerified();
 
 </CodeGroup>
 
-You can send the JWT to your server and validate the signature using a [JWT library](https://jwt.io/libraries). For example, in JavaScript:
+You can send the JWT to your server and validate the signature. For example, in JavaScript:
 
 ```javascript
-const jwt = require('jsonwebtoken');
+import { jwtVerify } from 'jose';
 
 try {
-  const decoded = jwt.verify(token, SECRET_KEY);
-  const { user } = decoded;
+  const { payload } = await jwtVerify(token, SECRET_KEY);
+  const { user } = payload;
   // token is valid, check payload to allow or deny access
 } catch (err) {
   // token is invalid, deny access, show error message
@@ -454,7 +464,7 @@ override fun onTokenUpdated(context: Context, token: RadarVerifiedLocationToken)
 
 
 ```javascript Web
-const skipVerifyApp = false // use true for no-download solution
+const skipVerifyApp = false; // use true for no-download solution
 
 Radar.startTrackingVerified({ skipVerifyApp, interval: 1200 });
 
@@ -540,6 +550,92 @@ Radar.onToken(onToken);
 ```
 
 </CodeGroup>
+
+
+### Setting product type
+
+You can configure multiple product types within a project, each with its own [allowed states and countries](#allowed-states-and-countries) and other settings. Call `Radar.setProduct(product)` to pass the product type before performing a location check.
+
+<Info>
+  Contact your customer success manager for help configuring product types and allowed jurisdictions.
+</Info>
+
+### Setting expected jurisdiction
+
+In addition to setting [allowed states and countries](#allowed-states-and-countries), you can optionally set an expected jurisdiction and fail location checks outside of that jurisdiction regardless of whether that jurisdiction is allowed in settings. Call `Radar.setExpectedJurisdiction(expectedCountryCode, expectedStateCode)` to set the expected jurisdiction before performing a location check.
+
+### Auth tokens
+
+<Info>
+  Contact your customer success manager to access temporary auth tokens and/or disable publishable API keys on your project.
+</Info>
+
+As an alternative to publishable API keys, you can create temporary auth tokens. Auth tokens are JSON Web Tokens (JWTs) created by you on your server, signed with a private key, and sent by you to your client to be used instead of publishable API keys. They have a `ttl` and optional `constraints` (e.g., `product`, `expectedCountryCode`, `expectedStateCode`) as claims.
+
+Auth tokens are supported on [iOS SDK](/sdk/ios) version `3.28.0` or higher, [Android SDK](/sdk/android) version `3.27.0` or higher, and web SDK version `5.1.0` or higher.
+
+First, create an EC P-256 key pair. Save your private key. Your private key should never leave your server. Copy your public key. For example:
+
+```bash
+openssl ecparam -genkey -name prime256v1 -noout -out private-key.pem
+openssl ec -in private-key.pem -pubout -out public-key.pem
+cat public-key.pem | pbcopy
+```
+
+Under _Auth tokens_ on the [Settings page](https://dashboard.radar.com/settings), add a new public key. Paste the full contents of your public key PEM file, including the `BEGIN` and `END` lines.
+
+To create an auth token, sign a JWT using ES256 on your server. The payload should include `now` for `iat`, `now + ttl` for `exp`, `radar-api-v1` for `aud` (audience), a custom value for `iss` (issuer), the public key *Key ID* from the dashboard for `kid`, and any optional `constraints` as claims. For example:
+
+```javascript
+import { SignJWT } from 'jose';
+
+const payload = {
+  iss,
+  aud: 'radar-api-v1',
+  constraints: { // optional
+    expectedCountryCode,
+    expectedStateCode,
+    product,
+  },
+};
+
+const authToken = await new SignJWT(payload)
+  .setProtectedHeader({
+    alg: 'ES256',
+    typ: 'JWT',
+    kid: PUBLIC_KEY_ID,
+  })
+  .setIssuedAt(now)
+  .setExpirationTime(now + ttl)
+  .sign(PRIVATE_KEY);
+```
+
+Send the auth token to your client and use it to initialize the SDK instead of your publishable API key.
+
+<CodeGroup>
+
+```swift Swift
+Radar.initialize(authToken: authToken)
+```
+
+
+```kotlin Kotlin
+Radar.initialize(RadarInitializeOptions(authToken = authToken, fraud = true))
+```
+
+
+```javascript Web
+Radar.initialize({ authToken });
+```
+
+
+```javascript React Native
+Radar.initialize({ authToken, fraud: true });
+```
+
+</CodeGroup>
+
+If the auth token is invalid, the signature is invalid, or any of the claims don't match, `Radar.trackVerified()` will return `ERROR_FORBIDDEN`.
 
 ### Failure reasons
 
