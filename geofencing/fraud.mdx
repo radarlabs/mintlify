@@ -395,14 +395,14 @@ var res = await Radar.trackVerified();
 
 </CodeGroup>
 
-You can send the JWT to your server and validate the signature using a [JWT library](https://jwt.io/libraries). For example, in JavaScript:
+You can send the JWT to your server and validate the signature. For example, in JavaScript:
 
 ```javascript
-const jwt = require('jsonwebtoken');
+import { jwtVerify } from 'jose';
 
 try {
-  const decoded = jwt.verify(token, SECRET_KEY);
-  const { user } = decoded;
+  const { payload } = await jwtVerify(token, SECRET_KEY);
+  const { user } = payload;
   // token is valid, check payload to allow or deny access
 } catch (err) {
   // token is invalid, deny access, show error message
@@ -570,9 +570,11 @@ In addition to setting [allowed states and countries](#allowed-states-and-countr
   Contact your customer success manager to access temporary auth tokens and/or disable publishable API keys on your project.
 </Info>
 
-As an alternative to publishable API keys, you can create temporary auth tokens. Auth tokens have a `ttl` and optional constraints (e.g., `product`, `expectedCountryCode`, `expectedStateCode`, and/or `userId`).
+As an alternative to publishable API keys, you can create temporary auth tokens. Auth tokens are JSON Web Tokens (JWTs) created by you on your server, signed with a private key, and sent by you to your client to be used instead of publishable API keys. They have a `ttl` and optional `constraints` (e.g., `product`, `expectedCountryCode`, `expectedStateCode`) as claims.
 
-First, create an EC P-256 key pair. Save your private key. You private key should never leave your server. Copy your public key. For example:
+Auth tokens are supported on [iOS SDK](/sdk/ios) version `3.27.1` or higher, [Android SDK](/sdk/android) version `3.26.1` or higher, and web SDK version `5.1.0` or higher.
+
+First, create an EC P-256 key pair. Save your private key. Your private key should never leave your server. Copy your public key. For example:
 
 ```bash
 openssl ecparam -genkey -name prime256v1 -noout -out private-key.pem
@@ -580,18 +582,16 @@ openssl ec -in private-key.pem -pubout -out public-key.pem
 cat public-key.pem | pbcopy
 ```
 
-On the [Settings page](https://dashboard.radar.com/settings), under *Auth tokens*, add a new public key. Paste the full contents of your public key PEM file, including the `BEGIN` and `END` lines.
+Under _Auth tokens_ on the [Settings page](https://dashboard.radar.com/settings), add a new public key. Paste the full contents of your public key PEM file, including the `BEGIN` and `END` lines.
 
-An auth token is a JSON Web Token (JWT). To create one, sign a JWT using ES256 on your server. The payload should include `now` for `iat`, `now + ttl` for `exp`, `radar-api-v1` for `aud` (audience), a custom value for `iss` (issuer), the public key *Key ID* from the dashboard for `kid`, and any optional constraints as claims. For example:
+To create an auth token, sign a JWT using ES256 on your server. The payload should include `now` for `iat`, `now + ttl` for `exp`, `radar-api-v1` for `aud` (audience), a custom value for `iss` (issuer), the public key *Key ID* from the dashboard for `kid`, and any optional constraints as claims. For example:
 
 ```javascript
-const jwt = require('jsonwebtoken');
+import { SignJWT } from 'jose';
 
 const payload = {
   iss,
   aud: 'radar-api-v1',
-  iat: now,
-  exp: now + ttl,
   constraints: { // optional
     expectedCountryCode,
     expectedStateCode,
@@ -599,13 +599,15 @@ const payload = {
   },
 };
 
-const authToken = jwt.sign(payload, PRIVATE_KEY, {
-  algorithm: 'ES256',
-  header: {
+const authToken = await new SignJWT(payload)
+  .setProtectedHeader({
+    alg: 'ES256',
     typ: 'JWT',
     kid: PUBLIC_KEY_ID,
-  },
-});
+  })
+  .setIssuedAt(now)
+  .setExpirationTime(now + ttl)
+  .sign(PRIVATE_KEY);
 ```
 
 Send the auth token to your client and use it to initialize the SDK instead of your publishable API key.
