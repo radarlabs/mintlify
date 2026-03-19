@@ -572,7 +572,7 @@ In addition to setting [allowed states and countries](#allowed-states-and-countr
 
 As an alternative to publishable API keys, you can create temporary auth tokens. Auth tokens have a `ttl` and optional constraints (e.g., `product`, `expectedCountryCode`, `expectedStateCode`, and/or `userId`).
 
-To create auth tokens, first create a public-private key pair. Save your private key and ensure that it never leaves your server. Copy your public key. For example:
+First, create a public-private key pair. Save your private key. You private key should never leave your server. Copy your public key. For example:
 
 ```bash
 openssl ecparam -genkey -name prime256v1 -noout -out private-key.pem
@@ -580,9 +580,9 @@ openssl ec -in private-key.pem -pubout -out public-key.pem
 cat public-key.pem | pbcopy
 ```
 
-On the [Settings page](https://dashboard.radar.com/settings), under *Auth tokens*, add a new public key. Paste the full contents of your public key PEM file, including the `BEGIN` and `END` lines. Copy the *Key ID*.
+On the [Settings page](https://dashboard.radar.com/settings), under *Auth tokens*, add a new public key. Paste the full contents of your public key PEM file, including the `BEGIN` and `END` lines.
 
-An auth token is a JSON Web Token (JWT). To create an auth token, create a JWT signed with your private key on your server. Pass `now` for `iat`, `now + ttl` for `exp`, `radar-api-v1` as `aud` (audience), a custom value for `iss` (issuer), your public key *Key ID* for `kid`, and any optional constraints as claims. For example:
+An auth token is a JSON Web Token (JWT). To create one, sign a JWT using ES256 on your server. The payload should include `now` for `iat`, `now + ttl` for `exp`, `radar-api-v1` for `aud` (audience), a custom value for `iss` (issuer), the public key *Key ID* from the dashboard for `kid`, and any optional constraints as claims. For example:
 
 ```javascript
 const jwt = require('jsonwebtoken');
@@ -618,10 +618,7 @@ Radar.initialize(authToken: authToken)
 
 
 ```kotlin Kotlin
-Radar.initialize(
-  authToken = authToken,
-  options = RadarInitializeOptions(fraud = true)
-)
+Radar.initialize(RadarInitializeOptions(authToken = authToken, fraud = true))
 ```
 
 
