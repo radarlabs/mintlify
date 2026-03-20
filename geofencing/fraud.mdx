@@ -639,14 +639,12 @@ cat public-key.pem | pbcopy
 
 Under _Auth tokens_ on the [Settings page](https://dashboard.radar.com/settings), add a new public key. Paste the full contents of your public key PEM file, including the `BEGIN` and `END` lines.
 
-To create an auth token, sign a JWT using ES256 on your server. The payload should include `now` for `iat`, `now + ttl` for `exp`, `radar-api-v1` for `aud` (audience), a custom value for `iss` (issuer), the public key *Key ID* from the dashboard for `kid`, and any optional `constraints` as claims. For example:
+To create an auth token, sign a JWT using ES256 on your server. The payload should include `now` for `iat`, `now + ttl` for `exp`, the public key *Key ID* from the dashboard for `kid`, and any optional `constraints` as claims. For example:
 
 ```javascript
 import { SignJWT } from 'jose';
 
 const payload = {
-  iss,
-  aud: 'radar-api-v1',
   constraints: { // optional
     expectedCountryCode,
     expectedStateCode,
