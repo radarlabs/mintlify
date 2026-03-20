@@ -402,14 +402,14 @@ RadarVerify.setup()
 
 // perform a location check
 let result = await RadarVerify.trackVerified(
-    publishableKey: publishableKey,
-    userId: userId,
-    expectedCountryCode: expectedCountryCode,
-    expectedStateCode: expectedCountryCode,
-    product: product,
-    reason: reason,
-    transactionId: transactionId,
-    metadata: metadata
+  publishableKey: publishableKey,
+  userId: userId,
+  expectedCountryCode: expectedCountryCode,
+  expectedStateCode: expectedCountryCode,
+  product: product,
+  reason: reason,
+  transactionId: transactionId,
+  metadata: metadata
 )
 
 if result.token?.passed == true {
