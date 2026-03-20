@@ -214,7 +214,7 @@ Learn more about [Network Security Configuration on Android](https://developer.a
 
 If using [iOS SDK](/sdk/ios) version `3.26.0` or higher, you must install an additional plugin.
 
-Add the `RadarSDKFraud` package using Swift Package Manager.
+In Xcode, go to _File > Swift Packages > Add Package Dependency_. Enter `https://github.com/radarlabs/radar-sdk-ios-spm-fraud.git` for the _Package Repository URL_.
 
 If you do not install the plugin, `Radar.trackVerified()` will return `ERROR_PLUGIN`.
 
@@ -323,7 +323,7 @@ You can optionally pass a `reason` to `Radar.trackVerified()` to specify the rea
 
 <CodeGroup>
 
-```swift Swift
+```swift Swift (iOS)
 Radar.trackVerified { (status, token) in
   if token?.passed == true {
     // allow access, send token to server
@@ -391,6 +391,61 @@ Radar.trackVerified().then((result) => {
 
 ```javascript Flutter
 var res = await Radar.trackVerified();
+```
+
+
+```swift Swift (Mac)
+import RadarVerifySDK
+
+// request location permissions and warm up location services
+RadarVerify.setup()
+
+// perform a location check
+let result = await RadarVerify.trackVerified(
+  publishableKey: publishableKey,
+  userId: userId,
+  expectedCountryCode: expectedCountryCode,
+  expectedStateCode: expectedStateCode,
+  product: product,
+  reason: reason,
+  transactionId: transactionId,
+  metadata: metadata
+)
+
+if result.token?.passed == true {
+  // allow access, send token to server
+} else {
+  // deny access, show error message
+}
+```
+
+
+```csharp C# (Windows)
+using RadarVerify;
+
+// request location permissions and warm up location services
+await Radar.Setup();
+
+// perform a location check
+var (status, token) = await Radar.TrackVerified(
+  publishableKey: publishableKey,
+  userId: userId,
+  expectedCountryCode: expectedCountryCode,
+  expectedStateCode: expectedStateCode,
+  product: product,
+  reason: reason,
+  transactionId: transactionId,
+  metadata: metadata
+);
+
+if (token?.Passed == true)
+{
+  // allow access, send token to server
+}
+else
+{
+  // deny access, show error message
+}
 ```
 
 </CodeGroup>
@@ -584,14 +639,12 @@ cat public-key.pem | pbcopy
 
 Under _Auth tokens_ on the [Settings page](https://dashboard.radar.com/settings), add a new public key. Paste the full contents of your public key PEM file, including the `BEGIN` and `END` lines.
 
-To create an auth token, sign a JWT using ES256 on your server. The payload should include `now` for `iat`, `now + ttl` for `exp`, `radar-api-v1` for `aud` (audience), a custom value for `iss` (issuer), the public key *Key ID* from the dashboard for `kid`, and any optional `constraints` as claims. For example:
+To create an auth token, sign a JWT using ES256 on your server. The payload should include `now` for `iat`, `now + ttl` for `exp`, the public key *Key ID* from the dashboard for `kid`, and any optional `constraints` as claims. For example:
 
 ```javascript
 import { SignJWT } from 'jose';
 
 const payload = {
-  iss,
-  aud: 'radar-api-v1',
   constraints: { // optional
     expectedCountryCode,
     expectedStateCode,
@@ -635,7 +688,7 @@ Radar.initialize({ authToken, fraud: true });
 
 </CodeGroup>
 
-If the auth token is invalid, the signature is invalid, or any of the claims don't match, `Radar.trackVerified()` will return `ERROR_FORBIDDEN`.
+If the auth token is invalid or the signature is invalid, `Radar.trackVerified()` will return `ERROR_UNAUTHORIZED`. If any of the claims don't match, `Radar.trackVerified()` will return `ERROR_FORBIDDEN`.
 
 ### Failure reasons
 
