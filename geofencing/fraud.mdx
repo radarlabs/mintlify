@@ -109,7 +109,7 @@ With [Regions](/geofencing/regions), you can mark specific countries or states a
 
 Radar exposes your settings in `user.country.allowed` and `user.state.allowed`.
 
-Additionally, you can enable buffer zones and exclusion zones for different states. If buffer zones and exclusion zones are enabled, `user.state.inBufferZone` and `user.state.inExclusionZone` indicates whether the user is within a buffer zone or exclusion zone.
+Additionally, you can enable buffer zones and exclusion zones for different states. If buffer zones and exclusion zones are enabled, `user.state.inBufferZone` and `user.state.inExclusionZone` indicate whether the user is within a buffer zone or exclusion zone.
 
 While you can work with individual flags, Radar also exposes `user.state.passed` and `user.country.passed` flags that indicate whether all jurisdiction checks passed.
 
@@ -702,7 +702,7 @@ If `passed == false`, responses include an array of more detailed [failure reaso
 - **`country_not_expected`**: The user's location is in a country that is not expected based on `Radar.setExpectedJurisdiction()`.
 - **`country_in_buffer_zone`**: The user's location is too close to [the border of a country](#allowed-states-and-countries), either based on a jurisdiction-specific threshold or based on the location accuracy reported by the device (i.e., a "radius of uncertainty" that overlaps a country border).
 - **`country_in_exclusion_zone`**: The user's location is in a [country-specific exclusion zone](#allowed-states-and-countries), if enabled.
-- **`state_not_allowed`**: The user's location is in a state or province that is not allowed according to [jurisdiction settings](#allowed-states-and-countries)
+- **`state_not_allowed`**: The user's location is in a state or province that is not allowed according to [jurisdiction settings](#allowed-states-and-countries).
 - **`state_not_expected`**: The user's location is in a state or province that is not expected according to `Radar.setExpectedJurisdiction()`.
 - **`state_in_buffer_zone`**: The user's location is too close to [the border of a state or province](#allowed-states-and-countries), either based on a jurisdiction-specific threshold or based on the location accuracy reported by the device (i.e., a "radius of uncertainty" that overlaps a state or province border).
 - **`state_in_exclusion_zone`**: The user's location is in a [state- or province-specific exclusion zone](#allowed-states-and-countries), if enabled.
