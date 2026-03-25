@@ -44,7 +44,7 @@ Trips provides the following user context:
 }
 ```
 
-For [multi-leg trips](#multi-leg-trips), the response includes additional fields:
+For [multi-leg trips](#multi-leg-trips), the trip object includes `currentLegId` and `legs` fields. The top-level `destinationGeofenceTag`, `destinationGeofenceExternalId`, and `destinationLocation` fields are not present, as destinations are defined on each leg instead:
 
 ```json
 {
@@ -58,10 +58,10 @@ For [multi-leg trips](#multi-leg-trips), the response includes additional fields
       "Car Model": "Green Honda Civic"
     },
     "mode": "car",
-    "currentLegId": "6f4e60591d3c8e006d92g6ea",
+    "currentLegId": "6f4e60591d3c8e006d9206ea",
     "legs": [
       {
-        "_id": "6f4e60591d3c8e006d92g6ea",
+        "_id": "6f4e60591d3c8e006d9206ea",
         "status": "started",
         "destinationGeofenceTag": "stop",
         "destinationGeofenceExternalId": "stop-1",
@@ -76,7 +76,7 @@ For [multi-leg trips](#multi-leg-trips), the response includes additional fields
         }
       },
       {
-        "_id": "7g5f71602e4d9f117ea3h7fb",
+        "_id": "705f71602e4d9f117ea307fb",
         "status": "pending",
         "destinationGeofenceTag": "stop",
         "destinationGeofenceExternalId": "stop-2",
@@ -91,7 +91,7 @@ For [multi-leg trips](#multi-leg-trips), the response includes additional fields
         }
       },
       {
-        "_id": "8h6g82713f5eag228fb4i8gc",
+        "_id": "806082713f5ea0228fb4a80c",
         "status": "pending",
         "destinationGeofenceTag": "store",
         "destinationGeofenceExternalId": "store-1",
@@ -418,7 +418,7 @@ You can receive events client-side via the [SDK](/sdk) or server-side via [event
 ## Multi-leg trips
 
 <Info>
-  Multi-leg trips requires additional configuration. Contact your customer success manager or reach out to us at [radar.com/support](https://radar.com/support) to enable this feature.
+  Multi-leg trips require additional configuration. Contact your customer success manager or reach out to us at [radar.com/support](https://radar.com/support) to enable this feature.
 </Info>
 
 Multi-leg trips allow you to define a sequence of destination stops within a single trip. Use multi-leg trips for use cases like multi-stop delivery routes, ride-sharing with multiple pickups and dropoffs, or field service visits.
@@ -451,11 +451,7 @@ let leg4 = RadarTripLeg(destinationGeofenceTag: "store",
                         destinationGeofenceExternalId: "store-1")
 leg4.metadata = ["type": "return-to-base"]
 
-let tripOptions = RadarTripOptions(
-    externalId: "multi-stop-route-123",
-    destinationGeofenceTag: nil,
-    destinationGeofenceExternalId: nil
-)
+let tripOptions = RadarTripOptions(externalId: "multi-stop-route-123")
 tripOptions.mode = .car
 tripOptions.legs = [leg1, leg2, leg3, leg4]
 
