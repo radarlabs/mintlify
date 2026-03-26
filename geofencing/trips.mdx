@@ -427,7 +427,15 @@ Multi-leg trips allow you to define a sequence of destination stops within a sin
 
 To create a multi-leg trip, define `RadarTripLeg` objects for each stop and attach them to your `RadarTripOptions`. Set a `stopDuration` (in minutes) for intermediate stops to improve ETA accuracy for subsequent legs and the overall trip. Omit `stopDuration` for the final destination.
 
-When using legs, set `destinationGeofenceTag` and `destinationGeofenceExternalId` on each leg rather than on the trip options directly. The first leg is automatically set to `started` when the trip begins.
+Each leg's destination can be defined in one of three ways:
+
+- **Geofence** — by tag and external ID, or by geofence ID
+- **Address** — by a street address string
+- **Coordinates** — by latitude and longitude
+
+When using address or coordinate destinations, you can set an `arrivalRadius` (in meters) on the leg to define the arrival zone.
+
+The examples below use geofence-based destinations. The first leg is automatically set to `started` when the trip begins.
 
 <CodeGroup>
 
