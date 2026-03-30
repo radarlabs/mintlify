@@ -18,7 +18,7 @@ Then, on the Radar [Integrations page](https://dashboard.radar.com/integrations)
 
 Whenever events are generated, Radar will send custom events and user data to Iterable.
 
-User IDs must be aligned between Iterable and Radar for the integration to function properly. To do this, make sure you set the Radar user ID to match the Iterable user ID. For example, on iOS:
+User IDs must be aligned between Iterable and Radar for the integration to function properly. This is easiest if the user ID in matches the Iterable user ID. For example:
 
 <CodeGroup>
 
@@ -40,9 +40,9 @@ IterableApi.getInstance().updateUser(dataFields)
 
 </CodeGroup>
 
-<Note>
-  If your Iterable user ID differs from your Radar user ID, you can optionally set `metadata['iterable:user_id']` to specify the user ID sent to Iterable. When set, this value will be used as the `userId` in the Iterable integration instead of the Radar user ID.
-</Note>
+
+If your Iterable user ID differs from your Radar user ID, you can instead specify the Iterable user ID in your user's metadata. When set, this value will be used as the `userId` in the Iterable integration instead of the Radar user ID.
+
 
 <CodeGroup>
 
