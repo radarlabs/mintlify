@@ -24,7 +24,7 @@ User IDs must be aligned between Iterable and Radar for the integration to funct
 
 ```swift Swift
 IterableAPI.userId = userId
-Radar.setMetadata(["iterable:user_id": userId])
+Radar.setUserId(userId)
 let dataField = ["userId": userId]
 IterableAPI.updateUser(dataField, mergeNestedObjects: false)
 ```
@@ -32,9 +32,28 @@ IterableAPI.updateUser(dataField, mergeNestedObjects: false)
 
 ```kotlin Kotlin
 IterableApi.getInstance().setUserId(userId)
+Radar.setUserId(userId)
 val dataFields = JSONObject()
 dataFields.put("userId",userId)
 IterableApi.getInstance().updateUser(dataFields)
+```
+
+</CodeGroup>
+
+<Note>
+  If your Iterable user ID differs from your Radar user ID, you can optionally set `metadata['iterable:user_id']` to specify the user ID sent to Iterable. When set, this value will be used as the `userId` in the Iterable integration instead of the Radar user ID.
+</Note>
+
+<CodeGroup>
+
+```swift Swift
+Radar.setMetadata(["iterable:user_id": iterableUserId])
+```
+
+```kotlin Kotlin
+val metadata = JSONObject()
+metadata.put("iterable:user_id", iterableUserId)
+Radar.setMetadata(metadata)
 ```
 
 </CodeGroup>
@@ -109,7 +128,7 @@ Note that Radar uses the special string `"(null)"` to represent `null` user data
 
 | Radar User Field                     | Iterable User Data Field                 | Type          | Example Value                              | Context Type                       |
 | ------------------------------------ | ---------------------------------------- | ------------- | ------------------------------------------ | ---------------------------------- |
-| `metadata['iterable:user_id']`       | `userId`                                 | string        | `"e4b2a7d1-9c83-4f5a-8b12-d9e7632a10f4"`   |                                    |
+| `userId` or `metadata['iterable:user_id']` | `userId`                           | string        | `"1"`                                      |                                    |
 | `location.coordinates[0]`            | `radar_geo_location.lon`                 | number        | `-76.350663`                               |                                    |
 | `location.coordinates[1]`            | `radar_geo_location.lat`                 | number        | `39.525665`                                |                                    |
 | `locationAuthorization`              | `radarLocationAuthorization`             | string        | `"GRANTED_FOREGROUND"`                     |                                    |
