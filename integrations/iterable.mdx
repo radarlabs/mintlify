@@ -18,7 +18,7 @@ Then, on the Radar [Integrations page](https://dashboard.radar.com/integrations)
 
 Whenever events are generated, Radar will send custom events and user data to Iterable.
 
-User IDs must be aligned between Iterable and Radar for the integration to function properly. To do this, make sure you set the Radar user ID to match the Iterable user ID. For example, on iOS:
+User IDs must be aligned between Iterable and Radar for the integration to function properly. This is easiest if the user ID in matches the Iterable user ID. For example:
 
 <CodeGroup>
 
@@ -32,9 +32,28 @@ IterableAPI.updateUser(dataField, mergeNestedObjects: false)
 
 ```kotlin Kotlin
 IterableApi.getInstance().setUserId(userId)
+Radar.setUserId(userId)
 val dataFields = JSONObject()
 dataFields.put("userId",userId)
 IterableApi.getInstance().updateUser(dataFields)
+```
+
+</CodeGroup>
+
+
+If your Iterable user ID differs from your Radar user ID, you can instead specify the Iterable user ID in your user's metadata. When set, this value will be used as the `userId` in the Iterable integration instead of the Radar user ID.
+
+
+<CodeGroup>
+
+```swift Swift
+Radar.setMetadata(["iterable:user_id": iterableUserId])
+```
+
+```kotlin Kotlin
+val metadata = JSONObject()
+metadata.put("iterable:user_id", iterableUserId)
+Radar.setMetadata(metadata)
 ```
 
 </CodeGroup>
@@ -109,7 +128,7 @@ Note that Radar uses the special string `"(null)"` to represent `null` user data
 
 | Radar User Field                     | Iterable User Data Field                 | Type          | Example Value                              | Context Type                       |
 | ------------------------------------ | ---------------------------------------- | ------------- | ------------------------------------------ | ---------------------------------- |
-| `userId`                             | `userId`                                 | string        | `"1"`                                      |                                    |
+| `userId` or `metadata['iterable:user_id']` | `userId`                           | string        | `"1"`                                      |                                    |
 | `location.coordinates[0]`            | `radar_geo_location.lon`                 | number        | `-76.350663`                               |                                    |
 | `location.coordinates[1]`            | `radar_geo_location.lat`                 | number        | `39.525665`                                |                                    |
 | `locationAuthorization`              | `radarLocationAuthorization`             | string        | `"GRANTED_FOREGROUND"`                     |                                    |
@@ -351,4 +370,3 @@ Note that Radar uses the special string `"(null)"` to represent `null` user data
 | `confidence`             | `confidence`              | string           | `"high"`                     |
 | `duration`               | `duration`                | number (minutes) | `1.42`                       |
 | `foreground`             | `foreground`              | boolean          | `true`                       |
-
