@@ -44,6 +44,76 @@ Trips provides the following user context:
 }
 ```
 
+For [multi-leg trips](#multi-leg-trips), the trip object includes `currentLegId` and `legs` fields. The top-level `destinationGeofenceTag`, `destinationGeofenceExternalId`, and `destinationLocation` fields are not present, as destinations are defined on each leg instead:
+
+```json
+{
+  "trip": {
+    "_id": "5f3e50491c2b7d005c81f5d9",
+    "live": true,
+    "status": "started",
+    "externalId": "multi-stop-route-123",
+    "metadata": {
+      "Customer Name": "Jacob Pena",
+      "Car Model": "Green Honda Civic"
+    },
+    "mode": "car",
+    "currentLegId": "6f4e60591d3c8e006d9206ea",
+    "legs": [
+      {
+        "_id": "6f4e60591d3c8e006d9206ea",
+        "status": "started",
+        "destinationGeofenceTag": "stop",
+        "destinationGeofenceExternalId": "stop-1",
+        "stopDuration": 5,
+        "metadata": {
+          "stopName": "Customer A",
+          "orderId": "order-101"
+        },
+        "eta": {
+          "duration": 8.2,
+          "distance": 3200
+        }
+      },
+      {
+        "_id": "705f71602e4d9f117ea307fb",
+        "status": "pending",
+        "destinationGeofenceTag": "stop",
+        "destinationGeofenceExternalId": "stop-2",
+        "stopDuration": 5,
+        "metadata": {
+          "stopName": "Customer B",
+          "orderId": "order-102"
+        },
+        "eta": {
+          "duration": 15.7,
+          "distance": 6100
+        }
+      },
+      {
+        "_id": "806082713f5ea0228fb4a80c",
+        "status": "pending",
+        "destinationGeofenceTag": "store",
+        "destinationGeofenceExternalId": "store-1",
+        "metadata": {
+          "type": "return-to-base"
+        },
+        "eta": {
+          "duration": 22.3,
+          "distance": 8900
+        }
+      }
+    ],
+    "eta": {
+      "duration": 22.3,
+      "distance": 8900
+    },
+    "createdAt": "2020-08-20T10:27:55.830Z",
+    "updatedAt": "2020-08-20T10:30:55.837Z"
+  }
+}
+```
+
 Trips also provides the following events:
 
 - `user.started_trip`
@@ -344,6 +414,264 @@ You can receive events client-side via the [SDK](/sdk) or server-side via [event
   }
 }
 ```
+
+## Multi-leg trips
+
+<Info>
+  Multi-leg trips require additional configuration. Contact your customer success manager or reach out to us at [radar.com/support](https://radar.com/support) to enable this feature.
+</Info>
+
+Multi-leg trips allow you to define a sequence of destination stops within a single trip. Use multi-leg trips for use cases like multi-stop delivery routes, ride-sharing with multiple pickups and dropoffs, or field service visits.
+
+### Creating a multi-leg trip
+
+To create a multi-leg trip, define `RadarTripLeg` objects for each stop and attach them to your `RadarTripOptions`. Set a `stopDuration` (in minutes) for intermediate stops to improve ETA accuracy for subsequent legs and the overall trip. Omit `stopDuration` for the final destination.
+
+Each leg's destination can be defined in one of three ways:
+
+- **Geofence** — by tag and external ID, or by geofence ID
+- **Address** — by a street address string
+- **Coordinates** — by latitude and longitude
+
+When using address or coordinate destinations, you can set an `arrivalRadius` (in meters) on the leg to define the arrival zone.
+
+The examples below use geofence-based destinations. The first leg is automatically set to `started` when the trip begins.
+
+<CodeGroup>
+
+```swift Swift
+let leg1 = RadarTripLeg(destinationGeofenceTag: "stop",
+                        destinationGeofenceExternalId: "stop-1")
+leg1.stopDuration = 5
+leg1.metadata = ["stopName": "Customer A", "orderId": "order-101"]
+
+let leg2 = RadarTripLeg(destinationGeofenceTag: "stop",
+                        destinationGeofenceExternalId: "stop-2")
+leg2.stopDuration = 5
+leg2.metadata = ["stopName": "Customer B", "orderId": "order-102"]
+
+let leg3 = RadarTripLeg(destinationGeofenceTag: "stop",
+                        destinationGeofenceExternalId: "stop-3")
+leg3.stopDuration = 5
+leg3.metadata = ["stopName": "Customer C", "orderId": "order-103"]
+
+let leg4 = RadarTripLeg(destinationGeofenceTag: "store",
+                        destinationGeofenceExternalId: "store-1")
+leg4.metadata = ["type": "return-to-base"]
+
+let tripOptions = RadarTripOptions(externalId: "multi-stop-route-123")
+tripOptions.mode = .car
+tripOptions.legs = [leg1, leg2, leg3, leg4]
+
+Radar.startTrip(options: tripOptions) { status, trip, events in
+    if status == .success {
+        print("Trip started with \(trip?.legs?.count ?? 0) legs")
+    }
+}
+```
+
+
+```kotlin Kotlin
+val leg1 = RadarTripLeg.forGeofence("stop", "stop-1")
+leg1.stopDuration = 5
+leg1.metadata = JSONObject(mapOf("stopName" to "Customer A", "orderId" to "order-101"))
+
+val leg2 = RadarTripLeg.forGeofence("stop", "stop-2")
+leg2.stopDuration = 5
+leg2.metadata = JSONObject(mapOf("stopName" to "Customer B", "orderId" to "order-102"))
+
+val leg3 = RadarTripLeg.forGeofence("stop", "stop-3")
+leg3.stopDuration = 5
+leg3.metadata = JSONObject(mapOf("stopName" to "Customer C", "orderId" to "order-103"))
+
+val leg4 = RadarTripLeg.forGeofence("store", "store-1")
+leg4.metadata = JSONObject(mapOf("type" to "return-to-base"))
+
+val tripOptions = RadarTripOptions("multi-stop-route-123")
+tripOptions.mode = Radar.RadarRouteMode.CAR
+tripOptions.legs = arrayOf(leg1, leg2, leg3, leg4)
+
+Radar.startTrip(tripOptions) { status, trip, events ->
+    if (status == Radar.RadarStatus.SUCCESS) {
+        println("Trip started with ${trip?.legs?.size ?: 0} legs")
+    }
+}
+```
+
+</CodeGroup>
+
+### Completing a trip leg
+
+When a stop is completed, update the current trip leg status to `completed`. The SDK provides several methods depending on how much control you need:
+
+- `updateCurrentTripLeg(status:)` — completes the current leg automatically; the SDK resolves the trip and leg IDs for you.
+- `updateTripLeg(legId:status:)` — targets a specific leg by ID; the SDK resolves the trip ID automatically.
+- `updateTripLeg(tripId:legId:status:)` — provides full manual control over both trip and leg IDs.
+
+All of these methods automatically advance the next leg to `started`.
+
+<CodeGroup>
+
+```swift Swift
+Radar.updateCurrentTripLeg(status: .completed) { status, trip, leg, events in
+    if status == .success {
+        if let nextLegId = trip?.currentLegId {
+            print("Next leg: \(nextLegId)")
+        } else {
+            print("All legs complete")
+        }
+    }
+}
+
+// Target a specific leg by ID
+Radar.updateTripLeg(legId: someLegId, status: .completed) { status, trip, leg, events in
+    // SDK resolves the trip ID automatically
+}
+
+// Full manual control
+Radar.updateTripLeg(
+    tripId: tripId,
+    legId: legId,
+    status: .completed
+) { status, trip, leg, events in
+    // ...
+}
+```
+
+
+```kotlin Kotlin
+Radar.updateCurrentTripLeg(RadarTripLeg.RadarTripLegStatus.COMPLETED) { status, trip, leg, events ->
+    if (status == Radar.RadarStatus.SUCCESS) {
+        val nextLegId = trip?.currentLegId
+        if (nextLegId != null) {
+            println("Next leg: $nextLegId")
+        } else {
+            println("All legs complete")
+        }
+    }
+}
+
+// Target a specific leg by ID
+Radar.updateTripLeg("someLegId", RadarTripLeg.RadarTripLegStatus.COMPLETED) { status, trip, leg, events ->
+    // SDK resolves the trip ID automatically
+}
+
+// Full manual control
+Radar.updateTripLeg(tripId, legId, RadarTripLeg.RadarTripLegStatus.COMPLETED) { status, trip, leg, events ->
+    // ...
+}
+```
+
+</CodeGroup>
+
+When the final leg is completed, the trip is automatically finished. The SDK clears the stored trip and restores any previous tracking options.
+
+<CodeGroup>
+
+```swift Swift
+Radar.updateCurrentTripLeg(status: .completed) { status, trip, leg, events in
+    if trip?.status == .completed {
+        print("Final leg completed — trip is now finished")
+    }
+}
+```
+
+
+```kotlin Kotlin
+Radar.updateCurrentTripLeg(RadarTripLeg.RadarTripLegStatus.COMPLETED) { status, trip, leg, events ->
+    if (trip?.status == RadarTrip.RadarTripStatus.COMPLETED) {
+        println("Final leg completed — trip is now finished")
+    }
+}
+```
+
+</CodeGroup>
+
+You can also explicitly complete or cancel a multi-leg trip at any time using `Radar.completeTrip()` or `Radar.cancelTrip()` as described in [Stopping trips](#stopping-trips).
+
+### Reordering trip legs
+
+If the stop order needs to change mid-trip, call `reorderTripLegs()` with the leg IDs in the desired order. ETAs for each leg will update on the next track call. Call `Radar.trackOnce()` immediately after reordering to refresh ETAs right away.
+
+If a previously completed leg is placed after the current leg in the new order, its status will change back to `started` once it becomes the current leg.
+
+<CodeGroup>
+
+```swift Swift
+let legIds = ["legId1", "legId2", "legId3"]
+Radar.reorderTripLegs(legIds: legIds) { status, trip, events in
+    if status == .success {
+        Radar.trackOnce()
+    }
+}
+
+// Reorder legs of a specific trip (not necessarily the active one)
+Radar.reorderTripLegs(
+    tripId: tripId,
+    legIds: ["legId1", "legId2", "legId3"]
+) { status, trip, events in
+    if status == .success {
+        Radar.trackOnce()
+    }
+}
+```
+
+
+```kotlin Kotlin
+val legIds = arrayOf("legId1", "legId2", "legId3")
+Radar.reorderTripLegs(legIds) { status, trip, events ->
+    if (status == Radar.RadarStatus.SUCCESS) {
+        Radar.trackOnce()
+    }
+}
+
+// Reorder legs of a specific trip (not necessarily the active one)
+Radar.reorderTripLegs(tripId, arrayOf("legId1", "legId2", "legId3")) { status, trip, events ->
+    if (status == Radar.RadarStatus.SUCCESS) {
+        Radar.trackOnce()
+    }
+}
+```
+
+</CodeGroup>
+
+### Accessing trip state
+
+The SDK stores the active trip locally, so you can access the trip and its legs at any time.
+
+<CodeGroup>
+
+```swift Swift
+if let trip = Radar.getTrip() {
+    print("Trip ID: \(trip._id)")
+    print("Status: \(Radar.stringForTripStatus(trip.status))")
+    print("Current leg: \(trip.currentLegId ?? "none")")
+
+    for leg in trip.legs ?? [] {
+        let isCurrent = leg._id == trip.currentLegId ? " ← current" : ""
+        print("Leg \(leg._id ?? "?"): \(RadarTripLeg.string(for: leg.status))\(isCurrent)")
+        print("  Destination: \(leg.destinationGeofenceExternalId ?? "unknown")")
+    }
+}
+```
+
+
+```kotlin Kotlin
+val trip = Radar.getTrip()
+if (trip != null) {
+    println("Trip ID: ${trip._id}")
+    println("Status: ${Radar.stringForTripStatus(trip.status)}")
+    println("Current leg: ${trip.currentLegId ?: "none"}")
+
+    for (leg in trip.legs ?: emptyArray()) {
+        val isCurrent = if (leg._id == trip.currentLegId) " ← current" else ""
+        println("Leg ${leg._id ?: "?"}: ${RadarTripLeg.stringForStatus(leg.status)}$isCurrent")
+        println("  Destination: ${leg.destinationGeofenceExternalId ?: "unknown"}")
+    }
+}
+```
+
+</CodeGroup>
 
 ## Anomaly detection
 
