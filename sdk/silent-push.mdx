@@ -55,6 +55,34 @@ dependencies {
 }
 ```
 
+### React Native
+
+For iOS, add `"remote-notification"` to `UIBackgroundModes` in your `Info.plist`. If using Expo, add it to `app.json`:
+
+```json
+{
+  "expo": {
+    "ios": {
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification"]
+      }
+    }
+  }
+}
+```
+
+Add the "Push Notifications" capability in Xcode under _Signing & Capabilities_.
+
+For Android, install `@react-native-firebase/messaging`:
+
+```bash
+npm install --save @react-native-firebase/app @react-native-firebase/messaging
+```
+
+The `RadarFirebaseMessagingService` is automatically added to your `AndroidManifest.xml` by the `react-native-radar` package. Ensure you have [added Firebase to your Android project](https://firebase.google.com/docs/android/setup) and applied the `google-services` plugin.
+
+For location extension service support (iOS), see [Location extension service setup](#location-extension-service-setup-ios-only).
+
 ## App setup (automated setup)
 
 Initialize Radar with `RadarInitializeOptions.silentPush = true`.
@@ -98,8 +126,32 @@ class MainActivity : AppCompatActivity() {
 
 }
 ```
+```javascript React Native
+import Radar from 'react-native-radar';
+import { Platform } from 'react-native';
+import { getMessaging, getToken, onTokenRefresh } from '@react-native-firebase/messaging';
+
+// initialize Radar with the silent push option (iOS)
+Radar.initialize('prj_test_pk_...', false, {
+  silentPush: Platform.OS === 'ios',
+});
+
+// register the FCM push token (Android)
+if (Platform.OS === 'android') {
+  const messaging = getMessaging();
+  const token = await getToken(messaging);
+  if (token) {
+    Radar.setPushNotificationToken(token);
+  }
+  onTokenRefresh(messaging, (newToken) => {
+    Radar.setPushNotificationToken(newToken);
+  });
+}
+```
 
 </CodeGroup>
+
+On iOS, `silentPush: true` handles push token registration automatically. On Android, you must also pass the FCM token to Radar via `Radar.setPushNotificationToken()`.
 
 ## Manual setup
 
@@ -146,13 +198,59 @@ class MainActivity : AppCompatActivity() {
     }
 }
 ```
+```javascript React Native
+import Radar from 'react-native-radar';
+import { Platform } from 'react-native';
+import { getMessaging, getToken, onTokenRefresh } from '@react-native-firebase/messaging';
+
+Radar.initialize('prj_test_pk_...');
+
+// on Android, register the FCM push token manually
+if (Platform.OS === 'android') {
+  const messaging = getMessaging();
+  const token = await getToken(messaging);
+  if (token) {
+    Radar.setPushNotificationToken(token);
+  }
+  onTokenRefresh(messaging, (newToken) => {
+    Radar.setPushNotificationToken(newToken);
+  });
+}
+```
 </CodeGroup>
 
 ## Location extension service setup (iOS only)
 
-Initialize radar, then set the [app group](https://developer.apple.com/documentation/Xcode/configuring-app-groups).
+The location extension service requires a native `CLLocationPushServiceExtension` target, an [app group](https://developer.apple.com/documentation/Xcode/configuring-app-groups) shared between the main app and the extension, and the `com.apple.developer.location.push` entitlement on both targets.
 
-Start monitoring for location extension pushes from the main app.
+### Build configuration
+
+Add the following capabilities to both the main app target and the location push extension target:
+- **App Groups** — use a shared group (e.g., `group.yourApp.data`)
+- **Push Notifications**
+
+Add the `com.apple.developer.location.push` entitlement to both targets.
+
+For React Native with Expo, you can configure this in `app.json`:
+
+```json
+{
+  "expo": {
+    "ios": {
+      "entitlements": {
+        "com.apple.security.application-groups": ["group.yourApp.data"],
+        "com.apple.developer.location.push": true
+      }
+    }
+  }
+}
+```
+
+The location push extension is a native iOS target and must be created in Xcode (or with a tool like `@bacons/apple-targets` for Expo). The extension target needs the `RadarSDK` pod, `CoreLocation` framework, and the same App Group and `com.apple.developer.location.push` entitlements.
+
+### Main app setup
+
+Initialize Radar, set the app group, and start monitoring for location extension pushes.
 
 <CodeGroup>
 
@@ -179,9 +277,25 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 }
 ```
+```javascript React Native
+import Radar from 'react-native-radar';
+
+Radar.setAppGroup('group.yourApp.data');
+Radar.initialize('prj_test_pk_...', false, { silentPush: true });
+```
 </CodeGroup>
 
-When a location payload is received by the location service extension, pass the payload to Radar to handle the notification.
+<Info>
+  `CLLocationManager.startMonitoringLocationPushes()` is not exposed by the React Native SDK. You need to bridge this call natively using either a custom Expo Module, a React Native Native Module, or by calling it from your `AppDelegate`. Once you have the token, pass it to Radar from JavaScript:
+</Info>
+
+```javascript React Native
+Radar.setLocationExtensionToken(token);
+```
+
+### Extension setup
+
+Create a `CLLocationPushServiceExtension` target. When a location payload is received, initialize Radar using the shared app group and pass the payload to the SDK.
 
 <CodeGroup>
 
@@ -198,6 +312,8 @@ class LocationPushService: NSObject, CLLocationPushServiceExtension {
 ```
 
 </CodeGroup>
+
+This extension code is the same whether your main app is native Swift or React Native.
 
 ## Usage
 
