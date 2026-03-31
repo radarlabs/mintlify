@@ -26,6 +26,8 @@ Your private key should begin and end with `-----BEGIN/END PRIVATE KEY-----`, in
 
 ## Build configuration
 
+### Native iOS and Android
+
 For iOS, Add the "Push Notifications" app capabilities, and turn on "Remote notifications" in the "Background Modes" capability.
 
 For Android, [Add Firebase to your project](https://firebase.google.com/docs/android/setup) and then generate a service account from the Firebase console. You'll need the account details to send silent push notifications.
@@ -57,6 +59,8 @@ dependencies {
 
 ### React Native
 
+The Android manifest service entry and Gradle dependencies above are for native Android projects only. For React Native, the `react-native-radar` package automatically registers `RadarFirebaseMessagingService` in your `AndroidManifest.xml`.
+
 For iOS, add `"remote-notification"` to `UIBackgroundModes` in your `Info.plist`. If using Expo, add it to `app.json`:
 
 ```json
@@ -73,13 +77,11 @@ For iOS, add `"remote-notification"` to `UIBackgroundModes` in your `Info.plist`
 
 Add the "Push Notifications" capability in Xcode under _Signing & Capabilities_.
 
-For Android, install `@react-native-firebase/messaging`:
+For Android, install `@react-native-firebase/messaging` and ensure you have [added Firebase to your Android project](https://firebase.google.com/docs/android/setup) with the `google-services` plugin applied:
 
 ```bash
 npm install --save @react-native-firebase/app @react-native-firebase/messaging
 ```
-
-The `RadarFirebaseMessagingService` is automatically added to your `AndroidManifest.xml` by the `react-native-radar` package. Ensure you have [added Firebase to your Android project](https://firebase.google.com/docs/android/setup) and applied the `google-services` plugin.
 
 For location extension service support (iOS), see [Location extension service setup](#location-extension-service-setup-ios-only).
 
@@ -131,22 +133,24 @@ import Radar from 'react-native-radar';
 import { Platform } from 'react-native';
 import { getMessaging, getToken, onTokenRefresh } from '@react-native-firebase/messaging';
 
-// initialize Radar with the silent push option (iOS)
 Radar.initialize('prj_test_pk_...', false, {
   silentPush: Platform.OS === 'ios',
 });
 
-// register the FCM push token (Android)
-if (Platform.OS === 'android') {
-  const messaging = getMessaging();
-  const token = await getToken(messaging);
-  if (token) {
-    Radar.setPushNotificationToken(token);
+async function registerPushToken() {
+  if (Platform.OS === 'android') {
+    const messaging = getMessaging();
+    const token = await getToken(messaging);
+    if (token) {
+      Radar.setPushNotificationToken(token);
+    }
+    onTokenRefresh(messaging, (newToken) => {
+      Radar.setPushNotificationToken(newToken);
+    });
   }
-  onTokenRefresh(messaging, (newToken) => {
-    Radar.setPushNotificationToken(newToken);
-  });
 }
+
+registerPushToken();
 ```
 
 </CodeGroup>
@@ -193,7 +197,7 @@ class MainActivity : AppCompatActivity() {
         
         // register push notification with firebase, then pass the push token to Radar
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
-            Radar.setSilentPushToken(token)
+            Radar.setPushNotificationToken(token)
         }
     }
 }
@@ -205,17 +209,20 @@ import { getMessaging, getToken, onTokenRefresh } from '@react-native-firebase/m
 
 Radar.initialize('prj_test_pk_...');
 
-// on Android, register the FCM push token manually
-if (Platform.OS === 'android') {
-  const messaging = getMessaging();
-  const token = await getToken(messaging);
-  if (token) {
-    Radar.setPushNotificationToken(token);
+async function registerPushToken() {
+  if (Platform.OS === 'android') {
+    const messaging = getMessaging();
+    const token = await getToken(messaging);
+    if (token) {
+      Radar.setPushNotificationToken(token);
+    }
+    onTokenRefresh(messaging, (newToken) => {
+      Radar.setPushNotificationToken(newToken);
+    });
   }
-  onTokenRefresh(messaging, (newToken) => {
-    Radar.setPushNotificationToken(newToken);
-  });
 }
+
+registerPushToken();
 ```
 </CodeGroup>
 
@@ -286,7 +293,7 @@ Radar.initialize('prj_test_pk_...', false, { silentPush: true });
 </CodeGroup>
 
 <Info>
-  `CLLocationManager.startMonitoringLocationPushes()` is not exposed by the React Native SDK. You need to bridge this call natively using either a custom Expo Module, a React Native Native Module, or by calling it from your `AppDelegate`. Once you have the token, pass it to Radar from JavaScript:
+  `CLLocationManager.startMonitoringLocationPushes()` is not exposed by the React Native SDK. You need to bridge this call natively using either a custom Expo Module, a React Native native module, or by calling it from your `AppDelegate`. Once you have the token, pass it to Radar from JavaScript:
 </Info>
 
 ```javascript React Native
