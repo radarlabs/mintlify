@@ -286,6 +286,31 @@ This is a rolling time window, so if the frequency cap is 2 and the time window 
 
 Additionally, at the campaign level, you can configure each campaign to ignore the global frequency capping or to set a campaign specific frequency cap (works in conjugation with the global cap).
 
+## Analytics
+
+### Notification conversions
+
+With Radar [Conversions](/api#log-a-conversion), you can log an event whenever a user interacts with a campaign notification. You can also retrieve the source of an _opened_app_ conversion for iOS apps. Within the _metadata_ object of the [logged conversion](/sdk/ios#conversions), we will return a _conversion_source_ with either
+
+- **`notification`** (app was opened using an external 3rd party notification)
+- **`radar_notification`** (app was opened using the configured on-prem notification)
+
+You can view these campaign conversion analytics by pressing the analytics button on the campaign's page. Alternatively, you can navigate to Geofencing -\> Analytics -\> Events -\> Filters (top right) -\> select Type as _opened_app_ -\> Apply Filters. From there, select _campaign_name_ from the _grouped_by_ dropdown. See screenshot below:
+
+![OnPremiseNotifications](/images/assets/images/conversion_source_analytics-4a52cd8a87055b91f37bebaecc7f5f16.png)
+
+Both notification conversion logging and app open conversions require additional setup. See [Analytics setup](#analytics-setup) for instructions.
+
+### Notification delivery
+
+Radar automatically tracks when notifications are delivered to users' devices. Delivery tracking is available for both client-side geofence notifications and event-based notifications.
+
+Note that for client-side notifications, iOS SDK versions earlier than [v3.29.0](https://github.com/radarlabs/radar-sdk-ios/releases/tag/3.29.0) have less accurate delivery tracking.
+
+### In app message analytics
+
+Radar automatically tracks analytics for in app messages, logging when messages are delivered, clicked, or dismissed. No additional setup is required.
+
 ## Additional setup for notification based campaign
 
 Client side geofence, Event based notifications, Beacon based notifications are considered notification based campaigns. Some additional setup are required for advanced features like analytics and deep linking.
@@ -317,27 +342,13 @@ class MyActivityLifecycleCallbacks : Application.ActivityLifecycleCallbacks {
 */}
 </CodeGroup>
 
-### Analytics
+### Analytics setup
 
 *Requires SDK version v3.19.6*
 
-With Radar [Conversions](/api#log-a-conversion), you can log an event whenever a user interacts with a campaign notification.
-To enable this for campaigns, make sure `radarInitializationOptions.autoSetupNotificationConversion` = `true`.
+To enable conversion logging for campaigns, make sure `radarInitializationOptions.autoSetupNotificationConversion` = `true`.
 
 Refer to the [iOS SDK Conversions reference](/sdk/ios#conversions) or [React Native Conversion references](/sdk/react-native#conversions) for setup instructions.
-
-With Radar [Conversions](/api#log-a-conversion), you can also retrieve the source of an _opened_app_ conversion for iOS apps. Within the _metadata_ object of the [logged conversion](/sdk/ios#conversions), we will return a _conversion_source_ with either
-
-- **`notification`** (app was opened using an external 3rd party notification)
-- **`radar_notification`** (app was opened using the configured on-prem notification):
-
-You can view these campaign conversion analytics by pressing the analytics button on the campaign's page. Alternatively, you can navigate to Geofencing -\> Analytics -\> Events -\> Filters (top right) -\> select Type as _opened_app_ -\> Apply Filters. From there, select _campaign_name_ from the _grouped_by_ dropdown. See screenshot below:
-
-![OnPremiseNotifications](/images/assets/images/conversion_source_analytics-4a52cd8a87055b91f37bebaecc7f5f16.png)
-
-#### Notification delivery tracking
-
-Both client-side geofence notifications and event-based notifications include analytics on notification delivery, allowing you to track when notifications are delivered to users' devices. Note that for client-side notifications, iOS SDK versions earlier than [v3.29.0](https://github.com/radarlabs/radar-sdk-ios/releases/tag/3.29.0) have less accurate delivery tracking.
 
 #### Android setup
 
