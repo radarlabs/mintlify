@@ -307,6 +307,10 @@ Radar automatically tracks when notifications are delivered to users' devices. D
 
 Note that for client-side notifications, iOS SDK versions earlier than [v3.29.0](https://github.com/radarlabs/radar-sdk-ios/releases/tag/3.29.0) have less accurate delivery tracking.
 
+For event-based notifications, delivery is counted when it is triggered, as the notifications is delivered to the user immediately when the client receives it.
+
+For client-side notifications, the notification is delivered asynchronously by iOS, and we determine the delivery based whether or not the notification is present in the list of pending notifications. This count is not 100% accurate in some edge cases when a user toggles their notification permissions.
+
 ### In app message analytics
 
 Radar automatically tracks analytics for in app messages, logging when messages are delivered, clicked, or dismissed. No additional setup is required.
