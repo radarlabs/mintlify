@@ -44,6 +44,53 @@ Radar only controls the registration of notifications on the device. Once that h
 
 If the device is already inside the geofence when its client-side geofence notification is being synced, it will fire upon subsequent entry, not immediately.
 
+#### Message customization
+
+The title, body, and button text can all be customized for each user, geofence, and place that triggers the notification or in-app message. For example, a notification title of `"Hello! {{ user.userId }}"` will be sent as "Hello! Alice" and "Hello! Bob" for user Alice or Bob.
+
+`user` will be available for all campaigns, `geofence` will be available for geofence targeting campaigns and `place` will be available for place targeting campaigns.
+
+```json
+{
+  user: {
+    userId: string;
+    description: string;
+    metadata: {
+      Your custom metadata set from Radar.setMetadata()
+    }
+  },
+  geofence: {
+    description: string;
+    tag: string;
+    externalId: string;
+  },
+  place: {
+    name: string;
+    address: string;
+    street: string;
+    categories: string[];
+    chain: {
+      domain: string;
+      name: string;
+      slug: string;
+    },
+    country: string;
+    state: string;
+    city: string;
+    zip: string;
+  }
+}
+```
+
+Some variables may not be available for some users, Radar provides a custom fallback helper, use `{{ default user.userId "Show this as fallback" }}` to configure a simple fallback.
+
+For more complex fallback and indexing nested fields or arrays, refer to our templating engine [Handlebars docs](https://handlebarsjs.com/).
+
+The Radar dashboard provides an UI to help with simple variable substitutions for campaign personalization.
+
+![Campaign personalization](/images/geofencing/assets/images/dashboard_campaign_personalization.png)
+
+
 #### Beacon based notifications
 
 Use Radar's client side beacon notifications to display a notification on iOS devices when a user enters a beacon region. These notifications work with foreground or <b>"when in use"</b> permissions.
