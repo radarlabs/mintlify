@@ -214,7 +214,7 @@ Learn more about [Network Security Configuration on Android](https://developer.a
 
 If using [iOS SDK](/sdk/ios) version `3.26.0` or higher, you must install an additional plugin.
 
-In Xcode, go to _File > Swift Packages > Add Package Dependency_. Enter `https://github.com/radarlabs/radar-sdk-ios-spm-fraud.git` for the _Package Repository URL_.
+In Xcode, go to _File \> Swift Packages \> Add Package Dependency_. Enter `https://github.com/radarlabs/radar-sdk-ios-fraud-spm.git` for the _Package Repository URL_.
 
 If you do not install the plugin, `Radar.trackVerified()` will return `ERROR_PLUGIN`.
 
@@ -292,7 +292,7 @@ To skip the Radar Verify app and use the no-download solution, pass `{ skipVerif
 
 #### Native desktop SDKs
 
-A native Mac SDK (supporting macOS 12.4+), a native Windows SDK (supporting Windows 10+ and .NET 8+), and an Electron plugin are available. 
+A native Mac SDK (supporting macOS 12.4\+), a native Windows SDK (supporting Windows 10\+ and .NET 8\+), and an Electron plugin are available.
 
 <Info>
   Contact your customer success manager for access to desktop SDKs.
@@ -333,7 +333,6 @@ Radar.trackVerified { (status, token) in
 }
 ```
 
-
 ```kotlin Kotlin
 Radar.trackVerified { status, token ->
   if (token?.passed == true) {
@@ -343,7 +342,6 @@ Radar.trackVerified { status, token ->
   }
 }
 ```
-
 
 ```javascript Web
 const skipVerifyApp = false; // use true for no-download solution
@@ -360,7 +358,6 @@ Radar.trackVerified({ skipVerifyApp }).then((result) => {
 });
 ```
 
-
 ```javascript React Native
 Radar.trackVerified().then((result) => {
   const { token } = result;
@@ -373,7 +370,6 @@ Radar.trackVerified().then((result) => {
   // deny access, show error message
 });
 ```
-
 
 ```javascript Capacitor
 Radar.trackVerified().then((result) => {
@@ -388,11 +384,9 @@ Radar.trackVerified().then((result) => {
 });
 ```
 
-
 ```javascript Flutter
 var res = await Radar.trackVerified();
 ```
-
 
 ```swift Swift (Mac)
 import RadarVerifySDK
@@ -418,7 +412,6 @@ if result.token?.passed == true {
   // deny access, show error message
 }
 ```
-
 
 ```csharp C# (Windows)
 using RadarVerify;
@@ -496,7 +489,6 @@ func didUpdateToken(_ token: RadarVerifiedLocationToken) {
 }
 ```
 
-
 ```kotlin Kotlin
 Radar.setVerifiedReceiver(receiver)
 
@@ -516,7 +508,6 @@ override fun onTokenUpdated(context: Context, token: RadarVerifiedLocationToken)
   // send token to server
 }
 ```
-
 
 ```javascript Web
 const skipVerifyApp = false; // use true for no-download solution
@@ -540,7 +531,6 @@ Radar.onTokenUpdated((result) => {
   // send token to server
 });
 ```
-
 
 ```javascript React Native
 Radar.startTrackingVerified({
@@ -567,7 +557,6 @@ Radar.on('token', (result) => {
 });
 ```
 
-
 ```javascript Capacitor
 Radar.startTrackingVerified({
   interval: 1200,
@@ -593,7 +582,6 @@ Radar.addListener('token', (result) => {
 });
 ```
 
-
 ```javascript Flutter
 Radar.startTrackingVerified(1200, false)
 
@@ -605,7 +593,6 @@ Radar.onToken(onToken);
 ```
 
 </CodeGroup>
-
 
 ### Setting product type
 
@@ -639,7 +626,7 @@ cat public-key.pem | pbcopy
 
 Under _Auth tokens_ on the [Settings page](https://dashboard.radar.com/settings), add a new public key. Paste the full contents of your public key PEM file, including the `BEGIN` and `END` lines.
 
-To create an auth token, sign a JWT using ES256 on your server. The payload should include `now` for `iat`, `now + ttl` for `exp`, the public key *Key ID* from the dashboard for `kid`, and any optional `constraints` as claims. For example:
+To create an auth token, sign a JWT using ES256 on your server. The payload should include `now` for `iat`, `now + ttl` for `exp`, the public key _Key ID_ from the dashboard for `kid`, and any optional `constraints` as claims. For example:
 
 ```javascript
 import { SignJWT } from 'jose';
@@ -671,16 +658,13 @@ Send the auth token to your client and use it to initialize the SDK instead of y
 Radar.initialize(authToken: authToken)
 ```
 
-
 ```kotlin Kotlin
 Radar.initialize(RadarInitializeOptions(authToken = authToken, fraud = true))
 ```
 
-
 ```javascript Web
 Radar.initialize({ authToken });
 ```
-
 
 ```javascript React Native
 Radar.initialize({ authToken, fraud: true });
