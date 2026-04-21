@@ -56,7 +56,13 @@ The SDK has two states: **stopped** and **moving**. After a location update is m
 - **`startTrackingAfter`**: Determines when to start tracking. Use `nil` to start tracking when `startTracking` is called.
 - **`stopTrackingAfter`**: Determines when to stop tracking. Use `nil` to track until `stopTracking` is called.
 - **`replay`**: Determines which failed location updates to replay to the server. `.all` replays all location updates including those collected offline, `.replayStops` replays failed stops, `.replayNone` replays no location updates. Defaults to `.replayNone`.
-- **`syncLocations`**: Determines which location updates to sync to the server. `.all` syncs all location updates to the server, `.stopsAndExits` syncs only stops and exits to the server, `.none` syncs no location updates to the server. Defaults to `.all`.
+- **`syncLocations`**: Determines which location updates to sync to the server. `.all` syncs all location updates to the server, `.stopsAndExits` syncs only stops and exits to the server, `.events` only syncs location updates that will generate an event, `.none` syncs no location updates to the server. Defaults to `.all`.
+
+  When using `.events`, the SDK only syncs location updates that would generate one of the events below. Each product (Geofences, Places, or Beacons) must be enabled *and* the corresponding event types must be selected in your Radar dashboard settings (e.g., Settings > Geofences > Event types) for those locations to sync:
+    - Geofences: `user.entered_geofence`, `user.exited_geofence`, `user.dwelled_in_geofence`
+    - Places: `user.entered_place`, `user.exited_place`
+    - Beacons: `user.entered_beacon`, `user.exited_beacon`
+    
 - **`showBlueBar`**: Determines whether the [flashing blue status bar](https://developer.apple.com/documentation/corelocation/cllocationmanager/2923541-showsbackgroundlocationindicator) is shown when tracking. Defaults to `false`.
 - **`useStoppedGeofence`**: Determines whether to use the [iOS region monitoring service (geofencing)](https://developer.apple.com/documentation/corelocation/monitoring_the_user_s_proximity_to_geographic_regions) to create a client-side geofence "bubble" around the device's current location when stopped. Defaults to `false`.
 - **`stoppedGeofenceRadius`**: Determines the radius in meters of the client-side geofence "bubble" around the device's current location when stopped. Use smaller values (e.g., `100` meters) for faster exit events or larger values (e.g., `200` meters) to avoid jumpy exits while stopped. Defaults to `0`.
@@ -110,7 +116,13 @@ The SDK has two states: **stopped** and **moving**. After a location update is m
 - **`startTrackingAfter`**: Determines when to start tracking. Use `null` to start tracking when `startTracking()` is called.
 - **`stopTrackingAfter`**: Determines when to stop tracking. Use `null` to track until `stopTracking()` is called.
 - **`replay`**: Determines which failed location updates to replay to the server. `ALL` replays all location updates including those collected offline, `STOPS` replays failed stops, `NONE` replays no location updates. Defaults to `NONE`.
-- **`sync`**: Determines which location updates to sync to the server. `ALL` syncs all location updates to the server, `STOPS_AND_EXITS` syncs only stops and exits to the server, `NONE` syncs no location updates to the server. Defaults to `STOPS_AND_EXITS`.
+- **`sync`**: Determines which location updates to sync to the server. `ALL` syncs all location updates to the server, `STOPS_AND_EXITS` syncs only stops and exits to the server, `EVENTS` only syncs location updates that will generate an event, `NONE` syncs no location updates to the server. Defaults to `STOPS_AND_EXITS`.
+
+  When using `EVENTS`, the SDK only syncs location updates that would generate one of the events below. Each product (Geofences, Places, or Beacons) must be enabled *and* the corresponding event types must be selected in your Radar dashboard settings (e.g., Settings > Geofences > Event types) for those locations to sync:
+    - Geofences: `user.entered_geofence`, `user.exited_geofence`, `user.dwelled_in_geofence`
+    - Places: `user.entered_place`, `user.exited_place`
+    - Beacons: `user.entered_beacon`, `user.exited_beacon`
+
 - **`useStoppedGeofence`**: Determines whether to create a [client-side geofence](https://developer.android.com/training/location/geofencing) "bubble" around the device's current location when stopped. Defaults to `false`.
 - **`stoppedGeofenceRadius`**: Determines the radius in meters of the client-side geofence "bubble" around the device's current location when stopped. Use smaller values (e.g., `100` meters) for faster exit events or larger values (e.g., `200` meters) to avoid jumpy exits while stopped. Defaults to `0`.
 - **`useMovingGeofence`**: Determines whether to create a [client-side geofence](https://developer.android.com/training/location/geofencing) "bubble" around the device's current location when moving. Defaults to `false`.
