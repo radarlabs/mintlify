@@ -235,7 +235,7 @@ If you do not install the plugin, `Radar.trackVerified()` will return `ERROR_PLU
 
 #### Initialize SDK
 
-To enable automatic failover to a secondary verified host if the primary host is erroring, also pass `trackVerifiedAutoFailover = true`, set `trackVerifiedAutoFailover` on `RadarInitializeOptions`:
+To enable automatic failover of `trackVerified()` requests to a secondary host if the primary host is unreachable, set `trackVerifiedAutoFailover = true` on `RadarInitializeOptions`:
 
 <CodeGroup>
 
