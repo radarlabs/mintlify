@@ -154,7 +154,7 @@ Radar.initialize(
 )
 ```
 
-To enable automatic failover to a secondary verified host if the primary returns a non-Radar response (e.g., due to DNS hijacking or interception), also pass `trackVerifiedAutoFailover = true`:
+To enable automatic failover to a secondary verified host if the primary host is erroring, also pass `trackVerifiedAutoFailover = true`:
 
 ```java
 val options = RadarInitializeOptions(
@@ -247,7 +247,7 @@ If you do not install the plugin, `Radar.trackVerified()` will return `ERROR_PLU
 
 #### Initialize SDK
 
-To enable automatic failover to a secondary verified host if the primary returns a non-Radar response (e.g., due to DNS hijacking or interception), set `trackVerifiedAutoFailover` on `RadarInitializeOptions`:
+To enable automatic failover to a secondary verified host if the primary host is erroring, also pass `trackVerifiedAutoFailover = true`, set `trackVerifiedAutoFailover` on `RadarInitializeOptions`:
 
 <CodeGroup>
 
