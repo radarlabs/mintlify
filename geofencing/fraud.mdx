@@ -142,7 +142,7 @@ If you do not install the plugin, `Radar.trackVerified()` will return `ERROR_PLU
 
 To support the `sharing` flag on Android, pass `fraud = true` to `RadarInitializeOptions` in `Radar.initialize()`.
 
-To enable automatic failover to a secondary verified host if the primary host is erroring, also pass `trackVerifiedAutoFailover = true`:
+To enable automatic failover of `trackVerified()` requests to a secondary host if the primary host is unreachable, pass `trackVerifiedAutoFailover = true`:
 
 ```java
 val options = RadarInitializeOptions(
