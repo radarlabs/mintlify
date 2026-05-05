@@ -192,6 +192,18 @@ To enable SSL pinning and prevent man-in-the-middle attacks, add a `res/xml/netw
             <pin digest="SHA-256">15ktYXSSU2llpy7YyCgeqUKDBkjcimK/weUcec960sI=</pin>
         </pin-set>
     </domain-config>
+
+    <!-- for SSL pinning (failover) -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api-verified.radar.com</domain>
+        <pin-set>
+            <pin digest="SHA-256">++MBgDH5WGvL9Bcn5Be30cRcL0f5O+NyoXuWtQdX1aI=</pin>
+            <pin digest="SHA-256">f0KW/FtqTjs108NpYj42SrGvOB2PpxIVM8nWxjPqJGE=</pin>
+            <pin digest="SHA-256">NqvDJlas/GRcYbcWE8S/IceH9cq77kg0jVhZeAPXq8k=</pin>
+            <pin digest="SHA-256">9+ze1cZgR9KO1kZrVDxA4HQ6voHRCSVNz4RdTCx4U8U=</pin>
+            <pin digest="SHA-256">KwccWaCgrnaw6tsrrSO61FgLacNgG2MMLq8GE6+oP5I=</pin>
+        </pin-set>
+    </domain-config>
 </network-security-config>
 ```
 
@@ -250,6 +262,34 @@ To enable SSL pinning and prevent man-in-the-middle attacks, add the following t
                 <dict>
                     <key>SPKI-SHA256-BASE64</key>
                     <string>15ktYXSSU2llpy7YyCgeqUKDBkjcimK/weUcec960sI=</string>
+                </dict>
+            </array>
+        </dict>
+        <key>api-verified.radar.com</key>
+        <dict>
+            <key>NSIncludesSubdomains</key>
+            <true/>
+            <key>NSPinnedCAIdentities</key>
+            <array>
+                <dict>
+                    <key>SPKI-SHA256-BASE64</key>
+                    <string>++MBgDH5WGvL9Bcn5Be30cRcL0f5O+NyoXuWtQdX1aI=</string>
+                </dict>
+                <dict>
+                    <key>SPKI-SHA256-BASE64</key>
+                    <string>f0KW/FtqTjs108NpYj42SrGvOB2PpxIVM8nWxjPqJGE=</string>
+                </dict>
+                <dict>
+                    <key>SPKI-SHA256-BASE64</key>
+                    <string>NqvDJlas/GRcYbcWE8S/IceH9cq77kg0jVhZeAPXq8k=</string>
+                </dict>
+                <dict>
+                    <key>SPKI-SHA256-BASE64</key>
+                    <string>9+ze1cZgR9KO1kZrVDxA4HQ6voHRCSVNz4RdTCx4U8U=</string>
+                </dict>
+                <dict>
+                    <key>SPKI-SHA256-BASE64</key>
+                    <string>KwccWaCgrnaw6tsrrSO61FgLacNgG2MMLq8GE6+oP5I=</string>
                 </dict>
             </array>
         </dict>
