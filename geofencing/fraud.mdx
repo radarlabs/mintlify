@@ -154,6 +154,21 @@ Radar.initialize(
 )
 ```
 
+To enable automatic failover to a secondary verified host if the primary returns a non-Radar response (e.g., due to DNS hijacking or interception), also pass `trackVerifiedAutoFailover = true`:
+
+```java
+val options = RadarInitializeOptions(
+  fraud = true,
+  trackVerifiedAutoFailover = true
+)
+
+Radar.initialize(
+  context = this,
+  publishableKey = "prj_test_pk_...",
+  options = options
+)
+```
+
 #### Play Integrity API
 
 To support the `compromised` flag on Android, enable the [Play Integrity API](https://developer.android.com/google/play/integrity) on the [Settings page](https://dashboard.radar.com/settings#fraud-settings).
@@ -229,6 +244,26 @@ If using [iOS SDK](/sdk/ios) version `3.26.0` or higher, you must install an add
 In Xcode, go to _File \> Swift Packages \> Add Package Dependency_. Enter `https://github.com/radarlabs/radar-sdk-ios-fraud-spm.git` for the _Package Repository URL_.
 
 If you do not install the plugin, `Radar.trackVerified()` will return `ERROR_PLUGIN`.
+
+#### Initialize SDK
+
+To enable automatic failover to a secondary verified host if the primary returns a non-Radar response (e.g., due to DNS hijacking or interception), set `trackVerifiedAutoFailover` on `RadarInitializeOptions`:
+
+<CodeGroup>
+
+```swift Swift
+let radarInitializeOptions = RadarInitializeOptions()
+radarInitializeOptions.trackVerifiedAutoFailover = true
+Radar.initialize(publishableKey: "prj_test_pk_...", options: radarInitializeOptions)
+```
+
+```c Objective-C
+RadarInitializeOptions *radarInitializeOptions = [[RadarInitializeOptions alloc] init];
+radarInitializeOptions.trackVerifiedAutoFailover = YES;
+[Radar initializeWithPublishableKey:@"prj_test_pk_..." options:radarInitializeOptions];
+```
+
+</CodeGroup>
 
 #### App Attest
 
