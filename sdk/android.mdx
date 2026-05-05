@@ -82,6 +82,19 @@ class MyApplication : Application() {
 
 </CodeGroup>
 
+### Network timeout
+
+To override the default network timeout, set `networkTimeout` on `RadarInitializeOptions` as a Kotlin `Duration`. The extended timeout used for longer-running requests is automatically set to 2.5x this value. Values are clamped to `[1, 300]` seconds.
+
+```kotlin Kotlin
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarInitializeOptions
+import kotlin.time.Duration.Companion.seconds
+
+val options = RadarInitializeOptions(networkTimeout = 30.seconds)
+Radar.initialize(this, "prj_test_pk_...", options)
+```
+
 ## Request permissions
 
 Radar respects [standard Android location permissions](https://developer.android.com/training/permissions/requesting.html).

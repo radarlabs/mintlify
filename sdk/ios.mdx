@@ -108,6 +108,27 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 </CodeGroup>
 
+### Network timeout
+
+To override the default network timeout, set `networkTimeoutInterval` (in seconds) on `RadarInitializeOptions`. The extended timeout used for longer-running requests is automatically set to 2.5x this value. Values are clamped to `[1, 300]` seconds.
+
+<CodeGroup>
+
+```swift Swift
+let radarInitializeOptions = RadarInitializeOptions()
+radarInitializeOptions.networkTimeoutInterval = 30
+Radar.initialize(publishableKey: "prj_test_pk_...", options: radarInitializeOptions)
+```
+
+
+```c Objective-C
+RadarInitializeOptions *radarInitializeOptions = [[RadarInitializeOptions alloc] init];
+radarInitializeOptions.networkTimeoutInterval = 30;
+[Radar initializeWithPublishableKey:@"prj_test_pk_..." options:radarInitializeOptions];
+```
+
+</CodeGroup>
+
 ## Request permissions
 
 Radar respects [standard iOS location permissions](https://developer.apple.com/documentation/corelocation/requesting_authorization_for_location_services).
