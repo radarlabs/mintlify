@@ -208,7 +208,7 @@ To enable SSL pinning and prevent man-in-the-middle attacks, add a `res/xml/netw
         </pin-set>
     </domain-config>
 
-    <!-- for SSL pinning (failover) -->
+    <!-- for SSL pinning (if using failover) -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">api-verified.radar.com</domain>
         <pin-set>
@@ -300,6 +300,7 @@ To enable SSL pinning and prevent man-in-the-middle attacks, add the following t
                 </dict>
             </array>
         </dict>
+        <!-- Needed if using failover -->
         <key>api-verified.radar.com</key>
         <dict>
             <key>NSIncludesSubdomains</key>
