@@ -576,10 +576,10 @@ If you are using Expo, the `react-native-radar` plugin can set up automatic deep
 }
 ```
 
-Then run `npx expo prebuild --clean` to regenerate the native iOS project. The plugin will inject the required `Radar.nativeSetup(...)` call into your AppDelegate so that deep linking and conversion logging are configured before the JavaScript bundle loads.
+Then run `npx expo prebuild --clean` to regenerate the native iOS project. The plugin will inject the required `Radar.nativeSetup(...)` call into your `AppDelegate.mm` so that deep linking and conversion logging are configured before the JavaScript bundle loads.
 
 ###### Manual setup (bare React Native)
-If you are not using Expo, set the autoHandleNotificationDeepLinks option to true in the radarInitializeOptions and call [Radar nativeSetup:] from your AppDelegate.mm:
+If you are not using Expo, set the `autoHandleNotificationDeepLinks` option to true in `radarInitializeOptions` and call `[Radar nativeSetup:]` from your `AppDelegate.mm`:
 
 ```objc
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
