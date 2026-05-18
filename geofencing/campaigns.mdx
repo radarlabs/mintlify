@@ -555,11 +555,33 @@ func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive respo
 
 #### React Native setup
 
-##### iOS
+###### Using the Expo plugin (recommended)
+If you are using Expo, the `react-native-radar` plugin can set up automatic deep link handling and conversion logging for you at prebuild time. Add the relevant options to your plugin configuration in `app.json`:
+```json
+{
+  "expo": {
+    ...
+    "plugins": [
+      [
+        "react-native-radar",
+        {
+          // boolean to enable iOS automatic deep link handling for Radar notifications, defaults to false
+          "iosAutoHandleNotificationDeepLinks": true,
+          // boolean to enable iOS automatic logging of notification conversions, defaults to false
+          "iosAutoLogNotificationConversions": true
+        }
+      ]
+    ]
+  }
+}
+```
 
-Radar's React Native SDK can automatically set up deep linking for you. To enable this feature, set the `autoHandleNotificationDeepLinks` option to `true` in the `radarInitializeOptions` via the `AppDelegate.mm`.
+Then run `npx expo prebuild --clean` to regenerate the native iOS project. The plugin will inject the required `Radar.nativeSetup(...)` call into your AppDelegate so that deep linking and conversion logging are configured before the JavaScript bundle loads.
 
-```c#
+###### Manual setup (bare React Native)
+If you are not using Expo, set the autoHandleNotificationDeepLinks option to true in the radarInitializeOptions and call [Radar nativeSetup:] from your AppDelegate.mm:
+
+```objc
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
   self.moduleName = @"main";
