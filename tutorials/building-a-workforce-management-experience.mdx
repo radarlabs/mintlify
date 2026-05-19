@@ -1,0 +1,320 @@
+In this tutorial, we show you the Radar components to build a workforce management experience from end to end. You'll learn how to power the full shift cycle: shift creation, shift experience, and reimbursement workflows.
+
+The core shift experience we'll cover looks like this:
+
+1. A shift is created
+2. A professional gets assigned a shift
+3. The professional starts traveling to the shift
+4. The professional's live ETA and location updates are recorded
+5. The professional automatically clocks in upon arrival
+6. The professional automatically clocks out upon departure
+7. The professional is reimbursed either by time onsite and/or trip mileage
+
+Each step in this flow maps directly to a Radar feature such as geofences, trips, and webhooks. Instead of building and maintaining location infrastructure from scratch, your team can focus on the product experience on top of it.
+
+## Features used
+
+- [iOS SDK](https://docs.radar.com/sdk/ios) / [Android SDK](https://docs.radar.com/sdk/android)
+- [Geofences](https://docs.radar.com/geofencing/geofences)
+- [Trips](https://docs.radar.com/geofencing/trips)
+- [Webhooks](https://docs.radar.com/integrations/webhooks)
+- [Route matching](https://docs.radar.com/api#route-match)
+
+## Shift lifecycle
+
+| Step | Trigger | Radar feature |
+| --- | --- | --- |
+| Shift created | A shift is created | [Geofences API](https://docs.radar.com/geofencing/geofences#api): create a geofence at the shift location |
+| Professional assigned | The professional is assigned or picks up a shift | Set user metadata with shift context |
+| Professional en route | The professional taps "Start route" | [Trips](https://docs.radar.com/geofencing/trips): start a trip with the shift geofence as the destination |
+| Live ETA tracking | The professional is traveling | `user.updated_trip` webhook |
+| Approaching alert | The professional is nearby | `user.approaching_trip_destination` webhook |
+| Auto clock-in | The professional enters the shift geofence | `user.entered_geofence` webhook |
+| Auto clock-out | The professional exits the shift geofence | `user.exited_geofence` webhook |
+| Mileage reimbursement | The shift is completed | [Route matching API:](https://docs.radar.com/api#route-match) calculates the trip's mileage |
+
+## Getting started
+
+If you haven’t already, sign up for Radar to get your API keys. 
+
+### Initialize the SDK
+
+For full setup instructions, see the [iOS SDK](https://docs.radar.com/sdk/ios) and [Android SDK](https://docs.radar.com/sdk/android) docs. Once the SDK is installed, initialize it.
+
+```swift
+Radar.initialize(publishableKey: "prj_live_pk_...")
+```
+
+**Android (Kotlin)**
+
+```kotlin
+Radar.initialize(context, "prj_live_pk_...")
+```
+
+### Set the user
+
+When a professional logs in, set their user ID and any relevant metadata. This links all location updates and events to the professional in your system.
+
+**iOS (Swift)**
+
+```swift
+Radar.setUserId("pro_user_456")
+Radar.setMetadata(["companyId": "company_abc123", "name": "John Doe"])
+```
+
+**Android (Kotlin)**
+
+```kotlin
+Radar.setUserId("pro_user_456")
+Radar.setMetadata(JSONObject().apply {
+    put("companyId", "company_abc123")
+    put("name", "John Doe")
+})
+```
+
+Setting `metadata`, like `companyId`, makes it easy to filter the data by company or team on the server side.
+
+### Request location permissions
+
+This experience requires background location permissions so the SDK can track the professional's location when the app is not in the foreground.
+
+Following these docs to request background permissions for [iOS](https://docs.radar.com/sdk/ios#request-permissions) and [Android](https://docs.radar.com/sdk/android#request-permissions). 
+
+## Steps
+
+<Steps>
+  <Step title="Create a geofence for the shift location">
+    When a shift is created, create a geofence for its location. This will be used to detect when the professional arrives and departs.
+
+    Use the [Geofences API](https://docs.radar.com/geofencing/geofences#api) to create a geofence server-side when a shift is created. Link the geofence to the shift using an `externalId` so you can reference it.
+
+    ```shellscript
+    curl https://api.radar.io/v1/geofences/shift/shift_12345 \
+      -H "Authorization: prj_live_sk_..." \
+      -X PUT \
+      -d "description=123 Main St - Water Heater Repair" \
+      -d "type=circle" \
+      -d "coordinates=[-73.9911,40.7342]" \
+      -d "radius=100" \
+      -d "metadata[shiftId]=shift_12345" \
+      -d "metadata[customerId]=customer_abc"
+    ```
+  </Step>
+  <Step title="Start a trip when the professional begins traveling">
+    When the professional taps "Start route," start a Radar trip. Trips provide real-time ETA tracking, delay detection, and approaching signals - everything needed to power a live tracking view for a dispatcher or customer.
+
+    **iOS (Swift)**
+
+    ```swift
+    let tripMetadata: [String: String] = [
+        "shiftId": "shift_12345",
+        "proName": "John Doe"
+    ]
+    
+    let tripOptions = RadarTripOptions(
+        externalId: "trip_shift_12345",
+        destinationGeofenceTag: "shift",
+        destinationGeofenceExternalId: "shift_12345"
+    )
+    tripOptions.mode = .car
+    tripOptions.metadata = tripMetadata
+    
+    Radar.startTrip(options: tripOptions, trackingOptions: .presetContinuous) { status, trip, events in
+        if status == .success {
+            // trip started, begin showing live ETA to dispatcher and customer
+        } else {
+            // handle error
+        }
+    }
+    ```
+
+    **Android (Kotlin)**
+
+    ```kotlin
+    val tripMetadata = JSONObject()
+    tripMetadata.put("shiftId", "shift_12345")
+    tripMetadata.put("proName", "John Doe")
+    
+    val tripOptions = RadarTripOptions(
+        "trip_shift_12345",
+        tripMetadata,
+        "shift",
+        "shift_12345",
+        Radar.RadarRouteMode.CAR
+    )
+    
+    Radar.startTrip(tripOptions, RadarTrackingOptions.CONTINUOUS) { status, trip, events ->
+        if (status == Radar.RadarStatus.SUCCESS) {
+            // trip started, begin showing live ETA to dispatcher and customer
+        } else {
+            // handle error
+        }
+    }
+    ```
+
+    Setting `scheduledArrivalAt` enables Radar's delay detection: if the professional's ETA exceeds the scheduled arrival time, Radar will surface a delay signal automatically. 
+
+    We recommend implementing [silent push](https://docs.radar.com/sdk/silent-push) alongside trip tracking to ensure location updates continue even if the professional has manually terminated the app.
+  </Step>
+  <Step title="Handle trip signals">
+     Trips stream real-time locations and ETA updates to your backend via webhooks. Use these events to power a dispatcher dashboard and/or customer-facing tracking view.
+
+    Key trip events to listen for:
+
+    | Event | Description |
+    | --- | --- |
+    | `user.started_trip` | Professional is on their way |
+    | `user.updated_trip` | Location or ETA updated |
+    | `user.approaching_trip_destination` | Professional is within the approaching threshold |
+    | `user.arrived_at_trip_destination` | Professional has arrived at the destination |
+    | `user.stopped_trip` | Trip completed or cancelled |
+
+    **Offline behavior:** If the professional loses connection during a trip, the SDK will buffer location updates and replay them once connectivity is restored. Your backend will receive the replayed locations in order, so no location data should be lost.
+
+    **No-show detection:** As the professional travels, `eta.duration` is updated on each `user.updated_trip` event. If the ETA continues to increase over time rather than decrease, this may indicate the professional is moving away from the shift. You can implement custom no-show logic on your backend by tracking ETA trends across successive events and marking a shift as a no-show after a configurable threshold.
+
+    Example `user.updated_trip` payload:
+
+    ```json
+    {
+      "events": [
+        {
+          "type": "user.updated_trip",
+          "createdAt": "2026-05-12T14:30:00.000Z",
+          "live": true,
+          "trip": {
+            "externalId": "trip_shift_12345",
+            "status": "started",
+            "metadata": {
+              "shiftId": "shift_12345",
+              "proName": "John Doe"
+            },
+            "mode": "car",
+            "destinationGeofenceTag": "shift",
+            "destinationGeofenceExternalId": "shift_12345",
+            "eta": {
+              "duration": 8,
+              "distance": 3200
+            }
+          }
+        }
+      ],
+      "user": {
+        "userId": "pro_user_456"
+      }
+    }
+    ```
+  </Step>
+  <Step title="Clock-in on geofence entry">
+    When the professional enters the shift geofence, Radar triggers a `user.entered_geofence` event. Use `createdAt` from the webhook payload at the clock-in timestamp.
+
+    ```json
+    {
+      "type": "user.entered_geofence",
+      "createdAt": "2026-05-12T14:32:00.000Z",
+      "live": true,
+      "location": {
+        "type": "Point",
+        "coordinates": [-73.9911, 40.7342]
+      },
+      "geofence": {
+        "tag": "shift",
+        "externalId": "shift_12345",
+        "metadata": {
+          "shiftId": "shift_12345"
+        }
+      },
+      "user": {
+        "userId": "pro_user_456",
+        "metadata": {
+          "companyId": "company_abc123",
+          "name": "John Doe"
+        }
+      }
+    }
+    ```
+
+    Update the shift record in your system with the clock-in timestamp.
+  </Step>
+  <Step title="Clock-out on geofence exit">
+    When the professional exits the shift geofence, Radar triggers a `user.exited_geofence` event. Use `createdAt` as the clock-out timestamp and calculate the time onsite.
+
+    ```json
+    {
+      "type": "user.exited_geofence",
+      "createdAt": "2026-05-12T16:15:00.000Z",
+      "live": true,
+      "location": {
+        "type": "Point",
+        "coordinates": [-73.9911, 40.7342]
+      },
+      "geofence": {
+        "tag": "shift",
+        "externalId": "shift_12345",
+        "metadata": {
+          "shiftId": "shift_12345"
+        }
+      },
+      "user": {
+        "userId": "pro_user_456",
+        "metadata": {
+          "companyId": "company_abc123",
+          "name": "John Doe"
+        }
+      }
+    }
+    ```
+
+    **Time onsite** = `exitedAt` - `enteredAt`
+
+    Once the shift is complete, delete the geofence to keep your project clean:
+
+    ```shellscript
+    curl "https://api.radar.io/v1/geofences/shift/shift_12345" \
+      -H "Authorization: prj_live_sk_..." \
+      -X DELETE
+    ```
+  </Step>
+  <Step title="Calculate mileage for reimbursement">
+    When the trip completes, pass it to  Radar's [route matching API](https://docs.radar.com/api#route-match) to calculate the distance traveled for mileage reimbursement.
+
+    **Request:**
+
+    ```shellscript
+    curl "https://api.radar.io/v1/route/match" \
+      -H "Authorization: prj_live_pk_..." \
+      -H "Content-Type: application/json" \
+      -X POST \
+      -d '{
+        "path": [
+          {"coordinates": "40.7128,-74.0060", "createdAt": "2026-05-12T14:00:00Z", "accuracy": 10},
+          {"coordinates": "40.7200,-73.9980", "createdAt": "2026-05-12T14:05:00Z", "accuracy": 10},
+          {"coordinates": "40.7342,-73.9911", "createdAt": "2026-05-12T14:12:00Z", "accuracy": 10}
+        ],
+        "mode": "car",
+        "units": "imperial"
+      }'
+    ```
+
+    **Response:**
+
+    ```shellscript
+    {
+      "meta": {
+        "code": 200
+      },
+      "matchedPath": [
+        {"latitude": 40.7128, "longitude": -74.0060, "originalIndex": 0},
+        {"latitude": 40.7200, "longitude": -73.9980, "originalIndex": 1},
+        {"latitude": 40.7342, "longitude": -73.9911, "originalIndex": 2}
+      ],
+      "distance": {
+        "value": 7439.5,
+        "text": "1.4 mi"
+      }
+    }
+    ```
+
+    Use `distance.text` to display the trip mileage to the dispatcher and `distance.value` to calculate reimbursement.
+  </Step>
+</Steps>
