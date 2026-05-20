@@ -10,7 +10,6 @@ The core shift experience we'll cover looks like this:
 6. The professional automatically clocks out upon departure
 7. The professional is reimbursed either by time onsite and/or trip mileage
 
-
 Each step in this flow maps directly to a Radar feature such as geofences, trips, and webhooks. Instead of building and maintaining location infrastructure from scratch, your team can focus on the product experience on top of it.
 
 ## Features used
@@ -166,8 +165,8 @@ Following these docs to request background permissions for [iOS](https://docs.ra
 
     As a professional is on their way to a shift, we recommend:
 
-    - **On-trip tracking options**: increase  tracking frequency while a professional is actively on a trip using the`CONTINUOUS` preset
-    - **In-geofence tracking options**: increase tracking frequency when a professional is inside a `shift` geofence to ensure accurate clock-in/out detection while on-site.
+    - **On-trip tracking options**: increase tracking frequency while a professional is actively on a trip using a modified version of the`CONTINUOUS` preset, with `desiredStoppedUpdateInterval: 60` and `desiredMovingUpdateInterval: 60`.
+    - **In-geofence tracking options**: increase tracking frequency to every 30s via the base `CONTINUOUS` preset when a professional is inside a `shift` geofence to ensure accurate clock-in/out detection while on-site.
   </Step>
   <Step title="Handle trip signals">
     Trips stream real-time locations and ETA updates to your backend via webhooks. Use these events to power a dispatcher dashboard and/or customer-facing tracking view.
