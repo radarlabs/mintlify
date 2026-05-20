@@ -36,7 +36,7 @@ Each step in this flow maps directly to a Radar feature such as geofences, trips
 
 ## Getting started
 
-If you haven’t already, sign up for Radar to get your API keys. 
+If you haven’t already, sign up for Radar to get your API keys.
 
 ### Initialize the SDK
 
@@ -79,7 +79,7 @@ Setting `metadata`, like `companyId`, makes it easy to filter the data by compan
 
 This experience requires background location permissions so the SDK can track the professional's location when the app is not in the foreground.
 
-Following these docs to request background permissions for [iOS](https://docs.radar.com/sdk/ios#request-permissions) and [Android](https://docs.radar.com/sdk/android#request-permissions). 
+Following these docs to request background permissions for [iOS](https://docs.radar.com/sdk/ios#request-permissions) and [Android](https://docs.radar.com/sdk/android#request-permissions).
 
 ## Steps
 
@@ -87,7 +87,7 @@ Following these docs to request background permissions for [iOS](https://docs.ra
   <Step title="Create a geofence for the shift location">
     When a shift is created, create a geofence for its location. This will be used to detect when the professional arrives and departs.
 
-    Use the [Geofences API](https://docs.radar.com/geofencing/geofences#api) to create a geofence server-side when a shift is created. Link the geofence to the shift using an `externalId` so you can reference it.
+    Use the [Geofences API](https://docs.radar.com/geofencing/geofences#api) to create a geofence server-side when a shift is created. Link the geofence to the shift using an `externalId` so you can reference it. Setting `deleteAfter` automatically deletes the geofence after the shift window, keeping your project clean without requiring a manual delete call. 
 
     ```shellscript
     curl https://api.radar.io/v1/geofences/shift/shift_12345 \
@@ -98,7 +98,8 @@ Following these docs to request background permissions for [iOS](https://docs.ra
       -d "coordinates=[-73.9911,40.7342]" \
       -d "radius=100" \
       -d "metadata[shiftId]=shift_12345" \
-      -d "metadata[customerId]=customer_abc"
+      -d "metadata[customerId]=customer_abc" \
+      -d "deleteAfter=2026-01-01T00:00:00.000Z"
     ```
   </Step>
   <Step title="Start a trip when the professional begins traveling">
@@ -120,7 +121,7 @@ Following these docs to request background permissions for [iOS](https://docs.ra
     tripOptions.mode = .car
     tripOptions.metadata = tripMetadata
     
-    Radar.startTrip(options: tripOptions, trackingOptions: .presetContinuous) { status, trip, events in
+    Radar.startTrip(options: tripOptions) { status, trip, events in
         if status == .success {
             // trip started, begin showing live ETA to dispatcher and customer
         } else {
@@ -144,7 +145,7 @@ Following these docs to request background permissions for [iOS](https://docs.ra
         Radar.RadarRouteMode.CAR
     )
     
-    Radar.startTrip(tripOptions, RadarTrackingOptions.CONTINUOUS) { status, trip, events ->
+    Radar.startTrip(tripOptions) { status, trip, events ->
         if (status == Radar.RadarStatus.SUCCESS) {
             // trip started, begin showing live ETA to dispatcher and customer
         } else {
@@ -153,12 +154,23 @@ Following these docs to request background permissions for [iOS](https://docs.ra
     }
     ```
 
-    Setting `scheduledArrivalAt` enables Radar's delay detection: if the professional's ETA exceeds the scheduled arrival time, Radar will surface a delay signal automatically. 
+    Setting `scheduledArrivalAt` enables Radar's delay detection: if the professional's ETA exceeds the scheduled arrival time, Radar will automatically surface a delay signal. 
 
-    We recommend implementing [silent push](https://docs.radar.com/sdk/silent-push) alongside trip tracking to ensure location updates continue even if the professional has manually terminated the app.
+    We recommend implementing [silent push](https://docs.radar.com/sdk/silent-push) notifications alongside trip tracking to ensure location updates continue even if the professional manually terminates the app.
+
+    **Tracking frequency**
+
+    Radar's SDK supports custom tracking options as well as three tracking presets: `EFFICIENT`, `RESPONSIVE`, and `CONTINUOUS`. You can [remotely set tracking options](https://docs.radar.com/sdk/remote-configuration) in the Radar dashboard, overriding any client-side specified tracking options.
+
+    In addition to general [tracking options](https://docs.radar.com/sdk/tracking), Radar supports overriding tracking behavior during a trip or inside a geofence with a specified tag.
+
+    As a professional is on their way to a shift, we recommend:
+
+    - **On-trip tracking options**: increase  tracking frequency while a professional is actively on a trip using the`CONTINUOUS` preset
+    - **In-geofence tracking options**: increase tracking frequency when a professional is inside a `shift` geofence to ensure accurate clock-in/out detection while on-site.
   </Step>
   <Step title="Handle trip signals">
-     Trips stream real-time locations and ETA updates to your backend via webhooks. Use these events to power a dispatcher dashboard and/or customer-facing tracking view.
+    Trips stream real-time locations and ETA updates to your backend via webhooks. Use these events to power a dispatcher dashboard and/or customer-facing tracking view.
 
     Key trip events to listen for:
 
@@ -168,7 +180,7 @@ Following these docs to request background permissions for [iOS](https://docs.ra
     | `user.updated_trip` | Location or ETA updated |
     | `user.approaching_trip_destination` | Professional is within the approaching threshold |
     | `user.arrived_at_trip_destination` | Professional has arrived at the destination |
-    | `user.stopped_trip` | Trip completed or cancelled |
+    | `user.stopped_trip` | Trip completed or canceled |
 
     **Offline behavior:** If the professional loses connection during a trip, the SDK will buffer location updates and replay them once connectivity is restored. Your backend will receive the replayed locations in order, so no location data should be lost.
 
@@ -207,7 +219,7 @@ Following these docs to request background permissions for [iOS](https://docs.ra
     ```
   </Step>
   <Step title="Clock-in on geofence entry">
-    When the professional enters the shift geofence, Radar triggers a `user.entered_geofence` event. Use `createdAt` from the webhook payload at the clock-in timestamp.
+    When the professional enters the shift geofence, Radar triggers a `user.entered_geofence` event. Use `createdAt` from the webhook payload at the clock-in timestamp.
 
     ```json
     {
@@ -238,7 +250,7 @@ Following these docs to request background permissions for [iOS](https://docs.ra
     Update the shift record in your system with the clock-in timestamp.
   </Step>
   <Step title="Clock-out on geofence exit">
-    When the professional exits the shift geofence, Radar triggers a `user.exited_geofence` event. Use `createdAt` as the clock-out timestamp and calculate the time onsite.
+    When the professional exits the shift geofence, Radar triggers a `user.exited_geofence` event. Use `createdAt` as the clock-out timestamp and calculate the time onsite.
 
     ```json
     {
@@ -267,14 +279,6 @@ Following these docs to request background permissions for [iOS](https://docs.ra
     ```
 
     **Time onsite** = `exitedAt` - `enteredAt`
-
-    Once the shift is complete, delete the geofence to keep your project clean:
-
-    ```shellscript
-    curl "https://api.radar.io/v1/geofences/shift/shift_12345" \
-      -H "Authorization: prj_live_sk_..." \
-      -X DELETE
-    ```
   </Step>
   <Step title="Calculate mileage for reimbursement">
     When the trip completes, pass it to  Radar's [route matching API](https://docs.radar.com/api#route-match) to calculate the distance traveled for mileage reimbursement.
