@@ -11,7 +11,7 @@ The source can be found on GitHub [here](https://github.com/radarlabs/radar-sdk-
 In an HTML page, add the SDK script:
 
 ```html
-<script src="https://js.radar.com/v5.0.0/radar.min.js"></script>
+<script src="https://js.radar.com/v5.1.0/radar.min.js"></script>
 ```
 
 If you use Maps or Autocomplete UI, add the corresponding plugin scripts:
@@ -82,13 +82,13 @@ Radar.initialize('prj_live_pk_...', { /* custom options here */});
 
 Available options include:
 
-| Name                   | Default | Possible values                 | Description                                                                                                                                                                                                                                                |
-| ---------------------- | ------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `logLevel`             | `error` | `none`, `info`, `warn`, `error` | Determines the log level for console logging. Defaults to `error` when using a test publishable key.                                                                                                                                                       |
-| `cacheLocationMinutes` | `null`  | number                          | Determines whether to reuse previous location updates. A cache ttl in minutes. If `null` or `0`, will always request a new location.                                                                                                                       |
-| `locationMaximumAge`   | `null`  | number                          | Determines whether to use old browser locations. A maximum age in milliseconds. If `null` or `0`, will always request a new location. See [getCurrentPosition options()](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition). |
-| `locationTimeout`      | `30000` | number                          | The number of milliseconds to wait for a location update before an error is thrown. Defaults to 30 seconds.                                                                                                                                                |
-| `desiredAccuracy`      | `high`  | `high`, `medium`, `low`         | Determines the desired accuracy of location updates. Note that higher accuracy can result in slower response times.                                                                                                                                        |
+| Name | Default | Possible values | Description |
+| --- | --- | --- | --- |
+| `logLevel` | `error` | `none`, `info`, `warn`, `error` | Determines the log level for console logging. Defaults to `error` when using a test publishable key. |
+| `cacheLocationMinutes` | `null` | number | Determines whether to reuse previous location updates. A cache ttl in minutes. If `null` or `0`, will always request a new location. |
+| `locationMaximumAge` | `null` | number | Determines whether to use old browser locations. A maximum age in milliseconds. If `null` or `0`, will always request a new location. See [getCurrentPosition options()](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition). |
+| `locationTimeout` | `30000` | number | The number of milliseconds to wait for a location update before an error is thrown. Defaults to 30 seconds. |
+| `desiredAccuracy` | `high` | `high`, `medium`, `low` | Determines the desired accuracy of location updates. Note that higher accuracy can result in slower response times. |
 
 ## Geofencing
 

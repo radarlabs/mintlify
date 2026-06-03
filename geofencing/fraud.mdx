@@ -131,8 +131,8 @@ Add the plugin to the `dependencies` section of your app's `build.gradle` file:
 
 ```gradle
 dependencies {   
-  implementation 'io.radar:sdk:3.25.+'
-  implementation 'io.radar:sdk-fraud:1.0.0'
+  implementation 'io.radar:sdk:3.33.+'
+  implementation 'io.radar:sdk-fraud:1.1.0'
 }
 ```
 
@@ -196,7 +196,7 @@ To enable SSL pinning and prevent man-in-the-middle attacks, add a `res/xml/netw
         </pin-set>
     </domain-config>
 
-    <!-- for SSL pinning (if using failover) -->
+    <!-- for SSL pinning (if automatic failover enabled) -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">api-verified.radar.com</domain>
         <pin-set>
@@ -216,7 +216,7 @@ Then, reference this file in your manifest:
 <?xml version="1.0" encoding="utf-8"?>
 <manifest>
     <application android:networkSecurityConfig="@xml/network_security_config"
-                <!-- other items -->
+        <!-- other items -->
     </application>
 </manifest>
 ```
@@ -230,6 +230,11 @@ Learn more about [Network Security Configuration on Android](https://developer.a
 If using [iOS SDK](/sdk/ios) version `3.26.0` or higher, you must install an additional plugin.
 
 In Xcode, go to _File \> Swift Packages \> Add Package Dependency_. Enter `https://github.com/radarlabs/radar-sdk-ios-fraud-spm.git` for the _Package Repository URL_.
+
+```text
+.package(url: "https://github.com/radarlabs/radar-sdk-ios-spm.git", "3.34.0"..<"3.35.0")
+.package(url: "https://github.com/radarlabs/radar-sdk-ios-fraud-spm.git", "1.3.0"..<"1.4.0")
+```
 
 If you do not install the plugin, `Radar.trackVerified()` will return `ERROR_PLUGIN`.
 
@@ -288,7 +293,7 @@ To enable SSL pinning and prevent man-in-the-middle attacks, add the following t
                 </dict>
             </array>
         </dict>
-        <!-- Needed if using failover -->
+        <!-- if automatic failover enabled -->
         <key>api-verified.radar.com</key>
         <dict>
             <key>NSIncludesSubdomains</key>
@@ -332,8 +337,8 @@ If using [web SDK](/sdk/web) version `5.0.0` or higher, you must install an addi
 In an HTML page, add the SDK script and the plugin script:
 
 ```html
-<script src="https://js.radar.com/v5.0.0/radar.min.js"></script>
-<script src="https://js.radar.com/fraud/v1.0.0/radar-fraud.min.js"></script>
+<script src="https://js.radar.com/v5.1.0/radar.min.js"></script>
+<script src="https://js.radar.com/fraud/v1.3.0/radar-fraud.min.js"></script>
 ```
 
 In a web app, install the SDK package and the plugin package from npm:

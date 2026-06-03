@@ -20,8 +20,8 @@ The SDK is small and typically adds less than 500 KB to your compiled app.
 
 Install [CocoaPods](https://cocoapods.org/). If you don't have an existing `Podfile`, run `pod init` in your project directory. Add the following to your `Podfile`:
 
-```
-pod 'RadarSDK', '~> 3.32.0'
+```text
+pod 'RadarSDK', '~> 3.34.0'
 ```
 
 Then, run `pod install`. You may also need to run `pod repo update`.
@@ -34,8 +34,8 @@ In Xcode, go to _File_ \> _Swift Packages_ \> _Add Package Dependency_. Enter `h
 
 **Note:** we recommend pinning the minor version you're installing as we occasionally introduce breaking changes in new minor versions. You can pin the minor version using the range operator:
 
-```
-3.32.0..<3.33.0
+```text
+.package(url: "https://github.com/radarlabs/radar-sdk-ios-spm.git", "3.34.0"..<"3.35.0")
 ```
 
 <Info>
@@ -46,8 +46,8 @@ In Xcode, go to _File_ \> _Swift Packages_ \> _Add Package Dependency_. Enter `h
 
 Install [Carthage](https://github.com/Carthage/Carthage) by adding the following to your `Cartfile`:
 
-```
-github "radarlabs/radar-sdk-ios" ~> 3.32.0
+```text
+github "radarlabs/radar-sdk-ios" ~> 3.34.0
 ```
 
 Then, run `carthage update` and drag `Build/iOS/RadarSDK.framework` into the _Linked Frameworks and Libraries_ section of your target. Do not add the framework as an input to your `copy-frameworks` run script.
@@ -90,7 +90,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 ```
 
-
 ```c Objective-C
 #import "AppDelegate.h"
 @import RadarSDK;
@@ -119,7 +118,6 @@ let radarInitializeOptions = RadarInitializeOptions()
 radarInitializeOptions.networkTimeoutInterval = 30
 Radar.initialize(publishableKey: "prj_test_pk_...", options: radarInitializeOptions)
 ```
-
 
 ```c Objective-C
 RadarInitializeOptions *radarInitializeOptions = [[RadarInitializeOptions alloc] init];
@@ -183,7 +181,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, CLLocationManagerDelegate
 
 }
 ```
-
 
 ```c Objective-C
 // AppDelegate.h
@@ -268,7 +265,6 @@ Radar.trackOnce { (status: RadarStatus, location: CLLocation?, events: [RadarEve
 }
 ```
 
-
 ```c Objective-C
 [Radar trackOnceWithCompletionHandler:^(RadarStatus status, CLLocation *location, NSArray<RadarEvent *> *events, RadarUser *user) {
     // do something with location, events, user
@@ -323,7 +319,6 @@ To start tracking for geofencing, call:
 Radar.startTracking(trackingOptions: RadarTrackingOptions.presetResponsive)
 ```
 
-
 ```c Objective-C
 [Radar startTrackingWithOptions:RadarTrackingOptions.presetResponsive];
 ```
@@ -338,7 +333,6 @@ To determine whether tracking has been started, call:
 Radar.isTracking()
 ```
 
-
 ```c Objective-C
 [Radar isTracking];
 ```
@@ -352,7 +346,6 @@ To stop tracking (e.g., when the user logs out), call:
 ```swift Swift
 Radar.stopTracking()
 ```
-
 
 ```c Objective-C
 [Radar stopTracking];
@@ -392,7 +385,6 @@ Radar.startTrip(options: tripOptions, trackingOptions: .presetContinuous) { (sta
 }
 ```
 
-
 ```c Objective-C
 [Radar startTripWithOptions:tripOptions trackingOptions:RadarTrackingOptions.presetContinuous
           completionHandler:^(RadarStatus status, RadarTrip * _Nullable trip, NSArray<RadarEvent *> * _Nullable events) {
@@ -421,7 +413,6 @@ Radar.completeTrip()
 // cancel trip
 Radar.cancelTrip()
 ```
-
 
 ```c Objective-C
 // complete trip
@@ -456,7 +447,6 @@ Radar.mockTracking(
 }
 ```
 
-
 ```c Objective-C
 [Radar mockTrackingWithOrigin:origin
                   destination:destination
@@ -482,7 +472,7 @@ To collect motionActivity, you must include a value for `Privacy - Motion Usage 
 
 Add the following to your `Podfile`:
 
-```
+```text
 pod 'RadarSDKMotion', '~> 3.32.0'
 ```
 
@@ -530,7 +520,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, RadarDelegate {
 
 }
 ```
-
 
 ```c Objective-C
 #import "AppDelegate.h"
@@ -592,7 +581,6 @@ Radar.trackOnce(
 }
 ```
 
-
 ```c Objective-C
 [Radar trackOnceWithLocation:location
           completionHandler:^(RadarStatus status, CLLocation *location, NSArray<RadarEvent *> *events, RadarUser *user) {
@@ -616,7 +604,6 @@ You can also assign a custom `userId`, also called _External ID_ in the dashboar
 Radar.setUserId(userId)
 ```
 
-
 ```c Objective-C
 [Radar setUserId:userId];
 ```
@@ -637,7 +624,6 @@ To set a dictionary of custom metadata for the user, call:
 Radar.setMetadata(metadata)
 ```
 
-
 ```c Objective-C
 [Radar setUserId:userId];
 ```
@@ -653,7 +639,6 @@ Finally, to set an optional description for the user, displayed in the dashboard
 ```swift Swift
 Radar.setDescription(description)
 ```
-
 
 ```c Objective-C
 [Radar setDescription:description];
@@ -674,7 +659,6 @@ By default, only critical errors are logged to the console. To enable debug logg
 ```swift Swift
 Radar.setLogLevel(RadarLogLevel.debug)
 ```
-
 
 ```c Objective-C
 [Radar setLogLevel:RadarLogLevelDebug];
@@ -717,7 +701,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, RadarDelegate {
 }
 ```
 
-
 ```c Objective-C
 #import "AppDelegate.h"
 @import RadarSDK;
@@ -759,7 +742,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, RadarDelegate {
 
 Apple requires that you justify your use of background location. Add something materially similar to the following to the bottom of your App Store description: _This app uses background location to (insert use case here). Continued use of background location may decrease battery life._
 
-If you turned on the _Location updates_ background mode, Apple requires additional justification in your App Store review notes. If using `RadarTrackingOptions.presetResponsive`, add something like: _This app uses the Radar SDK (_[_https://radar.com_](https://radar.com)_) to (insert use case here). The Radar SDK requires the background location mode to support polygon geofences and nearby place detection, which cannot be accomplished with region monitoring or visit monitoring._ Or, if using `RadarTrackingOptions.presetContinuous`, add something like _This app uses the Radar SDK (_[_https://radar.com_](https://radar.com)_) to (insert use case here). The Radar SDK requires the location background mode for live trip tracking and live ETAs._
+If you turned on the _Location updates_ background mode, Apple requires additional justification in your App Store review notes. If using `RadarTrackingOptions.presetResponsive`, add something like: _This app uses the Radar SDK ([https://radar.com](https://radar.com)) to (insert use case here). The Radar SDK requires the background location mode to support polygon geofences and nearby place detection, which cannot be accomplished with region monitoring or visit monitoring._ Or, if using `RadarTrackingOptions.presetContinuous`, add something like _This app uses the Radar SDK ([https://radar.com](https://radar.com)) to (insert use case here). The Radar SDK requires the location background mode for live trip tracking and live ETAs._
 
 Learn more about this requirement in section 2.5.4 of the App Store Review Guidelines [here](https://developer.apple.com/app-store/review/guidelines/#software-requirements).
 
@@ -781,7 +764,6 @@ Radar.trackOnce(desiredAccuracy: .high, beacons: true) { (status: RadarStatus, l
 }
 ```
 
-
 ```c Objective-C
 [Radar trackOnceWithDesiredAccuracy:RadarTrackingOptionsDesiredAccuracyHigh beacons:YES completionHandler:^(RadarStatus status, CLLocation *location, NSArray<RadarEvent *> *events, RadarUser *user) {
     // do something with user.beacons
@@ -799,7 +781,6 @@ let trackingOptions = RadarTrackingOptions.presetResponsive
 trackingOptions.beacons = true
 Radar.startTracking(trackingOptions: trackingOptions)
 ```
-
 
 ```c Objective-C
 RadarTrackingOptions *trackingOptions = RadarTrackingOptions.presetResponsive;
@@ -823,7 +804,6 @@ Radar.geocode(
 }
 ```
 
-
 ```c Objective-C
 [Radar geocodeAddress:@"20 jay st brooklyn ny"
     completionHandler:^(RadarStatus status, NSArray<RadarAddress *> *addresses) {
@@ -845,7 +825,6 @@ Radar.reverseGeocode(
 }
 ```
 
-
 ```c Objective-C
 [Radar reverseGeocodeLocation:location
             completionHandler:^(RadarStatus status, NSArray<RadarAddress *> *addresses) {
@@ -864,7 +843,6 @@ Radar.ipGeocode { (status: RadarStatus, address: RadarAddress, proxy: Bool) in
     // do something with address, proxy
 }
 ```
-
 
 ```c Objective-C
 [Radar ipGeocodeWithCompletionHandler:^(RadarStatus status, RadarAddress *address, BOOL proxy) {
@@ -889,7 +867,6 @@ Radar.autocomplete(
   // do something with addresses
 }
 ```
-
 
 ```c Objective-C
 [Radar autocompleteQuery:@"brooklyn roasting"
@@ -917,7 +894,6 @@ Radar.searchGeofences(
   // do something with geofences
 }
 ```
-
 
 ```c Objective-C
 [Radar searchGeofencesNear:location
@@ -949,7 +925,6 @@ Radar.searchPlaces(
 }
 ```
 
-
 ```c Objective-C
 [Radar searchGeofencesNear:location
                     radius:1000 // meters
@@ -976,7 +951,6 @@ Radar.validateAddress(
 }
 ```
 
-
 ```c Objective-C
 [Radar validateAddress:address
      completionHandler:^(RadarStatus status, RadarAddress *address, ValidationResult result) {
@@ -1002,7 +976,6 @@ Radar.getDistance(
   // do something with routes
 }
 ```
-
 
 ```c Objective-C
 [Radar getDistanceFromOrigin:origin
@@ -1032,7 +1005,6 @@ Radar.getMatrix(
   // do something with matrix.routeBetween(originIndex:destinationIndex:)
 }
 ```
-
 
 ```c Objective-C
 [Radar getMatrixFromOrigins:origin
@@ -1069,7 +1041,6 @@ Radar.logConversion(
   // do something with the conversion event
 }
 ```
-
 
 ```c Objective-C
 [Radar logConversionWithName:name
@@ -1111,7 +1082,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 ```
 
-
 ```c Objective-C
 #import "AppDelegate.h"
 @import RadarSDK;
@@ -1141,7 +1111,6 @@ func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive respo
 }
 ```
 
-
 ```c Objective-C
 - (void)userNotificationCenter:(UNUserNotificationCenter *)center didReceiveNotificationResponse:(UNNotificationResponse *)response withCompletionHandler:(void (^)(void))completionHandler {
     [Radar logConversionWithNotificationResponse:response];
@@ -1163,7 +1132,6 @@ Radar.removeTags(["tag1", "tag2"])
 Radar.setTags(["tag1", "tag2"])
 Radar.getTags()
 ```
-
 
 ```objc Objective-C
 [Radar addTags:@[@"tag1", @"tag2"]];
