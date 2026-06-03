@@ -31,9 +31,9 @@ This is useful for any app that wants to deliver timely, location-aware experien
 
     View the [full list of chains](https://docs.radar.com/places/chains) and [full list of categories](https://docs.radar.com/places/categories).
 
-    <Note>
+    <Info>
       Places is available on the [Enterprise plan](https://radar.com/pricing). Contact your account manager to enable it for your project.
-    </Note>
+    </Info>
   </Step>
   <Step title="Install the React Native SDK">
     For full setup instructions, see the [React Native SDK docs](https://docs.radar.com/sdk/react-native). Once the SDK is installed, initialize it:
@@ -68,9 +68,9 @@ This is useful for any app that wants to deliver timely, location-aware experien
     });
     ```
 
-    <Tip>
+    <Info>
       Use a primer screen before triggering the OS permission prompt to explain the value the user will get from sharing their location. This significantly improves opt-in rates.
-    </Tip>
+    </Info>
   </Step>
   <Step title="Start tracking">
     Once permissions are granted, start tracking the user's location. For most consumer use cases, use the `RESPONSIVE` preset, which provides a good balance of location update frequency and battery usage.
@@ -93,9 +93,9 @@ This is useful for any app that wants to deliver timely, location-aware experien
 
     Set the campaign to **Enabled** when ready.
 
-    <Note>
+    <Info>
       Event based notifications require background (`Always allow`) location permissions to deliver. For foreground-only notification delivery, use the **Client side geofence** campaign type instead (iOS only).
-    </Note>
+    </Info>
   </Step>
   <Step title="Listen for place events client-side (optional)">
     To handle `user.entered_place` events directly in your app, for example to trigger an in-app experience rather than a push notification, add an event listener:
@@ -141,10 +141,53 @@ This is useful for any app that wants to deliver timely, location-aware experien
     }
     ```
   </Step>
-  <Step title="Set up deep linking and conversion logging (iOS only)">
-    Radar campaign notifications support deep linking into a specific screen in your app when a user taps a notification. You can also log conversions to measure how users engage with notifications after arriving at a place.
+  <Step title="Log conversions (iOS only)">
+    Logging conversions is required to measure the impact of your campaigns. When a user completes a key action after arriving at a place, such as completing a purchase, log a conversion event so Radar can attribute it to the campaign that triggered the notification.
 
-    Both features require additional native setup in your `AppDelegate.mm`. See the [deep linking](https://docs.radar.com/geofencing/campaigns#deep-linking-ios-only) and [conversions](https://docs.radar.com/sdk/react-native#conversions) docs for setup instructions.
+    Enable automatic conversion logging in your `AppDelegate.mm` to track when users open the app from a notification:
+
+    ```objc
+    - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
+    {
+      self.moduleName = @"main";
+      self.initialProps = @{};
+    
+      BOOL result = [super application:application didFinishLaunchingWithOptions:launchOptions];
+      RadarInitializeOptions *options = [RadarInitializeOptions new];
+      options.autoLogNotificationConversions = YES;
+      [Radar nativeSetup:options];
+      return result;
+    }
+    ```
+
+    You can also log conversions manually from JavaScript. Log a conversion when a user lands on a key screen after receiving a notification:
+
+    ```javascript
+    // Log a page view conversion (e.g. user opened the card setup screen)
+    Radar.logConversion('card_setup_viewed').then((result) => {
+      console.log('Conversion logged:', result.event);
+    }).catch((err) => {
+      console.error('Error logging conversion:', err);
+    });
+    ```
+
+    Or log a conversion with revenue when a user completes a purchase:
+
+    ```javascript
+    // Log a revenue conversion (e.g. user completed an in-store purchase)
+    Radar.logConversion('in_store_purchase', 150.00, {
+      merchant: 'target'
+    }).then((result) => {
+      console.log('Conversion logged:', result.event);
+    }).catch((err) => {
+      console.error('Error logging conversion:', err);
+    });
+    ```
+
+    See the [conversions docs](https://docs.radar.com/sdk/react-native#conversions) for more details.
+  </Step>
+  <Step title="Set up deep linking (iOS only)">
+    Radar campaign notifications support deep linking into a specific screen in your app when a user taps a notification. This requires additional native setup in your `AppDelegate.mm`. See the [deep linking docs](https://docs.radar.com/geofencing/campaigns#deep-linking-ios-only) for setup instructions.
   </Step>
 </Steps>
 
