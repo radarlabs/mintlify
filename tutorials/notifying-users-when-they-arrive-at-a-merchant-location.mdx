@@ -4,7 +4,7 @@ title: "Notifying users when they arrive at a merchant location"
 
 In this tutorial, we show you how to use the Radar [React Native SDK](https://docs.radar.com/sdk/react-native) and [Places](https://docs.radar.com/geofencing/places) to notify users when they arrive at a relevant location, without needing to create or manage geofences manually.
 
-This is useful for any app that wants to deliver timely, location-aware experiences at specific chains or categories of places, such as retail stores, restaurants, or service locations.
+This is useful for any app that wants to deliver timely, location-aware experiences at specific chains or categories of places, such as retail stores, restaurants, or other points of interest.
 
 ## Languages used
 
@@ -23,10 +23,6 @@ This is useful for any app that wants to deliver timely, location-aware experien
     If you haven't already, sign up for Radar to get your API key.
 
     [**Get API keys**](https://radar.com/signup)
-
-    <Note>
-      Places is available on the [Enterprise plan](https://radar.com/pricing). Contact your account manager to enable it for your project.
-    </Note>
   </Step>
   <Step title="Enable Places">
     Navigate to the [Settings page](https://radar.com/dashboard/settings) and enable Places. From there, configure the chain filters or category filters relevant to your use case.
@@ -34,6 +30,10 @@ This is useful for any app that wants to deliver timely, location-aware experien
     For example, to notify users when they arrive at a specific retail chain, add the chain slug (e.g., `target`, `home-depot`) to your chain filters. To notify users when they arrive at any location in a category, add the relevant category slug (e.g., `department-store`).
 
     View the [full list of chains](https://docs.radar.com/places/chains) and [full list of categories](https://docs.radar.com/places/categories).
+
+    <Note>
+      Places is available on the [Enterprise plan](https://radar.com/pricing). Contact your account manager to enable it for your project.
+    </Note>
   </Step>
   <Step title="Install the React Native SDK">
     For full setup instructions, see the [React Native SDK docs](https://docs.radar.com/sdk/react-native). Once the SDK is installed, initialize it:
