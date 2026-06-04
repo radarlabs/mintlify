@@ -1,0 +1,196 @@
+---
+title: "Notifying users when they arrive at a merchant location"
+---
+
+In this tutorial, we show you how to use the Radar [React Native SDK](https://docs.radar.com/sdk/react-native) and [Places](https://docs.radar.com/geofencing/places) to notify users when they arrive at a relevant location, without needing to create or manage geofences manually.
+
+This is useful for any app that wants to deliver timely, location-aware experiences at specific chains or categories of places, such as retail stores, restaurants, or other points of interest.
+
+## Languages used
+
+- JavaScript / React Native
+
+## Features used
+
+- [React Native SDK](https://docs.radar.com/sdk/react-native)
+- [Places](https://docs.radar.com/geofencing/places)
+- [Campaigns](https://docs.radar.com/geofencing/campaigns)
+
+## Steps
+
+<Steps>
+  <Step title="Sign up for Radar">
+    If you haven't already, sign up for Radar to get your API key.
+
+    [**Get API keys**](https://radar.com/signup)
+  </Step>
+  <Step title="Enable Places">
+    Navigate to the [Settings page](https://radar.com/dashboard/settings) and enable Places. From there, configure the chain filters or category filters relevant to your use case.
+
+    For example, to notify users when they arrive at a specific retail chain, add the chain slug (e.g., `target`, `home-depot`) to your chain filters. To notify users when they arrive at any location in a category, add the relevant category slug (e.g., `department-store`).
+
+    View the [full list of chains](https://docs.radar.com/places/chains) and [full list of categories](https://docs.radar.com/places/categories).
+
+    <Info>
+      Places is available on the [Enterprise plan](https://radar.com/pricing). Contact your account manager to enable it for your project.
+    </Info>
+  </Step>
+  <Step title="Install the React Native SDK">
+    For full setup instructions, see the [React Native SDK docs](https://docs.radar.com/sdk/react-native). Once the SDK is installed, initialize it:
+
+    ```javascript
+    import Radar from 'react-native-radar';
+    
+    Radar.initialize('prj_live_pk_...');
+    ```
+  </Step>
+  <Step title="Identify the user">
+    Set a stable user ID to link location events to the user in your system. Optionally, attach metadata to enable personalized experiences or campaign targeting.
+
+    ```javascript
+    Radar.setUserId('user_123');
+    
+    Radar.setMetadata({
+      cardHolder: true
+    });
+    ```
+  </Step>
+  <Step title="Request location permissions">
+    Before tracking, you must request location permissions from the user. Always request foreground permissions before background permissions.
+
+    ```javascript
+    Radar.requestPermissions(false).then((status) => {
+      if (status === 'GRANTED_FOREGROUND') {
+        Radar.requestPermissions(true).then((status) => {
+          // do something with status
+        });
+      }
+    });
+    ```
+
+    <Info>
+      Use a primer screen before triggering the OS permission prompt to explain the value the user will get from sharing their location. This significantly improves opt-in rates.
+    </Info>
+  </Step>
+  <Step title="Start tracking">
+    Once permissions are granted, start tracking the user's location. For most consumer use cases, use the `RESPONSIVE` preset, which provides a good balance of location update frequency and battery usage.
+
+    ```javascript
+    Radar.startTrackingResponsive();
+    ```
+
+    Radar will automatically evaluate the user's location against your enabled Places chains and categories and generate `user.entered_place` events when a user stops at a matching location.
+  </Step>
+  <Step title="Create a campaign">
+    Navigate to the [Campaigns page](https://dashboard.radar.com/geofencing/campaigns) in the Radar dashboard and click **Create**.
+
+    Select **Event based notification** as the campaign type and configure the following:
+
+    - **Trigger event:** `Entered place`
+    - **Place chains:** Select the chains you want to target (e.g., `target`, `home-depot`)
+    - **Notification title and body:** Write the message to deliver to the user on arrival
+    - **Deep link (optional):** Add a deep link URL to route users to a specific screen when they tap the notification
+
+    Set the campaign to **Enabled** when ready.
+
+    <Info>
+      Event based notifications require background (`Always allow`) location permissions to deliver. For foreground-only notification delivery, use the **Client side geofence** campaign type instead (iOS only).
+    </Info>
+  </Step>
+  <Step title="Listen for place events client-side (optional)">
+    To handle `user.entered_place` events directly in your app, for example to trigger an in-app experience rather than a push notification, add an event listener:
+
+    ```javascript
+    Radar.onEventsReceived((result) => {
+      const { events, user } = result;
+    
+      events.forEach((event) => {
+        if (event.type === 'user.entered_place') {
+          const place = event.place;
+          // do something with place.name, place.chain, place.categories
+        }
+      });
+    });
+    ```
+
+    Add event listeners outside of your component lifecycle to ensure they work when the app is in the background.
+
+    The place event payload includes the following context:
+
+    ```json
+    {
+      "type": "user.entered_place",
+      "place": {
+        "name": "Target",
+        "chain": {
+          "name": "Target",
+          "slug": "target"
+        },
+        "categories": ["department-store", "retail"],
+        "location": {
+          "type": "Point",
+          "coordinates": [-122.4194, 37.7749]
+        }
+      },
+      "user": {
+        "userId": "user_123",
+        "metadata": {
+          "cardHolder": true
+        }
+      }
+    }
+    ```
+  </Step>
+  <Step title="Log conversions (iOS only)">
+    Logging conversions is required to measure the impact of your campaigns. When a user completes a key action after arriving at a place, such as completing a purchase, log a conversion event so Radar can attribute it to the campaign that triggered the notification.
+
+    Enable automatic conversion logging in your `AppDelegate.mm` to track when users open the app from a notification:
+
+    ```objc
+    - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
+    {
+      self.moduleName = @"main";
+      self.initialProps = @{};
+    
+      BOOL result = [super application:application didFinishLaunchingWithOptions:launchOptions];
+      RadarInitializeOptions *options = [RadarInitializeOptions new];
+      options.autoLogNotificationConversions = YES;
+      [Radar nativeSetup:options];
+      return result;
+    }
+    ```
+
+    You can also log conversions manually from JavaScript. Log a conversion when a user lands on a key screen after receiving a notification:
+
+    ```javascript
+    // Log a page view conversion (e.g. user opened the card setup screen)
+    Radar.logConversion('card_setup_viewed').then((result) => {
+      console.log('Conversion logged:', result.event);
+    }).catch((err) => {
+      console.error('Error logging conversion:', err);
+    });
+    ```
+
+    Or log a conversion with revenue when a user completes a purchase:
+
+    ```javascript
+    // Log a revenue conversion (e.g. user completed an in-store purchase)
+    Radar.logConversion('in_store_purchase', 150.00, {
+      merchant: 'target'
+    }).then((result) => {
+      console.log('Conversion logged:', result.event);
+    }).catch((err) => {
+      console.error('Error logging conversion:', err);
+    });
+    ```
+
+    See the [conversions docs](https://docs.radar.com/sdk/react-native#conversions) for more details.
+  </Step>
+  <Step title="Set up deep linking (iOS only)">
+    Radar campaign notifications support deep linking into a specific screen in your app when a user taps a notification. This requires additional native setup in your `AppDelegate.mm`. See the [deep linking docs](https://docs.radar.com/geofencing/campaigns#deep-linking-ios-only) for setup instructions.
+  </Step>
+</Steps>
+
+## Support
+
+Have questions or feedback on this documentation? Contact us at [radar.com/support](https://radar.com/support).
