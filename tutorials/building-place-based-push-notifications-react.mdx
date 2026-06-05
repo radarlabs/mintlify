@@ -1,5 +1,5 @@
 ---
-title: "Notifying users when they arrive at a merchant location"
+title: "Building Place-based push notifications"
 ---
 
 ## Languages used
@@ -47,7 +47,7 @@ title: "Notifying users when they arrive at a merchant location"
     Radar.setUserId('user_123');
     
     Radar.setMetadata({
-      cardHolder: true
+      membershipTier: "gold"
     });
     ```
   </Step>
@@ -159,8 +159,8 @@ title: "Notifying users when they arrive at a merchant location"
     You can also log conversions manually from JavaScript. Log a conversion when a user lands on a key screen after receiving a notification:
 
     ```javascript
-    // Log a page view conversion (e.g. user opened the card setup screen)
-    Radar.logConversion('card_setup_viewed').then((result) => {
+    // Log a page view conversion
+    Radar.logConversion('page_viewed').then((result) => {
       console.log('Conversion logged:', result.event);
     }).catch((err) => {
       console.error('Error logging conversion:', err);
@@ -182,8 +182,12 @@ title: "Notifying users when they arrive at a merchant location"
 
     See the [conversions docs](https://docs.radar.com/sdk/react-native#conversions) for more details.
   </Step>
-  <Step title="Set up deep linking (iOS only)">
-    Radar campaign notifications support deep linking into a specific screen in your app when a user taps a notification. This requires additional native setup in your `AppDelegate.mm`. See the [deep linking docs](https://docs.radar.com/geofencing/campaigns#deep-linking-ios-only) for setup instructions.
+  <Step title="Set up deep linking">
+    Radar campaign notifications support deep linking into a specific screen in your app when a user taps a notification.
+
+    **iOS:** This requires additional native setup in your `AppDelegate`. See the [deep linking docs](https://docs.radar.com/geofencing/campaigns#deep-linking-ios-only) for setup instructions.
+
+    **Android:** Refer to the [official Android documentation](https://developer.android.com/training/app-links/deep-linking) to configure deep links for your Android app. No additional Radar-specific setup is required.
   </Step>
 </Steps>
 

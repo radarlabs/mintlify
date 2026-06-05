@@ -1,5 +1,5 @@
 ---
-title: "Notifying users when they arrive at a merchant location (iOS/Android)"
+title: "Building Place-based push notifications"
 ---
 
 ## Languages used
@@ -71,20 +71,20 @@ title: "Notifying users when they arrive at a merchant location (iOS/Android)"
     ```swift Swift
     Radar.setUserId("user_123")
     
-    Radar.setMetadata(["cardHolder": true])
+    Radar.setMetadata(["membershipTier": "gold"])
     ```
 
     ```objc Objective-C
     [Radar setUserId:@"user_123"];
     
-    [Radar setMetadata:@{@"cardHolder": @YES}];
+    [Radar setMetadata:@{@"membershipTier": @"gold"}];
     ```
 
     ```kotlin Kotlin
     Radar.setUserId("user_123")
     
     val metadata = JSONObject()
-    metadata.put("cardHolder", true)
+    metadata.put("membershipTier", "gold")
     Radar.setMetadata(metadata)
     ```
 
@@ -92,7 +92,7 @@ title: "Notifying users when they arrive at a merchant location (iOS/Android)"
     Radar.setUserId("user_123");
     
     JSONObject metadata = new JSONObject();
-    metadata.put("cardHolder", true);
+    metadata.put("membershipTier", "gold");
     Radar.setMetadata(metadata);
     ```
 
@@ -291,7 +291,7 @@ title: "Notifying users when they arrive at a merchant location (iOS/Android)"
     </Info>
   </Step>
   <Step title="Log conversions">
-    Logging conversions is required to measure the impact of your campaigns. When a user completes a key action after arriving at a place, log a conversion event so Radar can attribute it to the campaign that triggered the notification.
+    Logging conversions supports measuring the impact of your campaigns. When a user completes a key action after arriving at a place, log a conversion event so Radar can attribute it to the campaign that triggered the notification.
 
     Enable automatic conversion logging to track when users open the app from a notification:
 
@@ -317,14 +317,14 @@ title: "Notifying users when they arrive at a merchant location (iOS/Android)"
     <CodeGroup>
 
     ```swift Swift
-    // Log a page view conversion (e.g. user opened the card setup screen)
-    Radar.logConversion(name: "card_setup_viewed", metadata: nil) { status, event in
+    // Log a page view conversion
+    Radar.logConversion(name: "page_viewed", metadata: nil) { status, event in
         // do something with the conversion event
     }
     ```
 
     ```objc Objective-C
-    [Radar logConversionWithName:@"card_setup_viewed"
+    [Radar logConversionWithName:@"page_viewed"
                         metadata:nil
                completionHandler:^(RadarStatus status, RadarEvent *event) {
         // do something with the conversion event
@@ -332,14 +332,14 @@ title: "Notifying users when they arrive at a merchant location (iOS/Android)"
     ```
 
     ```kotlin Kotlin
-    // Log a page view conversion (e.g. user opened the card setup screen)
-    Radar.logConversion("card_setup_viewed", null) { status, event ->
+    // Log a page view conversion
+    Radar.logConversion("page_viewed", null) { status, event ->
         // do something with the conversion event
     }
     ```
 
     ```java Java
-    Radar.logConversion("card_setup_viewed", null, (status, event) -> {
+    Radar.logConversion("page_viewed", null, (status, event) -> {
         // do something with the conversion event
     });
     ```
@@ -388,7 +388,11 @@ title: "Notifying users when they arrive at a merchant location (iOS/Android)"
     See the [conversions docs](https://docs.radar.com/sdk/ios#conversions) for more details.
   </Step>
   <Step title="Set up deep linking (iOS only)">
-    Radar campaign notifications support deep linking into a specific screen in your app when a user taps a notification. This requires additional native setup in your `AppDelegate`. See the [deep linking docs](https://docs.radar.com/geofencing/campaigns#deep-linking-ios-only) for setup instructions.
+    Radar campaign notifications support deep linking into a specific screen in your app when a user taps a notification.
+
+    **iOS:** This requires additional native setup in your `AppDelegate`. See the [deep linking docs](https://docs.radar.com/geofencing/campaigns#deep-linking-ios-only) for setup instructions.
+
+    **Android:** Refer to the [official Android documentation](https://developer.android.com/training/app-links/deep-linking) to configure deep links for your Android app. No additional Radar-specific setup is required.
   </Step>
 </Steps>
 
