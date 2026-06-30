@@ -30,10 +30,16 @@ Notifications will only be delivered if the campaign is set to **Enabled**.
 
 ## Scheduling
 
-Control *when* a campaign delivers. All scheduling options are evaluated in each user's **local timezone**. Scheduling is layered on top of the manual **Enabled** toggle — a campaign must still be enabled to deliver.
+Control when a campaign is delivered. All scheduling options are evaluated in a user's local timezone. For instance, a window set to "until 5 PM" applies at 5 PM local time to every user.
+
+Scheduling options are evaluated on the device each time a track response is received, either from a `Radar.trackOnce()` call or while `Radar.startTracking()` is enabled. On each response, the SDK re-evaluates every nearby campaign against its schedule and only registers a notification if the campaign is currently within its window. A campaign that has moved outside its window is not registered and is removed if it was registered on a previous response.
+
+### Foreground-only campaigns (e.g. client-side geofence notifications)
+
+Client-side geofence notifications are scheduled with the operating system in advance, so once registered they stay on the device until the SDK next re-evaluates them. If your campaign only requires Foreground ("When In Use") permissions, the SDK may not receive another track response before the schedule window closes, so a notification could remain scheduled, and fire, after its window has ended. To close this gap, set up [silent push](/sdk/silent-push). When a campaign's scheduling window closes, Radar sends a silent push that wakes the SDK and triggers an on-device re-evaluation of all scheduled notifications, de-registering any that now fall outside their window without requiring a new location update from the user. This keeps client-side notifications in sync with their schedule even for users who have granted only foreground location permissions.
 
 <Info>
-  For client-side geofence campaigns, these options are evaluated on the device when it tracks — notifications are registered during `Radar.trackOnce()` and `Radar.startTracking()` calls, so delivery timing is only as current as the user's most recent track. For more control over re-evaluation, set up [silent push](/sdk/silent-push) to remotely trigger a track.
+  A silent push can wake an app running in the background, but iOS will not deliver it to an app the user has force-quit. In that case the notification is re-evaluated and removed on the next track response instead.
 </Info>
 
 ### Start and end times
