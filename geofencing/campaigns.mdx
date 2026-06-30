@@ -30,17 +30,21 @@ Notifications will only be delivered if the campaign is set to **Enabled**.
 
 ## Scheduling
 
-Control *when* a campaign delivers. All scheduling options are evaluated in each user's **local timezone**, so a window like "until 5 PM" applies at 5 PM local to every user. Scheduling is layered on top of the manual **Enabled** toggle — a campaign must still be enabled to deliver.
+Control *when* a campaign delivers. All scheduling options are evaluated in each user's **local timezone**. Scheduling is layered on top of the manual **Enabled** toggle — a campaign must still be enabled to deliver.
+
+<Info>
+  For client-side geofence campaigns, these options are evaluated on the device when it tracks — notifications are registered during `Radar.trackOnce()` and `Radar.startTracking()` calls, so delivery timing is only as current as the user's most recent track. For more control over re-evaluation, set up [silent push](/sdk/silent-push) to remotely trigger a track.
+</Info>
 
 ### Start and end times
 
 Optionally set a **start** and/or **end** time for a campaign. The campaign only runs within this window. Leave both blank to run whenever the campaign is enabled.
 
-Each field is optional and independent:
+The following fields are all optional and work independently:
 
 - **Start only** — launches the campaign at that time and keeps it running indefinitely.
-- **End only** — runs now and automatically stops at that time.
-- **Both** — runs only within that fixed window.
+- **End only** — starts the campaign immediately and automatically stops at the specified time.
+- **Both** — runs only within the fixed window.
 - **Neither** — scheduling is off; the campaign runs whenever it's enabled.
 
 ### Active days
@@ -57,7 +61,7 @@ Active days require a start and/or end time to be set.
 
 For **client-side geofence** campaigns that target geofences, you can **restrict notifications to a geofence's [operating hours](/geofencing/geofences#operating-hours)** so a notification isn't delivered while the location is closed. Enable this with the **Restrict notifications to operating hours** toggle on the campaign.
 
-When enabled, a geofence's client-side notification is only delivered while that geofence is currently open, evaluated in the user's local timezone. A short buffer before closing time keeps a notification from firing right as the location closes. Geofences without operating hours configured are unaffected.
+When enabled, a geofence's client-side notification is only delivered when the user's local time is within the geofence's [operating hours](/geofencing/geofences#operating-hours). A short buffer before closing time keeps a notification from firing right as the location closes. Geofences without operating hours configured are unaffected.
 
 <Info>
   Restricting notifications to operating hours requires [iOS SDK v3.36.0](https://github.com/radarlabs/radar-sdk-ios/releases/tag/3.36.0) or above.
