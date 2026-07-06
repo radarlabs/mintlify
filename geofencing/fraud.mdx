@@ -131,8 +131,8 @@ Add the plugin to the `dependencies` section of your app's `build.gradle` file:
 
 ```gradle
 dependencies {   
-  implementation 'io.radar:sdk:3.25.+'
-  implementation 'io.radar:sdk-fraud:1.0.0'
+  implementation 'io.radar:sdk:3.33.+'
+  implementation 'io.radar:sdk-fraud:1.1.0'
 }
 ```
 
@@ -142,9 +142,12 @@ If you do not install the plugin, `Radar.trackVerified()` will return `ERROR_PLU
 
 To support the `sharing` flag on Android, pass `fraud = true` to `RadarInitializeOptions` in `Radar.initialize()`.
 
+To enable automatic failover of `trackVerified()` requests to a secondary host if the primary host is unreachable, pass `trackVerifiedAutoFailover = true`:
+
 ```java
 val options = RadarInitializeOptions(
-  fraud = true
+  fraud = true,
+  trackVerifiedAutoFailover = true
 )
 
 Radar.initialize(
@@ -192,6 +195,18 @@ To enable SSL pinning and prevent man-in-the-middle attacks, add a `res/xml/netw
             <pin digest="SHA-256">15ktYXSSU2llpy7YyCgeqUKDBkjcimK/weUcec960sI=</pin>
         </pin-set>
     </domain-config>
+
+    <!-- for SSL pinning (if automatic failover enabled) -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api-verified.radar.com</domain>
+        <pin-set>
+            <pin digest="SHA-256">++MBgDH5WGvL9Bcn5Be30cRcL0f5O+NyoXuWtQdX1aI=</pin>
+            <pin digest="SHA-256">f0KW/FtqTjs108NpYj42SrGvOB2PpxIVM8nWxjPqJGE=</pin>
+            <pin digest="SHA-256">NqvDJlas/GRcYbcWE8S/IceH9cq77kg0jVhZeAPXq8k=</pin>
+            <pin digest="SHA-256">9+ze1cZgR9KO1kZrVDxA4HQ6voHRCSVNz4RdTCx4U8U=</pin>
+            <pin digest="SHA-256">KwccWaCgrnaw6tsrrSO61FgLacNgG2MMLq8GE6+oP5I=</pin>
+        </pin-set>
+    </domain-config>
 </network-security-config>
 ```
 
@@ -201,7 +216,7 @@ Then, reference this file in your manifest:
 <?xml version="1.0" encoding="utf-8"?>
 <manifest>
     <application android:networkSecurityConfig="@xml/network_security_config"
-                <!-- other items -->
+        <!-- other items -->
     </application>
 </manifest>
 ```
@@ -216,7 +231,32 @@ If using [iOS SDK](/sdk/ios) version `3.26.0` or higher, you must install an add
 
 In Xcode, go to _File \> Swift Packages \> Add Package Dependency_. Enter `https://github.com/radarlabs/radar-sdk-ios-fraud-spm.git` for the _Package Repository URL_.
 
+```text
+.package(url: "https://github.com/radarlabs/radar-sdk-ios-spm.git", "3.34.0"..<"3.35.0")
+.package(url: "https://github.com/radarlabs/radar-sdk-ios-fraud-spm.git", "1.3.0"..<"1.4.0")
+```
+
 If you do not install the plugin, `Radar.trackVerified()` will return `ERROR_PLUGIN`.
+
+#### Initialize SDK
+
+To enable automatic failover of `trackVerified()` requests to a secondary host if the primary host is unreachable, set `trackVerifiedAutoFailover = true` on `RadarInitializeOptions`:
+
+<CodeGroup>
+
+```swift Swift
+let radarInitializeOptions = RadarInitializeOptions()
+radarInitializeOptions.trackVerifiedAutoFailover = true
+Radar.initialize(publishableKey: "prj_test_pk_...", options: radarInitializeOptions)
+```
+
+```c Objective-C
+RadarInitializeOptions *radarInitializeOptions = [[RadarInitializeOptions alloc] init];
+radarInitializeOptions.trackVerifiedAutoFailover = YES;
+[Radar initializeWithPublishableKey:@"prj_test_pk_..." options:radarInitializeOptions];
+```
+
+</CodeGroup>
 
 #### App Attest
 
@@ -253,6 +293,35 @@ To enable SSL pinning and prevent man-in-the-middle attacks, add the following t
                 </dict>
             </array>
         </dict>
+        <!-- if automatic failover enabled -->
+        <key>api-verified.radar.com</key>
+        <dict>
+            <key>NSIncludesSubdomains</key>
+            <true/>
+            <key>NSPinnedCAIdentities</key>
+            <array>
+                <dict>
+                    <key>SPKI-SHA256-BASE64</key>
+                    <string>++MBgDH5WGvL9Bcn5Be30cRcL0f5O+NyoXuWtQdX1aI=</string>
+                </dict>
+                <dict>
+                    <key>SPKI-SHA256-BASE64</key>
+                    <string>f0KW/FtqTjs108NpYj42SrGvOB2PpxIVM8nWxjPqJGE=</string>
+                </dict>
+                <dict>
+                    <key>SPKI-SHA256-BASE64</key>
+                    <string>NqvDJlas/GRcYbcWE8S/IceH9cq77kg0jVhZeAPXq8k=</string>
+                </dict>
+                <dict>
+                    <key>SPKI-SHA256-BASE64</key>
+                    <string>9+ze1cZgR9KO1kZrVDxA4HQ6voHRCSVNz4RdTCx4U8U=</string>
+                </dict>
+                <dict>
+                    <key>SPKI-SHA256-BASE64</key>
+                    <string>KwccWaCgrnaw6tsrrSO61FgLacNgG2MMLq8GE6+oP5I=</string>
+                </dict>
+            </array>
+        </dict>
     </dict>
 </dict>
 ```
@@ -268,8 +337,8 @@ If using [web SDK](/sdk/web) version `5.0.0` or higher, you must install an addi
 In an HTML page, add the SDK script and the plugin script:
 
 ```html
-<script src="https://js.radar.com/v5.0.0/radar.min.js"></script>
-<script src="https://js.radar.com/fraud/v1.0.0/radar-fraud.min.js"></script>
+<script src="https://js.radar.com/v5.1.0/radar.min.js"></script>
+<script src="https://js.radar.com/fraud/v1.3.0/radar-fraud.min.js"></script>
 ```
 
 In a web app, install the SDK package and the plugin package from npm:

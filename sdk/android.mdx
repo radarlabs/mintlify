@@ -68,7 +68,6 @@ public class MyApplication extends Application {
 }
 ```
 
-
 ```kotlin Kotlin
 import io.radar.sdk.Radar
 
@@ -81,6 +80,19 @@ class MyApplication : Application() {
 ```
 
 </CodeGroup>
+
+### Network timeout
+
+To override the default network timeout, set `networkTimeout` on `RadarInitializeOptions` as a Kotlin `Duration`. The extended timeout used for longer-running requests is automatically set to 2.5x this value. Values are clamped to `[1, 300]` seconds.
+
+```kotlin Kotlin
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarInitializeOptions
+import kotlin.time.Duration.Companion.seconds
+
+val options = RadarInitializeOptions(networkTimeout = 30.seconds)
+Radar.initialize(this, "prj_test_pk_...", options)
+```
 
 ## Request permissions
 
@@ -167,7 +179,6 @@ public class MainActivity extends AppCompatActivity {
 }
 ```
 
-
 ```kotlin Kotlin
 import android.Manifest
 import android.app.AlertDialog
@@ -245,7 +256,6 @@ Radar.trackOnce(new RadarTrackCallback() {
 });
 ```
 
-
 ```kotlin Kotlin
 Radar.trackOnce { status, location, events, user ->
     // do something with location, events, user
@@ -300,7 +310,6 @@ To start tracking for geofencing, call:
 Radar.startTracking(RadarTrackingOptions.RESPONSIVE);
 ```
 
-
 ```kotlin Kotlin
 Radar.startTracking(RadarTrackingOptions.RESPONSIVE)
 ```
@@ -315,7 +324,6 @@ To determine whether tracking has been started, call:
 Radar.isTracking();
 ```
 
-
 ```kotlin Kotlin
 Radar.isTracking()
 ```
@@ -329,7 +337,6 @@ To stop tracking (e.g., when the user logs out), call:
 ```java Java
 Radar.stopTracking();
 ```
-
 
 ```kotlin Kotlin
 Radar.stopTracking()
@@ -370,7 +377,6 @@ Radar.startTrip(tripOptions, RadarTrackingOptions.CONTINUOUS, new Radar.RadarTri
   });
 ```
 
-
 ```kotlin Kotlin
 Radar.startTrip(tripOptions, RadarTrackingOptions.CONTINUOUS) { status, trip, events ->
   if (status == Radar.RadarStatus.SUCCESS) {
@@ -404,7 +410,6 @@ Radar.cancelTrip(new Radar.RadarTripCallback() {
     }
 });
 ```
-
 
 ```kotlin Kotlin
 // Complete trip
@@ -455,7 +460,6 @@ Radar.mockTracking(
     });
 ```
 
-
 ```kotlin Kotlin
 val origin = Location("mock")
 origin.latitude = 40.78382
@@ -500,7 +504,6 @@ You will need to manually prompt for motion permissions with
 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, ACTIVITY_RECOGNITION_PERMISSION_CODE);
 ```
 
-
 ```kotlin Kotlin
 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACTIVITY_RECOGNITION), ACTIVITY_RECOGNITION_PERMISSION_CODE)
 ```
@@ -527,7 +530,6 @@ public class MyApplication extends Application {
     }
 }
 ```
-
 
 ```kotlin Kotlin
 import io.radar.sdk.Radar
@@ -587,7 +589,6 @@ public class MyRadarReceiver extends RadarReceiver {
 }
 ```
 
-
 ```kotlin Kotlin
 class MyRadarReceiver: RadarReceiver() {
 
@@ -640,7 +641,6 @@ Radar.trackOnce(
     });
 ```
 
-
 ```kotlin Kotlin
 Radar.trackOnce(location) { status, location, events, user ->
     // do something with location, events, user
@@ -663,7 +663,6 @@ You can also assign a custom `userId`, also called _External ID_ in the dashboar
 Radar.setUserId(userId);
 ```
 
-
 ```kotlin Kotlin
 Radar.setUserId(userId)
 ```
@@ -684,7 +683,6 @@ To set a dictionary of custom metadata for the user, call:
 Radar.setMetadata(metadata);
 ```
 
-
 ```kotlin Kotlin
 Radar.setMetadata(metadata)
 ```
@@ -700,7 +698,6 @@ Finally, to set an optional description for the user, displayed in the dashboard
 ```java Java
 Radar.setDescription(description);
 ```
-
 
 ```kotlin Kotlin
 Radar.setDescription(description)
@@ -721,7 +718,6 @@ By default, only critical errors are logged to the console. To enable debug logg
 ```java Java
 Radar.setLogLevel(Radar.RadarLogLevel.DEBUG);
 ```
-
 
 ```kotlin Kotlin
 Radar.setLogLevel(Radar.RadarLogLevel.DEBUG)
@@ -767,7 +763,6 @@ Radar.trackOnce(RadarTrackingOptionsDesiredAccuracy.HIGH, true, new RadarTrackCa
 });
 ```
 
-
 ```kotlin Kotlin
 Radar.trackOnce(RadarTrackingOptionsDesiredAccuracy.HIGH, true) { status, location, events, user ->
     // do something with user.beacons
@@ -785,7 +780,6 @@ RadarTrackingOptions trackingOptions = RadarTrackingOptions.RESPONSIVE;
 trackingOptions.beacons = true;
 Radar.startTracking(trackingOptions);
 ```
-
 
 ```kotlin Kotlin
 val trackingOptions = RadarTrackingOptions.RESPONSIVE
@@ -814,7 +808,6 @@ Radar.geocode(
     });
 ```
 
-
 ```kotlin Kotlin
 Radar.geocode("20 jay street brooklyn ny") { status, addresses ->
     // do something with addresses
@@ -838,7 +831,6 @@ Radar.reverseGeocode(
     });
 ```
 
-
 ```kotlin Kotlin
 Radar.reverseGeocode(location) { status, addresses ->
     // do something with addresses
@@ -859,7 +851,6 @@ Radar.ipGeocode(new RadarIpGeocodeCallback() {
     }
 });
 ```
-
 
 ```kotlin Kotlin
 Radar.ipGeocode { status, address, proxy ->
@@ -887,7 +878,6 @@ Radar.autocomplete(
         }
     });
 ```
-
 
 ```kotlin Kotlin
 Radar.autocomplete(
@@ -919,7 +909,6 @@ Radar.searchGeofences(
         }
     });
 ```
-
 
 ```kotlin Kotlin
 Radar.searchGeofences(
@@ -955,7 +944,6 @@ Radar.searchPlaces(
     });
 ```
 
-
 ```kotlin Kotlin
 Radar.searchPlaces(
     near,
@@ -986,7 +974,6 @@ Radar.validateAddress(
     });
 ```
 
-
 ```kotlin Kotlin
 Radar.validateAddress(address) { status, address, result ->
     // do something with validation result and address
@@ -1014,7 +1001,6 @@ Radar.getDistance(
         }
     });
 ```
-
 
 ```kotlin Kotlin
 Radar.getDistance(
@@ -1048,7 +1034,6 @@ Radar.getMatrix(
         }
     });
 ```
-
 
 ```kotlin Kotlin
 Radar.getMatrix(
@@ -1093,7 +1078,6 @@ Radar.logConversion(
     })
 ```
 
-
 ```kotlin Kotlin
 Radar.logConversion(
     name,
@@ -1126,7 +1110,6 @@ Radar.removeTags(new String[]{"tag1", "tag2"});
 Radar.setTags(new String[]{"tag1", "tag2"});
 Radar.getTags();
 ```
-
 
 ```kotlin Kotlin
 Radar.addTags(arrayOf("tag1", "tag2"))
@@ -1171,7 +1154,6 @@ try {
 Radar.setNotificationOptions(RadarNotificationsOptions.fromJson(notificationOptions));
 ```
 
-
 ```kotlin Kotlin
 // Set both foreground service and event notifications
 Radar.setNotificationOptions(RadarNotificationsOptions(
@@ -1211,7 +1193,6 @@ Finally, pass in `RadarLocationServicesProvider.HUAWEI` when you initialize the 
 ```java Java
 Radar.initialize(this, publishableKey, receiver, RadarLocationServicesProvider.HUAWEI);
 ```
-
 
 ```kotlin Kotlin
 Radar.initialize(context, publishableKey, receiver, RadarLocationServicesProvider.HUAWEI)
