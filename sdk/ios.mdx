@@ -20,7 +20,7 @@ The SDK is small and typically adds less than 500 KB to your compiled app.
 
 Install [CocoaPods](https://cocoapods.org/). If you don't have an existing `Podfile`, run `pod init` in your project directory. Add the following to your `Podfile`:
 
-```
+```text
 pod 'RadarSDK', '~> 3.37.1'
 ```
 
@@ -34,8 +34,8 @@ In Xcode, go to _File_ \> _Swift Packages_ \> _Add Package Dependency_. Enter `h
 
 **Note:** we recommend pinning the minor version you're installing as we occasionally introduce breaking changes in new minor versions. You can pin the minor version using the range operator:
 
-```
-3.37.1..<3.38.0
+```text
+.package(url: "https://github.com/radarlabs/radar-sdk-ios-spm.git", "3.37.1"..<"3.38.0")
 ```
 
 <Info>
@@ -46,7 +46,7 @@ In Xcode, go to _File_ \> _Swift Packages_ \> _Add Package Dependency_. Enter `h
 
 Install [Carthage](https://github.com/Carthage/Carthage) by adding the following to your `Cartfile`:
 
-```
+```text
 github "radarlabs/radar-sdk-ios" ~> 3.37.1
 ```
 
@@ -472,7 +472,7 @@ To collect motionActivity, you must include a value for `Privacy - Motion Usage 
 
 Add the following to your `Podfile`:
 
-```
+```text
 pod 'RadarSDKMotion', '~> 3.37.1'
 ```
 
