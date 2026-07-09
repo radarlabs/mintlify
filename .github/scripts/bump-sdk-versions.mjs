@@ -9,9 +9,9 @@
 // pattern-based find/replace of the version strings inside the specific
 // install-snippet syntaxes, scoped to the files that contain them.
 //
-// Machine-readable output goes to stdout (for $GITHUB_OUTPUT):
-//   changed=true|false
-// Everything human-facing goes to stderr so stdout stays clean.
+// Writes the workflow output `changed=true|false` directly to the file named by
+// $GITHUB_OUTPUT (when running under Actions). Status goes to stdout; warnings
+// go to stderr.
 //
 // Deliberately NOT touched:
 //   - Prose version mentions ("version 3.25.0 or higher").
@@ -25,7 +25,7 @@
 // A repo that can't be read (private/404/rate-limited) is skipped with a
 // warning rather than failing the whole run.
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, appendFileSync } from "node:fs";
 
 const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
 
@@ -78,12 +78,12 @@ const [ios, android, iosFraud, flutter, webjs] = await Promise.all([
   latestStable("radarlabs/radar-sdk-js"),
 ]);
 
-console.error("Latest stable releases:");
-if (ios) console.error(`  radar-sdk-ios            -> ${full(ios)}  (SPM range <${nextMinor(ios)})`);
-if (android) console.error(`  radar-sdk-android        -> ${android[0]}.${android[1]}.+`);
-if (iosFraud) console.error(`  radar-sdk-ios-fraud-spm  -> ${full(iosFraud)}  (SPM range <${nextMinor(iosFraud)})`);
-if (flutter) console.error(`  flutter-radar            -> ${full(flutter)}`);
-if (webjs) console.error(`  radar-sdk-js             -> ${full(webjs)}`);
+console.log("Latest stable releases:");
+if (ios) console.log(`  radar-sdk-ios            -> ${full(ios)}  (SPM range <${nextMinor(ios)})`);
+if (android) console.log(`  radar-sdk-android        -> ${android[0]}.${android[1]}.+`);
+if (iosFraud) console.log(`  radar-sdk-ios-fraud-spm  -> ${full(iosFraud)}  (SPM range <${nextMinor(iosFraud)})`);
+if (flutter) console.log(`  flutter-radar            -> ${full(flutter)}`);
+if (webjs) console.log(`  radar-sdk-js             -> ${full(webjs)}`);
 
 // --- Replacement rules (only built for SDKs we could read) ------------------
 const rules = [];
@@ -179,7 +179,7 @@ for (const [file, fileRules] of byFile) {
   let after = before;
   for (const { label, re, to } of fileRules) {
     const next = after.replace(re, to);
-    if (next !== after) console.error(`  ${file}: applied "${label}"`);
+    if (next !== after) console.log(`  ${file}: applied "${label}"`);
     after = next;
   }
   if (after !== before) {
@@ -188,5 +188,13 @@ for (const [file, fileRules] of byFile) {
   }
 }
 
-console.error(changed ? "Docs updated." : "No changes — docs already current.");
-process.stdout.write(`changed=${changed}\n`);
+console.log(changed ? "Docs updated." : "No changes — docs already current.");
+
+// Emit the workflow output. Under Actions, append to the $GITHUB_OUTPUT file so
+// stdout is free for status logging; locally, just print it.
+const output = `changed=${changed}\n`;
+if (process.env.GITHUB_OUTPUT) {
+  appendFileSync(process.env.GITHUB_OUTPUT, output);
+} else {
+  process.stdout.write(output);
+}

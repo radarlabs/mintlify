@@ -38,11 +38,11 @@ jobs:
         id: bump
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node .github/scripts/bump-sdk-versions.mjs >> "$GITHUB_OUTPUT"
+        run: node .github/scripts/bump-sdk-versions.mjs
 
       - name: Create or update draft PR
         if: steps.bump.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.DOCS_BOT_TOKEN }}
           branch: automated/bump-sdk-versions
