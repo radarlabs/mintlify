@@ -1,0 +1,68 @@
+name: Bump SDK versions in docs
+
+# Opens a single draft PR bumping the Radar SDK versions referenced in the docs'
+# install snippets whenever any of the open-source SDK repos publishes a newer
+# stable release. Detection and rewriting live in
+# .github/scripts/bump-sdk-versions.mjs (pattern-based find/replace scoped to the
+# canonical install pins). The web SDK <script> tags use a floating /v5/ CDN URL
+# and are not version-pinned, so they need no bumping here.
+#
+# Prerequisites (one-time, repo/org admin):
+#   1. Settings -> Actions -> General -> Workflow permissions ->
+#      enable "Allow GitHub Actions to create and approve pull requests".
+#   2. A `DOCS_BOT_TOKEN` secret (fine-grained PAT or GitHub App token) with
+#      contents:write + pull-requests:write on this repo and org members:read.
+#      The default GITHUB_TOKEN cannot reliably request TEAM reviewers and does
+#      not trigger downstream checks (e.g. Mintlify's PR preview).
+
+on:
+  schedule:
+    - cron: "0 13 * * *" # daily ~09:00 ET. Scheduled runs fire only from the default branch.
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Detect latest releases and rewrite docs
+        id: bump
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node .github/scripts/bump-sdk-versions.mjs
+
+      - name: Create or update draft PR
+        if: steps.bump.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.DOCS_BOT_TOKEN }}
+          branch: automated/bump-sdk-versions
+          base: main
+          draft: true
+          commit-message: "docs: bump Radar SDK versions"
+          title: "Bump Radar SDK versions in docs"
+          body: |
+            Automated version bump.
+
+            The install snippets in the docs were behind one or more SDKs' latest
+            **stable** GitHub release. This PR rewrites the pinned versions (iOS
+            CocoaPods/SPM/Carthage, Android Gradle, the iOS fraud plugin, the
+            Flutter package, and the web SDK `<script>` CDN tag) to match.
+
+            Please verify against each SDK's release notes before merging. Left
+            untouched (no reliable public version to read, or intentionally
+            decoupled): the Flutter page's Android pin, the Android fraud plugin,
+            the web fraud plugin, and the maps/autocomplete web plugins.
+          team-reviewers: sdk
+          labels: |
+            automated
+            sdk-version-bump
