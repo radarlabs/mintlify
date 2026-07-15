@@ -810,7 +810,7 @@ If using `@radarlabs/plugin-fraud` version `1.4.0` or higher, iOS SDK version `3
 ```swift Swift (iOS)
 Radar.revealRisk { (status, token) in
   if status == .success {
-    if let token?.risk?.level == .high {
+    if token?.risk?.level == 'high' {
       // high risk, step up to location verification
     } else {
       // low risk
@@ -839,7 +839,7 @@ Radar.revealRisk { status, token ->
 Radar.fraud.revealRisk().then((result) => {
   const { risk } = result;
 
-  if (risk?.level === 'high') {
+  if (risk.level === 'high') {
     // high risk, step up to location verification
   } else {
     // low risk
@@ -853,14 +853,16 @@ Radar.fraud.revealRisk().then((result) => {
 
 ## Risk scores
 
-You can use risk scores to identify high risk users and devices. Risk scores are based on a "strikes" system:
+You can use risk scores to identify high risk users and devices.
+
+By default, risk scores are based on a "strikes" system:
 
 - No strikes = none
 - 1 strike = low
 - 2 strikes = medium
 - 3 strikes = high
 
-Users receive strikes for the following fraud signals within a lookback period, by default the last 7 days:
+Users and devices receive strikes for the following risk signals within a lookback period, by default the last 7 days:
 
 - `mocked`, `jumped`, `compromised`, `sharing`, and `proxy` flags: 1 strike
 - More than 5 user IDs per device ID: 1 strike
@@ -868,14 +870,12 @@ Users receive strikes for the following fraud signals within a lookback period, 
 
 When the risk score changes for a user or device, it also changes for all associated users and devices (i.e., all users associated with that device ID, or all device IDs associated with that user).
 
-The fraud signals, number of strikes per fraud signal, and lookback period are configurable.
+Risk score weights and the lookback period are configurable.
 
-To receive real-time email alerts when users reach high risk, and to receive a weekly report with high risk users, set a _Notification email_ under _Fraud_ on the [Settings page](https://dashboard.radar.com/settings#fraud-settings).
-
-You can also automatically block high risk users.
+You can also automatically block high-risk users.
 
 <Info>
-  Contact your customer success manager for access to user and device risk scores, or to automatically block high risk users.
+  Contact your customer success manager or fraud operations manager for access to risk scores, or to automatically block high-risk users.
 </Info>
 
 ## Error handling
