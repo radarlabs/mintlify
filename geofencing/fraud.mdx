@@ -802,7 +802,7 @@ If using `@radarlabs/plugin-fraud` version `1.4.0` or higher, iOS SDK version `3
 - `network`: Network information, including IP address, IP geolocation, privacy information, and ASN information.
 - `device`: Device and browser information.
 - `token`: A tamper-proof JSON Web Token (JWT) that you can send to your server to validate the signature, signed with the _JSON Web Token (JWT) Secret Key_ found under _Fraud_ on the [Settings page](https://dashboard.radar.com/settings#fraud-settings).
-- `expiresAt`: The datetime when the token expires, by default in 20 minutes, but earlier when close to the border based on compliance requirements.
+- `expiresAt`: The datetime when the token expires.
 - `expiresIn`: The number of seconds until the token expires.
 
 <CodeGroup>
@@ -853,7 +853,7 @@ Radar.fraud.revealRisk().then((result) => {
 
 ## Risk scores
 
-You can use risk scores to identify high risk users and devices.
+You can use risk scores to identify high-risk users and devices.
 
 By default, risk score weights are based on a "strikes" system:
 
