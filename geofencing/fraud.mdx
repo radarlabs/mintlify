@@ -337,8 +337,8 @@ If using [web SDK](/sdk/web) version `5.0.0` or higher, you must install an addi
 In an HTML page, add the SDK script and the plugin script:
 
 ```html
-<script src="https://js.radar.com/v5.1.0/radar.min.js"></script>
-<script src="https://js.radar.com/fraud/v1.3.0/radar-fraud.min.js"></script>
+<script src="https://js.radar.com/v5.1.1/radar.min.js"></script>
+<script src="https://js.radar.com/fraud/v1.4.0/radar-fraud.min.js"></script>
 ```
 
 In a web app, install the SDK package and the plugin package from npm:
@@ -789,16 +789,80 @@ Click on a specific geolocation check to see all the details, including a map vi
   If you need help, please contact your customer success manager.
 </Info>
 
-## User and device risk scores
+## Revealing device and network risk
 
-You can use risk scores to identify high risk users and devices. Risk scores are based on a "strikes" system:
+<Info>
+  Contact your customer success manager for access.
+</Info>
 
-- No strikes = no risk
-- 1 strike = low risk
-- 2 strikes = medium risk
-- 3 strikes = high risk
+If using `@radarlabs/plugin-fraud` version `1.4.0` or higher, iOS SDK version `3.38.0` or higher, or Android SDK version `3.35.0` or higher, you can call `Radar.revealRisk()` to reveal device and network risk signals before verifying a user's location.
 
-Users receive strikes for the following fraud signals within a lookback period, by default the last 7 days:
+`Radar.revealRisk()` returns a `RadarRevealRiskToken` with:
+- `risk`: Risk information, including a risk `level` (none, low, medium, high, configurable with [Risk scores](#risk-scores)) and `reasons` (includes `proxy`, `compromised`, and `sharing` reasons from [Failure reasons](#failure-reasons)).
+- `network`: Network information, including IP address, IP geolocation, privacy information, and ASN information.
+- `device`: Device and browser information.
+- `token`: A tamper-proof JSON Web Token (JWT) that you can send to your server to validate the signature, signed with the _JSON Web Token (JWT) Secret Key_ found under _Fraud_ on the [Settings page](https://dashboard.radar.com/settings#fraud-settings).
+- `expiresAt`: The datetime when the token expires.
+- `expiresIn`: The number of seconds until the token expires.
+
+<CodeGroup>
+
+```swift Swift (iOS)
+Radar.revealRisk { (status, token) in
+  if status == .success {
+    if token?.risk?.level == 'high' {
+      // high risk, step up to location verification
+    } else {
+      // low risk
+    }
+  } else {
+    // handle error
+  }
+}
+```
+
+```kotlin Kotlin
+Radar.revealRisk { status, token ->
+  if (status == SUCCESS) {
+    if (token?.risk?.level == HIGH) {
+      // high risk, step up to location verification
+    } else {
+      // low risk
+    }
+  } else {
+    // handle error
+  }
+}
+```
+
+```javascript Web
+Radar.fraud.revealRisk().then((result) => {
+  const { risk } = result;
+
+  if (risk.level === 'high') {
+    // high risk, step up to location verification
+  } else {
+    // low risk
+  }
+}).catch((err) => {
+  // handle error
+});
+```
+
+</CodeGroup>
+
+## Risk scores
+
+You can use risk scores to identify high-risk users and devices.
+
+By default, risk score weights are based on a "strikes" system:
+
+- No strikes = none
+- 1 strike = low
+- 2 strikes = medium
+- 3 strikes = high
+
+Users and devices receive strikes for the following risk signals within a lookback period, by default the last 7 days:
 
 - `mocked`, `jumped`, `compromised`, `sharing`, and `proxy` flags: 1 strike
 - More than 5 user IDs per device ID: 1 strike
@@ -806,14 +870,12 @@ Users receive strikes for the following fraud signals within a lookback period, 
 
 When the risk score changes for a user or device, it also changes for all associated users and devices (i.e., all users associated with that device ID, or all device IDs associated with that user).
 
-The fraud signals, number of strikes per fraud signal, and lookback period are configurable.
+Risk score weights and the lookback period are configurable.
 
-To receive real-time email alerts when users reach high risk, and to receive a weekly report with high risk users, set a _Notification email_ under _Fraud_ on the [Settings page](https://dashboard.radar.com/settings#fraud-settings).
-
-You can also automatically block high risk users.
+You can also automatically block high-risk users.
 
 <Info>
-  Contact your customer success manager for access to user and device risk scores, or to automatically block high risk users.
+  Contact your customer success manager or fraud operations manager for access to risk scores, or to automatically block high-risk users.
 </Info>
 
 ## Error handling

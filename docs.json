@@ -38,6 +38,10 @@
     {
       "source": "/home",
       "destination": "/"
+    },
+    {
+      "source": "/sdk/fraud",
+      "destination": "/geofencing/fraud"
     }
   ],
   "navigation": {
