@@ -60,6 +60,7 @@
           "geofencing/trips",
           "geofencing/places",
           "geofencing/regions",
+          "geofencing/user-insights",
           "geofencing/beacons",
           "geofencing/fraud",
           "geofencing/campaigns",
