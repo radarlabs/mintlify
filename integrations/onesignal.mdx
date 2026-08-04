@@ -35,9 +35,9 @@ Radar.setMetadata(["oneSignalPlayerId": playerId])
 
 </CodeGroup>
 
-Because OneSignal does not support associating custom events with a user, the most recent event types triggered from a location update are sent as a comma-separated list under the Onesignal tag `radar_events`. For example, if a user has exited a geofence and entered a place, the value for the `radar_events` tag would be `exited_geofence,entered_place`.
+Because OneSignal does not support associating custom events with a user, the most recent event types triggered from a location update are sent as a comma-separated list under the OneSignal tag `radar_events`. For example, if a user has exited a geofence and entered a place, the value for the `radar_events` tag would be `exited_geofence,entered_place`.
 
-| Radar Event                         | Context Type                       | Onesignal Tag Value            |
+| Radar Event                         | Context Type                       | OneSignal Tag Value            |
 | ----------------------------------- | ---------------------------------- | ------------------------------ |
 | `user.entered_geofence`             | [Geofences](/geofencing/geofences) | `entered_geofence`             |
 | `user.exited_geofence`              | [Geofences](/geofencing/geofences) | `exited_geofence`              |
