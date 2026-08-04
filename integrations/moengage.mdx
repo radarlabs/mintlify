@@ -50,52 +50,52 @@ Radar.setMetadata(JSONObject().put("moengage:customer_id", "example@radar.com"))
 | `segments[*].externalId`             | `radar_segment_external_ids`                  | array[string] | `["starbucks-visitors"]`                   |                         |
 | `topChains[*].slug`                  | `radar_top_chain_slugs`                       | array[string] | `["starbucks", "walmart"]`                 |                         |
 | `topChains[*].externalId`            | `radar_top_chain_external_ids`                | array[string] | `["123", "456"]`                           |                         |
-| `geofences[*]._id`                   | `radar_geofence_ids`                          | array[string] | `["5b2c0906f5874b001aecfd8e"]`             | [Geofences](/geofences) |
-| `geofences[*].description`           | `radar_geofence_descriptions`                 | array[string] | `["Store #123"]`                           | [Geofences](/geofences) |
-| `geofences[*].tag`                   | `radar_geofence_tags`                         | array[string] | `["store"]`                                | [Geofences](/geofences) |
-| `geofences[*].externalId`            | `radar_geofence_external_ids`                 | array[string] | `["123"]`                                  | [Geofences](/geofences) |
-| `place._id`                          | `radar_place_id`                              | string        | `"59302bcf8f27e8a156bd4f91"`               | [Places](/places)       |
-| `place.name`                         | `radar_place_name`                            | string        | `"Starbucks"`                              | [Places](/places)       |
-| `place.categories`                   | `radar_place_categories`                      | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | [Places](/places)       |
-| `place.chain.slug`                   | `radar_place_chain_id`                        | string        | `"starbucks"`                              | [Places](/places)       |
-| `place.chain.name`                   | `radar_place_chain_name`                      | string        | `"Starbucks"`                              | [Places](/places)       |
-| `country.code`                       | `radar_region_country_code`                   | string        | `"US"`                                     | [Regions](/regions)     |
-| `country.name`                       | `radar_region_country_name`                   | string        | `"United States"`                          | [Regions](/regions)     |
-| `state.code`                         | `radar_region_state_code`                     | string        | `"MD"`                                     | [Regions](/regions)     |
-| `state.name`                         | `radar_region_state_name`                     | string        | `"Maryland"`                               | [Regions](/regions)     |
-| `dma.code`                           | `radar_region_dma_code`                       | string        | `"26"`                                     | [Regions](/regions)     |
-| `dma.name`                           | `radar_region_dma_name`                       | string        | `"Baltimore"`                              | [Regions](/regions)     |
-| `postalCode.code`                    | `radar_region_postal_code`                    | string        | `"21014"`                                  | [Regions](/regions)     |
-| `trip.externalId`                    | `radar_trip_external_id`                      | string        | `"299"`                                    | [Trips](/trip-tracking) |
-| `trip.destinationGeofenceTag`        | `radar_trip_destination_geofence_tag`         | string        | `"store"`                                  | [Trips](/trip-tracking) |
-| `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string        | `"123"`                                    | [Trips](/trip-tracking) |
-| `beacons[*]._id`                     | `radar_beacon_ids`                            | array[string] | `["5b2c0906f5874b001aecfd8f]"`             | [Beacons](/beacons)     |
-| `beacons[*].description`             | `radar_beacon_descriptions`                   | array[string] | `["Store #123 - Drive-Thru"]`              | [Beacons](/beacons)     |
-| `beacons[*].tag`                     | `radar_beacon_tags`                           | array[string] | `["drive-thru"]`                           | [Beacons](/beacons)     |
-| `beacons[*].externalId`              | `radar_beacon_external_ids`                   | array[string] | `["123"]`                                  | [Beacons](/beacons)     |
+| `geofences[*]._id`                   | `radar_geofence_ids`                          | array[string] | `["5b2c0906f5874b001aecfd8e"]`             | [Geofences](/geofencing/geofences) |
+| `geofences[*].description`           | `radar_geofence_descriptions`                 | array[string] | `["Store #123"]`                           | [Geofences](/geofencing/geofences) |
+| `geofences[*].tag`                   | `radar_geofence_tags`                         | array[string] | `["store"]`                                | [Geofences](/geofencing/geofences) |
+| `geofences[*].externalId`            | `radar_geofence_external_ids`                 | array[string] | `["123"]`                                  | [Geofences](/geofencing/geofences) |
+| `place._id`                          | `radar_place_id`                              | string        | `"59302bcf8f27e8a156bd4f91"`               | [Places](/geofencing/places)       |
+| `place.name`                         | `radar_place_name`                            | string        | `"Starbucks"`                              | [Places](/geofencing/places)       |
+| `place.categories`                   | `radar_place_categories`                      | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | [Places](/geofencing/places)       |
+| `place.chain.slug`                   | `radar_place_chain_id`                        | string        | `"starbucks"`                              | [Places](/geofencing/places)       |
+| `place.chain.name`                   | `radar_place_chain_name`                      | string        | `"Starbucks"`                              | [Places](/geofencing/places)       |
+| `country.code`                       | `radar_region_country_code`                   | string        | `"US"`                                     | [Regions](/geofencing/regions)     |
+| `country.name`                       | `radar_region_country_name`                   | string        | `"United States"`                          | [Regions](/geofencing/regions)     |
+| `state.code`                         | `radar_region_state_code`                     | string        | `"MD"`                                     | [Regions](/geofencing/regions)     |
+| `state.name`                         | `radar_region_state_name`                     | string        | `"Maryland"`                               | [Regions](/geofencing/regions)     |
+| `dma.code`                           | `radar_region_dma_code`                       | string        | `"26"`                                     | [Regions](/geofencing/regions)     |
+| `dma.name`                           | `radar_region_dma_name`                       | string        | `"Baltimore"`                              | [Regions](/geofencing/regions)     |
+| `postalCode.code`                    | `radar_region_postal_code`                    | string        | `"21014"`                                  | [Regions](/geofencing/regions)     |
+| `trip.externalId`                    | `radar_trip_external_id`                      | string        | `"299"`                                    | [Trips](/geofencing/trips) |
+| `trip.destinationGeofenceTag`        | `radar_trip_destination_geofence_tag`         | string        | `"store"`                                  | [Trips](/geofencing/trips) |
+| `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string        | `"123"`                                    | [Trips](/geofencing/trips) |
+| `beacons[*]._id`                     | `radar_beacon_ids`                            | array[string] | `["5b2c0906f5874b001aecfd8f]"`             | [Beacons](/geofencing/beacons)     |
+| `beacons[*].description`             | `radar_beacon_descriptions`                   | array[string] | `["Store #123 - Drive-Thru"]`              | [Beacons](/geofencing/beacons)     |
+| `beacons[*].tag`                     | `radar_beacon_tags`                           | array[string] | `["drive-thru"]`                           | [Beacons](/geofencing/beacons)     |
+| `beacons[*].externalId`              | `radar_beacon_external_ids`                   | array[string] | `["123"]`                                  | [Beacons](/geofencing/beacons)     |
 
 ## Event mapping
 
 | Radar Event                         | Context Type                    | MoEngage Event                         |
 | ----------------------------------- | ------------------------------- | -------------------------------------- |
-| `user.entered_geofence`             | [Geofences](/geofences)         | `[Radar] Geofence Entered`             |
-| `user.exited_geofence`              | [Geofences](/geofences)         | `[Radar] Geofence Exited`              |
-| `user.dwelled_in_geofence`          | [Geofences](/geofences)         | `[Radar] Dwelled in Geofence`          |
-| `user.entered_place`                | [Places](/places)               | `[Radar] Place Entered`                |
-| `user.exited_place`                 | [Places](/places)               | `[Radar] Place Exited`                 |
-| `user.entered_region_country`       | [Regions](/regions)             | `[Radar] Country Entered`              |
-| `user.exited_region_country`        | [Regions](/regions)             | `[Radar] Country Exited`               |
-| `user.entered_region_state`         | [Regions](/regions)             | `[Radar] State Entered`                |
-| `user.exited_region_state`          | [Regions](/regions)             | `[Radar] State Exited`                 |
-| `user.entered_region_dma`           | [Regions](/regions)             | `[Radar] DMA Entered`                  |
-| `user.exited_region_dma`            | [Regions](/regions)             | `[Radar] DMA Exited`                   |
-| `user.started_trip`                 | [Trip Tracking](/trip-tracking) | `[Radar] Started Trip`                 |
-| `user.updated_trip`                 | [Trip Tracking](/trip-tracking) | `[Radar] Updated Trip`                 |
-| `user.approaching_trip_destination` | [Trip Tracking](/trip-tracking) | `[Radar] Approaching Trip Destination` |
-| `user.arrived_at_trip_destination`  | [Trip Tracking](/trip-tracking) | `[Radar] Arrived at Trip Destination`  |
-| `user.stopped_trip`                 | [Trip Tracking](/trip-tracking) | `[Radar] Stopped Trip`                 |
-| `user.entered_beacon`               | [Beacons](/beacons)             | `[Radar] Beacon Entered`               |
-| `user.exited_beacon`                | [Beacons](/beacons)             | `[Radar] Beacon Exited`                |
+| `user.entered_geofence`             | [Geofences](/geofencing/geofences)         | `[Radar] Geofence Entered`             |
+| `user.exited_geofence`              | [Geofences](/geofencing/geofences)         | `[Radar] Geofence Exited`              |
+| `user.dwelled_in_geofence`          | [Geofences](/geofencing/geofences)         | `[Radar] Dwelled in Geofence`          |
+| `user.entered_place`                | [Places](/geofencing/places)               | `[Radar] Place Entered`                |
+| `user.exited_place`                 | [Places](/geofencing/places)               | `[Radar] Place Exited`                 |
+| `user.entered_region_country`       | [Regions](/geofencing/regions)             | `[Radar] Country Entered`              |
+| `user.exited_region_country`        | [Regions](/geofencing/regions)             | `[Radar] Country Exited`               |
+| `user.entered_region_state`         | [Regions](/geofencing/regions)             | `[Radar] State Entered`                |
+| `user.exited_region_state`          | [Regions](/geofencing/regions)             | `[Radar] State Exited`                 |
+| `user.entered_region_dma`           | [Regions](/geofencing/regions)             | `[Radar] DMA Entered`                  |
+| `user.exited_region_dma`            | [Regions](/geofencing/regions)             | `[Radar] DMA Exited`                   |
+| `user.started_trip`                 | [Trip Tracking](/geofencing/trips) | `[Radar] Started Trip`                 |
+| `user.updated_trip`                 | [Trip Tracking](/geofencing/trips) | `[Radar] Updated Trip`                 |
+| `user.approaching_trip_destination` | [Trip Tracking](/geofencing/trips) | `[Radar] Approaching Trip Destination` |
+| `user.arrived_at_trip_destination`  | [Trip Tracking](/geofencing/trips) | `[Radar] Arrived at Trip Destination`  |
+| `user.stopped_trip`                 | [Trip Tracking](/geofencing/trips) | `[Radar] Stopped Trip`                 |
+| `user.entered_beacon`               | [Beacons](/geofencing/beacons)             | `[Radar] Beacon Entered`               |
+| `user.exited_beacon`                | [Beacons](/geofencing/beacons)             | `[Radar] Beacon Exited`                |
 
 ### [Radar] Geofence Entered
 
@@ -109,7 +109,7 @@ Radar.setMetadata(JSONObject().put("moengage:customer_id", "example@radar.com"))
 | `confidence`               | `confidence`              | string  | `"high"`                     |
 | `foreground`               | `foreground`              | boolean | `true`                       |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | MoEngage Event Property | Type   | Example Value     |
 | ----------------- | ----------------------- | ------ | ----------------- |
@@ -134,7 +134,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `duration`                 | `duration`                | number (minutes) | `42.1`                       |
 | `foreground`               | `foreground`              | boolean          | `true`                       |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | MoEngage Event Property | Type   | Example Value     |
 | ----------------- | ----------------------- | ------ | ----------------- |
@@ -159,7 +159,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `duration`                 | `duration`                | number (minutes) | `5`                          |
 | `foreground`               | `foreground`              | boolean          | `true`                       |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | MoEngage Event Property | Type   | Example Value     |
 | ----------------- | ----------------------- | ------ | ----------------- |
@@ -185,7 +185,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `confidence`                  | `confidence`                 | string                   | `"high"`                           |
 | `foreground`                  | `foreground`                 | boolean                  | `true`                             |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | MoEngage Event Property | Type   | Example Value     |
 | ----------------- | ----------------------- | ------ | ----------------- |
@@ -212,7 +212,7 @@ If [Regions](/regions) is enabled, Radar will also send the following attributes
 | `duration`                    | `duration`                   | number (minutes)         | `42.1`                             |
 | `foreground`                  | `foreground`                 | boolean                  | `true`                             |
 
-If [Regions](/regions) is enabled, Radar will also send the following attributes:
+If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | MoEngage Event Property | Type   | Example Value     |
 | ----------------- | ----------------------- | ------ | ----------------- |
