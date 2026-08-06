@@ -38,7 +38,7 @@ Radar.setMetadata(JSONObject().put("airshipChannelId",channelId).put("airshipSes
 
 </CodeGroup>
 
-It is recommended to set the Radar user metadata once the Airship channel ID becomes available. This can be performed via the `addChannelListener` [Airship methods](https://docs.airship.com/platform/mobile/audience/#accessing-the-airship-channel-id).
+It is recommended to set the Radar user metadata once the Airship channel ID becomes available. This can be performed by implementing a channel event listener specific to the [Airship SDK](https://www.airship.com/docs/developer/sdk-integration) in use.
 
 ## **Verify integration data delivery**
 
