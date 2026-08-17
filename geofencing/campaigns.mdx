@@ -317,6 +317,51 @@ Target users based on their device's location-authorization status. For example,
 
 Target beacons based on their tag or their beacon ID. Radar converts those targeting options and converts them into an iBeacon region under the hood to trigger notifications as users enter iBeacon regions.
 
+## Scheduling
+
+Control when a campaign is delivered. All scheduling options are evaluated in a user's local timezone. For instance, a window set to "until 5 PM" applies at 5 PM local time to every user.
+
+Scheduling options are evaluated on the device each time a track response is received, either from a `Radar.trackOnce()` call or while `Radar.startTracking()` is enabled. On each response, the SDK re-evaluates every nearby campaign against its schedule and only registers a notification if the campaign is currently within its window. A campaign that has moved outside its window is not registered and is removed if it was registered on a previous response.
+
+<Info>
+  A silent push can wake an app running in the background, but iOS will not deliver it to an app the user has force-quit. In that case the notification is re-evaluated and removed on the next track response instead.
+</Info>
+
+### Start and end times
+
+Optionally set a **start** and/or **end** time for a campaign. The campaign only runs within this window. Leave both blank to run whenever the campaign is enabled.
+
+The following fields are all optional and work independently:
+
+- **Start only** — launches the campaign at that time and keeps it running indefinitely.
+- **End only** — starts the campaign immediately and automatically stops at the specified time.
+- **Both** — runs only within the fixed window.
+- **Neither** — scheduling is off; the campaign runs whenever it's enabled.
+
+### Active days
+
+Within a scheduled campaign, optionally restrict delivery to specific **days of the week** — for example, only Tuesdays and Thursdays. Active days are layered on top of the start and end times: a notification is delivered only when the current time is inside the window **and** falls on a selected day, evaluated in the user's local timezone. Leave the selection empty (the default) to run every day.
+
+Active days require a start and/or end time to be set.
+
+<Info>
+  Active days for client-side geofence campaigns require [iOS SDK v3.37.0](https://github.com/radarlabs/radar-sdk-ios/releases/tag/3.37.0) or above.
+</Info>
+
+### Operating hours
+
+For **client-side geofence** campaigns that target geofences, you can **restrict notifications to a geofence's [operating hours](/geofencing/geofences#operating-hours)** so a notification isn't delivered while the location is closed. Enable this with the **Restrict notifications to operating hours** toggle on the campaign.
+
+When enabled, a geofence's client-side notification is only delivered when the user's local time is within the geofence's [operating hours](/geofencing/geofences#operating-hours). A short buffer before closing time keeps a notification from firing right as the location closes. Geofences without operating hours configured are unaffected.
+
+<Info>
+  Restricting notifications to operating hours requires [iOS SDK v3.36.0](https://github.com/radarlabs/radar-sdk-ios/releases/tag/3.36.0) or above.
+</Info>
+
+### Client-side geofence notifications uses silent push
+
+Client-side geofence notifications are scheduled with the operating system in advance, so once registered they stay on the device until the SDK next re-evaluates them. If your campaign only requires Foreground ("When In Use") permissions, the SDK may not receive another track response before the schedule window closes, so a notification could remain scheduled, and fire, after its window has ended. To close this gap, set up [silent push](/sdk/silent-push). When a campaign's scheduling window closes, Radar sends a silent push that wakes the SDK and triggers an on-device re-evaluation of all scheduled notifications, de-registering any that now fall outside their window without requiring a new location update from the user. This keeps client-side notifications in sync with their schedule even for users who have granted only foreground location permissions.
+
 ## Frequency Capping
 
 *Requires SDK version v3.19.6*
