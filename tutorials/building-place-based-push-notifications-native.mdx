@@ -31,6 +31,8 @@ title: "Building Place-based push notifications"
     <Info>
       Places is available on the [Enterprise plan](https://radar.com/pricing). Contact your account manager to enable it for your project.
     </Info>
+
+    Alternatively, you can create custom geofences and trigger notifications when a user enters those boundaries instead. See the [geofencing docs](https://docs.radar.com/geofencing/geofences#create-geofences) for setup instructions.
   </Step>
   <Step title="Install the SDK">
     For full setup instructions, see the [iOS SDK docs](https://docs.radar.com/sdk/ios) or [Android SDK docs](https://docs.radar.com/sdk/android). Once the SDK is installed, initialize it:
@@ -202,6 +204,8 @@ title: "Building Place-based push notifications"
     <Info>
       Event based notifications require background (`Always allow`) location permissions to deliver. For foreground-only notification delivery, use the **Client side geofence** campaign type instead (iOS only).
     </Info>
+
+    If you prefer to manage campaigns outside of Radar, you can use one of the [Radar integrations](https://docs.radar.com/integrations/integrations) to trigger notifications through your existing messaging platform.
   </Step>
   <Step title="Listen for place events client-side (optional)">
     To handle `user.entered_place` events directly in your app, for example to trigger an in-app experience rather than a push notification, set up a delegate or receiver.
