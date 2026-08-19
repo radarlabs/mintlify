@@ -92,6 +92,8 @@ title: "Building Place-based push notifications"
     <Info>
       Event based notifications require background (`Always allow`) location permissions to deliver. For foreground-only notification delivery, use the **Client side geofence** campaign type instead (iOS only).
     </Info>
+
+    If you prefer to manage campaigns outside of Radar, you can use one of the [Radar integrations](https://docs.radar.com/integrations/integrations) to trigger notifications through your existing messaging platform.
   </Step>
   <Step title="Listen for place events client-side (optional)">
     To handle `user.entered_place` events directly in your app, for example to trigger an in-app experience rather than a push notification, add an event listener:
