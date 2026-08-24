@@ -52,6 +52,18 @@ The API uses standard HTTP response codes.
 }
 ```
 
+## Request IDs
+
+Every API response includes an `X-Radar-Request-ID` header with a unique identifier for the request.
+
+**Sample response header**
+
+```sh
+X-Radar-Request-ID: 01890a5d-ac96-774b-bcce-b302099a8057
+```
+
+If you contact support about a specific API call, include the request ID. The request ID allows us to quickly find and debug the exact request.
+
 ## Building blocks
 
 Use these endpoints as building blocks for location-based products and services like delivery tracking, store locators, address autocomplete, location-based content and notifications, and more.
