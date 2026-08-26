@@ -372,7 +372,7 @@ Radar.trackOnce()
   });
 ```
 
-If a request succeeds, the API response body is only included on the result, as `response`, when the SDK is initialized with the `debug` option enabled:
+When the SDK is initialized with the `debug` option enabled, the API response body is also included on successful results, as `response`:
 
 ```javascript
 Radar.initialize('prj_live_pk_...', { debug: true });
