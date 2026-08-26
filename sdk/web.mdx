@@ -361,15 +361,25 @@ The React Native SDK also has UI components for maps and address autocomplete. L
 
 ## Request IDs
 
-Every API response includes an `X-Radar-Request-ID` header with a unique identifier for the request. The Web SDK surfaces this identifier as `meta.requestId` on the API response body, available on errors as `err.response` and, when the SDK is initialized with the `debug` option enabled, on results as `result.response`:
+Every API response includes an `X-Radar-Request-ID` header with a unique identifier for the request. The Web SDK surfaces this identifier as `meta.requestId` on the API response body.
+
+If a request fails, get the request ID from the API response body on the error:
 
 ```javascript
 Radar.trackOnce()
-  .then((result) => {
-    const requestId = result.response?.meta?.requestId; // requires the `debug` option
-  })
   .catch((err) => {
     const requestId = err.response?.meta?.requestId;
+  });
+```
+
+If a request succeeds, the API response body is only included on the result, as `response`, when the SDK is initialized with the `debug` option enabled:
+
+```javascript
+Radar.initialize('prj_live_pk_...', { debug: true });
+
+Radar.trackOnce()
+  .then((result) => {
+    const requestId = result.response?.meta?.requestId;
   });
 ```
 
