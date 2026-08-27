@@ -89,6 +89,7 @@ Available options include:
 | `locationMaximumAge` | `null` | number | Determines whether to use old browser locations. A maximum age in milliseconds. If `null` or `0`, will always request a new location. See [getCurrentPosition options()](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition). |
 | `locationTimeout` | `30000` | number | The number of milliseconds to wait for a location update before an error is thrown. Defaults to 30 seconds. |
 | `desiredAccuracy` | `high` | `high`, `medium`, `low` | Determines the desired accuracy of location updates. Note that higher accuracy can result in slower response times. |
+| `debug` | `false` | `true`, `false` | Determines whether to include the raw API response body on results, as `response`. Defaults to `true` when using a test publishable key. |
 
 ## Geofencing
 
@@ -357,6 +358,32 @@ Radar.matrix({
 ## Maps and UI kits
 
 The React Native SDK also has UI components for maps and address autocomplete. Learn more in the [Maps Platform documentation](/maps/overview).
+
+## Request IDs
+
+Every API response includes an `X-Radar-Request-ID` header with a unique identifier for the request. The Web SDK surfaces this identifier as `meta.requestId` on the API response body.
+
+If a request fails, get the request ID from the API response body on the error:
+
+```javascript
+Radar.trackOnce()
+  .catch((err) => {
+    const requestId = err.response?.meta?.requestId;
+  });
+```
+
+When the SDK is initialized with the `debug` option enabled, the API response body is also included on successful results, as `response`:
+
+```javascript
+Radar.initialize('prj_live_pk_...', { debug: true });
+
+Radar.trackOnce()
+  .then((result) => {
+    const requestId = result.response?.meta?.requestId;
+  });
+```
+
+If you contact support about a specific API call, include the request ID. The request ID allows us to quickly find and debug the exact request.
 
 ## Support
 
