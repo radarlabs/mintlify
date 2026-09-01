@@ -88,8 +88,8 @@ Available options include:
 | `cacheLocationMinutes` | `null` | number | Determines whether to reuse previous location updates. A cache ttl in minutes. If `null` or `0`, will always request a new location. |
 | `locationMaximumAge` | `null` | number | Determines whether to use old browser locations. A maximum age in milliseconds. If `null` or `0`, will always request a new location. See [getCurrentPosition options()](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition). |
 | `locationTimeout` | `30000` | number | The number of milliseconds to wait for a location update before an error is thrown. Defaults to 30 seconds. |
-| `networkTimeoutInterval` | `10` | number | The number of seconds to wait for a network request before an error is thrown. |
-| `trackVerifiedAutoFailover` | `false` | `true`, `false` | Determines whether `Radar.trackVerified()` should automatically retry on the secondary verified host when the primary verified host. Requires `@radarlabs/plugin-fraud`. |
+| `networkTimeoutInterval` | `10` | number | The number of seconds to wait for a network request before an error is thrown. Values are clamped to `[1, 300]` seconds. |
+| `trackVerifiedAutoFailover` | `false` | `true`, `false` | Determines whether `Radar.trackVerified()` should automatically retry on the secondary verified host when the primary verified host returns a non-Radar response. Requires `@radarlabs/plugin-fraud`. |
 | `desiredAccuracy` | `high` | `high`, `medium`, `low` | Determines the desired accuracy of location updates. Note that higher accuracy can result in slower response times. |
 | `debug` | `false` | `true`, `false` | Determines whether to include the raw API response body on results, as `response`. Defaults to `true` when using a test publishable key. |
 
@@ -171,14 +171,14 @@ err.response; // API response body
 Alternatively, you can manually update the user's location with any location by calling:
 
 ```javascript
-Radar.trackOnce({
-  latitude: 39.2904,
-  longitude: -76.6122,
+Radar.trackOnce({ 
+  latitude: 39.2904, 
+  longitude: -76.6122, 
   accuracy: 65
-}).then((result) => {
-  const { location, user, events } = result;
+}).then((result) => { 
+  const { location, user, events } = result; 
   // do something with location, user, or events
-}).catch((err) => {
+}).catch((err) => { 
   // handle error
 });
 ```
@@ -190,31 +190,31 @@ Radar.trackOnce({
 With the [forward geocoding API](/api#forward-geocode), geocode an address, converting address to coordinates:
 
 ```javascript
-Radar.forwardGeocode({
-  query: '841 broadway, new york, ny'
+Radar.forwardGeocode({ 
+  query: '841 broadway, new york, ny' 
 })
-  .then((result) => {
-    const { addresses } = result;
-    // do something with addresses
+  .then((result) => { 
+    const { addresses } = result; 
+    // do something with addresses 
   })
-  .catch((err) => {
-    // handle error
+  .catch((err) => { 
+    // handle error 
   });
 ```
 
 With the [reverse geocoding API](/api#reverse-geocode), reverse geocode a location, converting coordinates to address:
 
 ```javascript
-Radar.reverseGeocode({
-  latitude: 40.783826,
-  longitude: -73.975363
+Radar.reverseGeocode({ 
+  latitude: 40.783826, 
+  longitude: -73.975363 
 })
-  .then((result) => {
-    const { addresses } = result;
-    // do something with addresses
+  .then((result) => { 
+    const { addresses } = result; 
+    // do something with addresses 
   })
-  .catch((err) => {
-    // handle error
+  .catch((err) => { 
+    // handle error 
   });
 ```
 
@@ -222,12 +222,12 @@ With the [IP geocoding API](/api#ip-geocode), geocode the device's current IP ad
 
 ```javascript
 Radar.ipGeocode()
-  .then((result) => {
-    const { ip, address, proxy } = result;
-    // do something with results
+  .then((result) => { 
+    const { ip, address, proxy } = result; 
+    // do something with results 
   })
-  .catch((err) => {
-    // handle error
+  .catch((err) => { 
+    // handle error 
   });
 ```
 
@@ -236,17 +236,17 @@ Radar.ipGeocode()
 With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance:
 
 ```javascript
-Radar.autocomplete({
-  query: '841 bro',
-  near: {
+Radar.autocomplete({ 
+  query: '841 bro', 
+  near: { 
     latitude: 40.783826,
-    longitude: -73.975363
-  },
+    longitude: -73.975363 
+  }, 
   limit: 10
-}).then((result) => {
-  const { addresses } = result;
+}).then((result) => { 
+  const { addresses } = result; 
   // do something with addresses
-}).catch((err) => {
+}).catch((err) => { 
   // handle error
 });
 ```
@@ -254,14 +254,14 @@ Radar.autocomplete({
 With the [geofence search API](/api#search-geofences), search for geofences near a location, sorted by distance:
 
 ```javascript
-Radar.searchGeofences({
-  radius: 1000,
-  tags: ['venue'],
+Radar.searchGeofences({ 
+  radius: 1000, 
+  tags: ['venue'], 
   limit: 10
-}).then((result) => {
-  const { geofences } = result;
+}).then((result) => { 
+  const { geofences } = result; 
   // do something with geofences
-}).catch((err) => {
+}).catch((err) => { 
   // handle error
 });
 ```
@@ -269,18 +269,18 @@ Radar.searchGeofences({
 With the [places search API](/api#search-places), search for places near a location, sorted by distance:
 
 ```javascript
-Radar.searchPlaces({
-  near: {
-    latitude: 40.783826,
-    longitude: -73.975363
-  },
-  radius: 1000,
-  chains: ['starbucks'],
+Radar.searchPlaces({ 
+  near: { 
+    latitude: 40.783826, 
+    longitude: -73.975363 
+  }, 
+  radius: 1000, 
+  chains: ['starbucks'], 
   limit: 10
-}).then((result) => {
-  const { places } = result;
+}).then((result) => { 
+  const { places } = result; 
   // do something with places
-}).catch((err) => {
+}).catch((err) => { 
   // handle error
 });
 ```
@@ -288,16 +288,16 @@ Radar.searchPlaces({
 With the [address validation API](/api#validate-an-address), validate a structured address in the US or Canada:
 
 ```javascript
-Radar.validateAddress({
-  addressLabel: '841 BROADWAY',
-  city: 'NEW YORK',
-  stateCode: 'NY',
-  postalCode: '10003',
+Radar.validateAddress({ 
+  addressLabel: '841 BROADWAY', 
+  city: 'NEW YORK', 
+  stateCode: 'NY', 
+  postalCode: '10003', 
   countryCode: 'US',
-}).then((response) => {
-  const { address, result } = response;
+}).then((response) => { 
+  const { address, result } = response; 
   // do something with validated address result
-}).catch((err) => {
+}).catch((err) => { 
   // handle error
 });
 ```
@@ -307,22 +307,22 @@ Radar.validateAddress({
 With the [distance API](/api#distance), calculate the travel distance and duration between two locations:
 
 ```javascript
-Radar.distance({
-  origin: {
-    latitude: 40.78382,
-    longitude: -73.97536
+Radar.distance({ 
+  origin: { 
+    latitude: 40.78382, 
+    longitude: -73.97536 
   },
-  destination: {
-    latitude: 40.70390,
-    longitude: -73.98670
-  },
-  modes: [ 'foot', 'car' ],
+  destination: { 
+    latitude: 40.70390, 
+    longitude: -73.98670 
+  }, 
+  modes: [ 'foot', 'car' ], 
   units: 'imperial'
-}).then((result) => {
-  const { routes } = result;
-  const { geodesic, foot, bike, car } = routes;
+}).then((result) => { 
+  const { routes } = result; 
+  const { geodesic, foot, bike, car } = routes; 
   // do something with distance result
-}).catch((err) => {
+}).catch((err) => { 
   // handle error
 });
 ```
@@ -332,27 +332,27 @@ Radar.distance({
 With the [matrix API](/api#matrix), calculate the travel distances and durations between multiple origins and destinations for up to 25 routes:
 
 ```javascript
-Radar.matrix({
-  origins: [{
-    latitude: 40.70390,
-    longitude: -73.98690
-  }],
-  destinations: [{
-    latitude: 40.70390,
-    longitude: -73.98690
-  }, {
-    latitude: 40.73237,
-    longitude: -73.94884
-  }],
-  mode: 'car',
+Radar.matrix({ 
+  origins: [{ 
+    latitude: 40.70390, 
+    longitude: -73.98690 
+  }], 
+  destinations: [{ 
+    latitude: 40.70390, 
+    longitude: -73.98690 
+  }, { 
+    latitude: 40.73237, 
+    longitude: -73.94884 
+  }], 
+  mode: 'car', 
   units: 'imperial'
-}).then((result) => {
-  const { origins, destinations, matrix } = result;
-  matrix.forEach((matrixResult) => {
-    const { distance, duration, originIndex, destinationIndex } = matrixResult;
-    // do something with matrix result
+}).then((result) => { 
+  const { origins, destinations, matrix } = result; 
+  matrix.forEach((matrixResult) => { 
+    const { distance, duration, originIndex, destinationIndex } = matrixResult; 
+    // do something with matrix result 
   });
-}).catch((err) => {
+}).catch((err) => { 
   // handle error
 });
 ```
