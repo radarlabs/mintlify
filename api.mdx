@@ -1239,6 +1239,8 @@ Additionally you can modify the turn-by-turn directions response by specifying a
 - `alternatives` (boolean, optional): Specifies whether to try to return alternative routes. This feature is available if only two locations are specified. Defaults to `false`.
 - `lang` (string, optional): Specifies the language for the results. A string, one of `de`, `en`, `es`, `fr`, `ja`, `ko`, `pt`, `ru`. Defaults to `en`.
 
+Each turn-by-turn step includes `maneuver`, a string describing the maneuver type (for example, `start`, `left`, or `destination`).
+
 **Authentication level**
 
 Publishable
@@ -1320,7 +1322,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "kafulAnn`clCfKxAhCF`CJdg@vGtB\\|BZfJrAh[lEhC^dBThMjBjRjCdBZn@Pd@Nh@P"
                 },
                 "mode": "car",
-                "manuever": "start",
+                "maneuver": "start",
                 "street_name": "Broadway"
               },
               {
@@ -1349,7 +1351,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "_eaulAnqaclCzAuE|EoO`HqT`CuHl@mBbCkHxBkGhYk}@v@oCfBuFvB_H~c@avAbLm^ZgAj@kB`BmF"
                 },
                 "mode": "car",
-                "manuever": "left",
+                "maneuver": "left",
                 "street_name": "East 10th Street"
               },
               {
@@ -1378,7 +1380,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "ej}tlAvnxblClBnAvYlRjAv@nBrAdC~AvVdPdEnCfBhAtBvAj^~UrBtAlBnAn\\dTbBfAtBtAl^zUzAbAjCfBv]tUbBfAjBlAf^pUhBlAnBnAfSzMhLxHrBrAlBrAlFnDzXnRnBrAtBxAjFfDtFx@jEZ|BRzDh@xFtAjD`AvAj@|Ap@lQnH~ZjMhIhDzAl@bBp@nBt@pAh@l{@r]xAf@rBr@xAf@vAd@xItDbVrKvVjKz@^hBr@rEdBzGlC"
                 },
                 "mode": "car",
-                "manuever": "right",
+                "maneuver": "right",
                 "street_name": "2nd Avenue"
               },
               {
@@ -1407,7 +1409,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "majtlAfndclC`AwEX}AnG}Zd@}B~@uEj@uCtKyh@XsAh@gCd@yBbJ{c@\\aBr@iD~AeIz@yDn@wCpD}PVmAf@eCf@eC`Joc@VsAf@aCd@}BpHm^r@kDXoAfAkFbA{EtIsb@Z}A`@uBR_AXeAd@}A`AwCtEsNrAsEjAeEb@aBd@aBr@sCz@cDjBcHbIoY|@kD\\qAXkAxDgRzAmHzSgdA~J_g@|\\gcBpb@_uB|U{kA"
                 },
                 "mode": "car",
-                "manuever": "left",
+                "maneuver": "left",
                 "street_name": "Delancey Street"
               },
               {
@@ -1436,7 +1438,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "_patlA|_iblClDqUxWysA`~DirRd_@ufBrJk^ts@spD"
                 },
                 "mode": "car",
-                "manuever": "stay-left",
+                "maneuver": "stay-left",
                 "street_name": "Williamsburg Bridge"
               },
               {
@@ -1465,7 +1467,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "erwslAphhalCzH{TrEcU"
                 },
                 "mode": "car",
-                "manuever": "stay-right",
+                "maneuver": "stay-right",
                 "street_name": "I 278 West/Broadway West"
               },
               {
@@ -1494,7 +1496,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "uawslAp|falC`AoFjCkOd@yC`@}CToCTwChAeTx@}PRkCb@eDd@gCn@sCrP_r@\\wAjAsE"
                 },
                 "mode": "car",
-                "manuever": "stay-left",
+                "maneuver": "stay-left",
                 "street_name": "Broadway East/South 5th Street"
               },
               {
@@ -1523,7 +1525,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "czuslAv{aalCmCuAsP}I}KsG}@i@kAq@"
                 },
                 "mode": "car",
-                "manuever": "left",
+                "maneuver": "left",
                 "street_name": "Havemeyer Street"
               },
               {
@@ -1552,7 +1554,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "mawslArbaalCQeFo@uTAMiBy_@wBac@KkBOkBQiDk@mIs@{Io@aMmBs]{AmXS}EQ{CoBac@OeDeA{ScAoTUmEUeEsA{X}@yPoAcW_Cef@WkF}AcPScFG}AUkF"
                 },
                 "mode": "car",
-                "manuever": "right",
+                "maneuver": "right",
                 "street_name": "Borinquen Place"
               },
               {
@@ -1581,7 +1583,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "arxslA|wr`lCaDXg[dCmKx@aCRec@hD_CP{CZo]bD"
                 },
                 "mode": "car",
-                "manuever": "left",
+                "maneuver": "left",
                 "street_name": "Union Avenue"
               },
               {
@@ -1610,7 +1612,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "mo|slAfks`lC"
                 },
                 "mode": "car",
-                "manuever": "destination"
+                "maneuver": "destination"
               }
             ]
           },
@@ -1661,7 +1663,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "mo|slAfks`lCyGn@wk@tGgIz@}CTwDVuVnByXvB_DX"
                 },
                 "mode": "car",
-                "manuever": "start",
+                "maneuver": "start",
                 "street_name": "Union Avenue"
               },
               {
@@ -1690,7 +1692,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "mp`tlAx`t`lC}CwDqNeTkt@yhAkKiR}BoDiBeDsZoj@oY}f@cBaDqBkDsVyc@y^mo@_B_DsAmCqJcRuKiTaV{`@oBwC}AuCoc@}{@{CsGeBgDkm@wnA{AsCaB_DkJySiCsFiCuFuBgEYk@iBmDyAyC{AgC_CqDsLaRyG}KmDeGmDwFgC_EiNyTcCuDcCeEyC_GwCoGsSse@_DwGsBmEsBoEsHePaCoFgBsEiBgFqBmFcB}FsAsFyAgGyAmGoAmG{AmHqAyG"
                 },
                 "mode": "car",
-                "manuever": "right",
+                "maneuver": "right",
                 "street_name": "Meeker Avenue"
               },
               {
@@ -1719,7 +1721,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "svqtlAj|w_lCeFwX{@yEkCcPuBsMyBkOqSstAsDgWgKos@aAuGcC{NeA_GuAeHqAoGqAeG}A}GcBwG_KoU_CcH}BsGiBeFuCeHmCiG{CwGoCsFkCkFwCkFqCmE{CaFwCmE{CiEqEeGocBctBiI_KcHuIiGsHuEaFeFuFcEgEoEkE{FoFkFuEmGaFwEoD}EoDqFaE{GyEoFoDuEuCgEmCoaAwk@"
                 },
                 "mode": "car",
-                "manuever": "ramp-left",
+                "maneuver": "ramp-left",
                 "street_name": "I 278 East/Brooklyn-Queens Expressway"
               },
               {
@@ -1748,7 +1750,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "g|_ulAjaa_lCef@qVam@o]oFeDyEsC}DkCsDiCqFiEgFwE}E}E}DmEiD}DuDwE}DsF{DiGoDiGuCsFcDyGgEwJ_MiYy@gCyDqMcDyLgEwMqBoJmB_JkBsImAcHaBiJmAoHiA{GcAwG}@iGu@uFw@{Gw@mGu@qHs@sH_A{L{@uQeAcQy@yPo@qPi@iQ_Bml@[aPu@kQ_AiP}}@s{McB}Wi@mHs@qHu@wHm@eFy@uG{@eGaAsGaAeGkAoGkAcGuAoGuAeGsAuFaBeGaByFcBuFmB}Fwd@{sAqEqM}E_OsE_OwDoM_@wAcCiJy@{CSw@uBcIcHmX"
                 },
                 "mode": "car",
-                "manuever": "stay-left",
+                "maneuver": "stay-left",
                 "street_name": "I 278 East/Brooklyn-Queens Expressway"
               },
               {
@@ -1777,7 +1779,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "genulAxut}kCwEo_@yEcZgAeF{AwFuAmEqAyDsPad@iC{GuHwRiCyLsFsP[_Cq@kF"
                 },
                 "mode": "car",
-                "manuever": "exit-right",
+                "maneuver": "exit-right",
                 "street_name": "Laurel Hill Boulevard",
                 "exit_name": "39"
               },
@@ -1807,7 +1809,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "ekpulAnrn}kCwCQySeBiU{B_DSmHw@kHu@{BW{Ek@sEk@oDe@mEk@}BW{AQwJiAcq@{HoYkD{m@uHuCa@"
                 },
                 "mode": "car",
-                "manuever": "left",
+                "maneuver": "left",
                 "street_name": "65th Place"
               },
               {
@@ -1836,7 +1838,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "}bxulAbcm}kCw@~DWpAsDrRkFbYu@jDq@pCyGvWmGxYwB|H{DlNY`Ai@pBkGrWmHdYiEfWiIhf@sD~Tk@bD"
                 },
                 "mode": "car",
-                "manuever": "left",
+                "maneuver": "left",
                 "street_name": "Woodside Avenue"
               },
               {
@@ -1865,7 +1867,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "c|zulAlcv}kCeDaAq]kKcFiB"
                 },
                 "mode": "car",
-                "manuever": "right",
+                "maneuver": "right",
                 "street_name": "61st Street"
               },
               {
@@ -1894,7 +1896,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "_g|ulAtqu}kCUiEYgG"
                 },
                 "mode": "car",
-                "manuever": "right",
+                "maneuver": "right",
                 "street_name": "Roosevelt Avenue"
               },
               {
@@ -1923,7 +1925,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "oh|ulAbcu}kC"
                 },
                 "mode": "car",
-                "manuever": "destination"
+                "maneuver": "destination"
               }
             ]
           },
@@ -1974,7 +1976,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "oh|ulAbcu}kCqEg_AwDiz@QaEOoCwDmu@ScEOyCkD{r@[oGQoDyAwXsAcX{Dkv@}Dew@"
                 },
                 "mode": "car",
-                "manuever": "start",
+                "maneuver": "start",
                 "street_name": "Roosevelt Avenue"
               },
               {
@@ -2003,7 +2005,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "yt}ulAhwg}kCwC\\ea@vEwAPgBTc_@jEqBTgCXg@Fef@pF_@D}C~@"
                 },
                 "mode": "car",
-                "manuever": "left",
+                "maneuver": "left",
                 "street_name": "69th Street"
               },
               {
@@ -2032,7 +2034,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "axavlAbrh}kCM}Cc@{Ke@}I"
                 },
                 "mode": "car",
-                "manuever": "right",
+                "maneuver": "right",
                 "street_name": "37th Avenue"
               },
               {
@@ -2061,7 +2063,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "yzavlAjug}kCoAqC_AaBeAy@kAm@oBg@s@UiAQcA?g@Pk@@_AZaAXu@\\qG~Cq^dRgHrDgHjDoI|D}G~CeGnCaDfA{DhAaE`AiEx@sNzFsHl@aVnAm_@nD}ShDaQ`EiQfIs~@vg@mc@|V}CfB"
                 },
                 "mode": "car",
-                "manuever": "ramp-left",
+                "maneuver": "ramp-left",
                 "street_name": "I 278 East/Brooklyn-Queens Expressway"
               },
               {
@@ -2090,7 +2092,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "mvmvlAdql}kCkZbJaa@pM_UlGwWpFkGxAe^|GkS`BaMz@qLQuM{@wQeDwM}DeNeFqQkGwg@q[e^_Ti_C}wA}l@i`@sE_DuDsCsDaDyDeEwCkDuCyD_DwEkLqRmCwDuDuEoDeE{CuC{CoC}EkDaAm@wBsAmF_C"
                 },
                 "mode": "car",
-                "manuever": "stay-right",
+                "maneuver": "stay-right",
                 "street_name": "Brooklyn-Queens Expressway East",
                 "exit_name": "42"
               },
@@ -2120,7 +2122,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "mcawlA~~d}kCuDcAwEuAyQkEoEuAsDoAeD}A}CsBkCsByCyC}DqEiCyD}BsEuBwEeBmFkAkEeAaFs@_Gg@kG[sFSsHaAyh@c@eRm@cRcCyl@kAcVqIqs@{A_Q_B{PaBgPgBwPmBoPuBkPwBcPiCoQsBuMeCwOoC}OyCiPqCyO{C_PcDaPcDsOiDoOqDoOuDkO_EqOiEaOcEaOoE_OuE_O}E{N{EqNgFkNiFgNoFcNuF_NwFuMgGcNw{@glB_GiMeGyMsFmM}BuFuBkFuBwFoBqFqBuFmB}FcBqFgBcG{AyFcBgG}AkG{AaGuAkGqA_GqAqGoAoG{@kE"
                 },
                 "mode": "car",
-                "manuever": "stay-left",
+                "maneuver": "stay-left",
                 "street_name": "GCP/Grand Central Parkway"
               },
               {
@@ -2149,7 +2151,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "ojnwlAhxa|kCqCq_@IgA}B_]UeEe@}Ic@}Ke@kL[yLKuMAwPBsNHkMH}K|D_oBHkED{ECuEM{FUuF]sF}@iJeFgi@[iDYwDIwDBmENeEb@gEd@gDv@wDr@kCfAaDfK_Y`Lq_@pw@g_B"
                 },
                 "mode": "car",
-                "manuever": "exit-right",
+                "maneuver": "exit-right",
                 "street_name": "LaGuardia Road",
                 "exit_name": "7"
               },
@@ -2179,7 +2181,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "odlwlAfon{kCdTkc@t_@yq@fBaDz@iBh@sAf@_Bb@yATsARaBJgBFsBA}BK}BSuB]{Bo@yB}@}BeAmBoAaBiAmAuAeAqAs@sAc@_B]wAMyAEaBD}AX_Bd@uAp@}AbAoAdA_AbAw@bAmO|T{Rt[eHbMoAnC_AfC"
                 },
                 "mode": "car",
-                "manuever": "exit-left",
+                "maneuver": "exit-left",
                 "street_name": "Terminal B/Parking B/Rental Car Return"
               },
               {
@@ -2208,7 +2210,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "sgmwlAzil{kCcB~EaBjFcAvDs@`Da@|B]bD]zDYjEUxEeDnr@[vE_@tEi@hEu@bFeAbFaAhEw@tCgAfD{BhGkBbEkDdH{GtNiH`OyLjVcC|GqCdIkCpI}CfKaB`GyA~FcBjH_BhIgA~GoAzIkAjJy@`Hu@fIm@hH]~F]|GWjIOhHIdHEtH?Z"
                 },
                 "mode": "car",
-                "manuever": "stay-right",
+                "maneuver": "stay-right",
                 "street_name": "Terminal B Arrivals"
               },
               {
@@ -2237,7 +2239,7 @@ curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934|40
                   "polyline": "sbqwlAruy{kC"
                 },
                 "mode": "car",
-                "manuever": "destination-right"
+                "maneuver": "destination-right"
               }
             ]
           }
