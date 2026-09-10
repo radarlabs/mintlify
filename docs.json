@@ -82,6 +82,7 @@
               "integrations/iterable",
               "integrations/leanplum",
               "integrations/lytics",
+              "integrations/mcp",
               "integrations/mixpanel",
               "integrations/moengage",
               "integrations/mparticle",
