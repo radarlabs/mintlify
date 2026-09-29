@@ -1,0 +1,128 @@
+---
+title: "MCP server"
+hidden: true
+---
+
+<Info>
+  Please contact your Radar customer success manager for access to the MCP server.
+</Info>
+
+Radar's Model Context Protocol (MCP) server lets you query Radar data from your AI assistant. Ask a question in Claude or ChatGPT, and the assistant can retrieve relevant records, analyze them, and display locations on a map.
+
+You connect through your Radar account and authorize access to your project. The assistant gets read-only tools: it cannot change project settings, create geofences, delete users, or otherwise modify your Radar data.
+
+## What you can do
+
+- Query historical locations by user, device, time range, geography, or supported filters.
+- View data on an interactive map in clients that support MCP apps, such as Claude and ChatGPT.
+- Read additional pages of data or download the data as JSON through a temporary link.
+
+### Sample prompts
+
+- Why did user 123 fail a location check recently?
+- Investigate users 123, 456, and 789 for promo abuse.
+- Find all location checks near 111 5th Ave, NYC yesterday.
+
+### Available tools
+
+The assistant selects these tools for you. You do not need to write API requests.
+
+| Tool | What it does |
+| --- | --- |
+| `query_data` | Queries data and returns a completed query ID, up to three preview records, and a temporary JSON download link. |
+| `get_query_page` | Reads another page of data from a completed query. The assistant can keep reading while more pages are available. |
+| `render_locations_map` | Displays data from a completed query on an interactive map in a compatible client. |
+
+Queries can take some time to complete. A preview or map may show only part of the data. Ask the assistant to read more pages when you need a fuller analysis, or use the JSON download.
+
+## Before you connect
+
+You need a Radar account with access to a pilot-enabled project and permission to view location data in the Test or Live environment you want to query. You also need permission to add a custom connection in your AI provider's account or workspace.
+
+Use this hosted server URL for either provider:
+
+```text
+https://mcp.radar.com/mcp
+```
+
+Radar uses OAuth to authorize the connection. Sign in to Radar through the authorization flow; do not paste a Radar secret API key into the chat or connector configuration.
+
+Before starting, select the intended project and Test or Live environment in the [Radar dashboard](https://radar.com/dashboard). Check them again on the consent screen before allowing access.
+
+## Connect Claude
+
+<Info>
+  An official Claude connector will be available soon.
+</Info>
+
+1. In Claude, open **Customize** > **Connectors**.
+2. Select the **+** button, then **Add custom connector**.
+3. Enter `Radar` as the name and `https://mcp.radar.com/mcp` as the remote MCP server URL. Leave optional OAuth client credentials empty.
+4. Add the connector, then select **Connect** to sign in to Radar.
+5. Review the project, environment, and requested access on Radar's consent screen. Select **Allow access**.
+6. Start a conversation. Use the **+** menu and **Connectors** to enable Radar, then try one of the [sample prompts](#sample-prompts).
+
+For Team and Enterprise workspaces, an owner must first add the connector in **Organization settings** > **Connectors**. Members then connect their own Radar accounts. See [Claude's custom connector guide](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) for current account requirements and controls.
+
+## Connect ChatGPT
+
+<Info>
+  An official ChatGPT plugin will be available soon.
+</Info>
+
+1. In ChatGPT, open **Settings** > **Security and login** and enable **Developer mode**. Availability depends on your account and workspace policy.
+2. Open [ChatGPT Plugins](https://chatgpt.com/plugins) and select the **+** button.
+3. Enter `Radar` as the name and a description such as `Query Radar location data`.
+4. Under **Connection**, enter `https://mcp.radar.com/mcp` as the public MCP server URL and create the connection. Use OAuth if prompted for an authentication method.
+5. Complete the Radar sign-in flow. Review the project, environment, and requested access, then select **Allow access**.
+6. Review the discovered tools and enable the Radar connection in a conversation, then try one of the [sample prompts](#sample-prompts).
+
+If these controls are unavailable, check your workspace policy with an administrator. OpenAI's [connection guide](https://developers.openai.com/plugins/deploy/connect-chatgpt) describes the current setup flow.
+
+## Review Radar access
+
+The Radar consent screen shows the project, Test or Live environment, and requested permissions. Location queries use the `locations:read` permission.
+
+If the project or environment is wrong, cancel, select the correct context in the Radar dashboard, and restart the connection. A prompt cannot switch an existing connection to another project or environment.
+
+## FAQ
+
+### Can the assistant change my Radar data?
+
+The MCP tools provide read-only access to location data. They create query jobs and temporary results to retrieve that data, but do not provide tools for editing or deleting your Radar records or settings.
+
+### Can it access every project in my account?
+
+Each connection is limited to the project, environment, and permissions authorized during sign-in. Radar checks your current access when the assistant uses a tool. To work with another project or environment, disconnect Radar and reconnect it, authorizing the new project or environment.
+
+### Why are results missing or incomplete?
+
+Check the authorized project, Test or Live environment, identifier, and time range. Queries only return data available within the applicable retention period.
+
+The initial preview contains at most three records. A map or result page can also contain a subset. Ask the assistant to retrieve additional pages or download the JSON results before drawing conclusions about the full query. If a query times out, narrow the time range and filters before trying again.
+
+### What data does the AI provider receive?
+
+The provider receives the tool results used in your conversation. These can include coordinates, timestamps, user or device identifiers, device information, and fraud details, depending on the query and permissions. The assistant can also use the temporary link to retrieve query results.
+
+Radar does not send your project's secret key to the assistant. OAuth grants access without requiring you to share your Radar password with the AI provider. Treat returned records and download links as sensitive, and query only the data needed for your task.
+
+See [Radar's privacy notice](https://radar.com/privacy) and [privacy best practices](/faqs#what-are-privacy-best-practices-for-radar) for more information.
+
+### How long is data retained?
+
+Connecting an assistant does not change how long Radar keeps your data. Your project's [retention settings](/faqs#what-is-radars-data-retention-policy) still apply. Download links expire at the `expiresAt` timestamp returned with each result.
+
+Once results are in a conversation or downloaded, they fall under your AI provider's retention policies and your own storage practices. Radar cannot delete those copies.
+
+### Will my data be used to train AI models?
+
+That depends on your AI provider's terms and your account or workspace settings, not on Radar. Connecting through MCP does not by itself establish a no-training or zero-retention policy. Review your provider's data controls before connecting customer data.
+
+### What if a download link expires?
+
+Ask the assistant to run the query again to obtain a new link, provided the source data is still available and you still have access. Do not share result URLs publicly: possession of a valid link can allow someone to download its results until it expires.
+
+### How do I disconnect?
+
+Disable or remove Radar in your AI provider's connector or plugin settings to stop using it there. If you need help revoking Radar authorization, contact Radar support. Disconnecting does not erase records already returned to the provider or files you downloaded. Manage those copies through the provider's deletion controls and your own storage policies.
