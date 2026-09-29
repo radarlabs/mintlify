@@ -13,9 +13,15 @@ You connect through your Radar account and authorize access to your project. The
 
 ## What you can do
 
-- Query historical locations by user, device, time range, geography, or supported location/fraud filters.
-- View location results on an interactive map in clients that support MCP apps, such as Claude and ChatGPT.
-- Read additional pages of results or download the query results as JSON through a temporary link.
+- Query historical locations by user, device, time range, geography, or supported filters.
+- View data on an interactive map in clients that support MCP apps, such as Claude and ChatGPT.
+- Read additional pages of data or download the data as JSON through a temporary link.
+
+### Sample prompts
+
+- Find all location checks near 111 5th Ave, NYC yesterday.
+- Why did user 123 fail a location check recently?
+- Investigate users 123, 456, and 789 for promo abuse.
 
 ### Available tools
 
@@ -23,11 +29,11 @@ The assistant selects these tools for you. You do not need to write API requests
 
 | Tool | What it does |
 | --- | --- |
-| `query_data` | Queries location data and returns a completed query ID, up to three preview records, and a temporary JSON download link. |
-| `get_query_page` | Reads another page of a completed query. The assistant can continue through the results while more pages are available. |
-| `render_locations_map` | Displays locations from a completed location query on an interactive map in a compatible client. |
+| `query_data` | Queries data and returns a completed query ID, up to three preview records, and a temporary JSON download link. |
+| `get_query_page` | Reads another page of data from a completed query. The assistant can keep reading while more pages are available. |
+| `render_locations_map` | Displays data from a completed query on an interactive map in a compatible client. |
 
-Queries can take some time to complete. A preview or map may show only part of the result set. Ask the assistant to read more pages when you need a fuller analysis, or use the JSON download.
+Queries can take some time to complete. A preview or map may show only part of the data. Ask the assistant to read more pages when you need a fuller analysis, or use the JSON download.
 
 ## Before you connect
 
@@ -70,18 +76,6 @@ If these controls are unavailable, check your workspace policy with an administr
 The Radar consent screen shows the project, Test or Live environment, and requested permissions. Location queries use the `locations:read` permission.
 
 If the project or environment is wrong, cancel, select the correct context in the Radar dashboard, and restart the connection. A prompt cannot switch an existing connection to another project or environment.
-
-## Sample prompts
-
-Replace the sample identifiers with identifiers from your authorized project. Start with a narrow time range.
-
-### Inspect recent locations
-
-> Use Radar to show the latest 20 locations for user ID `demo-user-123` from the last hour. Summarize the timestamps and location accuracy, then show the locations on a map.
-
-### Investigate fraud signals
-
-> Query Radar locations for user ID `demo-user-123` from the last hour with fraud details. Explain which returned signals may account for failed verification, and cite the relevant records.
 
 ## FAQ
 
