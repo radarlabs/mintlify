@@ -790,6 +790,24 @@ trackingOptions.beacons = YES;
 
 </CodeGroup>
 
+If you call `Radar.trackVerified(beacons: true)`, you can call `Radar.startRangingBeacons()` to range beacons continuously in the foreground, so location checks don't wait for a new ranging window. Call `Radar.stopRangingBeacons()` when you no longer need beacons. Learn more about [ranging beacons with location checks](/geofencing/fraud#ranging-beacons).
+
+<CodeGroup>
+
+```swift Swift
+Radar.startRangingBeacons()
+
+Radar.stopRangingBeacons()
+```
+
+```c Objective-C
+[Radar startRangingBeacons];
+
+[Radar stopRangingBeacons];
+```
+
+</CodeGroup>
+
 ### Geocoding
 
 With the [forward geocoding API](/api#forward-geocode), geocode an address, converting address to coordinates:
