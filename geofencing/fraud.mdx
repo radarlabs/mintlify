@@ -526,6 +526,56 @@ try {
 }
 ```
 
+#### Ranging beacons
+
+On iOS and Android, you can pass `beacons: true` to `Radar.trackVerified()` to range nearby [beacons](/geofencing/beacons) and include them in the location check. By default, each call waits up to 5 seconds to range beacons. The wait ends early only if every nearby beacon is found, so in large venues with many beacons, each call usually waits the full 5 seconds.
+
+To avoid the wait, call `Radar.startRangingBeacons()` before the location check. The SDK then ranges nearby beacons continuously while the app is in the foreground, and `Radar.trackVerified(beacons: true)` uses the beacons seen in the last 5 seconds instead of starting a new ranging window. If no beacons have been seen, the location check reports no nearby beacons. Until ranging results are available, `Radar.trackVerified(beacons: true)` ranges beacons as usual.
+
+Call `Radar.startRangingBeacons()` after initializing the SDK and after the user grants location permissions (and, on Android, Bluetooth permissions). To limit battery use, call it when the user enters the flow that calls `Radar.trackVerified(beacons: true)`, and call `Radar.stopRangingBeacons()` when they leave it. Ranging pauses automatically when the app goes to the background and resumes when it returns to the foreground.
+
+<CodeGroup>
+
+```swift Swift
+// when the user enters the flow
+Radar.startRangingBeacons()
+
+// perform a location check with nearby beacons
+Radar.trackVerified(beacons: true) { (status, token) in
+  if token?.passed == true {
+    // allow access, send token to server
+  } else {
+    // deny access, show error message
+  }
+}
+
+// when the user leaves the flow
+Radar.stopRangingBeacons()
+```
+
+```kotlin Kotlin
+// when the user enters the flow
+Radar.startRangingBeacons()
+
+// perform a location check with nearby beacons
+Radar.trackVerified(beacons = true) { status, token ->
+  if (token?.passed == true) {
+    // allow access, send token to server
+  } else {
+    // deny access, show error message
+  }
+}
+
+// when the user leaves the flow
+Radar.stopRangingBeacons()
+```
+
+</CodeGroup>
+
+<Note>
+`Radar.startRangingBeacons()` and `Radar.stopRangingBeacons()` require iOS SDK `3.43.0`+ or Android SDK `3.38.0`+. On Android, they require Android 8.0 (API level 26) or later and do nothing on earlier versions.
+</Note>
+
 ### Automatic location checks with caching
 
 You can call `Radar.startTrackingVerified()` to automatically perform location checks on connection changes, on the specified `interval`, or more frequently if `token.expiresIn < interval` (based on current state, distance to border, and so on).
