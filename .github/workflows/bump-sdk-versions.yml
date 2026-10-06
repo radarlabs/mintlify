@@ -55,7 +55,7 @@ jobs:
 
             The install snippets in the docs were behind one or more SDKs' latest
             **stable** GitHub release. This PR rewrites the pinned versions (iOS
-            CocoaPods/SPM/Carthage, Android Gradle, the iOS fraud plugin, the
+            SPM/Carthage, Android Gradle, the iOS fraud plugin, the
             Flutter package, and the web SDK `<script>` CDN tag) to match.
 
             Please verify against each SDK's release notes before merging. Left

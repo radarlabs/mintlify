@@ -32,19 +32,13 @@ In this tutorial, we will build a delivery tracking iOS application which uses [
   <Step title="Install the Radar iOS SDK">
     Create an Xcode project with a SwiftUI interface, named `DeliveryTracker`.
 
-    The recommended method of installing the iOS SDK is with Cocoapods. See the [iOS SDK](/sdk/ios) docs for alternatives.
+    The recommended method of installing the iOS SDK is with Swift Package Manager. See the [iOS SDK](/sdk/ios) docs for alternatives.
 
-    Install [CocoaPods](https://cocoapods.org/). If you don't have an existing `Podfile`, run `pod init` in your project directory. Add the following to your `Podfile`:
+    In Xcode, go to _File_ \> _Add Package Dependencies_ and enter `https://github.com/radarlabs/radar-sdk-ios-spm.git` for the package URL:
 
     ```swift
-    pod 'RadarSDK', '~> 3.43.0'
+    .package(url: "https://github.com/radarlabs/radar-sdk-ios-spm.git", "3.43.0"..<"3.44.0")
     ```
-
-    Then, run `pod install`. You may also need to run `pod repo update`.
-
-    <Info>
-      After installing, close your project, and open the .xcodeworkspace instead. in Xcode instead of the `.xcproject` file.
-    </Info>
   </Step>
   <Step title="Initialize the SDK">
     Create a new Swift file named `LocationManager.swift`, where we define a `LocationManager` class to handle location-related logic, and create a shared instance to be used across the app. Initialize the SDK in this class with your publishable [API key](https://dashboard.radar.com), and set this class to be the `CLLocationManager` delegate.

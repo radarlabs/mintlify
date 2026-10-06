@@ -8,25 +8,13 @@ Learn how to integrate the iOS SDK below. You can also see the [source](https://
 
 ## Install SDK
 
-The best way to install the SDK is via [CocoaPods](https://cocoapods.org/) or [Carthage](https://github.com/Carthage/Carthage).
+The best way to install the SDK is via [Swift Package Manager](https://www.swift.org/documentation/package-manager/).
 
 <Info>
   For details on the latest SDK releases, see the [**releases page**](https://github.com/radarlabs/radar-sdk-ios/releases) on GitHub. You can also star ⭐️ and watch 👀 the repo.
 </Info>
 
 The SDK is small and typically adds less than 500 KB to your compiled app.
-
-### CocoaPods
-
-Install [CocoaPods](https://cocoapods.org/). If you don't have an existing `Podfile`, run `pod init` in your project directory. Add the following to your `Podfile`:
-
-```text
-pod 'RadarSDK', '~> 3.43.0'
-```
-
-Then, run `pod install`. You may also need to run `pod repo update`.
-
-After installing, use the `.xcworkspace` file to open your project in Xcode instead of the `.xcproject` file.
 
 ### Swift Package Manager
 
@@ -470,13 +458,7 @@ The SDK can also pass along information like motion activity detection, speed an
 
 To collect motionActivity, you must include a value for `Privacy - Motion Usage Description` in your `info.plist` and install the `RadarSDKMotion` companion module. Your app will request permission for Motion Activity data in the first track call.
 
-Add the following to your `Podfile`:
-
-```text
-pod 'RadarSDKMotion', '~> 3.43.0'
-```
-
-or add the `RadarSDKMotion` package product to your target via SPM.
+Add the `RadarSDKMotion` package product to your target via SPM.
 
 ## Listening for events with a delegate
 

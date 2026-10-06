@@ -89,13 +89,6 @@ if (webjs) console.log(`  radar-sdk-js             -> ${full(webjs)}`);
 const rules = [];
 
 if (ios) {
-  // CocoaPods: RadarSDK and RadarSDKMotion are versioned in lockstep.
-  rules.push({
-    label: "iOS CocoaPods (RadarSDK + RadarSDKMotion)",
-    files: ["sdk/ios.mdx", "tutorials/building-a-delivery-tracking-app.mdx"],
-    re: /(pod '(?:RadarSDKMotion|RadarSDK)', '~> )\d+\.\d+\.\d+(')/g,
-    to: `$1${full(ios)}$2`,
-  });
   rules.push({
     label: "iOS Carthage",
     files: ["sdk/ios.mdx"],
@@ -105,7 +98,11 @@ if (ios) {
   // SPM pins a range: "X.Y.Z"..<"X.(Y+1).0"
   rules.push({
     label: "iOS Swift Package Manager range",
-    files: ["sdk/ios.mdx", "geofencing/fraud.mdx"],
+    files: [
+      "sdk/ios.mdx",
+      "geofencing/fraud.mdx",
+      "tutorials/building-a-delivery-tracking-app.mdx",
+    ],
     re: /(radar-sdk-ios-spm\.git", ")\d+\.\d+\.\d+("\.\.<")\d+\.\d+\.\d+(")/g,
     to: `$1${full(ios)}$2${nextMinor(ios)}$3`,
   });
