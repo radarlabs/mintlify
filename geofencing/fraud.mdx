@@ -530,7 +530,13 @@ try {
 
 On iOS and Android, you can pass `beacons: true` to `Radar.trackVerified()` to range nearby [beacons](/geofencing/beacons) and include them in the location check. By default, each call waits up to 5 seconds to range beacons. The wait ends early only if every nearby beacon is found, so in large venues with many beacons, each call usually waits the full 5 seconds.
 
-To avoid the wait, call `Radar.startRangingBeacons()` before the location check. The SDK then ranges nearby beacons continuously while the app is in the foreground, and `Radar.trackVerified(beacons: true)` uses the beacons seen in the last 5 seconds instead of starting a new ranging window. If no beacons have been seen, the location check reports no nearby beacons. Until ranging results are available, `Radar.trackVerified(beacons: true)` ranges beacons as usual.
+To avoid the wait, call `Radar.startRangingBeacons()` before the location check. The SDK then ranges nearby beacons continuously while the app is in the foreground and searches for nearby beacons again every 60 seconds, so the beacons it ranges follow the device. `Radar.trackVerified(beacons: true)` uses the beacons seen in the last 5 seconds instead of starting a new ranging window. If no beacons have been seen, the location check reports no nearby beacons.
+
+`Radar.trackVerified(beacons: true)` ranges beacons as usual instead if:
+
+- ranging has run for less than 5 seconds
+- the device is more than 100 meters from where nearby beacons were last searched
+- Bluetooth or Location Services is off
 
 Call `Radar.startRangingBeacons()` after initializing the SDK and after the user grants location permissions (and, on Android, Bluetooth permissions). To limit battery use, call it when the user enters the flow that calls `Radar.trackVerified(beacons: true)`, and call `Radar.stopRangingBeacons()` when they leave it. Ranging pauses automatically when the app goes to the background and resumes when it returns to the foreground.
 
