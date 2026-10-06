@@ -16,7 +16,7 @@ Use whatever the user passed as arguments (for example `ios 3.42.0` or `android 
 
 ```bash
 # iOS
-grep -n "pod 'RadarSDK', '~>" sdk/ios.mdx
+grep -n "radar-sdk-ios-spm" sdk/ios.mdx
 gh release view --repo radarlabs/radar-sdk-ios --json tagName -q .tagName
 
 # Android
@@ -63,12 +63,10 @@ Let `V` be the new version and `NEXT` be `MAJOR.(MINOR+1).0`.
 
 | File | Pin |
 |---|---|
-| `sdk/ios.mdx` | `pod 'RadarSDK', '~> V'` |
-| `sdk/ios.mdx` | `pod 'RadarSDKMotion', '~> V'` (moves in lockstep with RadarSDK) |
 | `sdk/ios.mdx` | `github "radarlabs/radar-sdk-ios" ~> V` |
 | `sdk/ios.mdx` | `.package(url: "https://github.com/radarlabs/radar-sdk-ios-spm.git", "V"..<"NEXT")` |
 | `geofencing/fraud.mdx` | `.package(url: "https://github.com/radarlabs/radar-sdk-ios-spm.git", "V"..<"NEXT")` |
-| `tutorials/building-a-delivery-tracking-app.mdx` | `pod 'RadarSDK', '~> V'` |
+| `tutorials/building-a-delivery-tracking-app.mdx` | `.package(url: "https://github.com/radarlabs/radar-sdk-ios-spm.git", "V"..<"NEXT")` |
 
 Leave the `radar-sdk-ios-fraud-spm` line in `geofencing/fraud.mdx` alone. It's a separate package with its own version.
 
