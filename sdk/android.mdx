@@ -100,7 +100,7 @@ Radar respects [standard Android location permissions](https://developer.android
 
 For foreground tracking or trip tracking with continuous mode, Radar requires the `ACCESS_FINE_LOCATION` permission for precise location and/or the `ACCESS_COARSE_LOCATION` permission for [approximate location](https://developer.android.com/about/versions/12/approximate-location). These permissions are automatically added by the SDK manifest along with the `INTERNET`, `ACCESS_NETWORK_STATE`, `FOREGROUND_SERVICE`, and `RECEIVE_BOOT_COMPLETED` permissions.
 
-For background tracking or geofencing with responsive mode, and if targeting API level `29` or above, Radar also requires the new `ACCESS_BACKGROUND_LOCATION` permission. You must add the `ACCESS_BACKGROUND_LOCATION` permission to your manifest manually. To start a [foreground service](https://developer.android.com/training/location/permissions#foreground) or use the `continuous` tracking preset, you must add the `FOREGROUND_SERVICE_LOCATION` permission. In Android SDK 3.39.0 and later, you must also [declare `RadarForegroundService`](#foreground-services-and-google-play-policy). Add the permissions to your manifest:
+For background tracking or geofencing with responsive mode, and if targeting API level `29` or above, Radar also requires the new `ACCESS_BACKGROUND_LOCATION` permission. You must add the `ACCESS_BACKGROUND_LOCATION` permission to your manifest manually. To start a [foreground service](https://developer.android.com/training/location/permissions#foreground) or use the `continuous` tracking preset, you must add the `FOREGROUND_SERVICE_LOCATION` permission. In Android SDK 4.0.0 and later, you must also [declare `RadarForegroundService`](#foreground-services-and-google-play-policy). Add the permissions to your manifest:
 
 ```xml
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -360,7 +360,7 @@ Geofencing does not require a [foreground service](https://developer.android.com
 
 Google Play's [updated location permissions policy](https://support.google.com/googleplay/android-developer/answer/16926792) no longer accepts geofencing as a use case for foreground services. Only enable a foreground service, with the `CONTINUOUS` preset or `foregroundServiceEnabled`, for use cases that Google Play still allows, such as [trips](#background-tracking-for-trips), navigation, or user-initiated location sharing. You must declare foreground service usage in the Play Console.
 
-Starting in Android SDK 3.39.0, the SDK manifest does not declare `RadarForegroundService`. To use the `CONTINUOUS` preset or `foregroundServiceEnabled`, declare the service and the `FOREGROUND_SERVICE_LOCATION` permission in your app manifest:
+Starting in Android SDK 4.0.0, the SDK manifest does not declare `RadarForegroundService`. To use the `CONTINUOUS` preset or `foregroundServiceEnabled`, declare the service and the `FOREGROUND_SERVICE_LOCATION` permission in your app manifest:
 
 ```xml
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -377,7 +377,7 @@ Starting in Android SDK 3.39.0, the SDK manifest does not declare `RadarForegrou
 
 If the service is not declared, debug builds throw an `IllegalStateException` when tracking starts with the foreground service enabled in your tracking options. Release builds, and foreground services enabled in [remote tracking options](/sdk/remote-configuration), log an error and track without a foreground service.
 
-In Android SDK versions before 3.39.0, the SDK manifest declares `RadarForegroundService`. If your app never uses the foreground service, remove it from your merged manifest:
+In Android SDK versions before 4.0.0, the SDK manifest declares `RadarForegroundService`. If your app never uses the foreground service, remove it from your merged manifest:
 
 ```xml
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -394,7 +394,7 @@ In Android SDK versions before 3.39.0, the SDK manifest declares `RadarForegroun
 
 For trips, we recommend using `RadarTrackingOptions.continuous`. This preset tells the SDK to send location updates to the server every 30 seconds, regardless of whether the device is moving.
 
-To avoid [Background Location Limits](https://developer.android.com/about/versions/oreo/background-location-limits), the continuous preset starts a [foreground service](https://developer.android.com/guide/components/foreground-services) with a notification while tracking. When the foreground service with a notification is running, only foreground permissions are required for tracking. See the [tracking options reference](/sdk/tracking#android-foreground-service-options) to adjust the foreground service notification copy and behavior. In Android SDK 3.39.0 and later, you must [declare `RadarForegroundService`](#foreground-services-and-google-play-policy) in your app manifest. If you publish on Google Play, declare foreground service usage in the Play Console.
+To avoid [Background Location Limits](https://developer.android.com/about/versions/oreo/background-location-limits), the continuous preset starts a [foreground service](https://developer.android.com/guide/components/foreground-services) with a notification while tracking. When the foreground service with a notification is running, only foreground permissions are required for tracking. See the [tracking options reference](/sdk/tracking#android-foreground-service-options) to adjust the foreground service notification copy and behavior. In Android SDK 4.0.0 and later, you must [declare `RadarForegroundService`](#foreground-services-and-google-play-policy) in your app manifest. If you publish on Google Play, declare foreground service usage in the Play Console.
 
 Tracking for the duration of a trip is started or updated by including tracking options in the `startTrip` call:
 
