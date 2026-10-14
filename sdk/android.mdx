@@ -354,11 +354,34 @@ You only need to call these methods once, as these settings will be persisted ac
   Don't forget! You can always find your user on the [Users page](https://dashboard.radar.com/geofencing/users) or events on the [Events page](https://dashboard.radar.com/geofencing/events). To trigger an event, you'll need to [create a geofence](https://dashboard.radar.com/geofencing/geofences) if you haven't already.
 </info>
 
+### Foreground services and Google Play policy
+
+Geofencing does not require a [foreground service](https://developer.android.com/guide/components/foreground-services). The SDK registers nearby geofences with the Android [Geofence API](https://developer.android.com/develop/sensors-and-location/location/geofencing), and Android wakes up the app to deliver geofence transitions. The `RESPONSIVE` and `EFFICIENT` presets never start a foreground service.
+
+Google Play's [updated location permissions policy](https://support.google.com/googleplay/android-developer/answer/16926792) no longer accepts geofencing as a use case for foreground services. Only enable a foreground service, with the `CONTINUOUS` preset or `foregroundServiceEnabled`, for use cases that Google Play still allows, such as [trips](#background-tracking-for-trips), navigation, or user-initiated location sharing. You must declare foreground service usage in the Play Console.
+
+The SDK manifest declares `RadarForegroundService` with the `location` foreground service type. If your app never uses the foreground service, remove it from your merged manifest:
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <service
+            android:name="io.radar.sdk.RadarForegroundService"
+            tools:node="remove" />
+    </application>
+</manifest>
+```
+
+<Warning>
+  If you remove the service, don't enable `foregroundServiceEnabled` in your tracking options or in [remote tracking options](/sdk/remote-configuration).
+</Warning>
+
 ## Background tracking for trips
 
 For trips, we recommend using `RadarTrackingOptions.continuous`. This preset tells the SDK to send location updates to the server every 30 seconds, regardless of whether the device is moving.
 
-To avoid [Background Location Limits](https://developer.android.com/about/versions/oreo/background-location-limits), the continuous preset starts a [foreground service](https://developer.android.com/guide/components/foreground-services) with a notification while tracking. When the foreground service with a notification is running, only foreground permissions are required for tracking. See the [tracking options reference](/sdk/tracking#android-foreground-service-options) to adjust the foreground service notification copy and behavior.
+To avoid [Background Location Limits](https://developer.android.com/about/versions/oreo/background-location-limits), the continuous preset starts a [foreground service](https://developer.android.com/guide/components/foreground-services) with a notification while tracking. When the foreground service with a notification is running, only foreground permissions are required for tracking. See the [tracking options reference](/sdk/tracking#android-foreground-service-options) to adjust the foreground service notification copy and behavior. If you publish on Google Play, declare foreground service usage in the Play Console. See [foreground services and Google Play policy](#foreground-services-and-google-play-policy).
 
 Tracking for the duration of a trip is started or updated by including tracking options in the `startTrip` call:
 

@@ -130,12 +130,14 @@ The SDK has two states: **stopped** and **moving**. After a location update is m
 - **`syncGeofences`**: Determines whether to sync nearby geofences from the server to the client to improve responsiveness. Defaults to `false`.
 - **`syncGeofencesLimit`**: Determines how many nearby geofences to sync from the server to the client when `syncGeofences` is enabled. Defaults to `0`.
 - **`foregroundService`**: If set, starts a [foreground service](https://developer.android.com/guide/components/foreground-services) and shows a notification during tracking. Deprecated in Android SDK [3.4.1](https://github.com/radarlabs/radar-sdk-android/blob/master/MIGRATION.md#33x-to-34x).
-- **`foregroundServiceEnabled`**: If set, starts a [foreground service](https://developer.android.com/guide/components/foreground-services) and shows a notification during tracking. Defaults to `false`.
+- **`foregroundServiceEnabled`**: If set, starts a [foreground service](https://developer.android.com/guide/components/foreground-services) and shows a notification during tracking. Defaults to `false`. Geofencing does not require a foreground service, and Google Play no longer accepts geofencing as a foreground service use case. See [foreground services and Google Play policy](/sdk/android#foreground-services-and-google-play-policy).
 - **`beacons`**: Determines whether to monitor beacons. Defaults to `false`.
 
 ### Android foreground service options
 
 To avoid [Background Location Limits](https://developer.android.com/about/versions/oreo/background-location-limits), you can start a foreground service and show a notification during tracking. If using Android SDK \< [3.4.1](https://github.com/radarlabs/radar-sdk-android/releases/tag/3.1.9), set `trackingOptions.foregroundService` to an instance of `RadarTrackingOptionsForegroundService`. If using Android SDK \>= [3.4.1](https://github.com/radarlabs/radar-sdk-android/blob/master/MIGRATION.md#33x-to-34x), use `Radar.setForegroundServiceOptions()` to customize the foreground service notification appearance passing in an instance of `RadarTrackingOptionsForegroundService`.
+
+Only use a foreground service for use cases that Google Play allows, such as trips or user-initiated location sharing, not geofencing. See [foreground services and Google Play policy](/sdk/android#foreground-services-and-google-play-policy).
 
 - **`text`**: Determines the notification text. Defaults to `"Location tracking started"`.
 - **`title`**: Determines the notification title. Optional.
@@ -173,7 +175,7 @@ Radar.setForegroundServiceOptions({
 
 ### Android presets
 
-- **`RadarTrackingOptions.CONTINUOUS`**: Updates about every 30 seconds while moving or stopped. Starts a foreground service. Moderate battery usage.
+- **`RadarTrackingOptions.CONTINUOUS`**: Updates about every 30 seconds while moving or stopped. Starts a foreground service. Moderate battery usage. Intended for trips and live tracking, not geofencing. See [foreground services and Google Play policy](/sdk/android#foreground-services-and-google-play-policy).
 - **`RadarTrackingOptions.RESPONSIVE`**: Updates about every 2.5 minutes while moving and shuts down when stopped to save battery. Once stopped, the device will need to move more than 100 meters to wake up and start moving again. Low battery usage, but may exceed Android vitals bad behavior thresholds for [excessive wakeups](https://developer.android.com/topic/performance/vitals/wakeup.html) and [excessive wi-fi scans](https://developer.android.com/topic/performance/vitals/bg-wifi.html).
 - **`RadarTrackingOptions.EFFICIENT`**: Updates as fast as every 6 minutes while moving and periodically when stopped. Once stopped, the device will need to move more than 100 meters and wait for at least 15 minutes to wake up and start moving again. Lowest battery usage and will not exceed Android vitals bad behavior thresholds.
 
