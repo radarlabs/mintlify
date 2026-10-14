@@ -363,12 +363,14 @@ Google Play's [updated location permissions policy](https://support.google.com/g
 Starting in Android SDK 3.39.0, the SDK manifest does not declare `RadarForegroundService`. To use the `CONTINUOUS` preset or `foregroundServiceEnabled`, declare the service and the `FOREGROUND_SERVICE_LOCATION` permission in your app manifest:
 
 ```xml
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <application>
         <service
             android:name="io.radar.sdk.RadarForegroundService"
-            android:foregroundServiceType="location" />
+            android:foregroundServiceType="location"
+            tools:targetApi="26" />
     </application>
 </manifest>
 ```
