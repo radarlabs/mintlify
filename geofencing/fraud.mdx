@@ -121,11 +121,21 @@ Finally, more detailed [failure reasons](#failure-reasons) are also exposed.
 
 ## Platform-specific configuration
 
+### SDK compatibility
+
+Starting with [Android SDK](/sdk/android) version `3.39.0` and [iOS SDK](/sdk/ios) version `3.44.0`, you must use a compatible Fraud SDK plugin version. Use the table below to select compatible core SDK and plugin versions.
+
+| Platform | Core SDK | Fraud plugin |
+| --- | --- | --- |
+| iOS | `3.44.x` | `1.6.x` |
+| Android | `3.39.x` | `1.3.x` |
+| Android | `4.0.x` | `1.3.x` |
+
 ### Android
 
 #### Install plugin
 
-If using [Android SDK](/sdk/android) version `3.25.0` or higher, you must install an additional plugin.
+If using [Android SDK](/sdk/android) version `3.25.0` or higher, you must install an additional plugin. Use the [SDK compatibility table](#sdk-compatibility) to select compatible core SDK and plugin versions.
 
 Add the plugin to the `dependencies` section of your app's `build.gradle` file:
 
@@ -227,13 +237,13 @@ Learn more about [Network Security Configuration on Android](https://developer.a
 
 #### Install plugin
 
-If using [iOS SDK](/sdk/ios) version `3.26.0` or higher, you must install an additional plugin. The plugin requires iOS 15 or higher.
+If using [iOS SDK](/sdk/ios) version `3.26.0` or higher, you must install an additional plugin. The plugin requires iOS 15 or higher. Use the [SDK compatibility table](#sdk-compatibility) to select compatible core SDK and plugin versions.
 
 In Xcode, go to _File \> Swift Packages \> Add Package Dependency_. Enter `https://github.com/radarlabs/radar-sdk-ios-fraud-spm.git` for the _Package Repository URL_.
 
 ```text
-.package(url: "https://github.com/radarlabs/radar-sdk-ios-spm.git", "3.43.1"..<"3.44.0")
-.package(url: "https://github.com/radarlabs/radar-sdk-ios-fraud-spm.git", "1.4.1"..<"1.5.0")
+.package(url: "https://github.com/radarlabs/radar-sdk-ios-spm.git", "3.44.0"..<"3.45.0")
+.package(url: "https://github.com/radarlabs/radar-sdk-ios-fraud-spm.git", "1.6.0"..<"1.7.0")
 ```
 
 If you do not install the plugin, `Radar.trackVerified()` will return `ERROR_PLUGIN`.
