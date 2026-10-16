@@ -24,7 +24,7 @@ Add the SDK to the `dependencies` section of your app's `build.gradle` file:
 
 ```gradle
 dependencies {   
-  implementation 'io.radar:sdk:3.39.+'
+  implementation 'io.radar:sdk:4.0.+'
 }
 ```
 
@@ -42,7 +42,7 @@ As of version `3.8.0`, the SDK uses `play-services-location:21.0.1`. If another 
 
 As an alternative to Google Play Services, the SDK also optionally supports [Huawei Mobile Services](#huawei).
 
-The SDK currently supports API level `16` or above.
+The SDK currently supports API level `23` or above.
 
 ## Initialize SDK
 
@@ -100,7 +100,7 @@ Radar respects [standard Android location permissions](https://developer.android
 
 For foreground tracking or trip tracking with continuous mode, Radar requires the `ACCESS_FINE_LOCATION` permission for precise location and/or the `ACCESS_COARSE_LOCATION` permission for [approximate location](https://developer.android.com/about/versions/12/approximate-location). These permissions are automatically added by the SDK manifest along with the `INTERNET`, `ACCESS_NETWORK_STATE`, `FOREGROUND_SERVICE`, and `RECEIVE_BOOT_COMPLETED` permissions.
 
-For background tracking or geofencing with responsive mode, and if targeting API level `29` or above, Radar also requires the new `ACCESS_BACKGROUND_LOCATION` permission. You must add the `ACCESS_BACKGROUND_LOCATION` permission to your manifest manually. To start a [foreground service](https://developer.android.com/training/location/permissions#foreground) or use the `continuous` tracking preset, you must add the `FOREGROUND_SERVICE_LOCATION` permission:
+For background tracking or geofencing with responsive mode, and if targeting API level `29` or above, Radar also requires the new `ACCESS_BACKGROUND_LOCATION` permission. You must add the `ACCESS_BACKGROUND_LOCATION` permission to your manifest manually. To start a [foreground service](https://developer.android.com/training/location/permissions#foreground) or use the `continuous` tracking preset, you must add the `FOREGROUND_SERVICE_LOCATION` permission. In Android SDK 4.0.0 and later, you must also [declare `RadarForegroundService`](#foreground-services-and-google-play-policy). Add the permissions to your manifest:
 
 ```xml
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -354,11 +354,47 @@ You only need to call these methods once, as these settings will be persisted ac
   Don't forget! You can always find your user on the [Users page](https://dashboard.radar.com/geofencing/users) or events on the [Events page](https://dashboard.radar.com/geofencing/events). To trigger an event, you'll need to [create a geofence](https://dashboard.radar.com/geofencing/geofences) if you haven't already.
 </info>
 
+### Foreground services and Google Play policy
+
+Geofencing does not require a [foreground service](https://developer.android.com/guide/components/foreground-services). The SDK registers nearby geofences with the Android [Geofence API](https://developer.android.com/develop/sensors-and-location/location/geofencing), and Android wakes up the app to deliver geofence transitions. The `RESPONSIVE` and `EFFICIENT` presets never start a foreground service.
+
+Google Play's [updated location permissions policy](https://support.google.com/googleplay/android-developer/answer/16926792) no longer accepts geofencing as a use case for foreground services. Only enable a foreground service, with the `CONTINUOUS` preset or `foregroundServiceEnabled`, for use cases that Google Play still allows, such as [trips](#background-tracking-for-trips), navigation, or user-initiated location sharing. You must declare foreground service usage in the Play Console.
+
+Starting in Android SDK 4.0.0, the SDK manifest does not declare `RadarForegroundService`. To use the `CONTINUOUS` preset or `foregroundServiceEnabled`, declare the service and the `FOREGROUND_SERVICE_LOCATION` permission in your app manifest:
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <application>
+        <service
+            android:name="io.radar.sdk.RadarForegroundService"
+            android:foregroundServiceType="location"
+            tools:targetApi="26" />
+    </application>
+</manifest>
+```
+
+If the service is not declared, the SDK logs an error and tracks without a foreground service. This also applies when [remote tracking options](/sdk/remote-configuration) enable the foreground service.
+
+In Android SDK versions before 4.0.0, the SDK manifest declares `RadarForegroundService`. If your app never uses the foreground service, remove it from your merged manifest:
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <service
+            android:name="io.radar.sdk.RadarForegroundService"
+            tools:node="remove" />
+    </application>
+</manifest>
+```
+
 ## Background tracking for trips
 
 For trips, we recommend using `RadarTrackingOptions.continuous`. This preset tells the SDK to send location updates to the server every 30 seconds, regardless of whether the device is moving.
 
-To avoid [Background Location Limits](https://developer.android.com/about/versions/oreo/background-location-limits), the continuous preset starts a [foreground service](https://developer.android.com/guide/components/foreground-services) with a notification while tracking. When the foreground service with a notification is running, only foreground permissions are required for tracking. See the [tracking options reference](/sdk/tracking#android-foreground-service-options) to adjust the foreground service notification copy and behavior.
+To avoid [Background Location Limits](https://developer.android.com/about/versions/oreo/background-location-limits), the continuous preset starts a [foreground service](https://developer.android.com/guide/components/foreground-services) with a notification while tracking. When the foreground service with a notification is running, only foreground permissions are required for tracking. See the [tracking options reference](/sdk/tracking#android-foreground-service-options) to adjust the foreground service notification copy and behavior. In Android SDK 4.0.0 and later, you must [declare `RadarForegroundService`](#foreground-services-and-google-play-policy) in your app manifest. If you publish on Google Play, declare foreground service usage in the Play Console.
 
 Tracking for the duration of a trip is started or updated by including tracking options in the `startTrip` call:
 
@@ -864,14 +900,14 @@ With the [IP geocoding API](/api#ip-geocode), geocode the device's current IP ad
 ```java Java
 Radar.ipGeocode(new RadarIpGeocodeCallback() {
     @Override
-    public void onComplete(RadarStatus status, RadarAddress address, boolean proxy) {
+    public void onComplete(RadarStatus status, RadarAddress address, boolean proxy, Throwable throwable) {
         // do something with address, proxy
     }
 });
 ```
 
 ```kotlin Kotlin
-Radar.ipGeocode { status, address, proxy ->
+Radar.ipGeocode { status, address, proxy, throwable ->
     // do something with address, proxy
 }
 ```
@@ -888,6 +924,7 @@ With the [autocomplete API](/api#autocomplete), autocomplete partial addresses a
 Radar.autocomplete(
     "brooklyn roasting", // query
     near,
+    null, // layers
     10, // limit
     new RadarGeocodeCallback() {
         @Override
@@ -899,9 +936,9 @@ Radar.autocomplete(
 
 ```kotlin Kotlin
 Radar.autocomplete(
-    "brooklyn roasting", // query
-    near,
-    10 // limit
+    query = "brooklyn roasting",
+    near = near,
+    limit = 10
 ) { status, addresses ->
     // do something with addresses
 }
@@ -950,9 +987,11 @@ With the [places search API](/api#search-places), search for places near a locat
 Radar.searchPlaces(
     near,
     1000, // radius (meters)
-    {"starbucks"}, // chains
+    new String[]{"starbucks"}, // chains
+    null, // chainMetadata
     null, // categories
-    null, //groups
+    null, // groups
+    null, // countryCodes
     10, // limit
     new RadarSearchPlacesCallback() {
       @Override
@@ -964,12 +1003,14 @@ Radar.searchPlaces(
 
 ```kotlin Kotlin
 Radar.searchPlaces(
-    near,
-    1000, // radius (meters)
-    arrayOf("starbucks"), // chains
-    null, // categories
-    null, // groups
-    10 // limit
+    near = near,
+    radius = 1000, // meters
+    chains = arrayOf("starbucks"),
+    chainMetadata = null,
+    categories = null,
+    groups = null,
+    countryCodes = null,
+    limit = 10
 ) { status, location, places ->
     // do something with places
 }
