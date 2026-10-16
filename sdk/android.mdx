@@ -936,8 +936,8 @@ Radar.autocomplete(
 
 ```kotlin Kotlin
 Radar.autocomplete(
-    "brooklyn roasting", // query
-    near,
+    query = "brooklyn roasting",
+    near = near,
     limit = 10
 ) { status, addresses ->
     // do something with addresses
@@ -1003,14 +1003,14 @@ Radar.searchPlaces(
 
 ```kotlin Kotlin
 Radar.searchPlaces(
-    near,
-    1000, // radius (meters)
-    arrayOf("starbucks"), // chains
-    null, // chainMetadata
-    null, // categories
-    null, // groups
-    null, // countryCodes
-    10 // limit
+    near = near,
+    radius = 1000, // meters
+    chains = arrayOf("starbucks"),
+    chainMetadata = null,
+    categories = null,
+    groups = null,
+    countryCodes = null,
+    limit = 10
 ) { status, location, places ->
     // do something with places
 }
