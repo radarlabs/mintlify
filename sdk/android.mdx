@@ -24,7 +24,7 @@ Add the SDK to the `dependencies` section of your app's `build.gradle` file:
 
 ```gradle
 dependencies {   
-  implementation 'io.radar:sdk:3.38.+'
+  implementation 'io.radar:sdk:4.0.+'
 }
 ```
 
@@ -42,7 +42,7 @@ As of version `3.8.0`, the SDK uses `play-services-location:21.0.1`. If another 
 
 As an alternative to Google Play Services, the SDK also optionally supports [Huawei Mobile Services](#huawei).
 
-The SDK currently supports API level `16` or above.
+The SDK currently supports API level `23` or above.
 
 ## Initialize SDK
 
@@ -864,14 +864,14 @@ With the [IP geocoding API](/api#ip-geocode), geocode the device's current IP ad
 ```java Java
 Radar.ipGeocode(new RadarIpGeocodeCallback() {
     @Override
-    public void onComplete(RadarStatus status, RadarAddress address, boolean proxy) {
+    public void onComplete(RadarStatus status, RadarAddress address, boolean proxy, Throwable throwable) {
         // do something with address, proxy
     }
 });
 ```
 
 ```kotlin Kotlin
-Radar.ipGeocode { status, address, proxy ->
+Radar.ipGeocode { status, address, proxy, throwable ->
     // do something with address, proxy
 }
 ```
@@ -888,6 +888,7 @@ With the [autocomplete API](/api#autocomplete), autocomplete partial addresses a
 Radar.autocomplete(
     "brooklyn roasting", // query
     near,
+    null, // layers
     10, // limit
     new RadarGeocodeCallback() {
         @Override
@@ -901,7 +902,7 @@ Radar.autocomplete(
 Radar.autocomplete(
     "brooklyn roasting", // query
     near,
-    10 // limit
+    limit = 10
 ) { status, addresses ->
     // do something with addresses
 }
@@ -950,9 +951,11 @@ With the [places search API](/api#search-places), search for places near a locat
 Radar.searchPlaces(
     near,
     1000, // radius (meters)
-    {"starbucks"}, // chains
+    new String[]{"starbucks"}, // chains
+    null, // chainMetadata
     null, // categories
-    null, //groups
+    null, // groups
+    null, // countryCodes
     10, // limit
     new RadarSearchPlacesCallback() {
       @Override
@@ -967,8 +970,10 @@ Radar.searchPlaces(
     near,
     1000, // radius (meters)
     arrayOf("starbucks"), // chains
+    null, // chainMetadata
     null, // categories
     null, // groups
+    null, // countryCodes
     10 // limit
 ) { status, location, places ->
     // do something with places
