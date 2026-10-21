@@ -97,11 +97,17 @@ If desired, you can bypass fraud checks for individual users using the _Mark as 
 
 If a user is marked as bypassed, `user.fraud.bypassed = true` and `user.fraud.passed = true`, regardless of whether the user passes fraud checks.
 
-## Blocking users
+## Blocking users and devices
 
-You can also manually block a user using the _Mark as Blocked_ button on the user detail page.
+You can manually block a user or device using the _Blocked_ button on its detail page.
 
 If a user is blocked, `user.fraud.blocked = true` and `user.fraud.passed = false`, regardless of whether the user passes fraud checks.
+
+You can also [block users and devices](/api#block-users-and-devices) or [unblock them](/api#unblock-users-and-devices) using the API.
+
+<Info>
+  These API endpoints must be enabled for your project. Contact your customer success manager for access.
+</Info>
 
 ## Allowed states and countries
 
