@@ -3867,6 +3867,181 @@ curl "https://api.radar.io/v1/beacons/56db1f4613012711002229f4" \
 }
 ```
 
+### **Fraud**
+
+Block or unblock users and devices for [Fraud](/geofencing/fraud). These endpoints must be enabled for your project. Contact your customer success manager for access.
+
+#### **Block users and devices**
+
+Creates block rules for existing users or devices. Each item targets exactly one user or device; blocking a user does not automatically block their devices, and blocking a device does not automatically block its users.
+
+Each successful block creates a new rule, even if the target is already blocked. If a user or device does not exist in the project and environment associated with your API key, the item succeeds without creating a rule.
+
+**Definition**
+
+**POST**`https://api.radar.io/v1/fraud/block`
+
+**Body parameters**
+
+- `items` (array, required): An array of items to block, with at least 1 item and a default maximum of 10,000 items. Each item accepts:
+  - `userId` (string): The external ID of the user to block. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
+  - `deviceId` (string): The ID of the device to block. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
+  - `durationMs` (number, optional): The duration of the block in milliseconds, starting when the rule is created. Must be non-negative. If omitted, the block has no expiration.
+  - `description` (string, optional): A description of the block rule.
+  - `label` (string, optional): Fraud feedback for a `userId` target. Either `fraud` or `not_fraud`. Requires fraud labels to be enabled for your project.
+  - `fraudType` (string, optional): A fraud category, up to 100 characters. Allows alphanumeric characters, dashes, underscores, spaces, periods, and commas. Requires `label` and a `userId` target.
+  - `incidentTime` (string, optional): The time of the incident as an ISO 8601 datetime with a timezone, for example, `2026-10-21T12:00:00Z`. Requires `label` and a `userId` target.
+
+**Default rate limit**
+
+5 requests per second (contact your customer success manager to increase rate limit)
+
+**Authentication level**
+
+Secret
+
+**Sample request**
+
+```bash
+curl "https://api.radar.io/v1/fraud/block" \
+  -H "Authorization: prj_live_sk_..." \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"items":[{"userId":"user-123","description":"Confirmed fraudulent activity"},{"deviceId":"device-456"}]}'
+```
+
+**Sample response**
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "responses": [
+    {
+      "index": 0,
+      "target": { "userId": "user-123" },
+      "meta": { "code": 200 },
+      "action": {
+        "changedBlockCount": 1,
+        "affected": { "userIds": ["user-123"], "deviceIds": [] },
+        "configuration": {
+          "description": "Confirmed fraudulent activity",
+          "expiresAt": null
+        }
+      }
+    },
+    {
+      "index": 1,
+      "target": { "deviceId": "device-456" },
+      "meta": { "code": 200 },
+      "action": {
+        "changedBlockCount": 1,
+        "affected": { "userIds": [], "deviceIds": ["device-456"] },
+        "configuration": {
+          "description": null,
+          "expiresAt": null
+        }
+      }
+    }
+  ]
+}
+```
+
+**Response fields**
+
+- `responses` (array): One result per request item, in request order.
+  - `index` (number): The zero-based index of the request item.
+  - `target` (object): The requested `userId` or `deviceId`.
+  - `meta.code` (number): `200` for success, including when no rule was created, or `500` if the item failed.
+  - `action.changedBlockCount` (number): The number of block rules created for the item. `0` if the target does not exist.
+  - `action.affected` (object): Arrays of affected `userIds` and `deviceIds`. Both arrays are empty if no rule was created.
+  - `action.configuration` (object): Included when a rule is created. Contains `description` and `expiresAt`, an ISO 8601 datetime. These fields are `null` when no description or expiration was specified.
+
+An HTTP `200` response can contain failed items. Check each item's `meta.code`; failed items do not include `action`. Invalid request bodies return `400`. These endpoints return `404` if access is not enabled. Supplying a label when fraud labels are not enabled returns `403`.
+
+Optional labels are delivered asynchronously for successful actions on existing users. An item's success does not confirm label delivery. Labels are not submitted for unknown users.
+
+#### **Unblock users and devices**
+
+Disables block rules for the specified users or devices. Each item targets exactly one user or device; unblocking a user does not unblock their devices, and unblocking a device does not unblock its users.
+
+If a target does not exist or has no block rules to disable, the item succeeds with `changedBlockCount` set to `0`.
+
+**Definition**
+
+**POST**`https://api.radar.io/v1/fraud/unblock`
+
+**Body parameters**
+
+- `items` (array, required): An array of items to unblock, with at least 1 item and a default maximum of 10,000 items. Each item accepts:
+  - `userId` (string): The external ID of the user to unblock. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
+  - `deviceId` (string): The ID of the device to unblock. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
+  - `label` (string, optional): Fraud feedback for a `userId` target. Either `fraud` or `not_fraud`. Requires fraud labels to be enabled for your project.
+  - `fraudType` (string, optional): A fraud category, up to 100 characters. Allows alphanumeric characters, dashes, underscores, spaces, periods, and commas. Requires `label` and a `userId` target.
+  - `incidentTime` (string, optional): The time of the incident as an ISO 8601 datetime with a timezone, for example, `2026-10-21T12:00:00Z`. Requires `label` and a `userId` target.
+
+Unlike blocking, unblocking does not accept `durationMs` or `description`.
+
+**Default rate limit**
+
+5 requests per second (contact your customer success manager to increase rate limit)
+
+**Authentication level**
+
+Secret
+
+**Sample request**
+
+```bash
+curl "https://api.radar.io/v1/fraud/unblock" \
+  -H "Authorization: prj_live_sk_..." \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"items":[{"userId":"user-123"},{"deviceId":"device-456"}]}'
+```
+
+**Sample response**
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "responses": [
+    {
+      "index": 0,
+      "target": { "userId": "user-123" },
+      "meta": { "code": 200 },
+      "action": {
+        "changedBlockCount": 1,
+        "affected": { "userIds": ["user-123"], "deviceIds": [] }
+      }
+    },
+    {
+      "index": 1,
+      "target": { "deviceId": "device-456" },
+      "meta": { "code": 200 },
+      "action": {
+        "changedBlockCount": 1,
+        "affected": { "userIds": [], "deviceIds": ["device-456"] }
+      }
+    }
+  ]
+}
+```
+
+**Response fields**
+
+- `responses` (array): One result per request item, in request order.
+  - `index` (number): The zero-based index of the request item.
+  - `target` (object): The requested `userId` or `deviceId`.
+  - `meta.code` (number): `200` for success, including when no rules were disabled, or `500` if the item failed.
+  - `action.changedBlockCount` (number): The number of block rules disabled for the target. Can be greater than `1` if the target had multiple block rules.
+  - `action.affected` (object): Arrays of affected `userIds` and `deviceIds`. Both arrays are empty if no rules were disabled.
+
+The same partial failure, request error, and asynchronous label delivery behavior described for [blocking](#block-users-and-devices) applies to unblocking. Unblock responses do not include `action.configuration`.
+
 ## Manage your Radar project settings
 
 ### **Places settings**
