@@ -2428,6 +2428,7 @@ A user represents a user tracked in your project. Users can be referenced by Rad
 - `postalCode` (dictionary): When [Regions](/geofencing/regions) is enabled, the user's current postal code. US-only.
 - `beacons` (array): When [Beacons](/geofencing/beacons) have been created, an array of the user's current beacons.
 - `fraud` (object): When [Fraud](/geofencing/fraud) is enabled, indicates whether the user passed fraud checks.
+- `expectedAddress` (object): When an [expected address](/geofencing/fraud#setting-expected-address) is set, the result of comparing the user's location to that address, including `expectedAddress`, `formattedAddress`, `latitude`, `longitude`, `atAddress`, `distance`, and `confidence`.
 
 **Sample object**
 
