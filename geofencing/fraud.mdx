@@ -737,7 +737,7 @@ In addition to setting [allowed states and countries](#allowed-states-and-countr
 ### Setting expected address
 
 <Info>
-  Contact your customer success manager to enable address validation on your project.
+  Contact your customer success manager to enable address verification on your project.
 </Info>
 
 You can optionally set an expected address, such as the user's billing or home address, and check whether the user is at that address. Call `Radar.setExpectedAddress(address)` to set the expected address before performing a location check. Radar sends the address with each subsequent location check until you call `Radar.setExpectedAddress(nil)` (`null` on Android).
@@ -751,9 +751,7 @@ Radar.setExpectedAddress("841 Broadway, New York, NY 10003")
 
 Radar.trackVerified { (status, token) in
   if let expectedAddress = token?.user?.expectedAddress {
-    if expectedAddress.atAddress && expectedAddress.confidence == .high {
-      // user is at the expected address
-    }
+    // check expectedAddress.atAddress, check expectedAddress.confidence
   }
 }
 ```
@@ -762,9 +760,9 @@ Radar.trackVerified { (status, token) in
 Radar.setExpectedAddress("841 Broadway, New York, NY 10003")
 
 Radar.trackVerified { status, token ->
-  val expectedAddress = token?.user?.expectedAddress
-  if (expectedAddress?.atAddress == true && expectedAddress.confidence == RadarExpectedAddress.Confidence.HIGH) {
-    // user is at the expected address
+  val expectedAddress = token?.user?.setExpectedAddress
+  if (expectedAddress != null) {
+    // check expectedAddress.atAddress, check expectedAddress.confidence
   }
 }
 ```
