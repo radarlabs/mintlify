@@ -127,6 +127,16 @@ Use your `Test Publishable` key for testing and non-production environments. Use
 Radar.initialize(publishableKey);
 ```
 
+If using [Fraud](/geofencing/fraud), pass `true` as the second argument to enable fraud detection, and pass initialization options as the third argument. For example, to enable fraud detection and automatic failover of `Radar.trackVerified()` requests:
+
+```javascript
+Radar.initialize(publishableKey, true, {
+  trackVerifiedAutoFailover: true,
+});
+```
+
+See [Fraud](/geofencing/fraud#react-native) for how to install the fraud plugins.
+
 ### Identify user
 
 To identify the user when logged in, call:

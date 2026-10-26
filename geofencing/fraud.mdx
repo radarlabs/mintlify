@@ -130,6 +130,8 @@ Starting with [Android SDK](/sdk/android) version `3.39.0` and [iOS SDK](/sdk/io
 | iOS | `3.44.x` | `1.6.x` |
 | Android | `3.39.x` -> `4.1.x` | `1.3.x` |
 
+If using React Native, see [React Native](#react-native) for how to install the plugins.
+
 ### Android
 
 #### Install plugin
@@ -336,6 +338,63 @@ To enable SSL pinning and prevent man-in-the-middle attacks, add the following t
 ```
 
 Learn more about [SSL pinning on iOS](https://developer.apple.com/news/?id=g9ejcf8y).
+
+### React Native
+
+#### Install plugin
+
+If using [React Native SDK](/sdk/react-native) version `4.0.0` or higher, you must opt in to the fraud plugin on each platform. `react-native-radar` bundles a compatible iOS plugin. On Android, use the plugin version from the [SDK compatibility table](#sdk-compatibility).
+
+If using Expo, set `iosFraud` and `androidFraud` in the `react-native-radar` plugin options in `app.json`, then run `npx expo prebuild --clean`:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "react-native-radar",
+        {
+          "iosFraud": true,
+          "androidFraud": true
+        }
+      ]
+    ]
+  }
+}
+```
+
+The Expo plugin adds `io.radar:sdk-fraud` and the [Play Integrity API](#play-integrity-api) dependency to `android/app/build.gradle` only if they are not already present. If you are upgrading and your `build.gradle` has an older `io.radar:sdk-fraud` version, update it to a [compatible version](#sdk-compatibility) or run `npx expo prebuild --clean`.
+
+If not using Expo, add the iOS plugin to the app target in your `ios/Podfile`, then run `pod install`:
+
+```ruby
+pod 'RadarSDKFraud', :path => '../node_modules/react-native-radar'
+```
+
+Then, add the Android plugin and the [Play Integrity API](#play-integrity-api) dependency to the `dependencies` section of `android/app/build.gradle`:
+
+```gradle
+dependencies {
+  implementation 'io.radar:sdk-fraud:1.3.0'
+  implementation 'com.google.android.play:integrity:1.6.0'
+}
+```
+
+If you do not install the plugin, `Radar.trackVerified()` will return `ERROR_PLUGIN`.
+
+#### Initialize SDK
+
+Pass `true` as the second argument to `Radar.initialize()` to enable fraud detection. This is required to support the `sharing` flag on Android.
+
+If using React Native SDK version `4.38.0` or higher, you can enable automatic failover of `trackVerified()` requests to a secondary host if the primary host is unreachable by passing `trackVerifiedAutoFailover: true` in the options:
+
+```javascript
+Radar.initialize('prj_test_pk_...', true, {
+  trackVerifiedAutoFailover: true,
+});
+```
+
+If using Expo, `iosFraud` and `androidFraud` also configure SSL pinning for `api-verified.radar.io`. If not using Expo, configure SSL pinning as described in the [Android](#android) and [iOS](#ios) sections above, including `api-verified.radar.com` if automatic failover is enabled.
 
 ### Web and desktop
 
@@ -679,7 +738,7 @@ Radar.getVerifiedLocationToken().then((result) => {
 });
 
 // delivers fresh tokens to listener
-Radar.on('token', (result) => {
+Radar.onTokenUpdated((result) => {
   const { token } = result;
   // send token to server
 });
@@ -795,7 +854,7 @@ Radar.initialize({ authToken });
 ```
 
 ```javascript React Native
-Radar.initialize({ authToken, fraud: true });
+Radar.initializeWithAuthToken(authToken, true);
 ```
 
 </CodeGroup>
@@ -854,7 +913,7 @@ Click on a specific geolocation check to see all the details, including a map vi
   Contact your customer success manager for access.
 </Info>
 
-If using `@radarlabs/plugin-fraud` version `1.4.0` or higher, iOS SDK version `3.38.0` or higher, or Android SDK version `3.35.0` or higher, you can call `Radar.revealRisk()` to reveal device and network risk signals before verifying a user's location.
+If using `@radarlabs/plugin-fraud` version `1.4.0` or higher, iOS SDK version `3.38.0` or higher, Android SDK version `3.35.0` or higher, or React Native SDK version `4.36.0` or higher, you can call `Radar.revealRisk()` to reveal device and network risk signals before verifying a user's location.
 
 `Radar.revealRisk()` returns a `RadarRevealRiskToken` with:
 - `risk`: Risk information, including a risk `level` (none, low, medium, high, configurable with [Risk scores](#risk-scores)) and `reasons` (includes `proxy`, `compromised`, and `sharing` reasons from [Failure reasons](#failure-reasons)).
@@ -899,6 +958,20 @@ Radar.fraud.revealRisk().then((result) => {
   const { risk } = result;
 
   if (risk.level === 'high') {
+    // high risk, step up to location verification
+  } else {
+    // low risk
+  }
+}).catch((err) => {
+  // handle error
+});
+```
+
+```javascript React Native
+Radar.revealRisk().then((result) => {
+  const { token } = result;
+
+  if (token?.risk.level === 'high') {
     // high risk, step up to location verification
   } else {
     // low risk
