@@ -734,6 +734,57 @@ You can configure multiple product types within a project, each with its own [al
 
 In addition to setting [allowed states and countries](#allowed-states-and-countries), you can optionally set an expected jurisdiction and fail location checks outside of that jurisdiction regardless of whether that jurisdiction is allowed in settings. Call `Radar.setExpectedJurisdiction(expectedCountryCode, expectedStateCode)` to set the expected jurisdiction before performing a location check.
 
+### Setting expected address
+
+<Info>
+  Contact your customer success manager to enable address verification on your project.
+</Info>
+
+You can optionally set an expected address, such as the user's billing or home address, and check whether the user is at that address. Call `Radar.setExpectedAddress(address)` to set the expected address before performing a location check. Radar sends the address with each subsequent location check until you call `Radar.setExpectedAddress(nil)` (`null` on Android).
+
+Setting an expected address is supported on [iOS SDK](/sdk/ios) version `3.42.0` or higher and [Android SDK](/sdk/android) version `3.38.0` or higher.
+
+<CodeGroup>
+
+```swift Swift
+Radar.setExpectedAddress("841 Broadway, New York, NY 10003")
+
+Radar.trackVerified { (status, token) in
+  if let expectedAddress = token?.user?.expectedAddress {
+    // check expectedAddress.atAddress, check expectedAddress.confidence
+  }
+}
+```
+
+```kotlin Kotlin
+Radar.setExpectedAddress("841 Broadway, New York, NY 10003")
+
+Radar.trackVerified { status, token ->
+  val expectedAddress = token?.user?.setExpectedAddress
+  if (expectedAddress != null) {
+    // check expectedAddress.atAddress, check expectedAddress.confidence
+  }
+}
+```
+
+</CodeGroup>
+
+Radar geocodes the address and compares it to the user's location. The result is returned in `user.expectedAddress`:
+
+- `expectedAddress`: The expected address, as passed to `Radar.setExpectedAddress()`.
+- `formattedAddress`: The formatted address, as geocoded by Radar. May be `nil` if the address could not be geocoded.
+- `latitude`: The latitude of the geocoded address. May be `nil` if the address could not be geocoded.
+- `longitude`: The longitude of the geocoded address. May be `nil` if the address could not be geocoded.
+- `atAddress`: A boolean indicating whether the user is within the distance threshold of the geocoded address. The threshold is 60 meters by default.
+- `distance`: The distance in meters between the user's location and the geocoded address. May be `nil` if the address could not be geocoded.
+- `confidence`: The confidence of `atAddress`, one of `high`, `medium`, `low`, or `unknown`. Confidence accounts for the accuracy of the user's location and the uncertainty of the geocoded address. `high` means the result holds even at the edge of that uncertainty, `low` means the uncertainty is more than twice the distance threshold, and `unknown` means the address could not be geocoded or the location accuracy was not available.
+
+If the user is not at the expected address, the location check includes an `address_not_expected` warning. Unlike [failure reasons](#failure-reasons), this warning does not cause the location check to fail, so `passed` is unaffected. Use `user.expectedAddress.atAddress` and `user.expectedAddress.confidence` to decide how to handle the result in your app.
+
+<Info>
+  Contact your customer success manager to change the distance threshold.
+</Info>
+
 ### Auth tokens
 
 <Info>
