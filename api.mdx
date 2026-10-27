@@ -3883,14 +3883,14 @@ Each successful block creates a new rule, even if the target is already blocked.
 
 **Body parameters**
 
-- `items` (array, required): An array of items to block, with at least 1 item and a default maximum of 10,000 items. Each item accepts:
-  - `userId` (string): The external ID of the user to block. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
-  - `deviceId` (string): The ID of the device to block. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
+- `items` (array, required): An array of items to block, with at least 1 item and a default maximum of 500 items. Each item accepts:
+  - `userId` (string): The `userId` of the user to block. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
+  - `deviceId` (string): The `deviceId` of the device to block. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
   - `durationMs` (number, optional): The duration of the block in milliseconds, starting when the rule is created. Must be non-negative. If omitted, the block has no expiration.
   - `description` (string, optional): A description of the block rule.
-  - `label` (string, optional): Fraud feedback for a `userId` target. Either `fraud` or `not_fraud`. Requires fraud labels to be enabled for your project.
-  - `fraudType` (string, optional): A fraud category, up to 100 characters. Allows alphanumeric characters, dashes, underscores, spaces, periods, and commas. Requires `label` and a `userId` target.
-  - `incidentTime` (string, optional): The time of the incident as an ISO 8601 datetime with a timezone, for example, `2026-10-21T12:00:00Z`. Requires `label` and a `userId` target.
+  - `label` (string, optional): Either `fraud` or `not_fraud`. Requires fraud labels to be enabled for your project.
+  - `fraudType` (string, optional): A fraud category, up to 100 characters. Allows alphanumeric characters, dashes, underscores, spaces, periods, and commas. Requires `label`.
+  - `incidentTime` (string, optional): The time of the incident as an ISO 8601 datetime with a timezone, for example, `2026-10-21T12:00:00Z`. Requires `label`.
 
 **Default rate limit**
 
@@ -3974,12 +3974,12 @@ If a target does not exist or has no block rules to disable, the item succeeds w
 
 **Body parameters**
 
-- `items` (array, required): An array of items to unblock, with at least 1 item and a default maximum of 10,000 items. Each item accepts:
-  - `userId` (string): The external ID of the user to unblock. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
-  - `deviceId` (string): The ID of the device to unblock. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
-  - `label` (string, optional): Fraud feedback for a `userId` target. Either `fraud` or `not_fraud`. Requires fraud labels to be enabled for your project.
-  - `fraudType` (string, optional): A fraud category, up to 100 characters. Allows alphanumeric characters, dashes, underscores, spaces, periods, and commas. Requires `label` and a `userId` target.
-  - `incidentTime` (string, optional): The time of the incident as an ISO 8601 datetime with a timezone, for example, `2026-10-21T12:00:00Z`. Requires `label` and a `userId` target.
+- `items` (array, required): An array of items to unblock, with at least 1 item and a default maximum of 500 items. Each item accepts:
+  - `userId` (string): The `userId` of the user to unblock. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
+  - `deviceId` (string): The `deviceId` to unblock. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
+  - `label` (string, optional): Either `fraud` or `not_fraud`. Requires fraud labels to be enabled for your project.
+  - `fraudType` (string, optional): A fraud category, up to 100 characters. Allows alphanumeric characters, dashes, underscores, spaces, periods, and commas. Requires `label`.
+  - `incidentTime` (string, optional): The time of the incident as an ISO 8601 datetime with a timezone, for example, `2026-10-21T12:00:00Z`. Requires `label`.
 
 Unlike blocking, unblocking does not accept `durationMs` or `description`.
 
