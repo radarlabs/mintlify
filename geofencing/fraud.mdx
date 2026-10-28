@@ -134,7 +134,7 @@ Starting with [Android SDK](/sdk/android) version `3.39.0` and [iOS SDK](/sdk/io
 | Platform | Core SDK | Fraud plugin |
 | --- | --- | --- |
 | iOS | `3.44.x` | `1.6.x` |
-| Android | `3.39.x` -> `4.1.x` | `1.3.x` |
+| Android | `3.39.x` -> `4.2.x` | `1.3.x` |
 
 If using React Native, see [React Native](#react-native) for how to install the plugins.
 
@@ -148,7 +148,7 @@ Add the plugin to the `dependencies` section of your app's `build.gradle` file:
 
 ```gradle
 dependencies {   
-  implementation 'io.radar:sdk:4.1.+'
+  implementation 'io.radar:sdk:4.2.+'
   implementation 'io.radar:sdk-fraud:1.3.0'
 }
 ```
@@ -157,14 +157,11 @@ If you do not install the plugin, `Radar.trackVerified()` will return `ERROR_PLU
 
 #### Initialize SDK
 
-To support the `sharing` flag on Android, pass `fraud = true` to `RadarInitializeOptions` in `Radar.initialize()`.
-
-To enable automatic failover of `trackVerified()` requests to a secondary host if the primary host is unreachable, pass `trackVerifiedAutoFailover = true`:
+To support the `sharing` flag on Android, pass `fraud = true` to `RadarInitializeOptions` in `Radar.initialize()`:
 
 ```java
 val options = RadarInitializeOptions(
-  fraud = true,
-  trackVerifiedAutoFailover = true
+  fraud = true
 )
 
 Radar.initialize(
@@ -173,6 +170,8 @@ Radar.initialize(
   options = options
 )
 ```
+
+Starting in Android SDK `4.2.0`, `Radar.trackVerified()` retries against a backup host by default when the primary host doesn't return a response from Radar. To opt out, pass `trackVerifiedAutoFailover = false` to `RadarInitializeOptions`. In earlier versions, pass `trackVerifiedAutoFailover = true` to turn on failover.
 
 #### Play Integrity API
 
