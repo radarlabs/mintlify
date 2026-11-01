@@ -1,0 +1,27 @@
+name: Check page descriptions
+
+# Fails a PR if any page in the docs.json navigation has no frontmatter
+# `description`. See .github/scripts/check-page-descriptions.mjs.
+
+on:
+  pull_request:
+    paths:
+      - "**.mdx"
+      - "docs.json"
+      - ".github/scripts/check-page-descriptions.mjs"
+      - ".github/workflows/check-page-descriptions.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - run: node .github/scripts/check-page-descriptions.mjs
