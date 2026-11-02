@@ -840,10 +840,10 @@ On US addresses, an `analysis` field may be returned, which contains the followi
 - `stateCode` (string, required): The 2-letter state abbreviation (e.g., `NY`).
 - `postalCode` (string, required): The postal or zip code. Plus 4 codes are accepted but not required.
 - `countryCode` (string, required): The unique 2-letter [country code](/regions/countries) (e.g., `US`).
-- `number` (string, optional): The building or P.O. box number. If not provided, `addressLabel` must be provided.
-- `street` (string, optional): The street name. If not provided, `addressLabel` must be provided.
+- `number` (string, optional): The building or P.O. box number. Provide `number` and `street` together, or provide `addressLabel` instead. Don't provide both.
+- `street` (string, optional): The street name. Provide `number` and `street` together, or provide `addressLabel` instead. Don't provide both.
 - `unit` (string, optional): The unit number, such as apartment or suite (e.g., `Apt 3`).
-- `addressLabel` (string, optional): The first line of the address, including the building number, street name, and unit number if applicable (e.g., `20 Jay St Apt 3`). If not provided, `number` and `street` must be provided.
+- `addressLabel` (string, optional): The first line of the address, including the building number, street name, and unit number if applicable (e.g., `20 Jay St Apt 3`). Provide either `addressLabel` or both `number` and `street`, not both. A request with both returns a `400`.
 
 **Authentication level**
 
