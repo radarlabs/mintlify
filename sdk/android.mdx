@@ -1018,17 +1018,17 @@ Radar.searchPlaces(
 
 </CodeGroup>
 
-With the [address validation API](/api#validate-an-address) (currently in beta), validate a structured address in the US or Canada. The address must have a `countryCode`, `stateCode`, `city`, and `postalCode`, plus either a `number` and `street` or an `addressLabel`. Otherwise the SDK returns `RadarStatus.ERROR_BAD_REQUEST`.
+With the [address validation API](/api#validate-an-address) (currently in beta), validate a structured address in the US or Canada. The address must have a `countryCode`, `stateCode`, `city`, and `postalCode`, plus either a `number` and `street` or an `addressLabel`. Otherwise the SDK returns `RadarStatus.ERROR_BAD_REQUEST`. Addresses from autocomplete and geocoding have both; for those, the SDK sends `number` and `street`. Earlier SDK versions send both, and the API rejects the request with `RadarStatus.ERROR_BAD_REQUEST`. On those versions, validate a new `RadarAddress` built without `addressLabel`.
 
 <CodeGroup>
 
 ```java Java
 Radar.validateAddress(
     address, // query
-    new RadarValidateAddressCallback() {
+    new Radar.RadarValidateAddressCallback() {
         @Override
-        public void onComplete(RadarStatus status, RadarAddress address, RadarAddressVerificationStatus verificationStatus) {
-            // do something with verificationStatus and address
+        public void onComplete(@NonNull Radar.RadarStatus status, @Nullable RadarAddress address, @Nullable Radar.RadarAddressVerificationStatus verificationStatus) {
+            // address and verificationStatus are null unless status is SUCCESS
         }
     });
 ```
