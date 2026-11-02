@@ -879,13 +879,7 @@ Radar.autocomplete(
 
 </CodeGroup>
 
-#### Autocomplete sessions
-
-A user typing an address makes many autocomplete requests and picks one result. An *autocomplete session* groups those requests with the result the user chose, so Radar sees one search instead of a stream of keystrokes.
-
-Create one session per address field. A checkout with separate billing and shipping fields uses two.
-
-Call autocomplete on the session as the user types, then pass the address they picked back to the session. If your project has address enrichment enabled, selecting returns the enriched address.
+With autocomplete sessions and address enrichment, an AutocompleteSession must be created. That session will provide the `autocomplete` and `select` function calls for querying with and closing the session, respectively. If your project has address enrichment enabled, selecting returns the enriched address.
 
 <CodeGroup>
 
@@ -902,9 +896,13 @@ session.autocomplete(
 ) { (status: RadarStatus, addresses: [RadarAddress]?) in
     guard let selected = addresses?.first else { return }
 
+    // with address enrichment enabled
     session.select(address: selected) { (status: RadarStatus, address: RadarAutocompleteEnrichedAddress?) in
         // do something with the enriched address
     }
+
+    // without address enrichment
+    session.select(address: selected) { _, _ in }
 }
 ```
 
@@ -923,10 +921,14 @@ RadarAutocompleteSession *session = [RadarAutocompleteSession new];
     return;
   }
 
+  // with address enrichment enabled
   [session selectAddress:selected
        completionHandler:^(RadarStatus status, RadarAutocompleteEnrichedAddress *address) {
     // do something with the enriched address
   }];
+
+  // without address enrichment
+  [session selectAddress:selected completionHandler:^(RadarStatus status, RadarAutocompleteEnrichedAddress *address) {}];
 }];
 ```
 
