@@ -879,6 +879,59 @@ Radar.autocomplete(
 
 </CodeGroup>
 
+#### Autocomplete sessions
+
+A user typing an address makes many autocomplete requests and picks one result. An *autocomplete session* groups those requests with the result the user chose, so Radar sees one search instead of a stream of keystrokes.
+
+Create one session per address field. A checkout with separate billing and shipping fields uses two.
+
+Call autocomplete on the session as the user types, then pass the address they picked back to the session. If your project has address enrichment enabled, selecting returns the enriched address.
+
+<CodeGroup>
+
+```swift Swift
+let session = RadarAutocompleteSession()
+
+session.autocomplete(
+    query: "brooklyn roasting",
+    near: location,
+    layers: nil,
+    limit: 10,
+    country: nil,
+    mailable: false
+) { (status: RadarStatus, addresses: [RadarAddress]?) in
+    guard let selected = addresses?.first else { return }
+
+    session.select(address: selected) { (status: RadarStatus, address: RadarAutocompleteEnrichedAddress?) in
+        // do something with the enriched address
+    }
+}
+```
+
+```c Objective-C
+RadarAutocompleteSession *session = [RadarAutocompleteSession new];
+
+[session autocompleteQuery:@"brooklyn roasting"
+                      near:location
+                    layers:nil
+                     limit:10
+                   country:nil
+                  mailable:NO
+         completionHandler:^(RadarStatus status, NSArray<RadarAddress *> *addresses) {
+  RadarAddress *selected = addresses.firstObject;
+  if (!selected) {
+    return;
+  }
+
+  [session selectAddress:selected
+       completionHandler:^(RadarStatus status, RadarAutocompleteEnrichedAddress *address) {
+    // do something with the enriched address
+  }];
+}];
+```
+
+</CodeGroup>
+
 With the [geofence search API](/api#search-geofences), search for geofences near a location, sorted by distance:
 
 <CodeGroup>

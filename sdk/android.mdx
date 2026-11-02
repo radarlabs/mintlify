@@ -946,6 +946,58 @@ Radar.autocomplete(
 
 </CodeGroup>
 
+#### Autocomplete sessions
+
+A user typing an address makes many autocomplete requests and picks one result. An *autocomplete session* groups those requests with the result the user chose, so Radar sees one search instead of a stream of keystrokes.
+
+Create one session per address field. A checkout with separate billing and shipping fields uses two.
+
+Call autocomplete on the session as the user types, then pass the address they picked back to the session. If your project has address enrichment enabled, selecting returns the enriched address.
+
+<CodeGroup>
+
+```java Java
+RadarAutocompleteSession session = new RadarAutocompleteSession();
+
+session.autocomplete(
+    "brooklyn roasting", // query
+    near,
+    10, // limit
+    new RadarGeocodeCallback() {
+        @Override
+        public void onComplete(RadarStatus status, RadarAddress[] addresses) {
+            if (addresses == null || addresses.length == 0) {
+                return;
+            }
+
+            session.select(addresses[0], new RadarAutocompleteSelectCallback() {
+                @Override
+                public void onComplete(RadarStatus status, RadarAutocompleteEnrichedAddress address) {
+                    // do something with the enriched address
+                }
+            });
+        }
+    });
+```
+
+```kotlin Kotlin
+val session = RadarAutocompleteSession()
+
+session.autocomplete(
+    query = "brooklyn roasting",
+    near = near,
+    limit = 10
+) { status, addresses ->
+    val selected = addresses?.firstOrNull() ?: return@autocomplete
+
+    session.select(selected) { status, address ->
+        // do something with the enriched address
+    }
+}
+```
+
+</CodeGroup>
+
 With the [geofence search API](/api#search-geofences), search for geofences near a location, sorted by distance:
 
 <CodeGroup>
