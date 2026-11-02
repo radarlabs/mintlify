@@ -854,32 +854,7 @@ Radar.ipGeocode { (status: RadarStatus, address: RadarAddress, proxy: Bool) in
 
 ### Search
 
-With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance:
-
-<CodeGroup>
-
-```swift Swift
-Radar.autocomplete(
-    query: "brooklyn roasting",
-    near: location,
-    limit: 10
-) { (status: RadarStatus, addresses: [RadarAddress]?) in
-  // do something with addresses
-}
-```
-
-```c Objective-C
-[Radar autocompleteQuery:@"brooklyn roasting"
-                    near:location
-                  limit:10
-      completionHandler:^(RadarStatus status, NSArray<RadarAddress *> *addresses) {
-  // do something with addresses
-}];
-```
-
-</CodeGroup>
-
-For autocomplete sessions and address enrichment, a `RadarAutocompleteSession` must be created. If your project has address enrichment enabled, selecting returns the enriched address.
+With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance. For autocomplete sessions and address enrichment, a `RadarAutocompleteSession` must be created. If your project has address enrichment enabled, selecting returns the enriched address.
 
 <CodeGroup>
 

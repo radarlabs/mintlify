@@ -233,25 +233,7 @@ Radar.ipGeocode()
 
 ### Search
 
-With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance:
-
-```javascript
-Radar.autocomplete({
-  query: '841 bro',
-  near: {
-    latitude: 40.783826,
-    longitude: -73.975363
-  },
-  limit: 10
-}).then((result) => {
-  const { addresses } = result;
-  // do something with addresses
-}).catch((err) => {
-  // handle error
-});
-```
-
-For autocomplete sessions and address enrichment, an `AutocompleteSession` must be created. If your project has address enrichment enabled, selecting returns the enriched address.
+With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance. For autocomplete sessions and address enrichment, an `AutocompleteSession` must be created. If your project has address enrichment enabled, selecting returns the enriched address.
 
 ```javascript
 import Radar, { AutocompleteSession } from 'radar-sdk-js';

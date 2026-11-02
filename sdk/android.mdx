@@ -916,37 +916,7 @@ Radar.ipGeocode { status, address, proxy, throwable ->
 
 ### Search
 
-With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance:
-
-<CodeGroup>
-
-```java Java
-Radar.autocomplete(
-    "brooklyn roasting", // query
-    near,
-    null, // layers
-    10, // limit
-    new RadarGeocodeCallback() {
-        @Override
-        public void onComplete(RadarStatus status, RadarAddress[] addresses) {
-            // do something with addresses
-        }
-    });
-```
-
-```kotlin Kotlin
-Radar.autocomplete(
-    query = "brooklyn roasting",
-    near = near,
-    limit = 10
-) { status, addresses ->
-    // do something with addresses
-}
-```
-
-</CodeGroup>
-
-For autocomplete sessions and address enrichment, a `RadarAutocompleteSession` must be created. If your project has address enrichment enabled, selecting returns the enriched address.
+With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance. For autocomplete sessions and address enrichment, a `RadarAutocompleteSession` must be created. If your project has address enrichment enabled, selecting returns the enriched address.
 
 <CodeGroup>
 
