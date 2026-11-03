@@ -2732,7 +2732,7 @@ A trip is a sequence of location updates with metadata and a unique ID, optional
 - `live` (boolean): `true` if the user was created with your `live` API key, `false` if the user was created with your `test` API key.
 - `externalId` (string): A stable unique ID for the trip. Depending on your use case, may represent an order ID, a delivery ID, or something else.
 - `metadata` (dictionary): An optional set of custom key-value pairs for the trip, displayed in the trip tracking dashboard.
-- `mode` (string): The [travel mode](#route-distance) for the trip. A string, one of `foot`, `bike`, and `car`.
+- `mode` (string): The [travel mode](#distance) for the trip. A string, one of `foot`, `bike`, and `car`.
 - `destinationGeofenceTag` (string): For trips with a destination, the tag of the destination geofence.
 - `destinationGeofenceExternalId` (string): For trips with a destination, the external ID of the destination geofence.
 - `destinationLocation` (point): For trips with a destination, the location of the destination geofence.
@@ -2944,7 +2944,7 @@ Creates a new trip.
 - `destinationGeofenceTag` (string, optional): For trips with a destination, the tag of the destination geofence.
 - `destinationGeofenceExternalId` (string, optional): For trips with a destination, the external ID of the destination geofence.
 - `userId` (string, optional): The external ID of the [user](#users) for which the trip is being tracked.
-- `mode` (string, optional): The [travel mode](#route-distance) for the trip. A string, one of `foot`, `bike`, and `car`. Defaults to `car`.
+- `mode` (string, optional): The [travel mode](#distance) for the trip. A string, one of `foot`, `bike`, and `car`. Defaults to `car`.
 - `approachingThreshold` (number, optional): For trips with a destination, the [trip approaching threshold](/geofencing/trips#trip-events) setting for the trip (in minutes). Overrides the geofence-level and project-level trip approaching threshold settings.
 - `scheduledArrivalAt` (datetime): Required for the [Olo order firing integration](/integrations/olo#order-firing), the backstop datetime when the device on the trip is expected to arrive. The order will be fired `approachingThreshold` minutes before `scheduledArrivalAt`.
 - `metadata` (dictionary, optional): An optional set of custom key-value pairs for the trip.
@@ -3023,7 +3023,7 @@ On iOS and Android, use the [SDK](https://docs.radar.com/sdk) to update trips.
 **Body parameters**
 
 - `status` (string, required): The new status of the trip, one of `pending`,`started`, `approaching`, `arrived`, `completed`, or `canceled`.
-- `mode` (string, optional): The [travel mode](#route-distance) for the trip. A string, one of `foot`, `bike`, and `car`.
+- `mode` (string, optional): The [travel mode](#distance) for the trip. A string, one of `foot`, `bike`, and `car`.
 - `destinationGeofenceTag` (string, optional): For trips with a destination, the tag of the destination geofence.
 - `destinationGeofenceExternalId` (string, optional): For trips with a destination, the external ID of the destination geofence.
 - `approachingThreshold` (number, optional): For trips with a destination, the [trip approaching threshold](/geofencing/trips#trip-events) setting for the trip (in minutes). Overrides the geofence-level and project-level trip approaching threshold settings.
@@ -3135,7 +3135,7 @@ A geofence represents a custom region or place monitored in your project. Geofen
 - `geometry` (polygon): The geometry of the geofence. Coordinates for type `polygon`. A calculated polygon approximation for type `circle` and `isochrone`. A `Polygon` in [GeoJSON](http://geojson.org/) format.
 - `geometryCenter` (point): The center for type `circle`. The calculated centroid of the polygon for type `polygon`. The destination for type `isochrone`. A `Point` in [GeoJSON](http://geojson.org/) format.
 - `geometryRadius` (number): The radius in meters for type `circle`. The calculated approximate radius of the polygon for type `polygon`. The travel duration in minutes for type `isochrone`.
-- `mode` (string): The [travel mode](#route-distance) for type `isochrone`.
+- `mode` (string): The [travel mode](#distance) for type `isochrone`.
 - `metadata` (dictionary): An optional set of custom key-value pairs for the geofence.
 - `userId` (string, optional): An optional user restriction for the geofence. If set, the geofence will only generate events for the specified user. If not set, the geofence will generate events for all users. **Deprecated.**
 - `userIds` (string, optional): An optional user restriction for the geofence. A string of comma-separated user IDs. If set, the geofence will only generate events for the specified users. If not set, the geofence will generate events for all users.
@@ -3349,7 +3349,7 @@ curl "https://api.radar.io/v1/geofences/venue/2" \
 
 Deletes a geofence. The geofence can be uniquely referenced by Radar `_id` or by `tag` and `externalId`.
 
-**Definition**[**#**](#definition-13)
+**Definition**
 
 **DELETE**`https://api.radar.io/v1/geofences/:id`\
 **DELETE**`https://api.radar.io/v1/geofences/:tag/:externalId`
