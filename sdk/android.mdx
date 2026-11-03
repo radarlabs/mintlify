@@ -23,7 +23,7 @@ The SDK is distributed using [Maven Central](https://search.maven.org/artifact/i
 Add the SDK to the `dependencies` section of your app's `build.gradle` file:
 
 ```gradle
-dependencies {   
+dependencies {
   implementation 'io.radar:sdk:4.2.+'
 }
 ```
@@ -60,10 +60,10 @@ Use your `Test Publishable` key for testing and non-production environments. Use
 import io.radar.sdk.Radar;
 
 public class MyApplication extends Application {
-    @Override    
-    public void onCreate() {        
+    @Override
+    public void onCreate() {
         super.onCreate();
-        Radar.initialize(this, "prj_test_pk_...");    
+        Radar.initialize(this, "prj_test_pk_...");
     }
 }
 ```
@@ -72,9 +72,9 @@ public class MyApplication extends Application {
 import io.radar.sdk.Radar
 
 class MyApplication : Application() {
-    override fun onCreate() {        
+    override fun onCreate() {
         super.onCreate()
-        Radar.initialize(this, "prj_test_pk_...")    
+        Radar.initialize(this, "prj_test_pk_...")
     }
 }
 ```
@@ -620,7 +620,7 @@ public class MyRadarReceiver extends RadarReceiver {
 
     @Override
     public void onLocationPermissionStatusUpdated(context: Context,status: RadarLocationPermissionStatus) {
-      // do something with location permission status 
+      // do something with location permission status
     }
 }
 ```
@@ -649,7 +649,7 @@ class MyRadarReceiver: RadarReceiver() {
     }
 
     overide fun onLocationPermissionStatusUpdated(context: Context,status: RadarLocationPermissionStatus) {
-      // do something with location permission status 
+      // do something with location permission status
     }
 }
 ```
@@ -916,7 +916,7 @@ Radar.ipGeocode { status, address, proxy, throwable ->
 
 ### Search
 
-With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance. For autocomplete sessions and address enrichment, a `RadarAutocompleteSession` must be created. If your project has address enrichment enabled, selecting returns the enriched address.
+With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance. If your project has address enrichment enabled, selecting returns the enriched address.
 
 <CodeGroup>
 
