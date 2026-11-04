@@ -916,7 +916,7 @@ Radar.ipGeocode { status, address, proxy, throwable ->
 
 ### Search
 
-With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance. If your project has address enrichment enabled, selecting returns the enriched address.
+With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance. Report the result the user chooses; selections are how autocomplete quality is measured and improved. If your project has address enrichment enabled, selecting also returns the enriched address.
 
 <CodeGroup>
 
@@ -942,7 +942,7 @@ session.autocomplete(
                 }
             });
 
-            // without address enrichment
+            // otherwise
             session.select(addresses[0], new RadarAutocompleteSelectCallback() {
                 @Override
                 public void onComplete(RadarStatus status, RadarAutocompleteEnrichedAddress address) {}
@@ -966,7 +966,7 @@ session.autocomplete(
         // do something with the enriched address
     }
 
-    // without address enrichment
+    // otherwise
     session.select(selected) { _, _ -> }
 }
 ```

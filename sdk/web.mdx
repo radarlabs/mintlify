@@ -233,7 +233,7 @@ Radar.ipGeocode()
 
 ### Search
 
-With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance. If your project has address enrichment enabled, selecting returns the enriched address.
+With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance. Report the result the user chooses; selections are how autocomplete quality is measured and improved. If your project has address enrichment enabled, selecting also returns the enriched address.
 
 ```javascript
 import Radar, { AutocompleteSession } from 'radar-sdk-js';
@@ -252,7 +252,7 @@ const { addresses } = await session.autocomplete({
 // with address enrichment enabled
 const { address } = await session.select(addresses[0]);
 
-// without address enrichment
+// otherwise
 await session.select(addresses[0]);
 ```
 
