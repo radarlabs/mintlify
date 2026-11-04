@@ -339,6 +339,10 @@ The following fields are all optional and work independently:
 - **Both** — runs only within the fixed window.
 - **Neither** — scheduling is off; the campaign runs whenever it's enabled.
 
+### Client-side notifications after the end time
+
+Client-side geofence notifications are registered on the device during a campaign's scheduled window. They stay registered until the device's next successful track response, when the SDK checks the schedule again. Until then, a notification can still be delivered even if the campaign has ended. The next successful track response after the end time removes it.
+
 ### Active days
 
 Within a scheduled campaign, optionally restrict delivery to specific **days of the week** — for example, only Tuesdays and Thursdays. Active days are layered on top of the start and end times: a notification is delivered only when the current time is inside the window **and** falls on a selected day, evaluated in the user's local timezone. Leave the selection empty (the default) to run every day.
