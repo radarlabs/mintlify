@@ -106,6 +106,7 @@
           "maps/maps",
           "maps/static-maps",
           "maps/autocomplete",
+          "maps/address-enrichment",
           "maps/migration-sdk"
         ]
       },

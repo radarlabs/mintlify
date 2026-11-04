@@ -1,0 +1,29 @@
+---
+title: "Address Enrichment"
+---
+
+Use Radar's address enrichment to learn what is at an address: how the location is used, the type of dwelling, and the places on its grounds.
+
+<Note>
+  Address enrichment is available on request. Contact us at [radar.com/support](https://radar.com/support) if you would like it enabled for your project.
+</Note>
+
+## How it works
+
+Address enrichment rides along with [autocomplete](/maps/search#address-autocomplete). Autocomplete within a session, then report the result the user chooses. With enrichment enabled for your project, that selection returns the enriched address.
+
+See the SDK guides for [iOS](/sdk/ios#search), [Android](/sdk/android#search), and [Web](/sdk/web#search).
+
+## Response
+
+The enriched address carries these fields and nothing else. It is not a full address result, and none of that type's other fields are returned.
+
+| Field | Description |
+| ----- | ----------- |
+| `formattedAddress` | The formatted string representation of the address. |
+| `locationDetails.usage` | How the location is used, or `unknown`. |
+| `locationDetails.dwelling` | The dwelling type, `n/a` for usages that have none, or `unknown`. |
+| `locationDetails.grounds` | The grounds of the location. |
+| `locationDetails.places` | The places on the grounds of the location, each with a `name` and `categories`. |
+
+Have questions? We're here to help\! Contact us at [radar.com/support](https://radar.com/support).
