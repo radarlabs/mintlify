@@ -563,6 +563,7 @@ Autocompletes partial addresses and place names, sorted by relevance and proximi
 - `layers` (string, optional): Optional layer filters. A string, comma-separated, including one or more of `place`, `address`, `postalCode`, `locality`, `county`, `state`, `country`, `coarse`, and `fine`. Note that `coarse` includes all of `postalCode`, `locality`, `county`, `state`, and `country`, whereas `fine` includes `address` and `place`. If not provided, results from `address` and `coarse` layers will be returned.
 - `limit` (number, optional): The max number of addresses to return. A number between 1 and 100. Defaults to 10.
 - `countryCode` (string, optional): An optional countries filter. A string of comma-separated countries, the unique 2-letter [country code](/regions/countries).
+- `sessionToken` (string, optional): A UUID grouping the requests from one address field. When provided, each result carries a `resultId` that can be reported to the [autocomplete select](#autocomplete-select) endpoint.
 
 **Query best practices**
 
@@ -615,11 +616,66 @@ curl "https://api.radar.io/v1/search/autocomplete?query=brooklyn+roasting&layers
       "street": "Clinton St",
       "layer": "place",
       "formattedAddress": "1 Clinton St, Brooklyn, New York, NY 11201 USA",
-      "placeLabel": "Brooklyn Roasting Company"
+      "placeLabel": "Brooklyn Roasting Company",
+      "resultId": "v2_ljDS8VvzSheZ0hVnPvNfAAAAAAEA"
     }
   ]
 }
 ```
+
+#### **Autocomplete select**
+
+Reports which autocomplete result the user chose. Selections are how autocomplete quality is measured and improved.
+
+If the project has [address enrichment](/maps/address-enrichment) enabled, returns the enriched address.
+
+**Definitions**
+
+`POST https://api.radar.io/v1/search/autocomplete/select`
+
+**Body parameters**
+
+- `resultId` (string, required): The `resultId` of the chosen result, as returned by the [autocomplete](#autocomplete) endpoint. Results carry one only when the originating search passed a `sessionToken`.
+
+**Authentication level**
+
+Publishable
+
+**Default rate limit**
+
+10 requests per second (contact your customer success manager to increase rate limit)
+
+**Sample request**
+
+```
+curl "https://api.radar.io/v1/search/autocomplete/select" \
+  -H "Authorization: prj_live_pk_..." \
+  -H "Content-Type: application/json" \
+  -d '{"resultId": "v2_ljDS8VvzSheZ0hVnPvNfAAAAAAEA"}'
+```
+
+**Sample response**
+
+A project without address enrichment answers `204` with no body. With address enrichment enabled, a chosen address returns the enriched address:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "address": {
+    "formattedAddress": "1 Clinton St, Brooklyn, New York, NY 11201 USA",
+    "locationDetails": {
+      "usage": "residential",
+      "dwelling": "unknown",
+      "grounds": [],
+      "places": []
+    }
+  }
+}
+```
+
+A chosen result from any other layer is recorded and returns `200` with no `address`.
 
 #### **Search users**
 
