@@ -3875,7 +3875,7 @@ Block or unblock users and devices for [Fraud](/geofencing/fraud). These endpoin
 
 #### **Block users and devices**
 
-Creates block rules for existing users or devices. Each item targets exactly one user or device; blocking a user does not automatically block their devices, and blocking a device does not automatically block its users.
+Creates block rules for existing users or devices. Each item targets exactly one user or device. By default, blocking a user does not block their devices, and blocking a device does not block its users. Set `includeAssociations` to `true` to also block associated devices or users.
 
 Each successful block creates a new rule, even if the target is already blocked. If a user or device does not exist in the project and environment associated with your API key, the item succeeds without creating a rule.
 
@@ -3888,6 +3888,7 @@ Each successful block creates a new rule, even if the target is already blocked.
 - `items` (array, required): An array of items to block, with at least 1 item and a default maximum of 500 items. Each item accepts:
   - `userId` (string): The `userId` of the user to block. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
   - `deviceId` (string): The `deviceId` of the device to block. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
+  - `includeAssociations` (boolean, optional): Set to `true` to also block associated devices for a user, or immediately associated users for a device, asynchronously. Defaults to `false`.
   - `durationMs` (number, optional): The duration of the block in milliseconds, starting when the rule is created. Must be non-negative. If omitted, the block has no expiration.
   - `description` (string, optional): A description of the block rule.
   - `label` (string, optional): Either `fraud` or `not_fraud`. Requires fraud labels to be enabled for your project.
@@ -3909,7 +3910,7 @@ curl "https://api.radar.io/v1/fraud/block" \
   -H "Authorization: prj_live_sk_..." \
   -H "Content-Type: application/json" \
   -X POST \
-  -d '{"items":[{"userId":"user-123","description":"Confirmed fraudulent activity"},{"deviceId":"device-456"}]}'
+  -d '{"items":[{"userId":"user-123","description":"Confirmed fraudulent activity"},{"deviceId":"device-456","includeAssociations":true}]}'
 ```
 
 **Sample response**
@@ -3936,10 +3937,11 @@ curl "https://api.radar.io/v1/fraud/block" \
     {
       "index": 1,
       "target": { "deviceId": "device-456" },
-      "meta": { "code": 200 },
+      "meta": { "code": 202 },
       "action": {
         "changedBlockCount": 1,
         "affected": { "userIds": [], "deviceIds": ["device-456"] },
+        "statusUrl": "/v1/fraud/actions/act_123",
         "configuration": {
           "description": null,
           "expiresAt": null
@@ -3955,9 +3957,10 @@ curl "https://api.radar.io/v1/fraud/block" \
 - `responses` (array): One result per request item, in request order.
   - `index` (number): The zero-based index of the request item.
   - `target` (object): The requested `userId` or `deviceId`.
-  - `meta.code` (number): `200` for success, including when no rule was created, or `500` if the item failed.
+  - `meta.code` (number): `200` when the direct action succeeded and no association processing was requested, including when no rule was created; `202` when the direct action succeeded and association processing was accepted; or `500` if the item failed.
   - `action.changedBlockCount` (number): The number of block rules created for the item. `0` if the target does not exist.
   - `action.affected` (object): Arrays of affected `userIds` and `deviceIds`. Both arrays are empty if no rule was created.
+  - `action.statusUrl` (string): The relative URL for [checking the asynchronous action](#get-fraud-action-status), for example, `/v1/fraud/actions/act_123`. Included when association processing is accepted.
   - `action.configuration` (object): Included when a rule is created. Contains `description` and `expiresAt`, an ISO 8601 datetime. These fields are `null` when no description or expiration was specified.
 
 An HTTP `200` response can contain failed items. Check each item's `meta.code`; failed items do not include `action`. Invalid request bodies return `400`. These endpoints return `404` if access is not enabled. Supplying a label when fraud labels are not enabled returns `403`.
@@ -3966,7 +3969,7 @@ Optional labels are delivered asynchronously for successful actions on existing 
 
 #### **Unblock users and devices**
 
-Disables block rules for the specified users or devices. Each item targets exactly one user or device; unblocking a user does not unblock their devices, and unblocking a device does not unblock its users.
+Disables block rules for the specified users or devices. Each item targets exactly one user or device. By default, unblocking a user does not unblock their devices, and unblocking a device does not unblock its users. Set `includeAssociations` to `true` to also unblock associated devices or users.
 
 If a target does not exist or has no block rules to disable, the item succeeds with `changedBlockCount` set to `0`.
 
@@ -3979,6 +3982,7 @@ If a target does not exist or has no block rules to disable, the item succeeds w
 - `items` (array, required): An array of items to unblock, with at least 1 item and a default maximum of 500 items. Each item accepts:
   - `userId` (string): The `userId` of the user to unblock. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
   - `deviceId` (string): The `deviceId` to unblock. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
+  - `includeAssociations` (boolean, optional): Set to `true` to also unblock associated devices for a user, or immediately associated users for a device, asynchronously. Defaults to `false`.
   - `label` (string, optional): Either `fraud` or `not_fraud`. Requires fraud labels to be enabled for your project.
   - `fraudType` (string, optional): A fraud category, up to 100 characters. Allows alphanumeric characters, dashes, underscores, spaces, periods, and commas. Requires `label`.
   - `incidentTime` (string, optional): The time of the incident as an ISO 8601 datetime with a timezone, for example, `2026-10-21T12:00:00Z`. Requires `label`.
@@ -4000,7 +4004,7 @@ curl "https://api.radar.io/v1/fraud/unblock" \
   -H "Authorization: prj_live_sk_..." \
   -H "Content-Type: application/json" \
   -X POST \
-  -d '{"items":[{"userId":"user-123"},{"deviceId":"device-456"}]}'
+  -d '{"items":[{"userId":"user-123"},{"deviceId":"device-456","includeAssociations":true}]}'
 ```
 
 **Sample response**
@@ -4023,10 +4027,11 @@ curl "https://api.radar.io/v1/fraud/unblock" \
     {
       "index": 1,
       "target": { "deviceId": "device-456" },
-      "meta": { "code": 200 },
+      "meta": { "code": 202 },
       "action": {
         "changedBlockCount": 1,
-        "affected": { "userIds": [], "deviceIds": ["device-456"] }
+        "affected": { "userIds": [], "deviceIds": ["device-456"] },
+        "statusUrl": "/v1/fraud/actions/act_123"
       }
     }
   ]
@@ -4038,11 +4043,75 @@ curl "https://api.radar.io/v1/fraud/unblock" \
 - `responses` (array): One result per request item, in request order.
   - `index` (number): The zero-based index of the request item.
   - `target` (object): The requested `userId` or `deviceId`.
-  - `meta.code` (number): `200` for success, including when no rules were disabled, or `500` if the item failed.
-  - `action.changedBlockCount` (number): The number of block rules disabled for the target. Can be greater than `1` if the target had multiple block rules.
+  - `meta.code` (number): `200` when the direct action succeeded and no association processing was requested, including when no rules were disabled; `202` when the direct action succeeded and association processing was accepted; or `500` if the item failed.
+  - `action.changedBlockCount` (number): The number of block rules disabled for the item. Can be greater than `1` if the target had multiple block rules.
   - `action.affected` (object): Arrays of affected `userIds` and `deviceIds`. Both arrays are empty if no rules were disabled.
+  - `action.statusUrl` (string): The relative URL for [checking the asynchronous action](#get-fraud-action-status), for example, `/v1/fraud/actions/act_123`.
 
 The same partial failure, request error, and asynchronous label delivery behavior described for [blocking](#block-users-and-devices) applies to unblocking. Unblock responses do not include `action.configuration`.
+
+#### **Get fraud action status**
+
+Gets the status of an asynchronous block or unblock action. Use the `action.statusUrl` returned by [blocking](#block-users-and-devices) or [unblocking](#unblock-users-and-devices) with `includeAssociations` set to `true` to poll for completion.
+
+An authorized lookup returns HTTP `200`. Check `operation.meta.code` for the action's status: `202` means association processing is pending or in progress, and `200` means the full discovered scope has succeeded.
+
+**Definition**
+
+**GET**`https://api.radar.io/v1/fraud/actions/:actionId`
+
+**Path parameters**
+
+- `actionId` (string, required): The action ID in the `action.statusUrl` returned by the block or unblock request.
+
+**Authentication level**
+
+Secret
+
+**Sample request**
+
+```bash
+curl "https://api.radar.io/v1/fraud/actions/act_123" \
+  -H "Authorization: prj_live_sk_..."
+```
+
+**Sample response**
+
+```json
+{
+  "meta": { "code": 200 },
+  "operation": {
+    "actionId": "act_123",
+    "meta": { "code": 202 },
+    "acceptedAt": "2026-10-01T19:00:00.000Z",
+    "directAction": {
+      "changedBlockCount": 1,
+      "affected": { "userIds": [], "deviceIds": ["device-456"] }
+    },
+    "associations": {
+      "discoveryComplete": true,
+      "processedCount": 20,
+      "processedEntityCount": 20,
+      "skippedEntityCount": 0,
+      "changedBlockCount": 20
+    }
+  }
+}
+```
+
+**Response fields**
+
+- `operation` (object): The asynchronous action and its progress.
+  - `actionId` (string): The action ID.
+  - `meta.code` (number): `202` while association processing is pending or in progress, or `200` after the full discovered scope succeeds.
+  - `acceptedAt` (string): The time the action was accepted.
+  - `directAction` (object): The result for the explicit target.
+  - `associations` (object): Progress for associated entities.
+    - `discoveryComplete` (boolean): Whether all immediate associations have been discovered.
+    - `processedCount` (number): The number of associated entities processed.
+    - `processedEntityCount` (number): The number of associated entities whose processing has completed.
+    - `skippedEntityCount` (number): The number of associated entities skipped.
+    - `changedBlockCount` (number): The number of block rules created or disabled for associated entities.
 
 ## Manage your Radar project settings
 
