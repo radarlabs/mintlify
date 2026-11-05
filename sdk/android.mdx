@@ -1018,13 +1018,33 @@ Radar.searchPlaces(
 
 </CodeGroup>
 
-With the [address validation API](/api#validate-an-address) (currently in beta), validate a structured address in the US or Canada. The address must have a `countryCode`, `stateCode`, `city`, and `postalCode`, plus either a `number` and `street` or an `addressLabel`. Otherwise the SDK returns `RadarStatus.ERROR_BAD_REQUEST`. Addresses from autocomplete and geocoding have both; for those, the SDK sends `number` and `street`. Earlier SDK versions send both, and the API rejects the request with `RadarStatus.ERROR_BAD_REQUEST`. On those versions, validate a new `RadarAddress` built without `addressLabel`.
+With the [address validation API](/api#validate-an-address) (currently in beta), validate a structured address in the US or Canada. Pass either a street and number or a single-line address label, plus a `city`, `stateCode`, `postalCode`, and `countryCode`. `unit` is optional; in Java, pass `null` to leave it out. If a required field is empty, the SDK returns `RadarStatus.ERROR_BAD_REQUEST` without sending a request.
 
 <CodeGroup>
 
 ```java Java
 Radar.validateAddress(
-    address, // query
+    "Jay St", // street
+    "20", // number
+    null, // unit
+    "Brooklyn", // city
+    "NY", // stateCode
+    "11201", // postalCode
+    "US", // countryCode
+    new Radar.RadarValidateAddressCallback() {
+        @Override
+        public void onComplete(@NonNull Radar.RadarStatus status, @Nullable RadarAddress address, @Nullable Radar.RadarAddressVerificationStatus verificationStatus) {
+            // address and verificationStatus are null unless status is SUCCESS
+        }
+    });
+
+Radar.validateAddress(
+    "20 Jay St", // addressLabel
+    "Suite 900", // unit
+    "Brooklyn", // city
+    "NY", // stateCode
+    "11201", // postalCode
+    "US", // countryCode
     new Radar.RadarValidateAddressCallback() {
         @Override
         public void onComplete(@NonNull Radar.RadarStatus status, @Nullable RadarAddress address, @Nullable Radar.RadarAddressVerificationStatus verificationStatus) {
@@ -1034,12 +1054,32 @@ Radar.validateAddress(
 ```
 
 ```kotlin Kotlin
-Radar.validateAddress(address) { status, address, verificationStatus ->
+Radar.validateAddress(
+    street = "Jay St",
+    number = "20",
+    city = "Brooklyn",
+    stateCode = "NY",
+    postalCode = "11201",
+    countryCode = "US",
+) { status, address, verificationStatus ->
+    // do something with verificationStatus and address
+}
+
+Radar.validateAddress(
+    addressLabel = "20 Jay St",
+    unit = "Suite 900",
+    city = "Brooklyn",
+    stateCode = "NY",
+    postalCode = "11201",
+    countryCode = "US",
+) { status, address, verificationStatus ->
     // do something with verificationStatus and address
 }
 ```
 
 </CodeGroup>
+
+To validate an address from autocomplete or geocoding, pass its `street` and `number` (or its `addressLabel`) and the other fields to one of these methods. These methods are available in Android SDK 4.3.0 and later. In earlier versions, use `validateAddress(address)`, which is now deprecated. Addresses from autocomplete and geocoding have a street, a number, and an address label. Versions before 4.3.0 send all three, and the API rejects the request with `RadarStatus.ERROR_BAD_REQUEST`. On those versions, validate a new `RadarAddress` built without `addressLabel`.
 
 ### Distance
 
