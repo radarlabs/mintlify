@@ -343,6 +343,8 @@ The following fields are all optional and work independently:
 
 Client-side geofence notifications are registered on the device during a campaign's scheduled window. They stay registered until the device's next successful track response, when the SDK checks the schedule again. Until then, a notification can still be delivered even if the campaign has ended. The next successful track response after the end time removes it.
 
+To shorten this gap, set up [silent push](/sdk/silent-push). When a campaign's window closes, Radar sends a silent push that wakes the SDK to remove notifications that are out of schedule, without waiting for a new track response. Silent push is best effort and doesn't remove the gap entirely. See [Client-side geofence notifications uses silent push](#client-side-geofence-notifications-uses-silent-push) for details.
+
 ### Active days
 
 Within a scheduled campaign, optionally restrict delivery to specific **days of the week** — for example, only Tuesdays and Thursdays. Active days are layered on top of the start and end times: a notification is delivered only when the current time is inside the window **and** falls on a selected day, evaluated in the user's local timezone. Leave the selection empty (the default) to run every day.
@@ -365,7 +367,11 @@ When enabled, a geofence's client-side notification is only delivered when the u
 
 ### Client-side geofence notifications uses silent push
 
-Client-side geofence notifications are scheduled with the operating system in advance, so once registered they stay on the device until the SDK next re-evaluates them. If your campaign only requires Foreground ("When In Use") permissions, the SDK may not receive another track response before the schedule window closes, so a notification could remain scheduled, and fire, after its window has ended. To close this gap, set up [silent push](/sdk/silent-push). When a campaign's scheduling window closes, Radar sends a silent push that wakes the SDK and triggers an on-device re-evaluation of all scheduled notifications, de-registering any that now fall outside their window without requiring a new location update from the user. This keeps client-side notifications in sync with their schedule even for users who have granted only foreground location permissions.
+Client-side geofence notifications are scheduled with the operating system in advance, so once registered they stay on the device until the SDK next re-evaluates them. If your campaign only requires Foreground ("When In Use") permissions, the SDK may not receive another track response before the schedule window closes, so a notification could remain scheduled, and fire, after its window has ended. To close this gap, set up [silent push](/sdk/silent-push). When a campaign's scheduling window closes, Radar sends a silent push that wakes the SDK and triggers an on-device re-evaluation of all scheduled notifications, de-registering any that now fall outside their window without requiring a new location update from the user. This helps keep client-side notifications in sync with their schedule, including for users who have granted only foreground location permissions.
+
+<Warning>
+  Silent push delivery is best effort and isn't guaranteed. Apple and Google can delay or drop silent pushes, for example when the device is offline, in low power or battery-saver mode, or when the OS throttles background delivery. iOS also won't deliver a silent push to an app the user has force-quit. When a silent push doesn't arrive, a notification can still fire after the campaign's window has ended, until the next successful track response removes it.
+</Warning>
 
 ## Frequency Capping
 
