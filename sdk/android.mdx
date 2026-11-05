@@ -944,10 +944,7 @@ session.autocomplete(
             });
 
             // otherwise
-            session.select(addresses[0], new RadarAutocompleteSelectCallback() {
-                @Override
-                public void onComplete(RadarStatus status, RadarAutocompleteEnrichedAddress address) {}
-            });
+            session.select(addresses[0]);
         }
     });
 ```
@@ -968,7 +965,7 @@ session.autocomplete(
     }
 
     // otherwise
-    session.select(selected) { _, _ -> }
+    session.select(selected)
 }
 ```
 
