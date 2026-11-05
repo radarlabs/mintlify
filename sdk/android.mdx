@@ -926,6 +926,7 @@ RadarAutocompleteSession session = new RadarAutocompleteSession();
 session.autocomplete(
     "brooklyn roasting", // query
     near,
+    null, // layers
     10, // limit
     new RadarGeocodeCallback() {
         @Override
