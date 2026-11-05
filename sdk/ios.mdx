@@ -877,7 +877,7 @@ session.autocomplete(
     }
 
     // otherwise
-    session.select(address: selected) { _, _ in }
+    session.select(address: selected, completionHandler: nil)
 }
 ```
 
@@ -903,7 +903,7 @@ RadarAutocompleteSession *session = [RadarAutocompleteSession new];
   }];
 
   // otherwise
-  [session selectAddress:selected completionHandler:^(RadarStatus status, RadarAutocompleteEnrichedAddress *address) {}];
+  [session selectAddress:selected completionHandler:nil];
 }];
 ```
 
