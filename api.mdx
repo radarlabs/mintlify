@@ -3875,7 +3875,7 @@ Block or unblock users and devices for [Fraud](/geofencing/fraud). These endpoin
 
 #### **Block users and devices**
 
-Creates block rules for existing users or devices. Each item targets exactly one user or device. By default, blocking a user does not block their devices, and blocking a device does not block its users. Set `includeAssociations` to `true` to also block immediately associated devices or users.
+Creates block rules for existing users or devices. Each item targets exactly one user or device. By default, blocking a user does not block their devices, and blocking a device does not block its users. Set `includeAssociations` to `true` to also block associated devices or users.
 
 Each successful block creates a new rule, even if the target is already blocked. If a user or device does not exist in the project and environment associated with your API key, the item succeeds without creating a rule.
 
@@ -3888,7 +3888,7 @@ Each successful block creates a new rule, even if the target is already blocked.
 - `items` (array, required): An array of items to block, with at least 1 item and a default maximum of 500 items. Each item accepts:
   - `userId` (string): The `userId` of the user to block. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
   - `deviceId` (string): The `deviceId` of the device to block. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
-  - `includeAssociations` (boolean, optional): Set to `true` to also block immediately associated devices for a user, or immediately associated users for a device, asynchronously. Defaults to `false`.
+  - `includeAssociations` (boolean, optional): Set to `true` to also block associated devices for a user, or immediately associated users for a device, asynchronously. Defaults to `false`.
   - `durationMs` (number, optional): The duration of the block in milliseconds, starting when the rule is created. Must be non-negative. If omitted, the block has no expiration.
   - `description` (string, optional): A description of the block rule.
   - `label` (string, optional): Either `fraud` or `not_fraud`. Requires fraud labels to be enabled for your project.
@@ -3965,11 +3965,11 @@ curl "https://api.radar.io/v1/fraud/block" \
 
 An HTTP `200` response can contain failed items. Check each item's `meta.code`; failed items do not include `action`. Invalid request bodies return `400`. These endpoints return `404` if access is not enabled. Supplying a label when fraud labels are not enabled returns `403`.
 
-Optional labels are delivered asynchronously for successful actions on existing users. An item's success does not confirm label delivery. Labels are not submitted for unknown users, devices, or associated entities.
+Optional labels are delivered asynchronously for successful actions on existing users. An item's success does not confirm label delivery. Labels are not submitted for unknown users.
 
 #### **Unblock users and devices**
 
-Disables block rules for the specified users or devices. Each item targets exactly one user or device. By default, unblocking a user does not unblock their devices, and unblocking a device does not unblock its users. Set `includeAssociations` to `true` to also unblock immediately associated devices or users.
+Disables block rules for the specified users or devices. Each item targets exactly one user or device. By default, unblocking a user does not unblock their devices, and unblocking a device does not unblock its users. Set `includeAssociations` to `true` to also unblock associated devices or users.
 
 If a target does not exist or has no block rules to disable, the item succeeds with `changedBlockCount` set to `0`.
 
@@ -3982,7 +3982,7 @@ If a target does not exist or has no block rules to disable, the item succeeds w
 - `items` (array, required): An array of items to unblock, with at least 1 item and a default maximum of 500 items. Each item accepts:
   - `userId` (string): The `userId` of the user to unblock. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
   - `deviceId` (string): The `deviceId` to unblock. Specify exactly one of `userId` or `deviceId`, as a non-empty string.
-  - `includeAssociations` (boolean, optional): Set to `true` to also unblock immediately associated devices for a user, or immediately associated users for a device, asynchronously. Defaults to `false`.
+  - `includeAssociations` (boolean, optional): Set to `true` to also unblock associated devices for a user, or immediately associated users for a device, asynchronously. Defaults to `false`.
   - `label` (string, optional): Either `fraud` or `not_fraud`. Requires fraud labels to be enabled for your project.
   - `fraudType` (string, optional): A fraud category, up to 100 characters. Allows alphanumeric characters, dashes, underscores, spaces, periods, and commas. Requires `label`.
   - `incidentTime` (string, optional): The time of the incident as an ISO 8601 datetime with a timezone, for example, `2026-10-21T12:00:00Z`. Requires `label`.
