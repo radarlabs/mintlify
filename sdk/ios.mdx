@@ -970,26 +970,60 @@ Radar.searchPlaces(
 
 </CodeGroup>
 
-With the [address validation API](/api#validate-an-address) (currently in beta), validate a structured address in the US or Canada:
+With the [address validation API](/api#validate-an-address) (currently in beta), validate a structured address in the US or Canada. Pass either a street and number or a single-line address label, plus a `city`, `stateCode`, `postalCode`, and `countryCode`. `unit` is optional. If a required field is empty, the SDK returns `.errorBadRequest` without sending a request.
 
 <CodeGroup>
 
 ```swift Swift
 Radar.validateAddress(
-    address: address
-) { (status: RadarStatus, address: RadarAddress?, result: ValidationResult) in
-    // do something with validation result and address
+    street: "Jay St",
+    number: "20",
+    city: "Brooklyn",
+    stateCode: "NY",
+    postalCode: "11201",
+    countryCode: "US"
+) { (status: RadarStatus, address: RadarAddress?, verificationStatus: RadarAddressVerificationStatus) in
+    // do something with verificationStatus and address
+}
+
+Radar.validateAddress(
+    addressLabel: "20 Jay St",
+    unit: "Suite 900",
+    city: "Brooklyn",
+    stateCode: "NY",
+    postalCode: "11201",
+    countryCode: "US"
+) { (status: RadarStatus, address: RadarAddress?, verificationStatus: RadarAddressVerificationStatus) in
+    // do something with verificationStatus and address
 }
 ```
 
 ```c Objective-C
-[Radar validateAddress:address
-     completionHandler:^(RadarStatus status, RadarAddress *address, ValidationResult result) {
-    // do something with validation result and address
+[Radar validateAddressWithStreet:@"Jay St"
+                          number:@"20"
+                            unit:nil
+                            city:@"Brooklyn"
+                       stateCode:@"NY"
+                      postalCode:@"11201"
+                     countryCode:@"US"
+               completionHandler:^(RadarStatus status, RadarAddress *address, RadarAddressVerificationStatus verificationStatus) {
+    // do something with verificationStatus and address
+}];
+
+[Radar validateAddressWithAddressLabel:@"20 Jay St"
+                                  unit:@"Suite 900"
+                                  city:@"Brooklyn"
+                             stateCode:@"NY"
+                            postalCode:@"11201"
+                           countryCode:@"US"
+                     completionHandler:^(RadarStatus status, RadarAddress *address, RadarAddressVerificationStatus verificationStatus) {
+    // do something with verificationStatus and address
 }];
 ```
 
 </CodeGroup>
+
+To validate an address from autocomplete or geocoding, pass its `street` and `number` (or its `addressLabel`) and the other fields to one of these methods. These methods are available in iOS SDK 3.46.0 and later. In earlier versions, use `validateAddress(address:)`, which is now deprecated. Addresses from autocomplete and geocoding have a street, a number, and an address label. Versions before 3.46.0 send all three, and the API rejects the request with `.errorBadRequest`. On those versions, validate a copy without the label: remove `addressLabel` from `address.dictionaryValue()` and pass the result to `RadarAddress(from:)`.
 
 ### Distance
 
