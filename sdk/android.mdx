@@ -24,7 +24,7 @@ The SDK is distributed using [Maven Central](https://search.maven.org/artifact/i
 Add the SDK to the `dependencies` section of your app's `build.gradle` file:
 
 ```gradle
-dependencies {   
+dependencies {
   implementation 'io.radar:sdk:4.2.+'
 }
 ```
@@ -61,10 +61,10 @@ Use your `Test Publishable` key for testing and non-production environments. Use
 import io.radar.sdk.Radar;
 
 public class MyApplication extends Application {
-    @Override    
-    public void onCreate() {        
+    @Override
+    public void onCreate() {
         super.onCreate();
-        Radar.initialize(this, "prj_test_pk_...");    
+        Radar.initialize(this, "prj_test_pk_...");
     }
 }
 ```
@@ -73,9 +73,9 @@ public class MyApplication extends Application {
 import io.radar.sdk.Radar
 
 class MyApplication : Application() {
-    override fun onCreate() {        
+    override fun onCreate() {
         super.onCreate()
-        Radar.initialize(this, "prj_test_pk_...")    
+        Radar.initialize(this, "prj_test_pk_...")
     }
 }
 ```
@@ -621,7 +621,7 @@ public class MyRadarReceiver extends RadarReceiver {
 
     @Override
     public void onLocationPermissionStatusUpdated(context: Context,status: RadarLocationPermissionStatus) {
-      // do something with location permission status 
+      // do something with location permission status
     }
 }
 ```
@@ -650,7 +650,7 @@ class MyRadarReceiver: RadarReceiver() {
     }
 
     overide fun onLocationPermissionStatusUpdated(context: Context,status: RadarLocationPermissionStatus) {
-      // do something with location permission status 
+      // do something with location permission status
     }
 }
 ```
@@ -917,12 +917,14 @@ Radar.ipGeocode { status, address, proxy, throwable ->
 
 ### Search
 
-With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance:
+With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance. When a result is selected by the user, call `session.select`. If your project has [address enrichment](/maps/search#address-autocomplete) enabled, selecting also returns the enriched address.
 
 <CodeGroup>
 
 ```java Java
-Radar.autocomplete(
+RadarAutocompleteSession session = new RadarAutocompleteSession();
+
+session.autocomplete(
     "brooklyn roasting", // query
     near,
     null, // layers
@@ -930,18 +932,41 @@ Radar.autocomplete(
     new RadarGeocodeCallback() {
         @Override
         public void onComplete(RadarStatus status, RadarAddress[] addresses) {
-            // do something with addresses
+            if (addresses == null || addresses.length == 0) {
+                return;
+            }
+
+            // with address enrichment enabled
+            session.select(addresses[0], new RadarAutocompleteSelectCallback() {
+                @Override
+                public void onComplete(RadarStatus status, RadarAutocompleteEnrichedAddress address) {
+                    // do something with the enriched address
+                }
+            });
+
+            // otherwise
+            session.select(addresses[0]);
         }
     });
 ```
 
 ```kotlin Kotlin
-Radar.autocomplete(
+val session = RadarAutocompleteSession()
+
+session.autocomplete(
     query = "brooklyn roasting",
     near = near,
     limit = 10
 ) { status, addresses ->
-    // do something with addresses
+    val selected = addresses?.firstOrNull() ?: return@autocomplete
+
+    // with address enrichment enabled
+    session.select(selected) { status, address ->
+        // do something with the enriched address
+    }
+
+    // otherwise
+    session.select(selected)
 }
 ```
 
