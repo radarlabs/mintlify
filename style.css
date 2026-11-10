@@ -38,6 +38,43 @@ strong {
   src: url('https://assets.ctfassets.net/f2vbu16fzuly/4itlYebJGpZ4T5iO8uLU6H/3d554756701cc0c399964a4e32412207/Basis-Grotesque-Mono-Bold.woff') format('woff2');
 }
 
+/* Consistent country flags in body, heading, and code fonts; license in /fonts. */
+@font-face {
+  font-family: 'Graphik Regular';
+  font-weight: 400;
+  src: url('/fonts/TwemojiCountryFlags.woff2') format('woff2');
+  unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067,
+    U+E006C, U+E006E, U+E0073-E0074, U+E0077, U+E007F;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Graphik Semibold';
+  font-weight: 400;
+  src: url('/fonts/TwemojiCountryFlags.woff2') format('woff2');
+  unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067,
+    U+E006C, U+E006E, U+E0073-E0074, U+E0077, U+E007F;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Basis Grotesque';
+  font-weight: 400;
+  src: url('/fonts/TwemojiCountryFlags.woff2') format('woff2');
+  unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067,
+    U+E006C, U+E006E, U+E0073-E0074, U+E0077, U+E007F;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Basis Grotesque Bold';
+  font-weight: 400;
+  src: url('/fonts/TwemojiCountryFlags.woff2') format('woff2');
+  unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067,
+    U+E006C, U+E006E, U+E0073-E0074, U+E0077, U+E007F;
+  font-display: swap;
+}
+
 h1.font-semibold,
 h2.font-semibold,
 h3.font-semibold,
