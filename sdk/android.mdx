@@ -1344,5 +1344,5 @@ Radar.initialize(context, publishableKey, receiver, RadarLocationServicesProvide
 </CodeGroup>
 
 <Warning>
-  If you pass `RadarLocationServicesProvider.HUAWEI` but your app does not include `com.huawei.hms:location`, the SDK logs an error and uses Google Play Services Location instead. This behavior starts in version `{NEXT_VERSION}`.
+  If you pass `RadarLocationServicesProvider.HUAWEI` but your app does not include `com.huawei.hms:location`, the SDK does not get locations or add geofences. It logs an error, and location requests fail with `ERROR_LOCATION`. This behavior starts in version `{NEXT_VERSION}`.
 </Warning>
