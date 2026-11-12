@@ -54,7 +54,7 @@ Some SDK features need a library that the SDK does not add for you. Add the libr
 | [Huawei Mobile Services](#huawei) | `com.huawei.hms:location` |
 | [Silent push](/sdk/silent-push) | `com.google.firebase:firebase-messaging` |
 
-As of version `{NEXT_VERSION}`, the SDK includes R8 rules for these libraries. You do not need to add `-dontwarn` rules to your `proguard-rules.pro` file when you minify your app. If you added these rules for an earlier SDK version, you can remove them:
+As of version `4.3.0`, the SDK includes R8 rules for these libraries. You do not need to add `-dontwarn` rules to your `proguard-rules.pro` file when you minify your app. If you added these rules for an earlier SDK version, you can remove them:
 
 ```proguard
 -dontwarn com.huawei.hmf.tasks.**
@@ -1344,5 +1344,5 @@ Radar.initialize(context, publishableKey, receiver, RadarLocationServicesProvide
 </CodeGroup>
 
 <Warning>
-  If you pass `RadarLocationServicesProvider.HUAWEI` but your app does not include `com.huawei.hms:location`, the SDK does not get locations or add geofences. It logs an error, and location requests fail with `ERROR_LOCATION`. This behavior starts in version `{NEXT_VERSION}`.
+  If you pass `RadarLocationServicesProvider.HUAWEI` but your app does not include `com.huawei.hms:location`, the SDK does not get locations or add geofences. It logs an error, and location requests fail with `ERROR_LOCATION`. This behavior starts in version `4.3.0`.
 </Warning>
