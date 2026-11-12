@@ -45,6 +45,24 @@ As an alternative to Google Play Services, the SDK also optionally supports [Hua
 
 The SDK currently supports API level `23` or above.
 
+### Optional dependencies
+
+Some SDK features need a library that the SDK does not add for you. Add the library only if you use the feature:
+
+| Feature | Library |
+| --- | --- |
+| [Huawei Mobile Services](#huawei) | `com.huawei.hms:location` |
+| [Silent push](/sdk/silent-push) | `com.google.firebase:firebase-messaging` |
+
+As of version `4.3.0`, the SDK includes R8 rules for these libraries. You do not need to add `-dontwarn` rules to your `proguard-rules.pro` file when you minify your app. If you added these rules for an earlier SDK version, you can remove them:
+
+```proguard
+-dontwarn com.huawei.hmf.tasks.**
+-dontwarn com.huawei.hms.location.**
+-dontwarn com.google.firebase.FirebaseApp
+-dontwarn com.google.firebase.messaging.**
+```
+
 ## Initialize SDK
 
 When your app starts, in application `onCreate()`, initialize the SDK with your publishable API key, found on the [Settings page](https://dashboard.radar.com/settings).
@@ -1324,3 +1342,7 @@ Radar.initialize(context, publishableKey, receiver, RadarLocationServicesProvide
 ```
 
 </CodeGroup>
+
+<Warning>
+  If you pass `RadarLocationServicesProvider.HUAWEI` but your app does not include `com.huawei.hms:location`, the SDK does not get locations or add geofences. It logs an error, and location requests fail with `ERROR_LOCATION`. This behavior starts in version `4.3.0`.
+</Warning>
