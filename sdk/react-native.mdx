@@ -539,9 +539,7 @@ Radar.ipGeocode().then((result) => {
 With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance. Report the result the user chooses; selections are how autocomplete quality is measured and improved. If your project has [address enrichment](/maps/search#address-autocomplete) enabled, selecting also returns the enriched address.
 
 ```javascript
-import { AutocompleteSession } from 'react-native-radar';
-
-const session = await AutocompleteSession.create();
+const session = await Radar.AutocompleteSession.create();
 
 const { addresses } = await session.autocomplete({
   query: '841 bro',
