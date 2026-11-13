@@ -683,57 +683,6 @@ A project without address enrichment answers `204` with no body. With address en
 
 A chosen result from any other layer is recorded and returns `200` with no `address`.
 
-#### **Search users**
-
-Searches for users near a location, sorted by distance.
-
-**Definitions**
-
-`GET https://api.radar.io/v1/search/users`
-
-**Query parameters**
-
-- `near` (string, required): A location for the search. A string in the format `latitude,longitude`.
-- `radius` (number, optional): The radius to search, in meters. A number between 100 and 10000. Defaults to 1000. If `mode` is specified, the `radius` is the travel duration in minutes.
-- `mode` (string, optional): The [travel mode](https://docs.radar.com/api#distance). A string, one of `car`, `truck`, `foot`, or `bike`.
-- `metadata[key]` (string, optional): Optional metadata filters. Values may be of type string. Type will be automatically inferred. For example, to match on `working == true`, use `&metadata[working]=true`.
-- `limit` (number, optional): The max number of users to return. A number between 1 and 100. Defaults to 10.
-
-**Authentication level**
-
-Secret
-
-**Default rate limit**
-
-10 requests per second (contact your customer success manager to increase rate limit)
-
-**Sample request**
-
-```
-curl "https://api.radar.io/v1/search/users?near=40.78382,-73.97536&radius=1000&limit=10" \
-  -H "Authorization: prj_live_sk_..."
-```
-
-**Sample response**
-
-```json
-{
-  "meta": {
-    "code": 200
-  },
-  "users": [
-    {
-      "_id": "56db1f4613012711002229f4",
-      "live": true,
-      "userId": "1",
-      "deviceId": "C305F2DB-56DC-404F-B6C1-BC52F0B680D8",
-      ...
-    },
-    ...
-  ]
-}
-```
-
 #### **Search geofences**
 
 Searches for geofences near a location, sorted by distance.
