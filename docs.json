@@ -42,6 +42,50 @@
     {
       "source": "/sdk/fraud",
       "destination": "/geofencing/fraud"
+    },
+    {
+      "source": "/trip-tracking",
+      "destination": "/geofencing/trips"
+    },
+    {
+      "source": "/places",
+      "destination": "/geofencing/places"
+    },
+    {
+      "source": "/geofences",
+      "destination": "/geofencing/geofences"
+    },
+    {
+      "source": "/beacons",
+      "destination": "/geofencing/beacons"
+    },
+    {
+      "source": "/regions",
+      "destination": "/geofencing/regions"
+    },
+    {
+      "source": "/fraud",
+      "destination": "/geofencing/fraud"
+    },
+    {
+      "source": "/campaigns",
+      "destination": "/geofencing/campaigns"
+    },
+    {
+      "source": "/sdk",
+      "destination": "/sdk/sdk"
+    },
+    {
+      "source": "/sdk/xamarin",
+      "destination": "/sdk/maui"
+    },
+    {
+      "source": "/tutorials/integrations/braze",
+      "destination": "/integrations/braze"
+    },
+    {
+      "source": "/tutorials/building-a-delivery-tracker-with-live-location-and-etas",
+      "destination": "/tutorials/building-a-delivery-tracking-app"
     }
   ],
   "navigation": {
