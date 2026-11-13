@@ -536,21 +536,27 @@ Radar.ipGeocode().then((result) => {
 
 #### Search
 
-With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance:
+With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance. Report the result the user chooses; selections are how autocomplete quality is measured and improved. If your project has [address enrichment](/maps/search#address-autocomplete) enabled, selecting also returns the enriched address.
 
 ```javascript
-Radar.autocomplete({ 
-  query: 'brooklyn roasting', 
-  near: { 
-    latitude: 40.783826, 
-    longitude: -73.975363 
-  }, 
+import { AutocompleteSession } from 'react-native-radar';
+
+const session = await AutocompleteSession.create();
+
+const { addresses } = await session.autocomplete({
+  query: '841 bro',
+  near: {
+    latitude: 40.783826,
+    longitude: -73.975363
+  },
   limit: 10
-}).then((result) => {
-  // do something with result.addresses
-}).catch((err) => {
-  // optionally, do something with err
 });
+
+// with address enrichment enabled
+const { address } = await session.select(addresses[0]);
+
+// otherwise
+await session.select(addresses[0]);
 ```
 
 With the [geofence search API](/api#search-geofences), search for geofences near a location, sorted by distance:
