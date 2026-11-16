@@ -101,7 +101,10 @@ b,
   font-display: swap;
 }
 
-/* Headings: radar.com's medium weight and condensed tracking (-0.02em). */
+/* Headings: radar.com's medium weight. Its condensed tracking (-0.02em) is for display
+   sizes: here the page title and the page's section headings. Small headings elsewhere (card
+   titles, sidebar group titles, "On this page") keep normal tracking, as radar.com's
+   h5/h6 and body text do. */
 h1,
 h2,
 h3,
@@ -109,6 +112,13 @@ h4,
 h5,
 h6 {
   font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+
+#content-area h1:not(.not-prose),
+#content-area h2:not(.not-prose),
+#content-area h3:not(.not-prose),
+#content-area h4:not(.not-prose) {
   letter-spacing: -0.02em !important;
 }
 
