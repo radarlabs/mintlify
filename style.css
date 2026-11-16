@@ -368,3 +368,81 @@ div[data-component-part="callout-icon"] {
     padding-top: calc(49.6px + 56px + 2.5rem + var(--banner-height, 0px)) !important;
   }
 }
+
+
+/* === Code: radar.com's syntax colors ===
+   Mintlify only takes built-in Shiki themes, so code is highlighted with GitHub's default
+   light and dark themes (docs.json → styling.codeblocks) and each of their colors is swapped
+   for one from radar.com's palette here. The radar.com blog's code blocks use the same
+   themes and the same swaps (marketing repo: src/lib/code-theme.ts); keep the two in step.
+   Shiki writes the light color inline (color:…) and the dark one as --shiki-dark. */
+
+/* Plain text (set on the <pre> itself, and on some tokens) */
+pre[style*="color:#1F2328" i],
+pre span[style*="color:#1F2328" i] {
+  color: #080D18 !important;
+}
+pre[style*="--shiki-dark:#E6EDF3" i],
+pre span[style*="--shiki-dark:#E6EDF3" i] {
+  --shiki-dark: #DEE0E2 !important;
+}
+/* Comments */
+pre span[style*="color:#6E7781" i] {
+  color: #5F636C !important;
+}
+pre span[style*="--shiki-dark:#8B949E" i] {
+  --shiki-dark: #83868D !important;
+}
+/* Keywords */
+pre span[style*="color:#CF222E" i] {
+  color: #BF006A !important;
+}
+pre span[style*="--shiki-dark:#FF7B72" i] {
+  --shiki-dark: #FE8EB6 !important;
+}
+/* Strings */
+pre span[style*="color:#0A3069" i] {
+  color: #195E37 !important;
+}
+pre span[style*="--shiki-dark:#A5D6FF" i] {
+  --shiki-dark: #84DCA2 !important;
+}
+/* Constants, numbers, properties */
+pre span[style*="color:#0550AE" i] {
+  color: #0004F8 !important;
+}
+pre span[style*="--shiki-dark:#79C0FF" i] {
+  --shiki-dark: #ABC1EB !important;
+}
+/* JSON keys, tags */
+pre span[style*="color:#116329" i] {
+  color: #015964 !important;
+}
+pre span[style*="--shiki-dark:#7EE787" i] {
+  --shiki-dark: #76D4E3 !important;
+}
+/* Functions */
+pre span[style*="color:#8250DF" i] {
+  color: #492CD0 !important;
+}
+pre span[style*="--shiki-dark:#D2A8FF" i] {
+  --shiki-dark: #969AFF !important;
+}
+/* Variables, names */
+pre span[style*="color:#953800" i] {
+  color: #A34400 !important;
+}
+pre span[style*="--shiki-dark:#FFA657" i] {
+  --shiki-dark: #FF9C69 !important;
+}
+/* Errors */
+pre span[style*="color:#82071E" i] {
+  color: #BF0000 !important;
+}
+pre span[style*="--shiki-dark:#FFA198" i] {
+  --shiki-dark: #FE7F7F !important;
+}
+/* Bracket highlights */
+pre span[style*="color:#57606A" i] {
+  color: #484D57 !important;
+}

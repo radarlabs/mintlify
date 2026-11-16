@@ -21,6 +21,14 @@
       "format": "woff2"
     }
   },
+  "styling": {
+    "codeblocks": {
+      "theme": {
+        "light": "github-light-default",
+        "dark": "github-dark-default"
+      }
+    }
+  },
   "background": {
     "color": {
       "light": "#FFFFFF",
