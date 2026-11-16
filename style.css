@@ -241,6 +241,112 @@ div[data-component-part="callout-icon"] {
   background: url("/images/svg/warningDark.svg") no-repeat center / contain;
 }
 
-.nav-logo {
-  height: 21px !important;
+
+/* === Nav: logo and "Docs" tag, sized and placed exactly like radar.com's nav ===
+   radar.com: an 84×20 logo; the nav is 40px tall below 992px and 49.6px from 992px up; its
+   content sits in the page gutter (20px, 24px from 480px, 40px from 768px, 80px from 992px)
+   and, on wide screens, in a centered 1280px column. */
+
+@font-face {
+  font-family: 'Basis Grotesque Mono';
+  font-weight: 700;
+  src: url('/fonts/Basis-Grotesque-Mono-Bold.woff2') format('woff2');
+  font-display: swap;
+}
+
+#navbar .max-w-8xl {
+  max-width: none;
+}
+
+#navbar .h-16 {
+  height: 40px;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+@media (min-width: 480px) {
+  #navbar .h-16 {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
+@media (min-width: 768px) {
+  #navbar .h-16 {
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+}
+
+@media (min-width: 992px) {
+  #navbar .h-16 {
+    height: 49.6px;
+    padding-left: max(80px, calc((100% - 1280px) / 2));
+    padding-right: max(80px, calc((100% - 1280px) / 2));
+  }
+}
+
+/* The sidebar and the "On this page" column stick below the nav (Mintlify assumes 64px). */
+@media (min-width: 1024px) {
+  :root {
+    --mintlify-slot-header-height: 49.6px;
+  }
+
+  #content-side-layout {
+    top: calc(49.6px + 2.5rem);
+    height: calc(100vh - 49.6px - 4rem);
+  }
+}
+
+#navbar .nav-logo {
+  width: 84px !important;
+  height: 20px !important;
+}
+
+/* The tag: radar.com's nav banner tag (4px corners, 2px × 8px padding) set in its eyebrow
+   type (Basis Grotesque Mono, bold, uppercase), in Radar sapphire on a cobalt tint. */
+#navbar a:has(> .nav-logo) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#navbar a:has(> .nav-logo)::after {
+  content: "Docs";
+  font-family: 'Basis Grotesque Mono', monospace;
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 16px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #0004F8;
+  background-color: #D5E0F5;
+}
+
+.dark #navbar a:has(> .nav-logo)::after {
+  color: #D5E0F5;
+  background-color: #00014B;
+}
+
+/* Below 1024px Mintlify draws a 1px divider under this row as a bottom border, which pulls the
+   centered logo up half a pixel; balance it so the logo sits where radar.com's does. */
+@media (max-width: 1023px) {
+  #navbar .h-16 > div {
+    padding-top: 1px;
+  }
+}
+
+/* Below 1024px the header is fixed, and the page clears it with padding that assumes a
+   64px logo row (10rem = 64px + 56px breadcrumb row + 2.5rem). Clear the resized row instead. */
+@media (max-width: 1023px) {
+  [class*="pt-[calc(10rem"] {
+    padding-top: calc(40px + 56px + 2.5rem + var(--banner-height, 0px)) !important;
+  }
+}
+@media (min-width: 992px) and (max-width: 1023px) {
+  [class*="pt-[calc(10rem"] {
+    padding-top: calc(49.6px + 56px + 2.5rem + var(--banner-height, 0px)) !important;
+  }
 }
