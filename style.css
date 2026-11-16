@@ -274,10 +274,9 @@ div[data-component-part="callout-icon"] {
 }
 
 
-/* === Nav: logo and "Docs" tag, sized and placed exactly like radar.com's nav ===
-   radar.com: an 84×20 logo; the nav is 40px tall below 992px and 49.6px from 992px up; its
-   content sits in the page gutter (20px, 24px from 480px, 40px from 768px, 80px from 992px)
-   and, on wide screens, in a centered 1280px column. */
+/* === Nav: logo and "Docs" label ===
+   radar.com's nav: an 84×20 logo in a bar 40px tall below 992px and 49.6px from 992px up.
+   Horizontally the logo keeps Mintlify's padding, so it lines up with the sidebar links. */
 
 @font-face {
   font-family: 'Basis Grotesque Mono';
@@ -286,35 +285,13 @@ div[data-component-part="callout-icon"] {
   font-display: swap;
 }
 
-#navbar .max-w-8xl {
-  max-width: none;
-}
-
 #navbar .h-16 {
   height: 40px;
-  padding-left: 20px;
-  padding-right: 20px;
-}
-
-@media (min-width: 480px) {
-  #navbar .h-16 {
-    padding-left: 24px;
-    padding-right: 24px;
-  }
-}
-
-@media (min-width: 768px) {
-  #navbar .h-16 {
-    padding-left: 40px;
-    padding-right: 40px;
-  }
 }
 
 @media (min-width: 992px) {
   #navbar .h-16 {
     height: 49.6px;
-    padding-left: max(80px, calc((100% - 1280px) / 2));
-    padding-right: max(80px, calc((100% - 1280px) / 2));
   }
 }
 
@@ -335,31 +312,30 @@ div[data-component-part="callout-icon"] {
   height: 20px !important;
 }
 
-/* The tag: radar.com's nav banner tag (4px corners, 2px × 8px padding) set in its eyebrow
-   type (Basis Grotesque Mono, bold, uppercase), in Radar sapphire on a cobalt tint. */
+/* "Docs" after the logo, set like the eyebrow above each page title (Basis Grotesque Mono
+   bold, uppercase, 14px, primary color). */
 #navbar a:has(> .nav-logo) {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 #navbar a:has(> .nav-logo)::after {
   content: "Docs";
   font-family: 'Basis Grotesque Mono', monospace;
   font-weight: 700;
-  font-size: 11px;
-  line-height: 16px;
+  font-size: 14px;
+  line-height: 20px;
   letter-spacing: 0;
   text-transform: uppercase;
-  padding: 2px 8px;
-  border-radius: 4px;
-  color: #0004F8;
-  background-color: #D5E0F5;
+  color: #0005FB;
+  /* Sit on the wordmark's baseline rather than centered beside it (measured). */
+  position: relative;
+  top: 2.5px;
 }
 
 .dark #navbar a:has(> .nav-logo)::after {
-  color: #D5E0F5;
-  background-color: #00014B;
+  color: #A6BAED;
 }
 
 /* Below 1024px Mintlify draws a 1px divider under this row as a bottom border, which pulls the
