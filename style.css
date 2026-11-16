@@ -7,9 +7,45 @@
   text-decoration: none !important;
 }
 
-strong {
-  font-family: 'Graphik Semibold', sans-serif !important;
-  font-weight: 400 !important;
+/* === Type: radar.com's fonts and weights ===
+   radar.com sets everything in Graphik at two weights, regular (400) and medium (500), with
+   code and eyebrows in Basis Grotesque Mono. Each weight is a real font file here (the same
+   files radar.com serves), so nothing is faux-bolded. */
+
+@font-face {
+  font-family: 'Graphik';
+  font-weight: 500;
+  src: url('/fonts/Graphik-500-Medium.woff2') format('woff2');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Graphik';
+  font-weight: 400;
+  src: url('/fonts/Graphik-400-Regular.woff2') format('woff2');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Basis Grotesque Mono';
+  font-weight: 400;
+  src: url('/fonts/Basis-Grotesque-Mono.woff2') format('woff2');
+  font-display: swap;
+}
+
+/* Mintlify turns on character variants meant for Inter, its default font; radar.com uses
+   Graphik's standard letterforms. */
+html,
+body {
+  font-feature-settings: normal !important;
+}
+
+/* radar.com's emphasis weight is medium; it never goes heavier. */
+strong,
+b,
+.font-semibold,
+.font-bold {
+  font-weight: 500 !important;
 }
 
 .link:hover,
@@ -28,19 +64,9 @@ strong {
 
 /* code text styling */
 
-@font-face {
-  font-family: 'Basis Grotesque';
-  src: url('https://assets.ctfassets.net/f2vbu16fzuly/2mbvOzmlrpROxd81MYVMEJ/88014dbc406e6dc9fb7d4b8f6d56aa7c/Basis-Grotesque-Mono-Regular.woff') format('woff2');
-}
-
-@font-face {
-  font-family: 'Basis Grotesque Bold';
-  src: url('https://assets.ctfassets.net/f2vbu16fzuly/4itlYebJGpZ4T5iO8uLU6H/3d554756701cc0c399964a4e32412207/Basis-Grotesque-Mono-Bold.woff') format('woff2');
-}
-
 /* Consistent country flags in body, heading, and code fonts; license in /fonts. */
 @font-face {
-  font-family: 'Graphik Regular';
+  font-family: 'Graphik';
   font-weight: 400;
   src: url('/fonts/TwemojiCountryFlags.woff2') format('woff2');
   unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067,
@@ -49,7 +75,16 @@ strong {
 }
 
 @font-face {
-  font-family: 'Graphik Semibold';
+  font-family: 'Graphik';
+  font-weight: 500;
+  src: url('/fonts/TwemojiCountryFlags.woff2') format('woff2');
+  unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067,
+    U+E006C, U+E006E, U+E0073-E0074, U+E0077, U+E007F;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Basis Grotesque Mono';
   font-weight: 400;
   src: url('/fonts/TwemojiCountryFlags.woff2') format('woff2');
   unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067,
@@ -58,41 +93,48 @@ strong {
 }
 
 @font-face {
-  font-family: 'Basis Grotesque';
-  font-weight: 400;
+  font-family: 'Basis Grotesque Mono';
+  font-weight: 700;
   src: url('/fonts/TwemojiCountryFlags.woff2') format('woff2');
   unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067,
     U+E006C, U+E006E, U+E0073-E0074, U+E0077, U+E007F;
   font-display: swap;
 }
 
-@font-face {
-  font-family: 'Basis Grotesque Bold';
-  font-weight: 400;
-  src: url('/fonts/TwemojiCountryFlags.woff2') format('woff2');
-  unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067,
-    U+E006C, U+E006E, U+E0073-E0074, U+E0077, U+E007F;
-  font-display: swap;
+/* Headings: radar.com's medium weight. Its condensed tracking (-0.02em) is for display
+   sizes: here the page title and the page's section headings. Small headings elsewhere (card
+   titles, sidebar group titles, "On this page") keep normal tracking, as radar.com's
+   h5/h6 and body text do. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
 }
 
-h1.font-semibold,
-h2.font-semibold,
-h3.font-semibold,
-h4.font-semibold,
-h5.font-semibold,
-h6.font-semibold {
-  font-weight: 400 !important;
+#content-area h1:not(.not-prose),
+#content-area h2:not(.not-prose),
+#content-area h3:not(.not-prose),
+#content-area h4:not(.not-prose) {
+  letter-spacing: -0.02em !important;
 }
 
+/* Eyebrow above the page title: radar.com's eyebrow (Basis Grotesque Mono bold, uppercase). */
 .eyebrow {
-  font-family: 'Basis Grotesque Bold', monospace !important;
-  font-weight: 400 !important;
+  font-family: 'Basis Grotesque Mono', monospace !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 /* light mode code styling */
 
 code, pre, kbd, samp {
-  font-family: 'Basis Grotesque', monospace !important;
+  font-family: 'Basis Grotesque Mono', monospace !important;
+  font-weight: 400 !important;
   color: #051723 !important;
   background-color: #F6FAFC !important;
 }
@@ -241,6 +283,166 @@ div[data-component-part="callout-icon"] {
   background: url("/images/svg/warningDark.svg") no-repeat center / contain;
 }
 
-.nav-logo {
-  height: 21px !important;
+
+/* === Nav: logo and "Docs" label ===
+   radar.com's nav: an 84×20 logo in a bar 40px tall below 992px and 49.6px from 992px up.
+   Horizontally the logo keeps Mintlify's padding, so it lines up with the sidebar links. */
+
+@font-face {
+  font-family: 'Basis Grotesque Mono';
+  font-weight: 700;
+  src: url('/fonts/Basis-Grotesque-Mono-Bold.woff2') format('woff2');
+  font-display: swap;
+}
+
+#navbar .h-16 {
+  height: 40px;
+}
+
+@media (min-width: 992px) {
+  #navbar .h-16 {
+    height: 49.6px;
+  }
+}
+
+/* The sidebar and the "On this page" column stick below the nav (Mintlify assumes 64px). */
+@media (min-width: 1024px) {
+  :root {
+    --mintlify-slot-header-height: 49.6px;
+  }
+
+  #content-side-layout {
+    top: calc(49.6px + 2.5rem);
+    height: calc(100vh - 49.6px - 4rem);
+  }
+}
+
+#navbar .nav-logo {
+  width: 84px !important;
+  height: 20px !important;
+}
+
+/* "Docs" after the logo, set like the eyebrow above each page title (Basis Grotesque Mono
+   bold, uppercase, 14px, primary color). */
+#navbar a:has(> .nav-logo) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#navbar a:has(> .nav-logo)::after {
+  content: "Docs";
+  font-family: 'Basis Grotesque Mono', monospace;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: #0005FB;
+  /* Sit on the wordmark's baseline rather than centered beside it (measured). */
+  position: relative;
+  top: 2.5px;
+}
+
+.dark #navbar a:has(> .nav-logo)::after {
+  color: #A6BAED;
+}
+
+/* Below 1024px Mintlify draws a 1px divider under this row as a bottom border, which pulls the
+   centered logo up half a pixel; balance it so the logo sits where radar.com's does. */
+@media (max-width: 1023px) {
+  #navbar .h-16 > div {
+    padding-top: 1px;
+  }
+}
+
+/* Below 1024px the header is fixed, and the page clears it with padding that assumes a
+   64px logo row (10rem = 64px + 56px breadcrumb row + 2.5rem). Clear the resized row instead. */
+@media (max-width: 1023px) {
+  [class*="pt-[calc(10rem"] {
+    padding-top: calc(40px + 56px + 2.5rem + var(--banner-height, 0px)) !important;
+  }
+}
+@media (min-width: 992px) and (max-width: 1023px) {
+  [class*="pt-[calc(10rem"] {
+    padding-top: calc(49.6px + 56px + 2.5rem + var(--banner-height, 0px)) !important;
+  }
+}
+
+
+/* === Code: radar.com's syntax colors ===
+   Mintlify only takes built-in Shiki themes, so code is highlighted with GitHub's default
+   light and dark themes (docs.json → styling.codeblocks) and each of their colors is swapped
+   for one from radar.com's palette here. The radar.com blog's code blocks use the same
+   themes and the same swaps (marketing repo: src/lib/code-theme.ts); keep the two in step.
+   Shiki writes the light color inline (color:…) and the dark one as --shiki-dark. */
+
+/* Plain text (set on the <pre> itself, and on some tokens) */
+pre[style*="color:#1F2328" i],
+pre span[style*="color:#1F2328" i] {
+  color: #080D18 !important;
+}
+pre[style*="--shiki-dark:#E6EDF3" i],
+pre span[style*="--shiki-dark:#E6EDF3" i] {
+  --shiki-dark: #DEE0E2 !important;
+}
+/* Comments */
+pre span[style*="color:#6E7781" i] {
+  color: #5F636C !important;
+}
+pre span[style*="--shiki-dark:#8B949E" i] {
+  --shiki-dark: #83868D !important;
+}
+/* Keywords */
+pre span[style*="color:#CF222E" i] {
+  color: #BF006A !important;
+}
+pre span[style*="--shiki-dark:#FF7B72" i] {
+  --shiki-dark: #FE8EB6 !important;
+}
+/* Strings */
+pre span[style*="color:#0A3069" i] {
+  color: #195E37 !important;
+}
+pre span[style*="--shiki-dark:#A5D6FF" i] {
+  --shiki-dark: #84DCA2 !important;
+}
+/* Constants, numbers, properties */
+pre span[style*="color:#0550AE" i] {
+  color: #0004F8 !important;
+}
+pre span[style*="--shiki-dark:#79C0FF" i] {
+  --shiki-dark: #ABC1EB !important;
+}
+/* JSON keys, tags */
+pre span[style*="color:#116329" i] {
+  color: #015964 !important;
+}
+pre span[style*="--shiki-dark:#7EE787" i] {
+  --shiki-dark: #76D4E3 !important;
+}
+/* Functions */
+pre span[style*="color:#8250DF" i] {
+  color: #492CD0 !important;
+}
+pre span[style*="--shiki-dark:#D2A8FF" i] {
+  --shiki-dark: #969AFF !important;
+}
+/* Variables, names */
+pre span[style*="color:#953800" i] {
+  color: #A34400 !important;
+}
+pre span[style*="--shiki-dark:#FFA657" i] {
+  --shiki-dark: #FF9C69 !important;
+}
+/* Errors */
+pre span[style*="color:#82071E" i] {
+  color: #BF0000 !important;
+}
+pre span[style*="--shiki-dark:#FFA198" i] {
+  --shiki-dark: #FE7F7F !important;
+}
+/* Bracket highlights */
+pre span[style*="color:#57606A" i] {
+  color: #484D57 !important;
 }
