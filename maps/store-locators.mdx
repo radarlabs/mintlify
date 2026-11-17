@@ -617,7 +617,7 @@ A bank finder, a dealer finder, and a pickup-point finder are the same flow with
 
 If your locations already come from your own API, you can skip geofences. Keep the same structure: build one `locations` array, compute `straightLineMiles()` from the search origin to each, sort by it, take the first few, and render the list and markers from that array. Address search, the user's location, selection, and route distance work as in the example. This suits a small number of locations. With many locations, a geofence search avoids sending the whole list to every visitor.
 
-### Search Radar's places
+### Search places
 
 To find public places, such as a category of business or a named chain, use `Radar.searchPlaces()` with `chains` or `categories` in place of `Radar.searchGeofences()`. Results have a `name`, `categories`, and a `location` point. See [Search places](/api/search#search-places).
 
