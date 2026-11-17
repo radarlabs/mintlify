@@ -8,6 +8,418 @@ import TripLifecycle from '/snippets/trip-lifecycle.mdx';
 
 At the end of this guide, your app starts a trip when a journey begins, your backend receives a live ETA and approaching and arrival events, and tracking returns to its earlier state when the journey ends. The guide has one common trip lifecycle and three sections that apply it: [pickups](#track-pickups), [deliveries](#track-deliveries), and [workers](#track-workers).
 
+## Complete example
+
+This is the client side of the common trip lifecycle in one block, using a pickup: initialize, identify the user, request permission, start a trip to the store's geofence with continuous tracking, receive approaching and arrival events, and complete or cancel the trip. The sections below explain each part.
+
+<CodeGroup>
+
+```swift Swift
+import CoreLocation
+import RadarSDK
+import UIKit
+
+@main
+class AppDelegate: UIResponder, UIApplicationDelegate, RadarDelegate {
+    private let locationManager = CLLocationManager()
+
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        Radar.initialize(publishableKey: "prj_test_pk_...")
+        Radar.setUserId("user-123")
+        Radar.setDelegate(self)
+        return true
+    }
+
+    // Call when the user reaches the pickup flow. A trip needs foreground access only.
+    func requestLocationPermission() {
+        locationManager.requestWhenInUseAuthorization()
+    }
+
+    // Call when the journey begins, for example when the customer taps "I'm on my way".
+    func startPickupTrip(orderId: String, storeId: String) {
+        let tripOptions = RadarTripOptions(
+            externalId: orderId,
+            destinationGeofenceTag: "store",
+            destinationGeofenceExternalId: storeId
+        )
+        tripOptions.mode = .car
+
+        Radar.startTrip(
+            options: tripOptions,
+            trackingOptions: .presetContinuous
+        ) { status, trip, events in
+            guard status == .success else {
+                // No trip was created. Keep the order on its time-based path.
+                print("startTrip failed: \(Radar.stringForStatus(status))")
+                return
+            }
+            print("Trip started for \(orderId)")
+        }
+    }
+
+    func didReceiveEvents(_ events: [RadarEvent], user: RadarUser?) {
+        for event in events {
+            switch event.type {
+            case .userApproachingTripDestination:
+                print("Approaching, \(event.trip?.etaDuration ?? 0) minutes away")
+            case .userArrivedAtTripDestination:
+                print("Arrived for \(event.trip?.externalId ?? "")")
+            case .userStoppedTrip:
+                print("Trip ended")
+            default:
+                break
+            }
+        }
+    }
+
+    // Call at handoff. The SDK restores the tracking that was running before the trip.
+    func completePickupTrip() {
+        Radar.completeTrip { status, trip, events in
+            if status != .success && status != .errorNotFound {
+                // The trip is still active on the server. Retry.
+                print("completeTrip failed: \(Radar.stringForStatus(status))")
+            }
+        }
+    }
+
+    // Call when the order is canceled.
+    func cancelPickupTrip() {
+        Radar.cancelTrip { status, trip, events in
+            if status != .success && status != .errorNotFound {
+                print("cancelTrip failed: \(Radar.stringForStatus(status))")
+            }
+        }
+    }
+}
+```
+
+```kotlin Kotlin
+import android.Manifest
+import android.app.Application
+import android.content.Context
+import android.location.Location
+import android.util.Log
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarReceiver
+import io.radar.sdk.RadarTrackingOptions
+import io.radar.sdk.RadarTripOptions
+import io.radar.sdk.model.RadarEvent
+import io.radar.sdk.model.RadarUser
+
+class MyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        Radar.initialize(this, "prj_test_pk_...")
+        Radar.setUserId("user-123")
+        Radar.setReceiver(TripReceiver())
+    }
+}
+
+class MainActivity : AppCompatActivity() {
+    private val permissionRequest = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) {}
+
+    // Call when the user reaches the pickup flow. A trip needs foreground access only.
+    fun requestLocationPermission() {
+        permissionRequest.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        )
+    }
+
+    // Call when the journey begins, for example when the customer taps "I'm on my way".
+    fun startPickupTrip(orderId: String, storeId: String) {
+        val tripOptions = RadarTripOptions(
+            externalId = orderId,
+            destinationGeofenceTag = "store",
+            destinationGeofenceExternalId = storeId,
+            mode = Radar.RadarRouteMode.CAR
+        )
+
+        Radar.startTrip(tripOptions, RadarTrackingOptions.CONTINUOUS) { status, trip, events ->
+            if (status != Radar.RadarStatus.SUCCESS) {
+                // No trip was created. Keep the order on its time-based path.
+                Log.w("Trips", "startTrip failed: $status")
+                return@startTrip
+            }
+            Log.d("Trips", "Trip started for $orderId")
+        }
+    }
+
+    // Call at handoff. The SDK restores the tracking that was running before the trip.
+    fun completePickupTrip() {
+        Radar.completeTrip { status, trip, events ->
+            if (status != Radar.RadarStatus.SUCCESS && status != Radar.RadarStatus.ERROR_NOT_FOUND) {
+                // The trip is still active on the server. Retry.
+                Log.w("Trips", "completeTrip failed: $status")
+            }
+        }
+    }
+
+    // Call when the order is canceled.
+    fun cancelPickupTrip() {
+        Radar.cancelTrip { status, trip, events ->
+            if (status != Radar.RadarStatus.SUCCESS && status != Radar.RadarStatus.ERROR_NOT_FOUND) {
+                Log.w("Trips", "cancelTrip failed: $status")
+            }
+        }
+    }
+}
+
+class TripReceiver : RadarReceiver() {
+    override fun onEventsReceived(context: Context, events: Array<RadarEvent>, user: RadarUser?) {
+        for (event in events) {
+            when (event.type) {
+                RadarEvent.RadarEventType.USER_APPROACHING_TRIP_DESTINATION ->
+                    Log.d("Trips", "Approaching, ${event.trip?.etaDuration} minutes away")
+                RadarEvent.RadarEventType.USER_ARRIVED_AT_TRIP_DESTINATION ->
+                    Log.d("Trips", "Arrived for ${event.trip?.externalId}")
+                RadarEvent.RadarEventType.USER_STOPPED_TRIP ->
+                    Log.d("Trips", "Trip ended")
+                else -> Unit
+            }
+        }
+    }
+
+    override fun onError(context: Context, status: Radar.RadarStatus) {
+        Log.w("Trips", "Radar request failed: $status")
+    }
+
+    override fun onLocationUpdated(context: Context, location: Location, user: RadarUser) {}
+
+    override fun onClientLocationUpdated(
+        context: Context,
+        location: Location,
+        stopped: Boolean,
+        source: Radar.RadarLocationSource
+    ) {}
+
+    override fun onLog(context: Context, message: String) {}
+}
+```
+
+```javascript JavaScript
+import Radar from 'radar-sdk-js';
+
+Radar.initialize('prj_test_pk_...');
+Radar.setUserId('user-123');
+
+let updateTimer;
+
+function handleTripEvents(events = []) {
+  for (const event of events) {
+    switch (event.type) {
+      case 'user.approaching_trip_destination':
+        console.log(`Approaching, ${event.trip?.eta?.duration} minutes away`);
+        break;
+      case 'user.arrived_at_trip_destination':
+        console.log(`Arrived for ${event.trip?.externalId}`);
+        break;
+      case 'user.stopped_trip':
+        console.log('Trip ended');
+        break;
+    }
+  }
+}
+
+// The Web SDK doesn't track on its own, so send a location on a timer while
+// the page is open. The browser asks for location permission on the first call.
+async function sendLocationUpdate() {
+  try {
+    const { events } = await Radar.trackOnce();
+    handleTripEvents(events);
+  } catch (err) {
+    console.warn('trackOnce failed', err.status);
+  }
+}
+
+// Call when the journey begins, for example when the customer taps "I'm on my way".
+export async function startPickupTrip(orderId, storeId) {
+  try {
+    const { events } = await Radar.startTrip({
+      externalId: orderId,
+      destinationGeofenceTag: 'store',
+      destinationGeofenceExternalId: storeId,
+      mode: 'car',
+    });
+    handleTripEvents(events);
+    await sendLocationUpdate();
+    updateTimer = setInterval(sendLocationUpdate, 30000);
+  } catch (err) {
+    // No trip was created. Keep the order on its time-based path.
+    console.warn('startTrip failed', err.status);
+  }
+}
+
+// Call at handoff.
+export async function completePickupTrip() {
+  clearInterval(updateTimer);
+  try {
+    handleTripEvents((await Radar.completeTrip()).events);
+  } catch (err) {
+    // The trip is still active on the server. Retry.
+    console.warn('completeTrip failed', err.status);
+  }
+}
+
+// Call when the order is canceled.
+export async function cancelPickupTrip() {
+  clearInterval(updateTimer);
+  try {
+    handleTripEvents((await Radar.cancelTrip()).events);
+  } catch (err) {
+    console.warn('cancelTrip failed', err.status);
+  }
+}
+```
+
+```javascript React Native
+import Radar, { presetContinuous } from 'react-native-radar';
+
+Radar.initialize('prj_test_pk_...');
+Radar.setUserId('user-123');
+
+Radar.onEventsReceived(({ events }) => {
+  for (const event of events) {
+    switch (event.type) {
+      case 'user.approaching_trip_destination':
+        console.log(`Approaching, ${event.trip?.eta?.duration} minutes away`);
+        break;
+      case 'user.arrived_at_trip_destination':
+        console.log(`Arrived for ${event.trip?.externalId}`);
+        break;
+      case 'user.stopped_trip':
+        console.log('Trip ended');
+        break;
+    }
+  }
+});
+
+// Call when the user reaches the pickup flow. A trip needs foreground access only.
+export async function requestLocationPermission() {
+  return Radar.requestPermissions(false);
+}
+
+// Call when the journey begins, for example when the customer taps "I'm on my way".
+export async function startPickupTrip(orderId, storeId) {
+  try {
+    await Radar.startTrip({
+      tripOptions: {
+        externalId: orderId,
+        destinationGeofenceTag: 'store',
+        destinationGeofenceExternalId: storeId,
+        mode: 'car',
+      },
+      trackingOptions: presetContinuous,
+    });
+    console.log(`Trip started for ${orderId}`);
+  } catch (err) {
+    // No trip was created. Keep the order on its time-based path.
+    console.warn('startTrip failed', err.code);
+  }
+}
+
+// Call at handoff. The SDK restores the tracking that was running before the trip.
+export async function completePickupTrip() {
+  try {
+    await Radar.completeTrip();
+  } catch (err) {
+    // Unless the code is ERROR_NOT_FOUND, the trip is still active on the server. Retry.
+    console.warn('completeTrip failed', err.code);
+  }
+}
+
+// Call when the order is canceled.
+export async function cancelPickupTrip() {
+  try {
+    await Radar.cancelTrip();
+  } catch (err) {
+    console.warn('cancelTrip failed', err.code);
+  }
+}
+```
+
+```dart Flutter
+import 'package:flutter/widgets.dart';
+import 'package:flutter_radar/flutter_radar.dart';
+
+// Call from main(), after WidgetsFlutterBinding.ensureInitialized().
+Future<void> setUpRadar() async {
+  await Radar.initialize('prj_test_pk_...');
+  await Radar.setUserId('user-123');
+  Radar.onEvents(onEvents);
+}
+
+void onEvents(Map res) {
+  for (final event in (res['events'] as List?) ?? []) {
+    switch (event['type']) {
+      case 'user.approaching_trip_destination':
+        debugPrint('Approaching, ${event['trip']?['eta']?['duration']} minutes away');
+        break;
+      case 'user.arrived_at_trip_destination':
+        debugPrint('Arrived for ${event['trip']?['externalId']}');
+        break;
+      case 'user.stopped_trip':
+        debugPrint('Trip ended');
+        break;
+    }
+  }
+}
+
+// Call when the user reaches the pickup flow. A trip needs foreground access only.
+Future<void> requestLocationPermission() async {
+  await Radar.requestPermissions(false);
+}
+
+// Call when the journey begins, for example when the customer taps "I'm on my way".
+Future<void> startPickupTrip(String orderId, String storeId) async {
+  final res = await Radar.startTrip(
+    tripOptions: {
+      'externalId': orderId,
+      'destinationGeofenceTag': 'store',
+      'destinationGeofenceExternalId': storeId,
+      'mode': 'car',
+    },
+    trackingOptions: Radar.presetContinuous,
+  );
+  if (res?['status'] != 'SUCCESS') {
+    // No trip was created. Keep the order on its time-based path.
+    debugPrint('startTrip failed: ${res?['status'] ?? res?['error']}');
+    return;
+  }
+  debugPrint('Trip started for $orderId');
+}
+
+// Call at handoff. The SDK restores the tracking that was running before the trip.
+Future<void> completePickupTrip() async {
+  final res = await Radar.completeTrip();
+  if (res?['status'] != 'SUCCESS' && res?['status'] != 'ERROR_NOT_FOUND') {
+    // The trip is still active on the server. Retry.
+    debugPrint('completeTrip failed: ${res?['status'] ?? res?['error']}');
+  }
+}
+
+// Call when the order is canceled.
+Future<void> cancelPickupTrip() async {
+  final res = await Radar.cancelTrip();
+  if (res?['status'] != 'SUCCESS' && res?['status'] != 'ERROR_NOT_FOUND') {
+    debugPrint('cancelTrip failed: ${res?['status'] ?? res?['error']}');
+  }
+}
+```
+
+</CodeGroup>
+
+Your backend receives the same trip events by webhook. See [Trip events](#trip-events).
+
 While a trip is active, the user's context includes the trip:
 
 ```json
@@ -98,7 +510,7 @@ without approval.
 ## Prerequisites
 
 - A Radar project with Trips enabled. Use the Test environment while you build.
-- iOS SDK 3.46.0 or Android SDK 4.3.0 for the native examples, or React Native SDK 4.39.0 for the React Native examples. Multi-leg trips in this guide use the native SDKs.
+- iOS SDK 3.46.0 or Android SDK 4.3.0 for the native examples, or React Native SDK 4.39.0 for the React Native examples. The complete example also has tabs for Web SDK 5.3.0 and Flutter SDK 3.12.4. Multi-leg trips in this guide use the native SDKs.
 - A destination geofence for each place a trip can end. See [Create geofences](/geofencing/geofences-and-places#create-geofences).
 - Foreground location permission. Background permission isn't required for a trip that uses the continuous preset. See [Understand foreground and background location permissions](/fundamentals/location-permissions).
 - On iOS, the **Location updates** and **Background fetch** background modes. On Android, the foreground service declared in your manifest. For setup, see the [iOS SDK](/sdk/ios#background-tracking-for-trips) and [Android SDK](/sdk/android#background-tracking-for-trips) references.
@@ -227,6 +639,161 @@ On your backend, look up the order by `trip.externalId`, deduplicate on `event._
 ## Track pickups
 
 Use this section when a customer orders ahead and travels to one of your locations: curbside, in-store pickup, or drive-thru. The goal is to have the order ready when the customer arrives, not before and not after.
+
+This block is a pickup from end to end: start the trip when the customer leaves, record the parking space when they arrive, and end the trip at handoff or cancellation. It assumes the setup in the [complete example](#complete-example).
+
+<CodeGroup>
+
+```swift Swift
+import RadarSDK
+
+// ASAP orders: call when the order is confirmed.
+// Scheduled orders: call when the customer taps "I'm on my way".
+func customerIsOnTheWay(orderId: String, storeId: String) {
+    let tripOptions = RadarTripOptions(
+        externalId: orderId,
+        destinationGeofenceTag: "store",
+        destinationGeofenceExternalId: storeId
+    )
+    tripOptions.mode = .car
+
+    Radar.startTrip(
+        options: tripOptions,
+        trackingOptions: .presetContinuous
+    ) { status, trip, events in
+        if status != .success {
+            // The order stays on the time-based path.
+            print("startTrip failed: \(Radar.stringForStatus(status))")
+        }
+    }
+}
+
+// The customer taps "I'm here" and enters a parking space.
+func customerIsHere(parkingSpace: String) {
+    guard let tripOptions = Radar.getTripOptions() else { return }
+    var metadata = tripOptions.metadata ?? [:]
+    metadata["parkingSpace"] = parkingSpace
+    tripOptions.metadata = metadata
+
+    Radar.updateTrip(options: tripOptions, status: .arrived) { status, trip, events in
+        if status != .success {
+            print("updateTrip failed: \(Radar.stringForStatus(status))")
+        }
+    }
+}
+
+// Staff confirm the handoff. For a canceled order, call Radar.cancelTrip the same way.
+func orderHandedOff() {
+    Radar.completeTrip { status, trip, events in
+        if status != .success && status != .errorNotFound {
+            // The trip is still active on the server. Retry.
+            print("completeTrip failed: \(Radar.stringForStatus(status))")
+        }
+    }
+}
+```
+
+```kotlin Kotlin
+import android.util.Log
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarTrackingOptions
+import io.radar.sdk.RadarTripOptions
+import io.radar.sdk.model.RadarTrip
+import org.json.JSONObject
+
+// ASAP orders: call when the order is confirmed.
+// Scheduled orders: call when the customer taps "I'm on my way".
+fun customerIsOnTheWay(orderId: String, storeId: String) {
+    val tripOptions = RadarTripOptions(
+        externalId = orderId,
+        destinationGeofenceTag = "store",
+        destinationGeofenceExternalId = storeId,
+        mode = Radar.RadarRouteMode.CAR
+    )
+
+    Radar.startTrip(tripOptions, RadarTrackingOptions.CONTINUOUS) { status, trip, events ->
+        if (status != Radar.RadarStatus.SUCCESS) {
+            // The order stays on the time-based path.
+            Log.w("Trips", "startTrip failed: $status")
+        }
+    }
+}
+
+// The customer taps "I'm here" and enters a parking space.
+fun customerIsHere(parkingSpace: String) {
+    val tripOptions = Radar.getTripOptions() ?: return
+    val metadata = tripOptions.metadata ?: JSONObject()
+    metadata.put("parkingSpace", parkingSpace)
+    tripOptions.metadata = metadata
+
+    Radar.updateTrip(tripOptions, RadarTrip.RadarTripStatus.ARRIVED) { status, trip, events ->
+        if (status != Radar.RadarStatus.SUCCESS) {
+            Log.w("Trips", "updateTrip failed: $status")
+        }
+    }
+}
+
+// Staff confirm the handoff. For a canceled order, call Radar.cancelTrip the same way.
+fun orderHandedOff() {
+    Radar.completeTrip { status, trip, events ->
+        if (status != Radar.RadarStatus.SUCCESS && status != Radar.RadarStatus.ERROR_NOT_FOUND) {
+            // The trip is still active on the server. Retry.
+            Log.w("Trips", "completeTrip failed: $status")
+        }
+    }
+}
+```
+
+```javascript React Native
+import Radar, { presetContinuous } from 'react-native-radar';
+
+// ASAP orders: call when the order is confirmed.
+// Scheduled orders: call when the customer taps "I'm on my way".
+export async function customerIsOnTheWay(orderId, storeId) {
+  try {
+    await Radar.startTrip({
+      tripOptions: {
+        externalId: orderId,
+        destinationGeofenceTag: 'store',
+        destinationGeofenceExternalId: storeId,
+        mode: 'car',
+      },
+      trackingOptions: presetContinuous,
+    });
+  } catch (err) {
+    // The order stays on the time-based path.
+    console.warn('startTrip failed', err.code);
+  }
+}
+
+// The customer taps "I'm here" and enters a parking space.
+export async function customerIsHere(parkingSpace) {
+  try {
+    const tripOptions = await Radar.getTripOptions();
+    await Radar.updateTrip({
+      options: {
+        ...tripOptions,
+        metadata: { ...tripOptions.metadata, parkingSpace },
+      },
+      status: 'arrived',
+    });
+  } catch (err) {
+    console.warn('updateTrip failed', err.code);
+  }
+}
+
+// Staff confirm the handoff. For a canceled order, call Radar.cancelTrip() the same way.
+export async function orderHandedOff() {
+  try {
+    await Radar.completeTrip();
+  } catch (err) {
+    // Unless the code is ERROR_NOT_FOUND, the trip is still active on the server. Retry.
+    console.warn('completeTrip failed', err.code);
+  }
+}
+```
+
+</CodeGroup>
 
 ### Pickup states
 
@@ -391,6 +958,160 @@ If your orders run through Olo, Radar can tell Olo when to send an order to the 
 
 Use this section when the tracked device belongs to the person doing the traveling: a driver or courier going to one or more customer addresses, or a traveler moving through a sequence of stops.
 
+This block is a single-stop delivery from end to end in the driver app: identify the driver, start a trip to the delivery's geofence, and end the trip at drop-off or reassignment. Your backend creates the geofence first, as shown in [Single-destination deliveries](#single-destination-deliveries). The block assumes the setup in the [complete example](#complete-example).
+
+<CodeGroup>
+
+```swift Swift
+import RadarSDK
+
+// The driver signs in.
+func driverSignedIn(driverId: String) {
+    Radar.setUserId(driverId)
+}
+
+// The driver accepts the job.
+func startDelivery(deliveryId: String, orderId: String) {
+    let tripOptions = RadarTripOptions(
+        externalId: deliveryId,
+        destinationGeofenceTag: "delivery",
+        destinationGeofenceExternalId: deliveryId
+    )
+    tripOptions.mode = .car
+    tripOptions.metadata = ["orderId": orderId]
+
+    Radar.startTrip(
+        options: tripOptions,
+        trackingOptions: .presetContinuous
+    ) { status, trip, events in
+        if status != .success {
+            // No trip was created. Don't show the route as live.
+            print("startTrip failed: \(Radar.stringForStatus(status))")
+        }
+    }
+}
+
+// The driver confirms the drop-off.
+func deliveryDroppedOff() {
+    Radar.completeTrip { status, trip, events in
+        if status != .success && status != .errorNotFound {
+            // The trip is still active on the server. Retry.
+            print("completeTrip failed: \(Radar.stringForStatus(status))")
+        }
+    }
+}
+
+// The job is reassigned or abandoned.
+func deliveryReassigned() {
+    Radar.cancelTrip { status, trip, events in
+        if status != .success && status != .errorNotFound {
+            print("cancelTrip failed: \(Radar.stringForStatus(status))")
+        }
+    }
+}
+```
+
+```kotlin Kotlin
+import android.util.Log
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarTrackingOptions
+import io.radar.sdk.RadarTripOptions
+import org.json.JSONObject
+
+// The driver signs in.
+fun driverSignedIn(driverId: String) {
+    Radar.setUserId(driverId)
+}
+
+// The driver accepts the job.
+fun startDelivery(deliveryId: String, orderId: String) {
+    val tripOptions = RadarTripOptions(
+        externalId = deliveryId,
+        metadata = JSONObject().put("orderId", orderId),
+        destinationGeofenceTag = "delivery",
+        destinationGeofenceExternalId = deliveryId,
+        mode = Radar.RadarRouteMode.CAR
+    )
+
+    Radar.startTrip(tripOptions, RadarTrackingOptions.CONTINUOUS) { status, trip, events ->
+        if (status != Radar.RadarStatus.SUCCESS) {
+            // No trip was created. Don't show the route as live.
+            Log.w("Trips", "startTrip failed: $status")
+        }
+    }
+}
+
+// The driver confirms the drop-off.
+fun deliveryDroppedOff() {
+    Radar.completeTrip { status, trip, events ->
+        if (status != Radar.RadarStatus.SUCCESS && status != Radar.RadarStatus.ERROR_NOT_FOUND) {
+            // The trip is still active on the server. Retry.
+            Log.w("Trips", "completeTrip failed: $status")
+        }
+    }
+}
+
+// The job is reassigned or abandoned.
+fun deliveryReassigned() {
+    Radar.cancelTrip { status, trip, events ->
+        if (status != Radar.RadarStatus.SUCCESS && status != Radar.RadarStatus.ERROR_NOT_FOUND) {
+            Log.w("Trips", "cancelTrip failed: $status")
+        }
+    }
+}
+```
+
+```javascript React Native
+import Radar, { presetContinuous } from 'react-native-radar';
+
+// The driver signs in.
+export function driverSignedIn(driverId) {
+  Radar.setUserId(driverId);
+}
+
+// The driver accepts the job.
+export async function startDelivery(deliveryId, orderId) {
+  try {
+    await Radar.startTrip({
+      tripOptions: {
+        externalId: deliveryId,
+        destinationGeofenceTag: 'delivery',
+        destinationGeofenceExternalId: deliveryId,
+        mode: 'car',
+        metadata: { orderId },
+      },
+      trackingOptions: presetContinuous,
+    });
+  } catch (err) {
+    // No trip was created. Don't show the route as live.
+    console.warn('startTrip failed', err.code);
+  }
+}
+
+// The driver confirms the drop-off.
+export async function deliveryDroppedOff() {
+  try {
+    await Radar.completeTrip();
+  } catch (err) {
+    // Unless the code is ERROR_NOT_FOUND, the trip is still active on the server. Retry.
+    console.warn('completeTrip failed', err.code);
+  }
+}
+
+// The job is reassigned or abandoned.
+export async function deliveryReassigned() {
+  try {
+    await Radar.cancelTrip();
+  } catch (err) {
+    console.warn('cancelTrip failed', err.code);
+  }
+}
+```
+
+</CodeGroup>
+
+For a route with several stops, see [Multi-leg trips](#multi-leg-trips).
+
 ### Delivery states
 
 | Driver journey | Trip status | Current leg status | What your backend does |
@@ -407,7 +1128,7 @@ For a single-destination delivery, ignore the leg column.
 
 ### Identify the driver and the delivery
 
-- Call `Radar.setUserId()` with the driver's ID from your system when the driver signs in, and clear it at sign-out. A shared device must not report one driver's location under another driver's ID.
+- Call `Radar.setUserId()` with the driver's ID from your system when the driver signs in. `userId` is nullable, so on a shared device you can clear it at sign-out. See [Handle login, logout, and user switching](/fundamentals/authentication-and-access#handle-login-logout-and-user-switching).
 - Use the delivery or route ID as the trip `externalId`.
 - Put what the customer-facing side needs, such as the order number, into trip or leg `metadata`. Don't put customer names or addresses in metadata unless you need them there.
 
@@ -727,6 +1448,163 @@ Never call the Trips API list operation from a customer's browser or app. It nee
 Use this section when you track people for the length of a work period instead of for one journey: field service, home health, security patrols, or shift work at changing sites. The core requirement is that location is collected while a worker is on the clock and not, or much less, while they are off it.
 
 A trip is still the right tool for one part of this: the journey to a job site. The on-clock and off-clock modes around it are tracking states that your app manages.
+
+This block is a shift from end to end: start on-clock tracking at clock-in, run a trip for the journey to a job site, and stop tracking at clock-out. It assumes the setup in the [complete example](#complete-example), and background location permission for on-clock tracking with the responsive preset.
+
+<CodeGroup>
+
+```swift Swift
+import RadarSDK
+
+// The worker clocks in.
+func clockIn() {
+    Radar.startTracking(trackingOptions: .presetResponsive)
+}
+
+// The worker taps "Start route".
+func startRoute(visitId: String, siteId: String) {
+    let tripOptions = RadarTripOptions(
+        externalId: visitId,
+        destinationGeofenceTag: "site",
+        destinationGeofenceExternalId: siteId
+    )
+    tripOptions.mode = .car
+
+    Radar.startTrip(
+        options: tripOptions,
+        trackingOptions: .presetContinuous
+    ) { status, trip, events in
+        if status != .success {
+            print("startTrip failed: \(Radar.stringForStatus(status))")
+        }
+    }
+}
+
+// The worker arrives. The SDK restores the on-clock tracking options, so
+// don't call stopTracking() here.
+func arrivedAtSite() {
+    Radar.completeTrip { status, trip, events in
+        if status != .success && status != .errorNotFound {
+            print("completeTrip failed: \(Radar.stringForStatus(status))")
+        }
+    }
+}
+
+// The worker clocks out. End any trip first, because ending a trip restores
+// the tracking that was running before it.
+func clockOut() {
+    guard Radar.getTrip() != nil else {
+        Radar.stopTracking()
+        return
+    }
+    Radar.cancelTrip { status, trip, events in
+        Radar.stopTracking()
+    }
+}
+```
+
+```kotlin Kotlin
+import android.util.Log
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarTrackingOptions
+import io.radar.sdk.RadarTripOptions
+
+// The worker clocks in.
+fun clockIn() {
+    Radar.startTracking(RadarTrackingOptions.RESPONSIVE)
+}
+
+// The worker taps "Start route".
+fun startRoute(visitId: String, siteId: String) {
+    val tripOptions = RadarTripOptions(
+        externalId = visitId,
+        destinationGeofenceTag = "site",
+        destinationGeofenceExternalId = siteId,
+        mode = Radar.RadarRouteMode.CAR
+    )
+
+    Radar.startTrip(tripOptions, RadarTrackingOptions.CONTINUOUS) { status, trip, events ->
+        if (status != Radar.RadarStatus.SUCCESS) {
+            Log.w("Trips", "startTrip failed: $status")
+        }
+    }
+}
+
+// The worker arrives. The SDK restores the on-clock tracking options, so
+// don't call stopTracking() here.
+fun arrivedAtSite() {
+    Radar.completeTrip { status, trip, events ->
+        if (status != Radar.RadarStatus.SUCCESS && status != Radar.RadarStatus.ERROR_NOT_FOUND) {
+            Log.w("Trips", "completeTrip failed: $status")
+        }
+    }
+}
+
+// The worker clocks out. End any trip first, because ending a trip restores
+// the tracking that was running before it.
+fun clockOut() {
+    if (Radar.getTrip() == null) {
+        Radar.stopTracking()
+        return
+    }
+    Radar.cancelTrip { status, trip, events ->
+        Radar.stopTracking()
+    }
+}
+```
+
+```javascript React Native
+import Radar, { presetContinuous } from 'react-native-radar';
+
+// The worker clocks in.
+export function clockIn() {
+  Radar.startTrackingResponsive();
+}
+
+// The worker taps "Start route".
+export async function startRoute(visitId, siteId) {
+  try {
+    await Radar.startTrip({
+      tripOptions: {
+        externalId: visitId,
+        destinationGeofenceTag: 'site',
+        destinationGeofenceExternalId: siteId,
+        mode: 'car',
+      },
+      trackingOptions: presetContinuous,
+    });
+  } catch (err) {
+    console.warn('startTrip failed', err.code);
+  }
+}
+
+// The worker arrives. The SDK restores the on-clock tracking options, so
+// don't call stopTracking() here.
+export async function arrivedAtSite() {
+  try {
+    await Radar.completeTrip();
+  } catch (err) {
+    console.warn('completeTrip failed', err.code);
+  }
+}
+
+// The worker clocks out. End any trip first, because ending a trip restores
+// the tracking that was running before it.
+export async function clockOut() {
+  if (await Radar.getTrip()) {
+    try {
+      await Radar.cancelTrip();
+    } catch (err) {
+      console.warn('cancelTrip failed', err.code);
+    }
+  }
+  Radar.stopTracking();
+}
+```
+
+</CodeGroup>
+
+To change modes from a shift schedule instead of a button, see [Switch modes on each location update](#switch-modes-on-each-location-update).
 
 ### Worker states
 
@@ -1051,7 +1929,7 @@ For more tools, see [Test, troubleshoot, and go live](/fundamentals/testing-and-
 
 - [Trips API](/api/trips), [Geofences API](/api/geofences), [Events API](/api/events), [Routing API](/api/routing)
 - [Tracking options](/sdk/tracking), [remote configuration](/sdk/remote-configuration), and [silent push](/sdk/silent-push)
-- SDK references: [iOS](/sdk/ios), [Android](/sdk/android), [React Native](/sdk/react-native)
+- SDK references: [iOS](/sdk/ios), [Android](/sdk/android), [web](/sdk/web), [React Native](/sdk/react-native), [Flutter](/sdk/flutter)
 - [Olo pickup and order firing](/integrations/olo) and [webhooks](/integrations/webhooks)
 - [Understand foreground and background location permissions](/fundamentals/location-permissions)
 - [Test, troubleshoot, and go live](/fundamentals/testing-and-launch)

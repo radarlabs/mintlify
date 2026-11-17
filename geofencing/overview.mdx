@@ -23,6 +23,227 @@ Radar generates events on its servers from the location updates the SDK sends. Y
 
 This quickstart needs only foreground location permission. It uses the Test environment.
 
+This is the whole quickstart in one block: initialize, identify the user, request foreground permission, and read the user's current geofences each time the app becomes active. The steps below explain each part.
+
+<CodeGroup>
+
+```swift Swift
+import CoreLocation
+import RadarSDK
+import UIKit
+
+@main
+class AppDelegate: UIResponder, UIApplicationDelegate {
+    private let locationManager = CLLocationManager()
+
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        Radar.initialize(publishableKey: "prj_test_pk_...")
+        Radar.setUserId("user-123")
+
+        // Runs at launch, on resume, and after the user answers the permission prompt.
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.refreshLocationContext()
+        }
+        return true
+    }
+
+    // Call when the user reaches a location feature.
+    func requestLocationPermission() {
+        locationManager.requestWhenInUseAuthorization()
+    }
+
+    func refreshLocationContext() {
+        Radar.trackOnce { status, location, events, user in
+            guard status == .success, let user = user else {
+                // No location context. Show the default experience.
+                print("trackOnce failed: \(Radar.stringForStatus(status))")
+                return
+            }
+
+            if let store = user.geofences?.first(where: { $0.tag == "store" }) {
+                print("In store \(store.externalId ?? "")")
+            } else {
+                print("Not in a store")
+            }
+        }
+    }
+}
+```
+
+```kotlin Kotlin
+import android.Manifest
+import android.app.Application
+import android.util.Log
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import io.radar.sdk.Radar
+
+class MyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        Radar.initialize(this, "prj_test_pk_...")
+        Radar.setUserId("user-123")
+    }
+}
+
+class MainActivity : AppCompatActivity() {
+    private val permissionRequest = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        if (grants.values.any { it }) refreshLocationContext()
+    }
+
+    // Call when the user reaches a location feature.
+    fun requestLocationPermission() {
+        permissionRequest.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        )
+    }
+
+    override fun onStart() {
+        super.onStart()
+        refreshLocationContext()
+    }
+
+    private fun refreshLocationContext() {
+        Radar.trackOnce { status, location, events, user ->
+            if (status != Radar.RadarStatus.SUCCESS || user == null) {
+                // No location context. Show the default experience.
+                Log.w("Geofencing", "trackOnce failed: $status")
+                return@trackOnce
+            }
+
+            val store = user.geofences?.firstOrNull { it.tag == "store" }
+            if (store != null) {
+                Log.d("Geofencing", "In store ${store.externalId}")
+            } else {
+                Log.d("Geofencing", "Not in a store")
+            }
+        }
+    }
+}
+```
+
+```javascript JavaScript
+import Radar from 'radar-sdk-js';
+
+Radar.initialize('prj_test_pk_...');
+Radar.setUserId('user-123');
+
+// The browser asks for location permission on the first call.
+async function refreshLocationContext() {
+  try {
+    const { user } = await Radar.trackOnce();
+    const store = user?.geofences?.find((geofence) => geofence.tag === 'store');
+    if (store) {
+      console.log(`In store ${store.externalId}`);
+    } else {
+      console.log('Not in a store');
+    }
+  } catch (err) {
+    // No location context. Show the default experience.
+    console.warn('trackOnce failed', err.status);
+  }
+}
+
+refreshLocationContext();
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') refreshLocationContext();
+});
+```
+
+```javascript React Native
+import { AppState } from 'react-native';
+import Radar from 'react-native-radar';
+
+Radar.initialize('prj_test_pk_...');
+Radar.setUserId('user-123');
+
+// Call when the user reaches a location feature.
+export async function requestLocationPermission() {
+  const status = await Radar.requestPermissions(false);
+  if (status === 'GRANTED_FOREGROUND' || status === 'GRANTED_BACKGROUND') {
+    await refreshLocationContext();
+  }
+}
+
+export async function refreshLocationContext() {
+  try {
+    const { user } = await Radar.trackOnce();
+    const store = user?.geofences?.find((geofence) => geofence.tag === 'store');
+    if (store) {
+      console.log(`In store ${store.externalId}`);
+    } else {
+      console.log('Not in a store');
+    }
+  } catch (err) {
+    // No location context. Show the default experience.
+    console.warn('trackOnce failed', err.code);
+  }
+}
+
+refreshLocationContext();
+AppState.addEventListener('change', (state) => {
+  if (state === 'active') refreshLocationContext();
+});
+```
+
+```dart Flutter
+import 'package:flutter/widgets.dart';
+import 'package:flutter_radar/flutter_radar.dart';
+
+// Call from main(), after WidgetsFlutterBinding.ensureInitialized().
+Future<void> setUpRadar() async {
+  await Radar.initialize('prj_test_pk_...');
+  await Radar.setUserId('user-123');
+  WidgetsBinding.instance.addObserver(_ResumeObserver());
+  await refreshLocationContext();
+}
+
+// Call when the user reaches a location feature.
+Future<void> requestLocationPermission() async {
+  await Radar.requestPermissions(false);
+  final status = await Radar.getPermissionsStatus();
+  if (status == 'GRANTED_FOREGROUND' || status == 'GRANTED_BACKGROUND') {
+    await refreshLocationContext();
+  }
+}
+
+Future<void> refreshLocationContext() async {
+  final res = await Radar.trackOnce();
+  if (res?['status'] != 'SUCCESS') {
+    // No location context. Show the default experience.
+    debugPrint('trackOnce failed: ${res?['status'] ?? res?['error']}');
+    return;
+  }
+
+  final geofences = (res?['user']?['geofences'] as List?) ?? [];
+  final stores = geofences.where((geofence) => geofence['tag'] == 'store');
+  if (stores.isNotEmpty) {
+    debugPrint('In store ${stores.first['externalId']}');
+  } else {
+    debugPrint('Not in a store');
+  }
+}
+
+class _ResumeObserver with WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) refreshLocationContext();
+  }
+}
+```
+
+</CodeGroup>
+
 ### 1. Get your Test publishable key
 
 <EnvironmentAndKeys />
@@ -38,7 +259,7 @@ Draw the circle large enough to contain the spot where you test. Indoors, a phon
 
 ### 3. Install and initialize the SDK
 
-Follow the install and initialize steps for your platform: [iOS](/sdk/ios), [Android](/sdk/android), [web](/sdk/web), or [React Native](/sdk/react-native). Initialize once, at app startup, with the Test publishable key. On iOS and Android, initialize in the native application lifecycle (`AppDelegate` and `Application.onCreate()`), not in a screen that loads later.
+Follow the install and initialize steps for your platform: [iOS](/sdk/ios), [Android](/sdk/android), [web](/sdk/web), [React Native](/sdk/react-native), or [Flutter](/sdk/flutter). Initialize once, at app startup, with the Test publishable key. On iOS and Android, initialize in the native application lifecycle (`AppDelegate` and `Application.onCreate()`), not in a screen that loads later.
 
 ### 4. Request foreground location permission
 
@@ -46,104 +267,43 @@ Ask for "While Using the App" access on iOS or `ACCESS_FINE_LOCATION` on Android
 
 ### 5. Read the user's current state
 
-Call `Radar.trackOnce()` when the app opens and each time it returns to the foreground. The call gets one location, sends it to Radar, and returns the user's current context.
+Call `Radar.trackOnce()` when the app opens and each time it returns to the foreground. The call gets one location, sends it to Radar, and returns the user's current context. Look for your geofence in `user.geofences`, and show the default experience when the call fails:
 
 <CodeGroup>
 
 ```swift Swift
-import RadarSDK
-
-// iOS SDK 3.46.0. Call after Radar.initialize(publishableKey:) and
-// after foreground location permission is granted.
-func refreshLocationContext() {
-    Radar.trackOnce { status, location, events, user in
-        guard status == .success, let user = user else {
-            // No location context. Show the default experience.
-            print("trackOnce failed: \(Radar.stringForStatus(status))")
-            return
-        }
-
-        if let store = user.geofences?.first(where: { $0.tag == "store" }) {
-            // The user is inside one of your stores right now.
-            print("In store \(store.externalId ?? "")")
-        } else {
-            print("Not in a store")
-        }
-    }
+Radar.trackOnce { status, location, events, user in
+    guard status == .success, let user = user else { return }
+    let store = user.geofences?.first(where: { $0.tag == "store" })
 }
 ```
 
 ```kotlin Kotlin
-import android.util.Log
-import io.radar.sdk.Radar
-
-// Android SDK 4.3.0. Call after Radar.initialize() and after
-// foreground location permission is granted.
-fun refreshLocationContext() {
-    Radar.trackOnce { status, location, events, user ->
-        if (status != Radar.RadarStatus.SUCCESS || user == null) {
-            // No location context. Show the default experience.
-            Log.w("Geofencing", "trackOnce failed: $status")
-            return@trackOnce
-        }
-
-        val store = user.geofences?.firstOrNull { it.tag == "store" }
-        if (store != null) {
-            // The user is inside one of your stores right now.
-            Log.d("Geofencing", "In store ${store.externalId}")
-        } else {
-            Log.d("Geofencing", "Not in a store")
-        }
-    }
+Radar.trackOnce { status, location, events, user ->
+    if (status != Radar.RadarStatus.SUCCESS || user == null) return@trackOnce
+    val store = user.geofences?.firstOrNull { it.tag == "store" }
 }
 ```
 
 ```javascript JavaScript
-import Radar from 'radar-sdk-js';
-
-// Web SDK 5.3.0. The browser asks for location permission on the first call.
-Radar.initialize('prj_test_pk_...');
-
-async function refreshLocationContext() {
-  try {
-    const { user } = await Radar.trackOnce();
-    const store = user?.geofences?.find((geofence) => geofence.tag === 'store');
-    if (store) {
-      // The user is inside one of your stores right now.
-      console.log(`In store ${store.externalId}`);
-    } else {
-      console.log('Not in a store');
-    }
-  } catch (err) {
-    // No location context. Show the default experience.
-    console.warn('trackOnce failed', err);
-  }
-}
+const { user } = await Radar.trackOnce();
+const store = user?.geofences?.find((geofence) => geofence.tag === 'store');
 ```
 
 ```javascript React Native
-import Radar from 'react-native-radar';
+const { user } = await Radar.trackOnce();
+const store = user?.geofences?.find((geofence) => geofence.tag === 'store');
+```
 
-// React Native SDK 4.39.0. Call after Radar.initialize() and after
-// foreground location permission is granted.
-async function refreshLocationContext() {
-  try {
-    const { user } = await Radar.trackOnce();
-    const store = user?.geofences?.find((geofence) => geofence.tag === 'store');
-    if (store) {
-      // The user is inside one of your stores right now.
-      console.log(`In store ${store.externalId}`);
-    } else {
-      console.log('Not in a store');
-    }
-  } catch (err) {
-    // No location context. Show the default experience.
-    console.warn('trackOnce failed', err);
-  }
-}
+```dart Flutter
+final res = await Radar.trackOnce();
+final geofences = (res?['user']?['geofences'] as List?) ?? [];
+final stores = geofences.where((geofence) => geofence['tag'] == 'store');
 ```
 
 </CodeGroup>
+
+On the web and in React Native, a failed call rejects the promise. In Flutter, check that `res['status']` is `SUCCESS` before you read `user`.
 
 ### 6. Check the result
 

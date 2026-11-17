@@ -6,6 +6,264 @@ description: "Register Bluetooth beacons with Radar, range them from the iOS and
 
 At the end of this guide, your app can tell which of your registered Bluetooth beacons a device is near, and Radar generates an event when the device comes into range of a beacon and when it leaves. Use this to detect presence in an area that GPS can't resolve: a floor, a room, a counter, a drive-thru lane, or a parking space.
 
+## Complete example
+
+This is the whole task in two blocks: the app initializes, identifies the user, requests permission, ranges beacons in a `trackOnce()` call, and reads the beacons in range from the result and from entry and exit events. The sections below explain each part.
+
+<CodeGroup>
+
+```swift Swift
+import CoreLocation
+import RadarSDK
+import UIKit
+
+@main
+class AppDelegate: UIResponder, UIApplicationDelegate, RadarDelegate {
+    private let locationManager = CLLocationManager()
+
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        Radar.initialize(publishableKey: "prj_test_pk_...")
+        Radar.setUserId("user-123")
+        Radar.setDelegate(self)
+        return true
+    }
+
+    // Call when the user reaches the indoor feature. Ranging needs location access.
+    func requestLocationPermission() {
+        locationManager.requestWhenInUseAuthorization()
+    }
+
+    // Call where indoor presence matters, for example when a store-mode screen opens.
+    func checkNearbyBeacons() {
+        Radar.trackOnce(desiredAccuracy: .high, beacons: true) { status, location, events, user in
+            guard status == .success, let user = user else {
+                // No result. Show the geofence-level experience.
+                print("trackOnce failed: \(Radar.stringForStatus(status))")
+                return
+            }
+
+            let beacons = user.beacons ?? []
+            if beacons.contains(where: { $0.tag == "store-register" }) {
+                print("At a register")
+            } else {
+                print("No register beacon in range")
+            }
+        }
+    }
+
+    func didReceiveEvents(_ events: [RadarEvent], user: RadarUser?) {
+        for event in events {
+            switch event.type {
+            case .userEnteredBeacon:
+                print("Entered beacon \(event.beacon?.externalId ?? "")")
+            case .userExitedBeacon:
+                print("Exited beacon \(event.beacon?.externalId ?? "")")
+            default:
+                break
+            }
+        }
+    }
+
+    func didFail(status: RadarStatus) {
+        print("Radar request failed: \(Radar.stringForStatus(status))")
+    }
+}
+```
+
+```kotlin Kotlin
+import android.Manifest
+import android.app.Application
+import android.content.Context
+import android.location.Location
+import android.os.Build
+import android.util.Log
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarReceiver
+import io.radar.sdk.RadarTrackingOptions
+import io.radar.sdk.model.RadarEvent
+import io.radar.sdk.model.RadarUser
+
+class MyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        Radar.initialize(this, "prj_test_pk_...")
+        Radar.setUserId("user-123")
+        Radar.setReceiver(BeaconReceiver())
+    }
+}
+
+class MainActivity : AppCompatActivity() {
+    private val permissionRequest = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        if (grants.values.all { it }) checkNearbyBeacons()
+    }
+
+    // Call when the user reaches the indoor feature. Ranging needs precise
+    // location and, on Android 12 and later, Bluetooth access.
+    fun requestBeaconPermissions() {
+        val permissions = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            permissions += Manifest.permission.BLUETOOTH_SCAN
+            permissions += Manifest.permission.BLUETOOTH_CONNECT
+        }
+        permissionRequest.launch(permissions.toTypedArray())
+    }
+
+    // Call where indoor presence matters, for example when a store-mode screen opens.
+    fun checkNearbyBeacons() {
+        Radar.trackOnce(
+            RadarTrackingOptions.RadarTrackingOptionsDesiredAccuracy.HIGH,
+            true
+        ) { status, location, events, user ->
+            if (status != Radar.RadarStatus.SUCCESS || user == null) {
+                // No result. Show the geofence-level experience.
+                Log.w("Beacons", "trackOnce failed: $status")
+                return@trackOnce
+            }
+
+            val beacons = user.beacons ?: emptyArray()
+            if (beacons.any { it.tag == "store-register" }) {
+                Log.d("Beacons", "At a register")
+            } else {
+                Log.d("Beacons", "No register beacon in range")
+            }
+        }
+    }
+}
+
+class BeaconReceiver : RadarReceiver() {
+    override fun onEventsReceived(context: Context, events: Array<RadarEvent>, user: RadarUser?) {
+        for (event in events) {
+            when (event.type) {
+                RadarEvent.RadarEventType.USER_ENTERED_BEACON ->
+                    Log.d("Beacons", "Entered beacon ${event.beacon?.externalId}")
+                RadarEvent.RadarEventType.USER_EXITED_BEACON ->
+                    Log.d("Beacons", "Exited beacon ${event.beacon?.externalId}")
+                else -> Unit
+            }
+        }
+    }
+
+    override fun onError(context: Context, status: Radar.RadarStatus) {
+        Log.w("Beacons", "Radar request failed: $status")
+    }
+
+    override fun onLocationUpdated(context: Context, location: Location, user: RadarUser) {}
+
+    override fun onClientLocationUpdated(
+        context: Context,
+        location: Location,
+        stopped: Boolean,
+        source: Radar.RadarLocationSource
+    ) {}
+
+    override fun onLog(context: Context, message: String) {}
+}
+```
+
+```javascript React Native
+import { PermissionsAndroid, Platform } from 'react-native';
+import Radar from 'react-native-radar';
+
+Radar.initialize('prj_test_pk_...');
+Radar.setUserId('user-123');
+
+Radar.onEventsReceived(({ events }) => {
+  for (const event of events) {
+    switch (event.type) {
+      case 'user.entered_beacon':
+        console.log(`Entered beacon ${event.beacon?.externalId}`);
+        break;
+      case 'user.exited_beacon':
+        console.log(`Exited beacon ${event.beacon?.externalId}`);
+        break;
+    }
+  }
+});
+
+Radar.onError((status) => {
+  console.warn('Radar request failed', status);
+});
+
+// Call when the user reaches the indoor feature. Ranging needs location
+// access and, on Android 12 and later, Bluetooth access.
+export async function requestBeaconPermissions() {
+  const location = await Radar.requestPermissions(false);
+  if (location !== 'GRANTED_FOREGROUND' && location !== 'GRANTED_BACKGROUND') {
+    return false;
+  }
+  if (Platform.OS === 'android' && Platform.Version >= 31) {
+    const grants = await PermissionsAndroid.requestMultiple([
+      PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+      PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+    ]);
+    return Object.values(grants).every((grant) => grant === PermissionsAndroid.RESULTS.GRANTED);
+  }
+  return true;
+}
+
+// Call where indoor presence matters, for example when a store-mode screen opens.
+export async function checkNearbyBeacons() {
+  try {
+    const { user } = await Radar.trackOnce({ desiredAccuracy: 'high', beacons: true });
+    const beacons = user?.beacons ?? [];
+    if (beacons.some((beacon) => beacon.tag === 'store-register')) {
+      console.log('At a register');
+    } else {
+      console.log('No register beacon in range');
+    }
+  } catch (err) {
+    // No result. Show the geofence-level experience.
+    console.warn('trackOnce failed', err.code);
+  }
+}
+```
+
+</CodeGroup>
+
+Your backend registers each beacon with a secret key before the app can detect it:
+
+<CodeGroup>
+
+```javascript Node.js
+// Node.js 18 or later
+async function registerBeacon() {
+  const response = await fetch(
+    'https://api.radar.io/v1/beacons/store-register/store-42-register-1',
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: process.env.RADAR_SECRET_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        description: 'Store 42 - Register 1',
+        type: 'ibeacon',
+        uuid: 'b9407f30-f5f8-466e-aff9-25556b57fe6d',
+        major: '100',
+        minor: '1',
+        coordinates: [-73.975384, 40.783747],
+        enabled: true,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Beacon upsert failed with status ${response.status}`);
+  }
+  const { beacon } = await response.json();
+  console.log(`Registered beacon ${beacon._id}`);
+}
+```
+
+</CodeGroup>
+
 With beacons registered and ranging turned on, the user's context includes the beacons in range:
 
 ```json
@@ -388,7 +646,7 @@ If you use Radar for location verification, you can include nearby beacons in a 
 
 When checks are frequent, call `Radar.startRangingBeacons()` when the user enters the flow that makes them, and `Radar.stopRangingBeacons()` when they leave it. The SDK then ranges continuously while the app is in the foreground, so a check doesn't wait for a new ranging window. Continuous ranging needs iOS SDK 3.43.0 or later, or Android SDK 3.38.0 or later on API level 26 or later.
 
-For requesting the check, validating the result on your backend, and binding it to the user, see [Verify location eligibility for sportsbooks and casinos](/geo-compliance/sportsbooks-and-casinos). Follow that guide for the validation code. Two points are specific to beacons:
+For requesting the check, validating the result on your backend, and binding it to the user, see the [Geo-compliance gaming guide](/geo-compliance/gaming). Follow that guide for the validation code. Two points are specific to beacons:
 
 - **Keep the decision on your backend**: Tag beacons by role, for example one tag for areas where an action is allowed and another for areas where it isn't, and let your backend read the beacons from the validated result and apply your rule. Don't make the decision in the app.
 - **Absence is weak evidence**: A beacon that isn't in the result may be out of range, or may not have been heard in that window. Decide deliberately what a result with no beacons means for your rule.
@@ -483,7 +741,7 @@ For general testing tools, see [Test, troubleshoot, and go live](/fundamentals/t
 - SDK references: [iOS](/sdk/ios), [Android](/sdk/android), [React Native](/sdk/react-native)
 - [Tracking options](/sdk/tracking) and [remote configuration](/sdk/remote-configuration)
 - [Detect geofence events and place visits](/geofencing/geofences-and-places)
-- [Verify location eligibility for sportsbooks and casinos](/geo-compliance/sportsbooks-and-casinos)
+- [Geo-compliance gaming guide](/geo-compliance/gaming)
 - [Understand foreground and background location permissions](/fundamentals/location-permissions)
 - [Test, troubleshoot, and go live](/fundamentals/testing-and-launch)
 
