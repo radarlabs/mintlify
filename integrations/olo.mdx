@@ -8,108 +8,68 @@ description: "Connect Olo orders to Radar trips, fire orders to the kitchen base
   The Olo integration is available on the [Enterprise plan](https://radar.com/pricing).
 </Info>
 
-By the end of this page, an order placed through [Olo](https://www.olo.com) creates a Radar trip, your app starts that trip, and Radar tells Olo to fire the order to the kitchen when the customer is the right number of minutes away. If no location arrives, Radar fires the order at a backup time instead.
+An order placed through [Olo](https://www.olo.com) creates a Radar trip, your app starts that trip, and Radar tells Olo to fire the order to the kitchen when the customer is the right number of minutes away. If no location arrives, Radar fires the order at a backup time instead.
 
-This page covers the Olo-specific setup, field mapping, and firing rules. For the trip lifecycle in your app (starting, updating, completing, recovering after a restart, and stopping tracking), see [Track pickups, deliveries, and workers](/geofencing/trips).
-
-## How it works
-
-| System | Responsibility |
-| --- | --- |
-| Your app | Places the order through Olo, calls `Radar.startTrip()` with the Olo order ID, and tracks location during the trip. |
-| Olo | Sends order webhooks to Radar, holds orders for manual fire, and sends fired orders to the kitchen. |
-| Radar | Creates one trip per order, calculates the ETA to the store, fires the order through Olo, and optionally updates Olo Expo. |
-| Store team | Prepares the order when it fires and, if you use Olo Expo, marks it picked up. |
-
-The integration has three parts. You can use the first on its own.
-
-| Capability | What it does | Requires |
-| --- | --- | --- |
-| Trip updates | Creates, cancels, and completes Radar trips from Olo order webhooks. | Olo webhook and the Radar Olo settings. |
-| [Order firing](#order-firing) | Fires orders in Olo based on the trip ETA, with a time-based backup. | Trip updates, Radar as a Customer Arrival partner, manual fire allowed for each store, Olo API credentials in Radar. |
-| [Expo notifications](#expo-notifications) | Sends approaching and arrival status to Olo Expo. | Trip updates and Radar as a Customer Arrival partner. |
+For the trip lifecycle in your app, see [Track pickups](/geofencing/trips#track-pickups).
 
 ## Prerequisites
 
-- A Radar project on the Enterprise plan with trip tracking enabled.
-- The Radar SDK in your app, with at least foreground location permission. See [Understand foreground and background location permissions](/fundamentals/location-permissions).
-- Access to the Olo Dashboard with two-factor authentication and at least Brand Manager permission. You need this for the **Development Tools** section.
-- Your Olo brand ID for each environment you use. Radar matches incoming webhooks to your project and environment by brand ID.
-- One Radar geofence per store, set up as described in [Configuration](#configuration).
-- For order firing: an Olo API client ID and secret key for each environment, and manual fire allowed on each participating store in Olo.
+- A Radar project on the Enterprise plan with trip tracking enabled, and the Radar SDK in your app with at least [foreground location permission](/fundamentals/location-permissions).
+- Access to the Olo Dashboard with two-factor authentication and at least Brand Manager permission, which the **Development Tools** section requires.
+- Your Olo brand ID for each environment. Radar matches incoming webhooks to your project and environment by brand ID.
+- For order firing: an Olo API client ID and secret key for each environment.
 
 ## Configuration
 
 <Steps>
   <Step title="Send Olo order webhooks to Radar">
-    In the Olo Dashboard, open **Development Tools** and add a webhook that delivers to `https://api.radar.io/webhooks/olo`. Under **Order Events**, select **Order Placed** and **Order Cancelled**. If you use [Olo Expo](#expo-notifications), also select **Order Picked Up**.
+    In the Olo Dashboard, open **Development Tools** and add a webhook that delivers to `https://api.radar.io/webhooks/olo`. Under **Order Events**, select **Order Placed** and **Order Cancelled**, and **Order Picked Up** if you use [Olo Expo](#expo-notifications). Radar reads the event type (`OrderPlaced`, `OrderCancelled`, or `OrderPickedUp`) from the `X-Olo-Event-Type` header.
+  </Step>
+  <Step title="Let Radar fire orders in Olo">
+    In **Partner Management**, add Radar with a **Partnership Type** of **Customer Arrival** and select the stores where Radar fires orders. Allow manual fire for each of those stores.
 
-    Radar reads the event type from the `X-Olo-Event-Type` header. This integration uses `OrderPlaced`, `OrderCancelled`, and `OrderPickedUp`.
+    An order that Radar fires must set a `timeWanted` for advance orders, or set the external reference to any value that starts with `radar_`, for example `radar_h87y12rgb`. Radar reads it from the webhook body as `externalReference`.
   </Step>
   <Step title="Configure the Olo settings in Radar">
-    In the Radar dashboard, open the [Integrations](https://dashboard.radar.com/integrations) page, find the **Olo** section, and select **Yes** for **Enabled**. The section then shows one group of settings for each environment. Every label in a group starts with the environment name, for example **Live brand ID** and **Test brand ID**. This page gives the Live labels in tables and leaves the environment name off elsewhere. Your Radar account team sets these up with you once Radar receives your first webhooks, and you can review them here.
+    On the [Integrations](https://dashboard.radar.com/integrations) page, select **Yes** for **Enabled** in the **Olo** section. Each environment has its own group of settings, and every label starts with the environment name, for example **Live brand ID** and **Test brand ID**. Click **Save**. The page confirms with `Updated integration.`
 
     | Setting | What to enter |
     | --- | --- |
     | **Live brand ID** | The Olo brand ID for that environment. A webhook whose `brandId` matches the Live brand ID creates trips in the Live environment. Other webhooks for your project create trips in the Test environment. |
     | **Live destination geofence tag** | The tag shared by your store geofences, for example `store`. |
-    | **Live trip metadata mapping** | Optional. Pairs of an Olo webhook field path and a Radar trip metadata key. See [Trip metadata mapping](#trip-metadata-mapping). |
-    | **Live handoff modes** | The Olo handoff modes to track, for example `curbside` and `pickup`. If you leave this empty, Radar handles every handoff mode. If you set it, Radar ignores webhooks for other modes and doesn't fire their orders. |
-
-    Click **Save**. The page confirms with `Updated integration.`
+    | **Live trip metadata mapping** | Optional. Pairs of an Olo webhook field path, such as `customer.firstName`, and the Radar trip metadata key to copy it to. Mapped metadata appears in the dashboard, the [Trips API](/api/trips), and trip events, so map only the fields your store team or messaging needs. |
+    | **Live handoff modes** | The Olo handoff modes to track, for example `curbside` and `pickup`. If empty, Radar handles every handoff mode. If set, Radar ignores webhooks for other modes and doesn't fire their orders. |
+    | **enable order firing**, **client ID**, **secret key** | Turns on order firing, with the Olo API credentials that Radar signs its requests with. Live trips fire against Olo's production ordering API, and Test trips against Olo's sandbox ordering API. |
+    | **Live scheduled order earliest fire time (minutes)** | When set, Radar doesn't fire an order on approach or arrival earlier than this many minutes before `scheduledArrivalAt`. |
+    | **Live auto-calculate trip scheduled arrival time** | Sets `scheduledArrivalAt` for ASAP orders. See [Order firing](#order-firing). |
+    | **Live backup fire delay (minutes)** | Shown when the previous setting is on. The dashboard default is 10. |
+    | **Live auto-calculate trip approaching threshold** | Sets `approachingThreshold` for ASAP orders. |
+    | **allow multiple orders per trip** | Adds a customer's second order to their existing trip when both go to the same destination and their expected arrival times are within one hour of each other. |
   </Step>
   <Step title="Create store geofences">
-    Create one geofence per store on the [Geofences](https://dashboard.radar.com/geofencing/geofences) page or by CSV import. Each geofence needs:
-
-    - `tag`: the destination geofence tag from the previous step.
-    - `externalId`: the value Olo sends as `storeNumber` in the order webhook for that store.
-
-    Radar finds the trip destination by this tag and external ID. If no geofence matches, Radar still creates the trip, but it has no destination location, so Radar can't calculate an ETA or detect arrival. See [Detect geofence events and place visits](/geofencing/geofences-and-places) for geofence import and sync.
-  </Step>
-  <Step title="Start the trip in your app">
-    When the customer places the order, call `Radar.startTrip()` with the Olo order ID as the trip `externalId`. See [Start the trip in your app](#start-the-trip-in-your-app).
+    Create one [geofence](/geofencing/geofences-and-places) per store. Set its `tag` to the destination geofence tag, and its `externalId` to the value Olo sends as `storeNumber` for that store. If no geofence matches, Radar still creates the trip, but can't calculate an ETA or detect arrival.
   </Step>
 </Steps>
 
 ## Identity and field mapping
 
-Radar builds each trip from the Olo **Order Placed** webhook body.
+Radar builds each trip from the Olo **Order Placed** webhook body. The trip has status `pending` until your app starts it. If your app already started a trip with the same `externalId`, Radar adds the Olo fields to that trip.
 
 | Olo webhook field | Radar trip field | Notes |
 | --- | --- | --- |
-| `orderIdString` | `externalId` | The trip ID. Your app must pass the same value to `Radar.startTrip()`. |
-| `id` | `metadata.oloOrderGuid` | The order GUID. Radar uses it to fire the order and to update Olo Expo. |
+| `orderIdString` | `externalId` | The order ID. Your app must pass the same value to `Radar.startTrip()`. |
+| `id` | `metadata.oloOrderGuid` | The order GUID, a different value from the order ID. Radar uses it to fire the order and to update Olo Expo. |
 | `deliveryMethod` | `metadata.oloHandoffMode` | The handoff mode, for example `curbside`. Radar sends it back to Olo when it fires the order. |
-| `storeNumber` | `destinationGeofenceExternalId` | Matched with the destination geofence tag from your settings. |
-| `brandId` | Project and environment | Not stored on the trip. Selects the Radar project and the Live or Test environment. |
-| `timePlaced`, `timeReady` | `approachingThreshold`, `scheduledArrivalAt` | Only when the matching auto-calculate setting is on, and only for ASAP orders. See [Order firing](#order-firing). |
-| `timeWanted` | None | Its presence marks the order as scheduled. Radar doesn't copy it to the trip. |
-
-The order ID and the order GUID are different values. The trip `externalId` is the order ID (`orderIdString`). `oloOrderGuid` is the GUID (`id`). The store's `externalId` is the store number, not the GUID.
+| `storeNumber` | `destinationGeofenceExternalId` | Matched with the destination geofence tag. |
+| `brandId` | Project and environment | Not stored on the trip. |
+| `timePlaced`, `timeReady` | `approachingThreshold`, `scheduledArrivalAt` | Only for ASAP orders, when the matching auto-calculate setting is on. |
+| `timeWanted` | None | Its presence marks the order as scheduled. |
 
 Olo sends `timePlaced`, `timeReady`, and `timeWanted` as strings in the store's local time, formatted `YYYYMMDD hh:mm`.
 
-### Trip metadata mapping
-
-Each mapping copies one field from the webhook body to trip metadata. The left side is a path into the webhook body, such as `customer.firstName`. The right side is the metadata key Radar writes. Mapped metadata is visible on the trip in the dashboard, in the [Trips API](/api/trips), and in trip events sent to webhooks and other integrations, so map only the fields your store team or messaging needs.
-
-## Inbound order events
-
-| Olo event | What Radar does |
-| --- | --- |
-| `OrderPlaced` | Creates a trip with status `pending`, the destination and the metadata above. If your app already started a trip with the same `externalId`, Radar adds the Olo fields to that trip instead of creating a second one. |
-| `OrderCancelled` | Cancels the trip if it is still pending or in progress. Trips that already ended are left unchanged. |
-| `OrderPickedUp` | Completes the trip if it is still pending or in progress. Radar acts on this event only when Expo updates are enabled. |
-
-Olo delivers webhooks at least once, and a webhook can arrive before or after your app's `Radar.startTrip()` call. Radar handles both orders of arrival.
-
 ## Start the trip in your app
 
-A trip created by the webhook stays `pending` until your app starts it. Radar calculates ETAs and generates trip events only for a started trip with location updates.
-
-Call `Radar.startTrip()` after the order is placed and you have confirmed location permission. Set `externalId` to the Olo order ID. The destination tag and external ID must match the store geofence.
-
-Include `oloOrderGuid` and `oloHandoffMode` in trip metadata. Radar normally receives both from the webhook, but if the webhook is delayed or missing, these two values are what allow Radar to fire the order.
+Call `Radar.startTrip()` after the order is placed and you have confirmed location permission. Include `oloOrderGuid` and `oloHandoffMode` in trip metadata, so Radar can still fire the order if the webhook is delayed or missing.
 
 <CodeGroup>
 
@@ -174,161 +134,55 @@ fun startPickupTrip(orderId: String, orderGuid: String, handoffMode: String,
 
 </CodeGroup>
 
-Once the trip is started and location updates arrive, Radar generates `user.started_trip`, `user.updated_trip`, `user.approaching_trip_destination`, `user.arrived_at_trip_destination` and `user.stopped_trip` events. For foreground service setup on Android, background modes on iOS, restoring tracking after the app is closed, and stopping tracking when the trip ends, see [Track pickups, deliveries, and workers](/geofencing/trips).
-
 ## Order firing
 
-With order firing, Olo holds the order instead of sending it to the kitchen on its own schedule, and Radar tells Olo when to fire it. Radar decides from two trip fields:
+Radar fires an order only when order firing is on for the environment, the trip has `scheduledArrivalAt`, and the order has a GUID and a handoff mode. Each order fires once, on the first of these:
 
-| Trip field | Type | Unit | Meaning for firing |
-| --- | --- | --- | --- |
-| `approachingThreshold` | Integer | Minutes | How long before arrival the order fires. Use the time the kitchen needs to make the order. |
-| `scheduledArrivalAt` | Date and time | ISO 8601 in the API, `Date` in the SDKs | When the customer is expected. Radar uses it to calculate the backup fire time. |
-
-### Set up order firing in Olo and Radar
-
-1. In the Olo Dashboard, open **Partner Management** and add Radar with a **Partnership Type** of **Customer Arrival**. Select the stores where Radar fires orders.
-2. In Olo, allow manual fire for each of those stores.
-3. An order that Radar fires must set a `timeWanted` for advance orders, or set the external reference to any value that starts with `radar_`, for example `radar_h87y12rgb`. Radar reads the external reference from the webhook body as `externalReference`.
-4. In the **Olo** section of the [Integrations](https://dashboard.radar.com/integrations) page, turn on **enable order firing** for the environment. Enter the Olo **client ID** and **secret key** for that environment. Radar signs its Olo API requests with these credentials. Then ask your Radar account team to confirm the order firing setup.
-
-Turning on order firing reveals these settings:
-
-| Setting | Unit | Effect |
-| --- | --- | --- |
-| **Live scheduled order earliest fire time (minutes)** | Minutes | When set, Radar doesn't fire an order on approach or arrival earlier than this many minutes before `scheduledArrivalAt`. Use it for scheduled orders placed by customers who are already close to the store. |
-| **Live auto-calculate trip scheduled arrival time** | On or off | See [Scheduled arrival at](#scheduled-arrival-at). |
-| **Live backup fire delay (minutes)** | Minutes | Shown when the previous setting is on. See [Scheduled arrival at](#scheduled-arrival-at). The dashboard default is 10. |
-| **Live auto-calculate trip approaching threshold** | On or off | See [Approaching threshold](#approaching-threshold). |
-
-Trips in the Live environment fire against Olo's production ordering API. Trips in the Test environment fire against Olo's sandbox ordering API.
-
-### When Radar fires an order
-
-Radar fires an order only when order firing is enabled for the environment, the trip has `scheduledArrivalAt` set, and the trip has an unfired order with both an order GUID and a handoff mode.
-
-| Trigger | When it happens |
-| --- | --- |
-| Approaching | A location update puts the trip ETA below the approaching threshold. Radar also generates `user.approaching_trip_destination`. |
-| Arrived | A location update is inside the destination geofence. This includes a trip that starts inside the geofence, which fires on its first location update. |
-| Backup fire time | The current time passes `scheduledArrivalAt` minus the approaching threshold, and the order hasn't fired. Radar checks for due orders on a recurring schedule, so expect the fire shortly after that time, not at the exact second. |
-
-The backup fire time doesn't depend on location. It is what fires the order when the customer denied location, left the phone at home, lost connectivity, or closed the app.
-
-Each order fires once. If Olo rejects the request, Radar tries again on later triggers, up to a limited number of attempts.
-
-### Scheduled arrival at
-
-`scheduledArrivalAt` is required for order firing. Without it, Radar never fires the order, by location or by time.
-
-You can set it in two ways:
-
-- **Auto-calculate (ASAP orders)**: With **auto-calculate trip scheduled arrival time** on, Radar sets `scheduledArrivalAt` when the **Order Placed** webhook arrives. The initial value is the current time plus the number of minutes between `timePlaced` and `timeReady`. Your project can have a minimum lead time that raises this value for very short make times. As location updates arrive, Radar moves `scheduledArrivalAt` to match the current ETA. The **backup fire delay** limits this: once the ETA has slipped past the first ETA by that many minutes or more, Radar stops moving `scheduledArrivalAt`, so a customer who is running late doesn't push the backup fire time back indefinitely.
-- **Set it yourself**: Pass `scheduledArrivalAt` to `Radar.startTrip()`, or set it later with `Radar.updateTrip()` or the [Trips API](/api/trips). A value you set replaces the auto-calculated one, and Radar stops recalculating it for that trip.
-
-Radar doesn't auto-calculate `scheduledArrivalAt` for scheduled orders (orders with `timeWanted`). Set it yourself to the scheduled pickup time.
-
-### Approaching threshold
-
-Radar uses the first value it finds, in this order:
-
-1. The trip's `approachingThreshold`. Set it in `Radar.startTrip()`, `Radar.updateTrip()`, or the [Trips API](/api/trips). With **auto-calculate trip approaching threshold** on, Radar sets it for ASAP orders to the number of minutes between `timePlaced` and `timeReady` in the **Order Placed** webhook.
-2. The destination geofence's `tripApproachingThreshold`. Set it per store with the [Geofences API](/api/geofences). The value must be greater than 0.
-3. The project default, **Approaching threshold (minutes)** in [Trips Settings](https://dashboard.radar.com/settings#trips-settings).
-
-Radar doesn't auto-calculate the threshold for scheduled orders, because Olo's `timeReady` doesn't describe the make time for them. Use a store-level or project-level value, or pass the make time on the trip.
-
-### ASAP and scheduled orders
+- **Approaching**: a location update puts the trip ETA below the approaching threshold.
+- **Arrived**: a location update is inside the destination geofence, including on a trip that starts there.
+- **Backup fire time**: the current time passes `scheduledArrivalAt` minus the approaching threshold. This doesn't depend on location. Radar checks on a recurring schedule, so expect the fire shortly after that time.
 
 | | ASAP order | Scheduled order |
 | --- | --- | --- |
 | How Radar tells them apart | `timeWanted` is absent from the webhook. | `timeWanted` is present. |
-| `scheduledArrivalAt` | Auto-calculated if the setting is on. Otherwise set it yourself. | Always set it yourself to the scheduled pickup time. |
-| `approachingThreshold` | Auto-calculated if the setting is on. Otherwise the store or project value. | The trip, store or project value. Never auto-calculated. |
-| When to start tracking | Immediately after the order is placed. | Consider waiting until the customer says they are on the way. |
-| Main risk | A very late customer. The backup fire delay bounds how far the backup fire time moves. | A customer near the store when ordering. The first location update can already be within the threshold. |
+| `scheduledArrivalAt` | With auto-calculation on, the current time plus the minutes between `timePlaced` and `timeReady`. Radar then moves it to match the ETA, until the ETA has slipped past the first ETA by the backup fire delay. Otherwise set it yourself. | Never auto-calculated. Set it to the scheduled pickup time with `Radar.startTrip()`, `Radar.updateTrip()`, or the [Trips API](/api/trips). |
+| `approachingThreshold` | With auto-calculation on, the minutes between `timePlaced` and `timeReady`. | Never auto-calculated. Radar uses the trip, store, or project value. |
+| Main risk | A very late customer. | A customer near the store when ordering. Set the earliest fire time, or start the trip when the customer says they are on the way. |
 
-For scheduled orders, a customer who orders from near the store would trigger "approaching" on the first location update, long before the pickup time. Two controls address this, and you can use both:
-
-- Set **scheduled order earliest fire time** so Radar skips location-triggered fires until that many minutes before `scheduledArrivalAt`.
-- Start the trip only when the customer taps an "I'm on my way" action. See [Track pickups, deliveries, and workers](/geofencing/trips) for this pattern. Set `scheduledArrivalAt` on the pending trip from your backend with the [Trips API](/api/trips) so the backup fire time exists even if the customer never taps.
+A `scheduledArrivalAt` you set replaces the auto-calculated one. When the trip has no `approachingThreshold`, Radar uses the destination geofence's `tripApproachingThreshold`, set with the [Geofences API](/api/geofences), then **Approaching threshold (minutes)** in [Trips Settings](https://dashboard.radar.com/settings#trips-settings).
 
 ### No-location fallback
 
-Decide before you place the order whether Radar fires it.
-
-| Situation | What to do |
-| --- | --- |
-| Location permission denied or not requested | Place the order so that Olo fires it on its own schedule, not as a manual-fire order. Don't rely on Radar for this order. |
-| Permission granted, order placed, trip started | Radar fires by location, or at the backup fire time if no usable location arrives. |
-| Permission granted, but `Radar.startTrip()` fails | Retry. If it keeps failing, set `scheduledArrivalAt` on the pending trip from your backend with the [Trips API](/api/trips), and confirm with your Radar account team that pending trips fire at the backup fire time for your project. |
-| App closed or force quit after the trip started | Location updates can stop. The order fires at the backup fire time. Restore tracking on the next app open as described in [Track pickups, deliveries, and workers](/geofencing/trips). |
-
-How your ordering code marks an order for manual fire is part of your Olo ordering integration, not the Radar SDK. Confirm the exact field with Olo.
-
-### Multiple order support
-
-A customer sometimes places a second order at the same store, for example after forgetting an item. With **allow multiple orders per trip** turned on in the Olo settings, Radar adds the new order to the customer's existing trip when both go to the same destination and their expected arrival times are within one hour of each other. For scheduled orders, Radar compares the `scheduledArrivalAt` passed to `Radar.startTrip()`. If it isn't provided, Radar treats the order as ASAP and uses the current time.
-
-All orders on a trip get the same ETA. If another order on the trip has already fired when the new order is added, Radar fires the new order immediately. When Radar receives a cancellation for one order, it cancels the trip only after every order on the trip is canceled.
+If location permission is denied, place the order so that Olo fires it on its own schedule, not as a manual-fire order. If `Radar.startTrip()` keeps failing, set `scheduledArrivalAt` on the pending trip from your backend with the [Trips API](/api/trips), and confirm with your Radar account team that pending trips fire at the backup fire time for your project.
 
 ## Cancellation and completion
 
-| What happens | Result |
-| --- | --- |
-| The order is canceled in Olo | Olo sends `OrderCancelled` and Radar cancels the trip. |
-| Your app calls `Radar.cancelTrip()` | The trip is canceled in Radar. This doesn't cancel the order in Olo. |
-| The store marks the order picked up in Olo Expo | With Expo updates on, Olo sends `OrderPickedUp` and Radar completes the trip. |
-| Your app calls `Radar.completeTrip()` | The trip is completed. |
-| Nobody completes the trip | Radar completes or expires trips automatically according to your project's trip settings. See [Track pickups, deliveries, and workers](/geofencing/trips). |
-
-When a trip ends, Radar generates `user.stopped_trip`. Stop location tracking in your app at that point so tracking doesn't continue after the pickup.
+Olo's `OrderCancelled` webhook cancels a trip that is still pending or in progress and, with Expo updates on, `OrderPickedUp` completes it. `Radar.cancelTrip()` and `Radar.completeTrip()` change the Radar trip only, and don't cancel or close the order in Olo.
 
 ## Expo notifications
 
-Radar is a Customer Arrival partner for Olo and can send **Approaching** and **Arrival** status updates to Olo Expo from trip tracking. Store teams see the customer's status on tracked mobile orders. If your team uses the **Picked Up** button in Olo Expo, that completes the Radar trip and records the completion time for trip duration and wait time analytics.
-
-To turn it on:
-
-1. If you haven't already done so for order firing, add Radar with a **Partnership Type** of **Customer Arrival** in the **Partner Management** section of the Olo Dashboard, and select the participating stores.
-2. Select the **Order Picked Up** event on your Olo webhook.
-3. In the **Olo** section of the [Integrations](https://dashboard.radar.com/integrations) page, turn on **enable Expo updates** for the environment and click **Save**.
-4. Ask your Radar account team to complete the Expo setup.
-
-Radar sends Expo updates only for orders whose GUID it knows, either from the webhook or from `oloOrderGuid` in trip metadata.
+With **enable Expo updates** on and Radar added as a **Customer Arrival** partner, Radar sends **Approaching** and **Arrival** status updates to Olo Expo for orders whose GUID it knows. The **Picked Up** button in Olo Expo completes the Radar trip.
 
 ## Test the integration
 
-Use the Test environment and the Olo sandbox first.
+In the Test environment, with the Olo sandbox:
 
-1. Place a test ASAP order for a store that has a Radar geofence. On the [Integrations](https://dashboard.radar.com/integrations) page, click **View integration logs** in the **Olo** section. The logs show a row with event type `OrderPlaced`, your order ID in **External ID**, and the handoff mode. New rows can take a few minutes to appear.
-2. Open the Trips page in the Test environment. It lists a trip whose external ID is the order ID, with status `pending` and the store as its destination.
-3. Start the trip from a test build of your app. The trip status changes to `started` and the trip shows an ETA.
-4. Move toward the store, or simulate the route. When the ETA drops below the approaching threshold, the status changes to `approaching`. Confirm in Olo that the order fired.
-5. Cancel a second test order in Olo. Its trip status changes to `canceled`.
+1. Place an ASAP order for a store that has a Radar geofence. Click **View integration logs** in the **Olo** section of the Integrations page. A row shows event type `OrderPlaced` and your order ID in **External ID**.
+2. On the Trips page, find the trip with that external ID and status `pending`.
+3. Start the trip from a test build of your app. The status changes to `started` and the trip shows an ETA.
+4. Simulate the route to the store. When the ETA drops below the approaching threshold, the status changes to `approaching`. Confirm in Olo that the order fired.
 
-Then test the paths that don't depend on a good location:
-
-| Test | Expected result |
-| --- | --- |
-| Place an ASAP order, start the trip, then turn off location or close the app | The order fires at the backup fire time. |
-| Place a scheduled order from inside or next to the store geofence | With an earliest fire time set, the order doesn't fire on the first location update. It fires on a location update inside the earliest fire window, or at the backup fire time. |
-| Place an order with location permission denied | Your app places a normal order, Olo fires it on its own schedule, and Radar doesn't fire it. |
-| Place an order with a handoff mode that isn't in your **handoff modes** setting | The webhook creates no trip, and Radar doesn't fire the order even if your app starts a trip for it. |
-| Place two orders at the same store within an hour, with multiple orders per trip on | One trip carries both orders and both fire together. |
+Then place a second ASAP order, start the trip, turn off location, and confirm that the order fires at the backup fire time.
 
 ## Troubleshoot delivery
 
-| Symptom | Where to look | Likely cause |
-| --- | --- | --- |
-| No row in the Olo integration logs | Olo webhook configuration | The webhook URL or event selection is wrong, or the order's brand ID isn't the one configured in Radar. |
-| A log row exists but there is no trip | Olo settings in Radar | The integration isn't enabled, the handoff mode is filtered out, or the brand ID is assigned to the other environment. |
-| The trip has no ETA and never arrives | Store geofence | No geofence has the destination tag and an `externalId` equal to the order's `storeNumber`. |
-| The trip stays `pending` | Your app | `Radar.startTrip()` wasn't called, failed, or used an `externalId` that differs from the Olo order ID. |
-| The trip is `approaching` or `arrived` but the order didn't fire | Trip logs on the trip's page in the dashboard | `scheduledArrivalAt` isn't set, order firing is off for that environment, the order GUID or handoff mode is missing, the earliest fire time hasn't been reached, or Olo rejected the request. The trip log records Olo's response to each fire attempt. |
-| The order fired much earlier than expected | Trip `approachingThreshold` and `scheduledArrivalAt` | The customer was already within the threshold, or a scheduled order had no earliest fire time. |
-
-The Olo integration logs can be filtered by date, external ID (the order ID), event type and handoff mode.
+| Symptom | Likely cause |
+| --- | --- |
+| No row in the Olo integration logs | The webhook URL or event selection is wrong, or the order's brand ID isn't the one configured in Radar. |
+| A log row but no trip | The integration isn't enabled, the handoff mode is filtered out, or the brand ID is assigned to the other environment. |
+| The trip has no ETA | No geofence has the destination tag and an `externalId` equal to the order's `storeNumber`. |
+| The trip stays `pending` | `Radar.startTrip()` wasn't called, failed, or used an `externalId` that differs from the Olo order ID. |
+| The trip is `approaching` or `arrived` but the order didn't fire | `scheduledArrivalAt` isn't set, order firing is off, the order GUID or handoff mode is missing, the earliest fire time hasn't been reached, or Olo rejected the request. The trip log on the trip's page records Olo's response to each fire attempt. |
 
 ## Operational edge cases
 
@@ -336,17 +190,10 @@ The Olo integration logs can be filtered by date, external ID (the order ID), ev
 | --- | --- |
 | Restaurant closing time | Olo can't fire an order to a closed restaurant. For ASAP orders placed close to closing time, place a normal order that Olo fires itself. |
 | Menu changeover | If an order could fire after the kitchen has switched menus, for example from breakfast to lunch, place a normal order that Olo fires itself. |
-| Someone else collects the order, or the phone stays at home | No approach is detected. The order fires at the backup fire time. |
-| The customer lives, works or stays near the store | The first location update may already be inside the threshold or the geofence. Use the earliest fire time for scheduled orders, and make sure trips end so tracking stops after the visit. |
-| The app is force quit after ordering | The device may stop sending location. The order fires at the backup fire time. |
 | The customer is much later than expected | With auto-calculation on, Radar stops moving `scheduledArrivalAt` once the delay reaches the backup fire delay, and the order fires at the resulting backup fire time. |
-| The scheduled pickup time changes | Update `scheduledArrivalAt` on the trip with `Radar.updateTrip()` or the [Trips API](/api/trips). |
 
 ## Limitations
 
 - Radar needs `scheduledArrivalAt` to fire an order. A trip without it never fires, even when the customer arrives.
 - Auto-calculation of `scheduledArrivalAt` and `approachingThreshold` applies to ASAP orders only.
-- Backup firing runs on a recurring schedule, so the fire can happen shortly after the calculated time.
-- Radar ETAs depend on location updates from the device. In the background, updates depend on the tracking options, the permission the customer granted, and operating system limits.
-- `Radar.cancelTrip()` and `Radar.completeTrip()` change the Radar trip only. They don't cancel or close the order in Olo.
-- Order firing, Expo updates and several timing settings are configured per project with your Radar account team. Confirm the values for your project before launch, and don't treat another brand's backup times as defaults.
+- If Olo rejects a fire request, Radar tries again on later triggers, up to a limited number of attempts.

@@ -7,49 +7,27 @@ description: "Send Radar events and user properties to Amplitude, map Radar iden
   The Amplitude integration is available on the [Enterprise plan](https://radar.com/pricing).
 </Info>
 
-By the end of this page, each Radar event for your project appears in Amplitude as a `[Radar]` event on the matching user, with Radar's [location context](/fundamentals/context-types) as user properties.
-
-Use the integration to add location context to behavioral analytics, measure location-based features, and build location-based cohorts. It is a server-side integration: Radar's servers call Amplitude, and you add no Amplitude code to your Radar setup.
+Radar's servers send each Radar event to Amplitude as a `[Radar]` event on the matching user, with [location context](/fundamentals/context-types) as user properties.
 
 ## Prerequisites
 
-- A Radar project on the Enterprise plan that generates events. See [Geofencing overview and quickstart](/geofencing/overview).
-- Access to the [Integrations](https://dashboard.radar.com/integrations) page in the Radar dashboard.
-- An Amplitude project and permission to view its API key. Use a separate Amplitude project for testing if you have one.
-- A user identifier that is the same in both systems. See [User mapping](#user-mapping).
+- A Radar project that generates events.
+- An Amplitude project and its API key. Use a separate project for testing if you have one.
+- A user ID shared by both systems.
 
 ## Configuration
 
-<Steps>
-  <Step title="Copy your Amplitude API key">
-    In Amplitude, open the settings for your project and copy its API key. If you have a separate development project, copy that key too.
-  </Step>
-  <Step title="Enable the integration in Radar">
-    On the [Integrations](https://dashboard.radar.com/integrations) page, find the **Amplitude** section and select **Yes** for **Enabled**. Credential fields appear.
-  </Step>
-  <Step title="Enter your keys">
-    Enter the production key in **Live API key** and the development key in **Test API key**. Radar uses the Live key for events from the Live environment and the Test key for events from the Test environment. If you leave a field empty, Radar sends nothing for that environment.
-  </Step>
-  <Step title="Save">
-    Click **Save**. From now on, Radar sends each new event to Amplitude. Events generated before you saved aren't sent.
-  </Step>
-</Steps>
+1. In Amplitude, open your project's settings and copy its API key.
+2. On the [Integrations](https://dashboard.radar.com/integrations) page, find the **Amplitude** section, select **Yes** for **Enabled**, enter the production key in **Live API key** and the development key in **Test API key**, and click **Save**.
 
-### Optional settings
+**Show advanced** has two optional settings:
 
-Click **Show advanced** in the **Amplitude** section to show these settings:
+- **Use identify API**: When **Yes**, Radar also calls Amplitude's Identify API on each delivery to update the user's properties, including when every event in the delivery was filtered out. When **No**, user properties are sent only as part of each event.
+- **Use cohort API for Segments**: Applies Radar segments to the user through Amplitude's cohort API. More fields appear when you select **Yes**.
 
-| Setting | Effect |
-| --- | --- |
-| **Event type allowlist**, **Request key blocklist**, **Geofence tag blocklist** | See [Filtering](#filtering). |
-| **Use identify API** | When set to **Yes**, Radar also calls Amplitude's Identify API on each delivery to update the user's properties, including when every event in the delivery was filtered out. When set to **No**, user properties are sent only as part of each event. |
-| **Use cohort API for Segments** | Uses Amplitude's cohort API to apply Radar segments to the user. Additional Amplitude fields appear when you select **Yes**. |
+## Identity mapping
 
-## User mapping
-
-### Identifiers
-
-Radar sets these fields on every event it sends to Amplitude:
+Set the Radar `userId` to your Amplitude user ID with `Radar.setUserId()` after login. Without a `userId`, events carry the device identifiers only.
 
 | Radar user field | Amplitude field | Sent when |
 | --- | --- | --- |
@@ -59,66 +37,62 @@ Radar sets these fields on every event it sends to Amplitude:
 | `deviceId` | `android_id` | The device type is Android. |
 | `ip` | `ip` | Radar has an IP address for the user. |
 
-For Radar events to attach to the users that your app already tracks in Amplitude, set the Radar `userId` to the same value that you use as the Amplitude user ID. Set it after login with `Radar.setUserId()`. See [SDK overview and compatibility](/sdk/sdk). Events for a user without a `userId` are sent with the device identifiers only.
+## User mapping
 
-### User properties
+Radar sends these user properties with each event. A property has a value only when the matching Radar feature is enabled and applies to the user. A property with no value is sent as the string `"(null)"`.
 
-Radar sends these user properties with each event. A property that has no value is sent as the string `"(null)"`, so a user who leaves all geofences gets `"(null)"` in the geofence properties and not a stale value.
-
-| Radar user field | Amplitude user property | Type | Example value | Context |
-| --- | --- | --- | --- | --- |
-| `_id` | `[Radar] ID` | string | `"5b2c0906f5874b001aecfd8d"` | |
-| `locationAuthorization` | `[Radar] Location Authorization` | string | `"GRANTED_FOREGROUND"` | |
-| `locationAccuracyAuthorization` | `[Radar] Location Accuracy Authorization` | string | `"FULL"` | |
-| `segments[*].externalId` | `[Radar] Segment External IDs` | array[string] | `["loyalty-members"]` | |
-| `topChains[*].slug` | `[Radar] Top Chain Slugs` | array[string] | `["example-coffee", "example-grocery"]` | |
-| `topChains[*].externalId` | `[Radar] Top Chain External IDs` | array[string] | `["chain-7", "chain-9"]` | |
-| `geofences[*]._id` | `[Radar] Geofence IDs` | array[string] | `["5b2c0906f5874b001aecfd8e"]` | [Geofences](/fundamentals/context-types#geofences) |
-| `geofences[*].description` | `[Radar] Geofence Descriptions` | array[string] | `["Store #42"]` | Geofences |
-| `geofences[*].tag` | `[Radar] Geofence Tags` | array[string] | `["store"]` | Geofences |
-| `geofences[*].externalId` | `[Radar] Geofence External IDs` | array[string] | `["store-42"]` | Geofences |
-| `place._id` | `[Radar] Place ID` | string | `"59302bcf8f27e8a156bd4f91"` | [Places](/fundamentals/context-types#places) |
-| `place.name` | `[Radar] Place Name` | string | `"Example Coffee"` | Places |
-| `place.categories` | `[Radar] Place Categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | Places |
-| `place.chain.slug` | `[Radar] Place Chain Slug` | string | `"example-coffee"` | Places |
-| `place.chain.name` | `[Radar] Place Chain Name` | string | `"Example Coffee"` | Places |
-| `place.chain.externalId` | `[Radar] Place Chain External ID` | string | `"chain-7"` | Places |
-| `country.code` | `[Radar] Region Country Code` | string | `"US"` | [Regions](/fundamentals/context-types#regions) |
-| `country.name` | `[Radar] Region Country Name` | string | `"United States"` | Regions |
-| `country._id` | `[Radar] Region Country ID` | string | `"5b2c0906f5874b001aecfd8f"` | Regions |
-| `state.code` | `[Radar] Region State Code` | string | `"MD"` | Regions |
-| `state.name` | `[Radar] Region State Name` | string | `"Maryland"` | Regions |
-| `state._id` | `[Radar] Region State ID` | string | `"5b2c0906f5874b001aecfd8f"` | Regions |
-| `dma.code` | `[Radar] Region DMA Code` | string | `"26"` | Regions |
-| `dma.name` | `[Radar] Region DMA Name` | string | `"Baltimore"` | Regions |
-| `dma._id` | `[Radar] Region DMA ID` | string | `"5b2c0906f5874b001aecfd8f"` | Regions |
-| `city.code` | `[Radar] Region City Code` | string | `"_"` | Regions |
-| `city.name` | `[Radar] Region City Name` | string | `"Tokyo"` | Regions |
-| `city._id` | `[Radar] Region City ID` | string | `"5b2c0906f5874b001aecfd8f"` | Regions |
-| `postalCode.code` | `[Radar] Region Postal Code` | string | `"21014"` | Regions |
-| `postalCode._id` | `[Radar] Region Postal Code ID` | string | `"5b2c0906f5874b001aecfd8f"` | Regions |
-| `trip.externalId` | `[Radar] Trip External ID` | string | `"order-299"` | [Trips](/fundamentals/context-types#trips) |
-| `trip.destinationGeofenceTag` | `[Radar] Trip Destination Geofence Tag` | string | `"store"` | Trips |
-| `trip.destinationGeofenceExternalId` | `[Radar] Trip Destination Geofence External ID` | string | `"store-42"` | Trips |
-| `beacons[*]._id` | `[Radar] Beacon IDs` | array[string] | `["5b2c0906f5874b001aecfd8f"]` | [Beacons](/fundamentals/context-types#beacons) |
-| `beacons[*].description` | `[Radar] Beacon Descriptions` | array[string] | `["Store #42 drive-thru"]` | Beacons |
-| `beacons[*].tag` | `[Radar] Beacon Tags` | array[string] | `["drive-thru"]` | Beacons |
-| `beacons[*].externalId` | `[Radar] Beacon External IDs` | array[string] | `["store-42-drive-thru"]` | Beacons |
-
-A property has a value only when the matching Radar feature is enabled for your project and applies to the user. For example, the place properties need Places, and the region properties need Regions.
+| Radar user field | Amplitude user property | Type | Example value |
+| --- | --- | --- | --- |
+| `_id` | `[Radar] ID` | string | `"5b2c0906f5874b001aecfd8d"` |
+| `locationAuthorization` | `[Radar] Location Authorization` | string | `"GRANTED_FOREGROUND"` |
+| `locationAccuracyAuthorization` | `[Radar] Location Accuracy Authorization` | string | `"FULL"` |
+| `segments[*].externalId` | `[Radar] Segment External IDs` | array[string] | `["loyalty-members"]` |
+| `topChains[*].slug` | `[Radar] Top Chain Slugs` | array[string] | `["example-coffee", "example-grocery"]` |
+| `topChains[*].externalId` | `[Radar] Top Chain External IDs` | array[string] | `["chain-7", "chain-9"]` |
+| `geofences[*]._id` | `[Radar] Geofence IDs` | array[string] | `["5b2c0906f5874b001aecfd8e"]` |
+| `geofences[*].description` | `[Radar] Geofence Descriptions` | array[string] | `["Store #42"]` |
+| `geofences[*].tag` | `[Radar] Geofence Tags` | array[string] | `["store"]` |
+| `geofences[*].externalId` | `[Radar] Geofence External IDs` | array[string] | `["store-42"]` |
+| `place._id` | `[Radar] Place ID` | string | `"59302bcf8f27e8a156bd4f91"` |
+| `place.name` | `[Radar] Place Name` | string | `"Example Coffee"` |
+| `place.categories` | `[Radar] Place Categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` |
+| `place.chain.slug` | `[Radar] Place Chain Slug` | string | `"example-coffee"` |
+| `place.chain.name` | `[Radar] Place Chain Name` | string | `"Example Coffee"` |
+| `place.chain.externalId` | `[Radar] Place Chain External ID` | string | `"chain-7"` |
+| `country.code` | `[Radar] Region Country Code` | string | `"US"` |
+| `country.name` | `[Radar] Region Country Name` | string | `"United States"` |
+| `country._id` | `[Radar] Region Country ID` | string | `"5b2c0906f5874b001aecfd8f"` |
+| `state.code` | `[Radar] Region State Code` | string | `"MD"` |
+| `state.name` | `[Radar] Region State Name` | string | `"Maryland"` |
+| `state._id` | `[Radar] Region State ID` | string | `"5b2c0906f5874b001aecfd8f"` |
+| `dma.code` | `[Radar] Region DMA Code` | string | `"26"` |
+| `dma.name` | `[Radar] Region DMA Name` | string | `"Baltimore"` |
+| `dma._id` | `[Radar] Region DMA ID` | string | `"5b2c0906f5874b001aecfd8f"` |
+| `city.code` | `[Radar] Region City Code` | string | `"_"` |
+| `city.name` | `[Radar] Region City Name` | string | `"Tokyo"` |
+| `city._id` | `[Radar] Region City ID` | string | `"5b2c0906f5874b001aecfd8f"` |
+| `postalCode.code` | `[Radar] Region Postal Code` | string | `"21014"` |
+| `postalCode._id` | `[Radar] Region Postal Code ID` | string | `"5b2c0906f5874b001aecfd8f"` |
+| `trip.externalId` | `[Radar] Trip External ID` | string | `"order-299"` |
+| `trip.destinationGeofenceTag` | `[Radar] Trip Destination Geofence Tag` | string | `"store"` |
+| `trip.destinationGeofenceExternalId` | `[Radar] Trip Destination Geofence External ID` | string | `"store-42"` |
+| `beacons[*]._id` | `[Radar] Beacon IDs` | array[string] | `["5b2c0906f5874b001aecfd8f"]` |
+| `beacons[*].description` | `[Radar] Beacon Descriptions` | array[string] | `["Store #42 drive-thru"]` |
+| `beacons[*].tag` | `[Radar] Beacon Tags` | array[string] | `["drive-thru"]` |
+| `beacons[*].externalId` | `[Radar] Beacon External IDs` | array[string] | `["store-42-drive-thru"]` |
 
 ## Event mapping
 
-Radar sends one Amplitude event per Radar event. The Amplitude event type is the Radar event name in title case with a `[Radar]` prefix.
+Radar also forwards event types that aren't in this table. To keep them out, use **Event type allowlist**.
 
 | Radar event | Amplitude event | Context |
 | --- | --- | --- |
-| `user.entered_geofence` | `[Radar] Geofence Entered` | Geofences |
+| `user.entered_geofence` | `[Radar] Geofence Entered` | [Geofences](/fundamentals/context-types#geofences) |
 | `user.exited_geofence` | `[Radar] Geofence Exited` | Geofences |
 | `user.dwelled_in_geofence` | `[Radar] Dwelled in Geofence` | Geofences |
-| `user.entered_place` | `[Radar] Place Entered` | Places |
+| `user.entered_place` | `[Radar] Place Entered` | [Places](/fundamentals/context-types#places) |
 | `user.exited_place` | `[Radar] Place Exited` | Places |
-| `user.entered_region_country` | `[Radar] Country Entered` | Regions |
+| `user.entered_region_country` | `[Radar] Country Entered` | [Regions](/fundamentals/context-types#regions) |
 | `user.exited_region_country` | `[Radar] Country Exited` | Regions |
 | `user.entered_region_state` | `[Radar] State Entered` | Regions |
 | `user.exited_region_state` | `[Radar] State Exited` | Regions |
@@ -126,324 +100,77 @@ Radar sends one Amplitude event per Radar event. The Amplitude event type is the
 | `user.exited_region_dma` | `[Radar] DMA Exited` | Regions |
 | `user.entered_region_postal_code` | `[Radar] Postal Code Entered` | Regions |
 | `user.exited_region_postal_code` | `[Radar] Postal Code Exited` | Regions |
-| `user.started_trip` | `[Radar] Started Trip` | Trips |
+| `user.started_trip` | `[Radar] Started Trip` | [Trips](/fundamentals/context-types#trips) |
 | `user.updated_trip` | `[Radar] Updated Trip` | Trips |
 | `user.approaching_trip_destination` | `[Radar] Approaching Trip Destination` | Trips |
 | `user.arrived_at_trip_destination` | `[Radar] Arrived at Trip Destination` | Trips |
 | `user.stopped_trip` | `[Radar] Stopped Trip` | Trips |
-| `user.entered_beacon` | `[Radar] Beacon Entered` | Beacons |
+| `user.entered_beacon` | `[Radar] Beacon Entered` | [Beacons](/fundamentals/context-types#beacons) |
 | `user.exited_beacon` | `[Radar] Beacon Exited` | Beacons |
 
-### Fields on every event
+The first four rows are Amplitude event fields. Amplitude deduplicates on `insert_id`. The rest are event properties, omitted when the Radar field has no value.
 
-| Radar field | Amplitude field | Type | Notes |
-| --- | --- | --- | --- |
-| `event._id` | `insert_id` | string | Amplitude uses `insert_id` to deduplicate events. |
-| `event.createdAt` | `time` | number (milliseconds since epoch) | When the event occurred. |
-| `user.location.coordinates[1]` | `location_lat` | number | The user's latitude. |
-| `user.location.coordinates[0]` | `location_lng` | number | The user's longitude. |
-| `event.locationAccuracy` | Event property `Accuracy` | number (meters) | |
-| `event.foreground` | Event property `Foreground` | boolean | |
-| `event.actualCreatedAt` | Event property `ActualTime` | number (milliseconds since epoch) | When Radar's server created the event. |
-| `event.replayed` | Event property `Replayed` | boolean | Sent only when `true`. |
+| Radar field | Amplitude field or property | Type | Example value | Events |
+| --- | --- | --- | --- | --- |
+| `event._id` | `insert_id` | string | | All |
+| `event.createdAt` | `time` | number (milliseconds since epoch) | | All. When the event occurred. |
+| `user.location.coordinates[1]` | `location_lat` | number | | All |
+| `user.location.coordinates[0]` | `location_lng` | number | | All |
+| `event.locationAccuracy` | `Accuracy` | number (meters) | | All |
+| `event.foreground` | `Foreground` | boolean | | All |
+| `event.actualCreatedAt` | `ActualTime` | number (milliseconds since epoch) | | All. When Radar's server created the event. |
+| `event.replayed` | `Replayed` | boolean | | All. Sent only when `true`. |
+| `confidence` | `Confidence` | string | `"high"` | All. One of `"none"`, `"low"`, `"medium"`, or `"high"`. |
+| `duration` | `Duration` | number (minutes) | `42.1`, or `1.42` on a beacon exit | Every `Exited` event and `[Radar] Dwelled in Geofence` |
+| `geofence._id` | `Geofence ID` | string | `"5b2c0906f5874b001aecfd8e"` | Geofence |
+| `geofence.description` | `Geofence Description` | string | `"Store #42"` | Geofence |
+| `geofence.tag` | `Geofence Tag` | string | `"store"` | Geofence |
+| `geofence.externalId` | `Geofence External ID` | string | `"store-42"` | Geofence |
+| `geofence.metadata[{key}]` | `Geofence Metadata {key}` | type of the value | `{value}` | Geofence |
+| `place._id` | `Place ID` | string | `"59302bcf8f27e8a156bd4f91"` | Place |
+| `place.name` | `Place Name` | string | `"Example Coffee"` | Place |
+| `place.chain.slug` | `Place Chain Slug` | string | `"example-coffee"` | Place |
+| `place.chain.name` | `Place Chain Name` | string | `"Example Coffee"` | Place |
+| `place.categories` | `Place Categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | Place |
+| `region.code` | `Region Code` | string | `"US"` (country), `"MD"` (state), `"26"` (DMA), `"21014"` (postal code) | Region |
+| `region.name` | `Region Name` | string | `"United States"`, `"Maryland"`, `"Baltimore"`, `"21014"` | Region |
+| `region._id` | `Region ID` | string | `"5b2c0906f5874b001aecfd8f"` | Region |
+| `trip.externalId` | `Trip External ID` | string | `"order-299"` | Trip |
+| `trip.metadata[{key}]` | `Trip Metadata {key}` | type of the value | `{value}` | Trip |
+| `trip.destinationGeofenceTag` | `Trip Destination Geofence Tag` | string | `"store"` | Trip |
+| `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string | `"store-42"` | Trip |
+| `beacon._id` | `Beacon ID` | string | `"5b2c0906f5874b001aecfd8f"` | Beacon |
+| `beacon.description` | `Beacon Description` | string | `"Store #42 drive-thru"` | Beacon |
+| `beacon.tag` | `Beacon Tag` | string | `"drive-thru"` | Beacon |
+| `beacon.externalId` | `Beacon External ID` | string | `"store-42-drive-thru"` | Beacon |
+| `beacon.metadata[{key}]` | `Beacon Metadata {key}` | type of the value | `{value}` | Beacon |
 
-When the event has region context, Radar also sends these event properties on every event type:
+On every event that has region context, Radar also sends each region user property from [User mapping](#user-mapping) as an event property, named without the `[Radar] Region` prefix: `Country Code`, `Country Name`, `Country ID`, `State Code`, `State Name`, `State ID`, `DMA Code`, `DMA Name`, `DMA ID`, `City Code`, `City Name`, `City ID`, `Postal Code`, and `Postal Code ID`.
 
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `country.code` | `Country Code` | string | `"US"` |
-| `country.name` | `Country Name` | string | `"United States"` |
-| `country._id` | `Country ID` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `state.code` | `State Code` | string | `"MD"` |
-| `state.name` | `State Name` | string | `"Maryland"` |
-| `state._id` | `State ID` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `dma.code` | `DMA Code` | string | `"26"` |
-| `dma.name` | `DMA Name` | string | `"Baltimore"` |
-| `dma._id` | `DMA ID` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `city.code` | `City Code` | string | `"_"` |
-| `city.name` | `City Name` | string | `"Tokyo"` |
-| `city._id` | `City ID` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `postalCode.code` | `Postal Code` | string | `"21014"` |
-| `postalCode._id` | `Postal Code ID` | string | `"5b2c0906f5874b001aecfd8f"` |
+To limit what Radar sends, see [Filters](/integrations/integrations#filters).
 
-The sections below list the properties that are specific to each event type. `Confidence` is one of `"none"`, `"low"`, `"medium"`, or `"high"`. A property is omitted when the Radar field has no value.
-
-### [Radar] Geofence Entered
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `geofence._id` | `Geofence ID` | string | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description` | `Geofence Description` | string | `"Store #42"` |
-| `geofence.tag` | `Geofence Tag` | string | `"store"` |
-| `geofence.externalId` | `Geofence External ID` | string | `"store-42"` |
-| `geofence.metadata[{key}]` | `Geofence Metadata {key}` | type of the value | `{value}` |
-| `confidence` | `Confidence` | string | `"high"` |
-
-### [Radar] Geofence Exited
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `geofence._id` | `Geofence ID` | string | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description` | `Geofence Description` | string | `"Store #42"` |
-| `geofence.tag` | `Geofence Tag` | string | `"store"` |
-| `geofence.externalId` | `Geofence External ID` | string | `"store-42"` |
-| `geofence.metadata[{key}]` | `Geofence Metadata {key}` | type of the value | `{value}` |
-| `confidence` | `Confidence` | string | `"high"` |
-| `duration` | `Duration` | number (minutes) | `42.1` |
-
-### [Radar] Dwelled in Geofence
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `geofence._id` | `Geofence ID` | string | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description` | `Geofence Description` | string | `"Store #42"` |
-| `geofence.tag` | `Geofence Tag` | string | `"store"` |
-| `geofence.externalId` | `Geofence External ID` | string | `"store-42"` |
-| `geofence.metadata[{key}]` | `Geofence Metadata {key}` | type of the value | `{value}` |
-| `confidence` | `Confidence` | string | `"high"` |
-| `duration` | `Duration` | number (minutes) | `42.1` |
-
-### [Radar] Place Entered
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `place._id` | `Place ID` | string | `"59302bcf8f27e8a156bd4f91"` |
-| `place.name` | `Place Name` | string | `"Example Coffee"` |
-| `place.chain.slug` | `Place Chain Slug` | string | `"example-coffee"` |
-| `place.chain.name` | `Place Chain Name` | string | `"Example Coffee"` |
-| `place.categories` | `Place Categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` |
-| `confidence` | `Confidence` | string | `"high"` |
-
-### [Radar] Place Exited
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `place._id` | `Place ID` | string | `"59302bcf8f27e8a156bd4f91"` |
-| `place.name` | `Place Name` | string | `"Example Coffee"` |
-| `place.chain.slug` | `Place Chain Slug` | string | `"example-coffee"` |
-| `place.chain.name` | `Place Chain Name` | string | `"Example Coffee"` |
-| `place.categories` | `Place Categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` |
-| `confidence` | `Confidence` | string | `"high"` |
-| `duration` | `Duration` | number (minutes) | `42.1` |
-
-### [Radar] Country Entered
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `Region Code` | string | `"US"` |
-| `region.name` | `Region Name` | string | `"United States"` |
-| `region._id` | `Region ID` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `confidence` | `Confidence` | string | `"high"` |
-
-### [Radar] Country Exited
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `Region Code` | string | `"US"` |
-| `region.name` | `Region Name` | string | `"United States"` |
-| `region._id` | `Region ID` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `confidence` | `Confidence` | string | `"high"` |
-| `duration` | `Duration` | number (minutes) | `42.1` |
-
-### [Radar] State Entered
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `Region Code` | string | `"MD"` |
-| `region.name` | `Region Name` | string | `"Maryland"` |
-| `region._id` | `Region ID` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `confidence` | `Confidence` | string | `"high"` |
-
-### [Radar] State Exited
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `Region Code` | string | `"MD"` |
-| `region.name` | `Region Name` | string | `"Maryland"` |
-| `region._id` | `Region ID` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `confidence` | `Confidence` | string | `"high"` |
-| `duration` | `Duration` | number (minutes) | `42.1` |
-
-### [Radar] DMA Entered
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `Region Code` | string | `"26"` |
-| `region.name` | `Region Name` | string | `"Baltimore"` |
-| `region._id` | `Region ID` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `confidence` | `Confidence` | string | `"high"` |
-
-### [Radar] DMA Exited
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `Region Code` | string | `"26"` |
-| `region.name` | `Region Name` | string | `"Baltimore"` |
-| `region._id` | `Region ID` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `confidence` | `Confidence` | string | `"high"` |
-| `duration` | `Duration` | number (minutes) | `42.1` |
-
-### [Radar] Postal Code Entered
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `Region Code` | string | `"21014"` |
-| `region.name` | `Region Name` | string | `"21014"` |
-| `region._id` | `Region ID` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `confidence` | `Confidence` | string | `"high"` |
-
-### [Radar] Postal Code Exited
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `Region Code` | string | `"21014"` |
-| `region.name` | `Region Name` | string | `"21014"` |
-| `region._id` | `Region ID` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `confidence` | `Confidence` | string | `"high"` |
-| `duration` | `Duration` | number (minutes) | `42.1` |
-
-### [Radar] Started Trip
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `trip.externalId` | `Trip External ID` | string | `"order-299"` |
-| `trip.metadata[{key}]` | `Trip Metadata {key}` | type of the value | `{value}` |
-| `trip.destinationGeofenceTag` | `Trip Destination Geofence Tag` | string | `"store"` |
-| `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string | `"store-42"` |
-| `confidence` | `Confidence` | string | `"high"` |
-
-### [Radar] Updated Trip
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `trip.externalId` | `Trip External ID` | string | `"order-299"` |
-| `trip.metadata[{key}]` | `Trip Metadata {key}` | type of the value | `{value}` |
-| `trip.destinationGeofenceTag` | `Trip Destination Geofence Tag` | string | `"store"` |
-| `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string | `"store-42"` |
-| `confidence` | `Confidence` | string | `"high"` |
-
-### [Radar] Approaching Trip Destination
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `trip.externalId` | `Trip External ID` | string | `"order-299"` |
-| `trip.metadata[{key}]` | `Trip Metadata {key}` | type of the value | `{value}` |
-| `trip.destinationGeofenceTag` | `Trip Destination Geofence Tag` | string | `"store"` |
-| `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string | `"store-42"` |
-| `confidence` | `Confidence` | string | `"high"` |
-
-### [Radar] Arrived at Trip Destination
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `trip.externalId` | `Trip External ID` | string | `"order-299"` |
-| `trip.metadata[{key}]` | `Trip Metadata {key}` | type of the value | `{value}` |
-| `trip.destinationGeofenceTag` | `Trip Destination Geofence Tag` | string | `"store"` |
-| `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string | `"store-42"` |
-| `confidence` | `Confidence` | string | `"high"` |
-
-### [Radar] Stopped Trip
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `trip.externalId` | `Trip External ID` | string | `"order-299"` |
-| `trip.metadata[{key}]` | `Trip Metadata {key}` | type of the value | `{value}` |
-| `trip.destinationGeofenceTag` | `Trip Destination Geofence Tag` | string | `"store"` |
-| `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string | `"store-42"` |
-| `confidence` | `Confidence` | string | `"high"` |
-
-### [Radar] Beacon Entered
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `beacon._id` | `Beacon ID` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `beacon.description` | `Beacon Description` | string | `"Store #42 drive-thru"` |
-| `beacon.tag` | `Beacon Tag` | string | `"drive-thru"` |
-| `beacon.externalId` | `Beacon External ID` | string | `"store-42-drive-thru"` |
-| `beacon.metadata[{key}]` | `Beacon Metadata {key}` | type of the value | `{value}` |
-| `confidence` | `Confidence` | string | `"high"` |
-
-### [Radar] Beacon Exited
-
-| Radar event field | Amplitude event property | Type | Example value |
-| --- | --- | --- | --- |
-| `beacon._id` | `Beacon ID` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `beacon.description` | `Beacon Description` | string | `"Store #42 drive-thru"` |
-| `beacon.tag` | `Beacon Tag` | string | `"drive-thru"` |
-| `beacon.externalId` | `Beacon External ID` | string | `"store-42-drive-thru"` |
-| `beacon.metadata[{key}]` | `Beacon Metadata {key}` | type of the value | `{value}` |
-| `confidence` | `Confidence` | string | `"high"` |
-| `duration` | `Duration` | number (minutes) | `1.42` |
-
-## Filtering
-
-On the [Integrations](https://dashboard.radar.com/integrations) page, click **Show advanced** in the **Amplitude** section.
-
-| Field | Effect |
-| --- | --- |
-| **Event type allowlist** | When you select one or more event types, Radar sends only those types to Amplitude. With nothing selected, Radar sends every event type. |
-| **Request key blocklist (comma-separated)** | Removes the listed keys from the request at any depth. For example, `ip,[Radar] Place Name` removes the IP address and one user property. |
-| **Geofence tag blocklist (comma-separated)** | Skips events for geofences that have one of the listed tags. |
-
-Radar forwards every event type that passes the filters, including types that aren't in the [event mapping](#event-mapping) table. To keep unmapped event types out of Amplitude, select only the types you want in **Event type allowlist**.
-
-## Delivery behavior
-
-- **Endpoint**: Radar sends events to Amplitude's HTTP API at `https://api.amplitude.com/httpapi`, and Identify calls to `https://api2.amplitude.com/identify`. If your Amplitude project ingests through a different endpoint, ask your Radar account team whether it is supported before you enable the integration.
-- **Batching**: The events from one Radar update are sent together in one request.
-- **Timing**: Radar sends events from its servers shortly after it generates them. Amplitude's own processing time applies after that.
-- **Attempts**: Radar makes one delivery attempt and waits up to 5 seconds for Amplitude to respond. It doesn't retry a failed request. Use the [integration logs](#troubleshoot-delivery) to find failures, and the [Events API](/api/events) if you need to backfill.
-- **Deduplication**: `insert_id` is the Radar event `_id`, so the same Radar event always carries the same `insert_id`.
-- **Environment**: The event's environment selects the key. Radar doesn't send a Test event with the Live key or the reverse.
+Radar sends the events from one update in one request to `https://api.amplitude.com/httpapi`, and Identify calls to `https://api2.amplitude.com/identify`. See [Delivery behavior](/integrations/integrations#delivery-behavior).
 
 ## Test the integration
 
-<Steps>
-  <Step title="Use the Test environment">
-    Confirm that **Test API key** holds the key of an Amplitude project that you can inspect, and that the integration is saved with **Enabled** set to **Yes**.
-  </Step>
-  <Step title="Generate an event">
-    Create a geofence in the Test environment, then send a location inside it with your Test publishable key. Replace the coordinates with a point inside your geofence:
+Create a geofence in the Test environment, then send a location inside it:
 
-    ```bash
-    curl "https://api.radar.io/v1/track" \
-      -H "Authorization: prj_test_pk_..." \
-      -X POST \
-      -d "deviceId=test-device-1" \
-      -d "userId=user-123" \
-      -d "deviceType=iOS" \
-      -d "latitude=40.78382" \
-      -d "longitude=-73.97536" \
-      -d "accuracy=10"
-    ```
+```bash
+curl "https://api.radar.io/v1/track" \
+  -H "Authorization: prj_test_pk_..." \
+  -X POST \
+  -d "deviceId=test-device-1" \
+  -d "userId=user-123" \
+  -d "deviceType=iOS" \
+  -d "latitude=40.78382" \
+  -d "longitude=-73.97536" \
+  -d "accuracy=10"
+```
 
-    The response includes a `user.entered_geofence` event the first time the user enters the geofence. For the parameters, see [Tracking API](/api/tracking).
-  </Step>
-  <Step title="Check Radar's log">
-    In the **Amplitude** section, click **View integration logs**. Find a row for the event with the request that Radar sent and a `200` response from Amplitude.
-  </Step>
-  <Step title="Check Amplitude">
-    In Amplitude, look up the user `user-123` in the project that owns the Test key. Confirm that the user has a `[Radar] Geofence Entered` event with the `Geofence External ID` of your geofence, and `[Radar] Geofence External IDs` in the user's properties.
-  </Step>
-</Steps>
+The response includes a `user.entered_geofence` event. In the **Amplitude** section, **View integration logs** shows the request with a `200` response and the API key redacted. In Amplitude, user `user-123` has a `[Radar] Geofence Entered` event with your geofence's `Geofence External ID`.
 
-## Troubleshoot delivery
-
-On the [Integrations](https://dashboard.radar.com/integrations) page, click **View integration logs** in the **Amplitude** section. Each row shows the request and Amplitude's response. Radar redacts the API key in the logged request.
-
-| What you see | Likely cause | What to do |
-| --- | --- | --- |
-| No rows | No events were generated in that environment, or the integration isn't saved as enabled. | Check the Events page for the environment and the **Enabled** setting. |
-| `skipped`: `Integration key(s) missing.` | The key for the event's environment is empty. | Enter the **Test API key** or **Live API key**. |
-| `skipped`: `Event type ... is not allowed.` | The event type isn't selected in **Event type allowlist**. | Select the type or clear the allowlist. |
-| `skipped`: `Geofence tag '...' is blocklisted.` | The geofence's tag is in **Geofence tag blocklist**. | Remove the tag from the blocklist. |
-| A `4xx` response | Amplitude rejected the request. | Read the response body in the log. If it reports an invalid API key, copy the key again from the correct Amplitude project. |
-| A `200` response but no event on the expected user | The identifiers differ between Radar and Amplitude. | Compare the `user_id` and `device_id` in the logged request with the Amplitude user. |
+If the event is on the wrong user, compare `user_id` and `device_id` in the logged request with the Amplitude user. Otherwise, see [Troubleshoot delivery](/integrations/integrations#troubleshoot-delivery).
 
 ## Limitations
 
-- Radar doesn't retry failed deliveries to Amplitude.
-- You can't rename events or properties. Use the request key blocklist to drop properties you don't want.
-- Events generated before you enabled the integration aren't sent.
-- The integration has no setting for the Amplitude ingestion endpoint.
-- User properties reflect the user's state when the event was generated. Radar doesn't update Amplitude when a user's state changes without generating an event.
+The integration has no setting for the Amplitude ingestion endpoint.

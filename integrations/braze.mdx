@@ -7,59 +7,40 @@ description: "Send Radar location events and user attributes to Braze to trigger
   The Braze integration is available on the [Enterprise plan](https://radar.com/pricing).
 </Info>
 
-By the end of this page, Radar sends a custom event and updated user attributes to [Braze](https://www.braze.com) each time it generates a location event for a user, and you have confirmed delivery for one test user.
-
-Radar sends this data from its servers to the Braze `/users/track` endpoint. Your app doesn't need extra code unless you change the default identity mapping or want [in-app messaging](#in-app-messaging).
+Radar sends a custom event and updated user attributes to [Braze](https://www.braze.com) each time it generates a location event.
 
 ## Prerequisites
 
-- A Radar project on the Enterprise plan, with the Radar SDK generating events. See [Detect geofence events and place visits](/geofencing/geofences-and-places).
-- A Braze workspace, with permission to create REST API keys.
-- The Braze SDK in your app, so the users Radar updates also exist in Braze.
-- A user identifier shared by both systems. See [Identity mapping](#identity-mapping).
+- A Radar project on the Enterprise plan that is [generating events](/geofencing/geofences-and-places).
+- A Braze workspace where you can create REST API keys, and the Braze SDK in your app.
 
 ## Configuration
 
 <Steps>
   <Step title="Create a Braze API key">
-    In Braze, open the **API Keys** page. Under **Rest API Keys**, create a workspace API key with the `users.track` permission and copy it. Under **Identification** on the same page, copy the app identifiers for your iOS and Android apps.
+    In Braze, open the **API Keys** page. Under **Rest API Keys**, create a workspace API key with the `users.track` permission. Under **Identification**, copy the iOS and Android app identifiers.
   </Step>
   <Step title="Enter the keys in Radar">
-    In the Radar dashboard, open the [Integrations](https://dashboard.radar.com/integrations) page, find the **Braze** section, and select **Yes** for **Enabled**. Enter these values:
+    On the [Integrations](https://dashboard.radar.com/integrations) page, select **Yes** for **Enabled** in the **Braze** section, enter these values, and click **Save**.
 
     | Field | Value |
     | --- | --- |
-    | **API endpoint** | Your Braze REST endpoint. The default is `https://rest.iad-01.braze.com`. Select another endpoint if your Braze account is on a different instance. |
-    | **Live app group API key** | The REST API key for the Live environment. |
-    | **Live iOS app identifier**, **Live Android app identifier** | The Braze app identifiers for your production apps. |
-    | **Test app group API key**, **Test iOS app identifier**, **Test Android app identifier** | The same values for the Braze workspace that receives data from the Test environment. If you leave the Test API key empty, Radar uses the Live API key for events from the Test environment. |
-
-    Click **Save**.
-  </Step>
-  <Step title="Set the identity mapping in your app">
-    If your Radar `userId` isn't the Braze `external_id`, or you need to reach logged-out users, set the metadata described in [Identity mapping](#identity-mapping).
+    | **API endpoint** | Your Braze REST endpoint. The default is `https://rest.iad-01.braze.com`. |
+    | **Live app group API key** | REST API key for the Live environment. |
+    | **Live iOS app identifier**, **Live Android app identifier** | App identifiers for your production apps. |
+    | **Test app group API key**, **Test iOS app identifier**, **Test Android app identifier** | The same for the Test environment. With no Test API key, Radar uses the Live API key. |
   </Step>
 </Steps>
 
-Radar chooses the app identifier from the device that generated the event: iOS devices use the iOS app identifier and Android devices use the Android app identifier. Both an API key and an app identifier for the device's platform and environment must be present, or Radar skips the event.
-
 ## Identity mapping
 
-Radar picks the Braze identifier for each user in this order:
+Radar uses the first of these values that is set. If none is, it skips the event with `Identifier missing.`
 
-| Priority | Radar value | Sent to Braze as |
+| Radar value | Sent to Braze as | Use for |
 | --- | --- | --- |
-| 1 | `metadata.brazeExternalId` | `external_id` |
-| 2 | `metadata.brazeAlias` | A user alias with `alias_label` `radarAlias` and `alias_name` set to the value |
-| 3 | `userId` | `external_id` |
-
-If none of these is set, Radar skips the event and logs `Identifier missing.`
-
-- **Logged-in users, same ID in both systems**: Call `Radar.setUserId()` with the ID you pass to Braze as the external ID. Nothing else is needed.
-- **Logged-in users, different IDs**: Set `metadata.brazeExternalId` to the Braze external ID.
-- **Logged-out users**: Set `metadata.brazeAlias` to a stable value such as a device ID, and add an alias with the same name and the label `radarAlias` to the user through the Braze SDK. Without the matching alias in Braze, the data doesn't attach to the user you expect.
-
-These examples set the alias and the external ID in Radar metadata:
+| `metadata.brazeExternalId` | `external_id` | A Braze external ID that differs from the Radar `userId`. |
+| `metadata.brazeAlias` | A user alias with `alias_label` `radarAlias` and `alias_name` set to the value | Logged-out users. Also add the alias, labeled `radarAlias`, through the Braze SDK. |
+| `userId` | `external_id` | Same ID in both, set with `Radar.setUserId()`. |
 
 <CodeGroup>
 
@@ -86,64 +67,62 @@ Radar.setMetadata(JSONObject().put("brazeExternalId", brazeExternalId))
 
 </CodeGroup>
 
-`Radar.setMetadata()` replaces the whole metadata object, so include any other metadata keys you use in the same call. When a user logs in or out, update the metadata so events stop going to the previous identity.
+`Radar.setMetadata()` replaces the whole metadata object. Update it when a user logs in or out.
 
 ## User mapping
 
-Radar sends these attributes with every request. Attributes for a [context type](/fundamentals/context-types) are sent only when that feature is enabled for your project. An attribute with no current value is sent as `null`, and array attributes are sent as empty arrays.
+Radar sends these attributes with every request. An attribute with no value is sent as `null` or an empty array.
 
-| Radar user field | Braze user attribute | Type | Example value | Context |
-| --- | --- | --- | --- | --- |
-| `metadata.brazeExternalId` or `userId` | `external_id` | string | `"user-123"` | |
-| `metadata.brazeAlias` | `user_alias` with label `radarAlias` | string | `"10974a2ee035770b9"` | |
-| `location` | `current_location` | location | `(39.525665, -76.350663)` | |
-| `_id` | `radar_id` | string | `"5b2c0906f5874b001aecfd8d"` | |
-| `updatedAt` | `radar_updated_at` | timestamp | `"2026-06-22T15:23:39.000Z"` | |
-| `locationAuthorization` | `radar_location_authorization` | string | `"GRANTED_FOREGROUND"` | |
-| `locationAccuracyAuthorization` | `radar_location_accuracy_authorization` | string | `"FULL"` | |
-| `segments[*].externalId` | `radar_segment_external_ids` | array[string] | `["coffee-visitors"]` | |
-| `topChains[*].slug` | `radar_top_chain_slugs` | array[string] | `["example-coffee", "example-grocery"]` | |
-| `topChains[*].externalId` | `radar_top_chain_external_ids` | array[string] | `["123", "456"]` | |
-| `geofences[*]._id` | `radar_geofence_ids` | array[string] | `["5b2c0906f5874b001aecfd8e"]` | [Geofences](/fundamentals/context-types#geofences) |
-| `geofences[*].description` | `radar_geofence_descriptions` | array[string] | `["Store #42"]` | Geofences |
-| `geofences[*].tag` | `radar_geofence_tags` | array[string] | `["store"]` | Geofences |
-| `geofences[*].externalId` | `radar_geofence_external_ids` | array[string] | `["store-42"]` | Geofences |
-| `place._id` | `radar_place_id` | string | `"59302bcf8f27e8a156bd4f91"` | [Places](/fundamentals/context-types#places) |
-| `place.name` | `radar_place_name` | string | `"Example Coffee"` | Places |
-| `place.categories` | `radar_place_categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | Places |
-| `place.chain.slug` | `radar_place_chain_id` | string | `"example-coffee"` | Places |
-| `place.chain.name` | `radar_place_chain_name` | string | `"Example Coffee"` | Places |
-| `place.chain.externalId` | `radar_place_chain_external_id` | string | `"123"` | Places |
-| `country.code` | `radar_region_country_code` | string | `"US"` | [Regions](/fundamentals/context-types#regions) |
-| `country.name` | `radar_region_country_name` | string | `"United States"` | Regions |
-| `state.code` | `radar_region_state_code` | string | `"MD"` | Regions |
-| `state.name` | `radar_region_state_name` | string | `"Maryland"` | Regions |
-| `dma.code` | `radar_region_dma_code` | string | `"26"` | Regions |
-| `dma.name` | `radar_region_dma_name` | string | `"Baltimore"` | Regions |
-| `postalCode.code` | `radar_region_postal_code` | string | `"21014"` | Regions |
-| `trip.externalId` | `radar_trip_external_id` | string | `"order-299"` | [Trips](/fundamentals/context-types#trips) |
-| `trip.destinationGeofenceTag` | `radar_trip_destination_geofence_tag` | string | `"store"` | Trips |
-| `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string | `"store-42"` | Trips |
-| `beacons[*]._id` | `radar_beacon_ids` | array[string] | `["5b2c0906f5874b001aecfd8f"]` | [Beacons](/fundamentals/context-types#beacons) |
-| `beacons[*].description` | `radar_beacon_descriptions` | array[string] | `["Store #42 - Drive-Thru"]` | Beacons |
-| `beacons[*].tag` | `radar_beacon_tags` | array[string] | `["drive-thru"]` | Beacons |
-| `beacons[*].externalId` | `radar_beacon_external_ids` | array[string] | `["123"]` | Beacons |
-
-The geofence and beacon arrays describe where the user is now. They are replaced on each request, so a user who has left every geofence has empty arrays.
+| Radar user field | Braze user attribute | Type | Example value |
+| --- | --- | --- | --- |
+| `metadata.brazeExternalId` or `userId` | `external_id` | string | `"user-123"` |
+| `metadata.brazeAlias` | `user_alias` with label `radarAlias` | string | `"10974a2ee035770b9"` |
+| `location` | `current_location` | location | `(39.525665, -76.350663)` |
+| `_id` | `radar_id` | string | `"5b2c0906f5874b001aecfd8d"` |
+| `updatedAt` | `radar_updated_at` | timestamp | `"2026-06-22T15:23:39.000Z"` |
+| `locationAuthorization` | `radar_location_authorization` | string | `"GRANTED_FOREGROUND"` |
+| `locationAccuracyAuthorization` | `radar_location_accuracy_authorization` | string | `"FULL"` |
+| `segments[*].externalId` | `radar_segment_external_ids` | array[string] | `["coffee-visitors"]` |
+| `topChains[*].slug` | `radar_top_chain_slugs` | array[string] | `["example-coffee", "example-grocery"]` |
+| `topChains[*].externalId` | `radar_top_chain_external_ids` | array[string] | `["123", "456"]` |
+| `geofences[*]._id` | `radar_geofence_ids` | array[string] | `["5b2c0906f5874b001aecfd8e"]` |
+| `geofences[*].description` | `radar_geofence_descriptions` | array[string] | `["Store #42"]` |
+| `geofences[*].tag` | `radar_geofence_tags` | array[string] | `["store"]` |
+| `geofences[*].externalId` | `radar_geofence_external_ids` | array[string] | `["store-42"]` |
+| `place._id` | `radar_place_id` | string | `"59302bcf8f27e8a156bd4f91"` |
+| `place.name` | `radar_place_name` | string | `"Example Coffee"` |
+| `place.categories` | `radar_place_categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` |
+| `place.chain.slug` | `radar_place_chain_id` | string | `"example-coffee"` |
+| `place.chain.name` | `radar_place_chain_name` | string | `"Example Coffee"` |
+| `place.chain.externalId` | `radar_place_chain_external_id` | string | `"123"` |
+| `country.code` | `radar_region_country_code` | string | `"US"` |
+| `country.name` | `radar_region_country_name` | string | `"United States"` |
+| `state.code` | `radar_region_state_code` | string | `"MD"` |
+| `state.name` | `radar_region_state_name` | string | `"Maryland"` |
+| `dma.code` | `radar_region_dma_code` | string | `"26"` |
+| `dma.name` | `radar_region_dma_name` | string | `"Baltimore"` |
+| `postalCode.code` | `radar_region_postal_code` | string | `"21014"` |
+| `trip.externalId` | `radar_trip_external_id` | string | `"order-299"` |
+| `trip.destinationGeofenceTag` | `radar_trip_destination_geofence_tag` | string | `"store"` |
+| `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string | `"store-42"` |
+| `beacons[*]._id` | `radar_beacon_ids` | array[string] | `["5b2c0906f5874b001aecfd8f"]` |
+| `beacons[*].description` | `radar_beacon_descriptions` | array[string] | `["Store #42 - Drive-Thru"]` |
+| `beacons[*].tag` | `radar_beacon_tags` | array[string] | `["drive-thru"]` |
+| `beacons[*].externalId` | `radar_beacon_external_ids` | array[string] | `["123"]` |
 
 ## Event mapping
 
-The Braze custom event name is the Radar event type without the `user.` prefix.
+The Braze event name is the Radar event type without the `user.` prefix. Radar sends only these event types.
 
 | Radar event | Braze event | Context |
 | --- | --- | --- |
-| `user.entered_geofence` | `entered_geofence` | Geofences |
+| `user.entered_geofence` | `entered_geofence` | [Geofences](/fundamentals/context-types#geofences) |
 | `user.exited_geofence` | `exited_geofence` | Geofences |
 | `user.dwelled_in_geofence` | `dwelled_in_geofence` | Geofences |
-| `user.entered_place` | `entered_place` | Places |
+| `user.entered_place` | `entered_place` | [Places](/fundamentals/context-types#places) |
 | `user.exited_place` | `exited_place` | Places |
 | `user.nearby_place_chain` | `nearby_place_chain` | Places |
-| `user.entered_region_country` | `entered_region_country` | Regions |
+| `user.entered_region_country` | `entered_region_country` | [Regions](/fundamentals/context-types#regions) |
 | `user.exited_region_country` | `exited_region_country` | Regions |
 | `user.entered_region_state` | `entered_region_state` | Regions |
 | `user.exited_region_state` | `exited_region_state` | Regions |
@@ -151,282 +130,64 @@ The Braze custom event name is the Radar event type without the `user.` prefix.
 | `user.exited_region_dma` | `exited_region_dma` | Regions |
 | `user.entered_region_postal_code` | `entered_region_postal_code` | Regions |
 | `user.exited_region_postal_code` | `exited_region_postal_code` | Regions |
-| `user.started_trip` | `started_trip` | Trips |
+| `user.started_trip` | `started_trip` | [Trips](/fundamentals/context-types#trips) |
 | `user.updated_trip` | `updated_trip` | Trips |
 | `user.approaching_trip_destination` | `approaching_trip_destination` | Trips |
 | `user.arrived_at_trip_destination` | `arrived_at_trip_destination` | Trips |
 | `user.stopped_trip` | `stopped_trip` | Trips |
-| `user.entered_beacon` | `entered_beacon` | Beacons |
+| `user.entered_beacon` | `entered_beacon` | [Beacons](/fundamentals/context-types#beacons) |
 | `user.exited_beacon` | `exited_beacon` | Beacons |
 
-Radar doesn't send other event types to Braze.
-
-### Properties on every event
-
-| Radar event field | Braze event property | Type | Example value |
-| --- | --- | --- | --- |
-| `location.coordinates[1]` | `latitude` | number | `39.525665` |
-| `location.coordinates[0]` | `longitude` | number | `-76.350663` |
-| `locationAccuracy` | `accuracy` | number (meters) | `12` |
-| `createdAt` | `created_at` | timestamp | `"2026-06-22T15:23:39.000Z"` |
-| `actualCreatedAt` | `actual_created_at` | timestamp | `"2026-06-22T15:23:41.000Z"` |
-| `foreground` | `foreground` | boolean | `true` |
-| `replayed` | `replayed` | boolean, sent only when `true` | `true` |
-
-When the event carries region context, Radar also sends:
-
-| Radar event field | Braze event property | Type | Example value |
-| --- | --- | --- | --- |
-| `country.code` | `country_code` | string | `"US"` |
-| `country.name` | `country_name` | string | `"United States"` |
-| `state.code` | `state_code` | string | `"MD"` |
-| `state.name` | `state_name` | string | `"Maryland"` |
-| `dma.code` | `dma_code` | string | `"26"` |
-| `dma.name` | `dma_name` | string | `"Baltimore"` |
-| `postalCode.code` | `postal_code` | string | `"21014"` |
-
-### entered_geofence
-
-| Radar event field | Braze event property | Type | Example value |
-| --- | --- | --- | --- |
-| `geofence._id` | `geofence_id` | string | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description` | `geofence_description` | string | `"Store #42"` |
-| `geofence.tag` | `geofence_tag` | string | `"store"` |
-| `geofence.externalId` | `geofence_external_id` | string | `"store-42"` |
-| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type of the value | `{value}` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### exited_geofence
-
-Same properties as [`entered_geofence`](#entered_geofence), plus:
-
-| Radar event field | Braze event property | Type | Example value |
-| --- | --- | --- | --- |
-| `duration` | `duration` | number (minutes) | `42.1` |
-
-### dwelled_in_geofence
-
-Same properties as [`exited_geofence`](#exited_geofence). `duration` is the time in the geofence so far.
-
-### entered_place
-
-| Radar event field | Braze event property | Type | Example value |
-| --- | --- | --- | --- |
-| `place._id` | `place_id` | string | `"59302bcf8f27e8a156bd4f91"` |
-| `place.name` | `place_name` | string | `"Example Coffee"` |
-| `place.chain.slug` | `place_chain_id` | string | `"example-coffee"` |
-| `place.chain.name` | `place_chain_name` | string | `"Example Coffee"` |
-| `place.chain.externalId` | `place_chain_external_id` | string | `"123"` |
-| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | type of the value | `{value}` |
-| `place.categories` | `place_categories` | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### exited_place
-
-Same properties as [`entered_place`](#entered_place), plus `duration` (number, minutes).
-
-### Region events
-
-`entered_region_country`, `exited_region_country`, `entered_region_state`, `exited_region_state`, `entered_region_dma`, `exited_region_dma`, `entered_region_postal_code`, and `exited_region_postal_code` carry:
-
-| Radar event field | Braze event property | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `region_code` | string | `"MD"` |
-| `region.name` | `region_name` | string | `"Maryland"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### started_trip
-
-| Radar event field | Braze event property | Type | Example value |
-| --- | --- | --- | --- |
-| `trip.externalId` | `trip_external_id` | string | `"order-299"` |
-| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` |
-| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### updated_trip
-
-Same properties as [`started_trip`](#started_trip).
-
-### approaching_trip_destination
-
-Same properties as [`started_trip`](#started_trip).
-
-### arrived_at_trip_destination
-
-Same properties as [`started_trip`](#started_trip).
-
-### stopped_trip
-
-Same properties as [`started_trip`](#started_trip).
-
-### entered_beacon
-
-| Radar event field | Braze event property | Type | Example value |
-| --- | --- | --- | --- |
-| `beacon._id` | `beacon_id` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `beacon.description` | `beacon_description` | string | `"Store #42 - Drive-Thru"` |
-| `beacon.tag` | `beacon_tag` | string | `"drive-thru"` |
-| `beacon.externalId` | `beacon_external_id` | string | `"123"` |
-| `beacon.metadata[{key}]` | `beacon_metadata_{key}` | type of the value | `{value}` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### exited_beacon
-
-Same properties as [`entered_beacon`](#entered_beacon), plus `duration` (number, minutes).
-
-## Filtering
-
-On the [Integrations](https://dashboard.radar.com/integrations) page, click **Show advanced** in the **Braze** section.
-
-| Setting | Effect |
-| --- | --- |
-| **Event type allowlist** | Radar sends only the selected event types. Check this list first when an event you expect is missing. |
-| **Request key blocklist** | Comma-separated keys to remove from the request, for example `radar_geofence_ids,geofence_id`. Applies to user attributes and event properties. |
-| **Geofence tag blocklist** | Comma-separated geofence tags. Radar skips events for geofences with these tags. |
-| **Place chain blocklist**, **Place category blocklist** | Radar skips place events for these chains and categories. |
-| **Update existing users only** | When **Yes**, Radar asks Braze to update only users that already exist, instead of creating new user profiles. |
-
-For the filters that every event integration shares, see [Filters](/integrations/integrations#filters).
-
-## Delivery behavior
-
-- Radar sends to Braze only when it generates an event for the user. A location update that produces no event doesn't update Braze user attributes.
-- Events generated by one location update are sent together in one request, with the user attributes.
-- Delivery is asynchronous. It follows the Radar event by a short delay and doesn't block the SDK.
-- Radar sends each request once. It doesn't retry a request that Braze rejects or that times out. The outcome is recorded in the integration logs.
-- Events without a location aren't sent.
-- Events from the Test environment use the Test keys, and events from the Live environment use the Live keys.
-
-## Verify integration data delivery
-
-<Steps>
-  <Step title="Prepare a test user">
-    Make sure the test user has an identifier Braze can match. See [Identity mapping](#identity-mapping).
-  </Step>
-  <Step title="Generate an event">
-    Generate an event for that user. Either open the [Simulator](https://dashboard.radar.com/geofencing/simulate) page, choose the user, and move it into a geofence, or use a test build of your app and enter the geofence.
-  </Step>
-  <Step title="Check Radar's log">
-    On the [Events](https://dashboard.radar.com/geofencing/events) page, click **View** on the new event and find the **Logs** section. Confirm that it shows a Braze request to `/users/track` with a `2xx` response.
-  </Step>
-  <Step title="Check Braze">
-    In Braze, open the user's profile and confirm the `entered_geofence` custom event and the `radar_geofence_tags` attribute.
-  </Step>
-</Steps>
-
-## Troubleshoot delivery
-
-Click **View integration logs** in the **Braze** section of the [Integrations](https://dashboard.radar.com/integrations) page. Each row shows the timestamp, the request URL, and the response code, and expands to the request and response bodies. API keys are redacted. New rows can take a few minutes to appear.
-
-| Log response | Meaning |
-| --- | --- |
-| `skipped`: `Integration key(s) missing.` | No API key or no app identifier for this device platform and environment. |
-| `skipped`: `Identifier missing.` | The user has no `userId`, `metadata.brazeExternalId`, or `metadata.brazeAlias`. |
-| `skipped`, "Event type ... isn't allowed." | The event type isn't selected in the allowlist. |
-| `skipped`: `Geofence tag '...' is blocklisted.` | The geofence tag is in the blocklist. |
-| A `4xx` response | Braze rejected the request. The response body in the log gives the reason. Check that the API key belongs to the selected API endpoint and has the `users.track` permission. |
-| `2xx`, but no data on the user in Braze | The identifier doesn't match a Braze user. Check the external ID or alias, and the **Update existing users only** setting. |
-
-## Example use cases
-
-### Send a personalized push notification when a user arrives at a store
-
-1. Create [geofences](/geofencing/geofences-and-places) in Radar with the tag `store`.
-2. In Braze, create a campaign triggered by the `entered_geofence` custom event, with a property filter where `geofence_tag` is `store`. The same event works as a [Canvas](https://www.braze.com/docs/user_guide/engagement_tools/canvas) entry, and the event properties are available for personalization with [Liquid](https://www.braze.com/docs/user_guide/personalization_and_dynamic_content/liquid).
-
-### Message all users nearby a store
-
-1. Create geofences in Radar that cover the area around each store, with the tag `nearby-store`.
-2. In Braze, create a campaign that targets users whose `radar_geofence_tags` attribute includes `nearby-store`. This attribute lists the tags of every geofence the user is in. To avoid stale audiences, also filter on `radar_updated_at`, for example to users updated in the last hour.
-
-### Send on-trip messages for pickups
-
-Trigger a campaign or Canvas from `approaching_trip_destination` or `arrived_at_trip_destination`, and filter on `trip_destination_geofence_tag` or a `trip_metadata_{key}` property. If you use Olo, the mapped order fields arrive as trip metadata. See [Olo pickup and order firing](/integrations/olo).
-
-If Radar events reach Braze through mParticle instead of this integration, the attribute and event names come from the [mParticle integration](/integrations/mparticle), not from this page.
-
-### In-app messaging
-
-Braze evaluates in-app message triggers on the device, so a custom event sent from Radar's servers can't trigger an in-app message at app open. To trigger one from the user's location, log the event through the Braze SDK from Radar's location listener.
-
-The examples below assume you call `Radar.trackOnce()` at app launch. They build the event name and properties and hand them to a function you implement with your version of the Braze SDK. The Braze call isn't shown because it differs between Braze SDK versions.
-
-<CodeGroup>
-
-```swift Swift
-import CoreLocation
-import RadarSDK
-
-// Set this object as the Radar delegate.
-class LocationEventForwarder: NSObject, RadarDelegate {
-    // Implement with your Braze SDK's custom event call.
-    var logBrazeEvent: (String, [String: Any]) -> Void = { _, _ in }
-
-    func didUpdateLocation(_ location: CLLocation, user: RadarUser) {
-        guard user.foreground, user.source == .foregroundLocation else { return }
-
-        if let geofences = user.geofences, !geofences.isEmpty {
-            logBrazeEvent("radar_fg_geofences_entered", [
-                "radar_geofence_descriptions": geofences.map { $0.__description },
-                "radar_geofence_tags": geofences.compactMap { $0.tag },
-                "radar_geofence_external_ids": geofences.compactMap { $0.externalId }
-            ])
-        }
-    }
-}
-```
-
-```kotlin Kotlin
-import android.content.Context
-import android.location.Location
-import io.radar.sdk.Radar
-import io.radar.sdk.RadarReceiver
-import io.radar.sdk.model.RadarEvent
-import io.radar.sdk.model.RadarUser
-
-// Register this receiver with the Radar SDK.
-class LocationEventForwarder(
-    // Implement with your Braze SDK's custom event call.
-    private val logBrazeEvent: (name: String, properties: Map<String, Any>) -> Unit
-) : RadarReceiver() {
-
-    override fun onLocationUpdated(context: Context, location: Location, user: RadarUser) {
-        if (!user.foreground || user.source != Radar.RadarLocationSource.FOREGROUND_LOCATION) return
-
-        val geofences = user.geofences
-        if (!geofences.isNullOrEmpty()) {
-            logBrazeEvent(
-                "radar_fg_geofences_entered",
-                mapOf(
-                    "radar_geofence_descriptions" to geofences.map { it.description },
-                    "radar_geofence_tags" to geofences.mapNotNull { it.tag },
-                    "radar_geofence_external_ids" to geofences.mapNotNull { it.externalId }
-                )
-            )
-        }
-    }
-
-    override fun onEventsReceived(context: Context, events: Array<RadarEvent>, user: RadarUser?) {}
-    override fun onClientLocationUpdated(context: Context, location: Location, stopped: Boolean, source: Radar.RadarLocationSource) {}
-    override fun onError(context: Context, status: Radar.RadarStatus) {}
-    override fun onLog(context: Context, message: String) {}
-}
-```
-
-</CodeGroup>
-
-`radar_fg_geofences_entered` is a name you choose. It is separate from the events Radar sends server-side.
-
-### Connected content
-
-You can call [Radar APIs](/api) from Braze Connected Content. See Braze's [Radar partner documentation](https://www.braze.com/docs/partners/message_personalization/location/radar/#connected-content) for an example. Use the dashboard [API explorer](https://dashboard.radar.com/maps/api-explorer) to test the requests first.
+| Radar event field | Braze event property | Type | Example value | Sent on |
+| --- | --- | --- | --- | --- |
+| `location.coordinates[1]` | `latitude` | number | `39.525665` | All |
+| `location.coordinates[0]` | `longitude` | number | `-76.350663` | All |
+| `locationAccuracy` | `accuracy` | number (meters) | `12` | All |
+| `createdAt` | `created_at` | timestamp | `"2026-06-22T15:23:39.000Z"` | All |
+| `actualCreatedAt` | `actual_created_at` | timestamp | `"2026-06-22T15:23:41.000Z"` | All |
+| `foreground` | `foreground` | boolean | `true` | All |
+| `replayed` | `replayed` | boolean, sent only when `true` | `true` | All |
+| `country.code` | `country_code` | string | `"US"` | With region context |
+| `country.name` | `country_name` | string | `"United States"` | With region context |
+| `state.code` | `state_code` | string | `"MD"` | With region context |
+| `state.name` | `state_name` | string | `"Maryland"` | With region context |
+| `dma.code` | `dma_code` | string | `"26"` | With region context |
+| `dma.name` | `dma_name` | string | `"Baltimore"` | With region context |
+| `postalCode.code` | `postal_code` | string | `"21014"` | With region context |
+| `geofence._id` | `geofence_id` | string | `"5b2c0906f5874b001aecfd8e"` | Geofence events |
+| `geofence.description` | `geofence_description` | string | `"Store #42"` | Geofence events |
+| `geofence.tag` | `geofence_tag` | string | `"store"` | Geofence events |
+| `geofence.externalId` | `geofence_external_id` | string | `"store-42"` | Geofence events |
+| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type of the value | `{value}` | Geofence events |
+| `duration` | `duration` | number (minutes) | `42.1` | `exited_geofence`, `dwelled_in_geofence` (time in the geofence so far), `exited_place`, `exited_beacon` |
+| `place._id` | `place_id` | string | `"59302bcf8f27e8a156bd4f91"` | `entered_place`, `exited_place` |
+| `place.name` | `place_name` | string | `"Example Coffee"` | `entered_place`, `exited_place` |
+| `place.chain.slug` | `place_chain_id` | string | `"example-coffee"` | `entered_place`, `exited_place` |
+| `place.chain.name` | `place_chain_name` | string | `"Example Coffee"` | `entered_place`, `exited_place` |
+| `place.chain.externalId` | `place_chain_external_id` | string | `"123"` | `entered_place`, `exited_place` |
+| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | type of the value | `{value}` | `entered_place`, `exited_place` |
+| `place.categories` | `place_categories` | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` | `entered_place`, `exited_place` |
+| `region.code` | `region_code` | string | `"MD"` | Region events |
+| `region.name` | `region_name` | string | `"Maryland"` | Region events |
+| `trip.externalId` | `trip_external_id` | string | `"order-299"` | Trip events |
+| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` | Trip events |
+| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` | Trip events |
+| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` | Trip events |
+| `beacon._id` | `beacon_id` | string | `"5b2c0906f5874b001aecfd8f"` | Beacon events |
+| `beacon.description` | `beacon_description` | string | `"Store #42 - Drive-Thru"` | Beacon events |
+| `beacon.tag` | `beacon_tag` | string | `"drive-thru"` | Beacon events |
+| `beacon.externalId` | `beacon_external_id` | string | `"123"` | Beacon events |
+| `beacon.metadata[{key}]` | `beacon_metadata_{key}` | type of the value | `{value}` | Beacon events |
+| `confidence` | `confidence` | string | `"high"` | Geofence, region, trip, and beacon events, `entered_place`, `exited_place` |
+
+Besides the shared [filters](/integrations/integrations#filters), Braze has **Place chain blocklist** and **Place category blocklist**, which skip place events, and **Update existing users only**, which asks Braze to update only users that already exist.
+
+Events from one location update go in one request with the user attributes, and events without a location aren't sent. See [Delivery behavior](/integrations/integrations#delivery-behavior).
+
+## Test the integration
+
+Move a test user into a geofence with the [Simulator](https://dashboard.radar.com/geofencing/simulate), then click **View** on the new event on the **Events** page. Its **Logs** section shows a request to `/users/track` with a `2xx` response, and the Braze profile shows the `entered_geofence` event and the `radar_geofence_tags` attribute. If not, see [Troubleshoot delivery](/integrations/integrations#troubleshoot-delivery).
 
 ## Limitations
 
-- User attributes are updated only when an event is generated, so `radar_updated_at` can be older than the user's last location update.
-- There is no automatic retry. A request that fails during a Braze outage isn't resent.
-- The integration has app identifier fields for iOS and Android only.
-- Radar doesn't create the `radarAlias` alias in Braze for you. Alias-only users must have the alias added through the Braze SDK.
-- Events without a location, and event types not listed under [Event mapping](#event-mapping), aren't sent.
+An event sent from Radar's servers can't trigger a Braze in-app message at app open. Log it through the Braze SDK from Radar's location listener.

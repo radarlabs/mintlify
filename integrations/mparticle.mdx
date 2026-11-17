@@ -7,65 +7,34 @@ description: "Send Radar events and user attributes to mParticle input feeds, ma
   The mParticle integration is available on the [Enterprise plan](https://radar.com/pricing).
 </Info>
 
-By the end of this page, each Radar event arrives in mParticle as a custom event on the matching mParticle user, with Radar's [location context](/fundamentals/context-types) as user attributes that you can use in audiences and forward to outputs.
-
-Radar connects to mParticle in two ways, and you can use either or both:
-
-| | Feed | Kit |
-| --- | --- | --- |
-| Direction | Radar's servers send events and user attributes to mParticle. | The mParticle SDK installs and initializes the Radar SDK in your app. |
-| Use it to | Build location-based audiences and forward Radar events to mParticle outputs, including messaging platforms connected to mParticle. | Manage the Radar SDK through mParticle instead of initializing it yourself. |
-| Configured in | The **mParticle** section of Radar's Integrations page, plus input feeds in mParticle. | Radar outputs in mParticle, plus the kit dependency in your app. |
-
-The kit sets up the Radar SDK in your app. To get Radar events and user attributes into mParticle, configure the feed.
+Radar's servers send each Radar event to an mParticle input feed as a custom event on the matching user, with [location context](/fundamentals/context-types) as user attributes. Separately, the mParticle kit installs the Radar SDK in your app. Events and user attributes reach mParticle only through the feed.
 
 ## Prerequisites
 
-- A Radar project on the Enterprise plan that generates events. See [Geofencing overview and quickstart](/geofencing/overview).
-- Access to the [Integrations](https://dashboard.radar.com/integrations) page in the Radar dashboard.
-- An mParticle workspace where you can add input feeds and read their keys and secrets.
-- An identity that both systems share for each user. See [User mapping](#user-mapping).
+- A Radar project that generates events.
+- An mParticle workspace where you can add input feeds.
+- An identity shared by both systems for each user.
 
 ## Configuration
 
 ### Feed
 
-<Steps>
-  <Step title="Add Radar input feeds in mParticle">
-    In mParticle, add a Radar input feed for each platform that your app supports, for example one for iOS and one for Android. Copy the API key and secret of each feed.
-  </Step>
-  <Step title="Enable the integration in Radar">
-    On the [Integrations](https://dashboard.radar.com/integrations) page, find the **mParticle** section and select **Yes** for **Enabled**. Credential fields appear.
-  </Step>
-  <Step title="Enter the feed credentials">
-    Enter each feed's credentials in the fields for its platform: **iOS API key** and **iOS API secret**, **Android API key** and **Android API secret**, and **Web API key** and **Web API secret**. Enter values only for the platforms you use.
-  </Step>
-  <Step title="Save">
-    Click **Save**. From now on, Radar sends each new event to mParticle. Events generated before you saved aren't sent.
-  </Step>
-</Steps>
+1. In mParticle, add a Radar input feed for each platform that your app supports, and copy each feed's API key and secret.
+2. On the [Integrations](https://dashboard.radar.com/integrations) page, find the **mParticle** section, select **Yes** for **Enabled**, enter the credentials in **iOS API key** and **iOS API secret**, **Android API key** and **Android API secret**, or **Web API key** and **Web API secret**, and click **Save**.
 
-Radar routes by the device type of the user: events from iOS devices go to the iOS feed, events from Android devices go to the Android feed, and events from web devices go to the web feed. If the platform's key or secret is empty, or the user has no device type, Radar skips the event.
+Radar routes each event to the feed for the user's device type. If that platform's key or secret is empty, or the user has no device type, Radar skips the event and logs `Integration key(s) missing.`
 
-The **mParticle** section has no separate Test and Live credentials. Radar sets the mParticle environment on each request: the Radar Test environment maps to the mParticle development environment, and the Radar Live environment maps to the mParticle production environment.
+Test and Live share each platform's credentials. Radar sends Test events with the mParticle `development` environment and Live events with `production`.
 
 ### Kit
 
-To configure the kit:
+To install and initialize the Radar SDK through mParticle, add and enable Radar outputs for iOS and Android in mParticle, enter your Radar Test and Live publishable keys, and choose whether the kit runs automatically. Then install the kit with CocoaPods or Carthage on iOS and with Gradle on Android. See the [iOS kit](https://github.com/mparticle-integrations/mparticle-apple-integration-radar), the [Android kit](https://github.com/mparticle-integrations/mparticle-android-integration-radar), and the [mParticle documentation](https://docs.mparticle.com/integrations/radar/event/).
 
-1. On the [Settings](https://dashboard.radar.com/settings) page, copy your Test and Live publishable keys.
-2. In mParticle, add and enable Radar outputs for iOS and Android, enter your keys, and choose whether the kit runs automatically.
-3. Install the kit with CocoaPods or Carthage on iOS and with Gradle on Android. See the [iOS kit code and readme](https://github.com/mparticle-integrations/mparticle-apple-integration-radar), the [Android kit code and readme](https://github.com/mparticle-integrations/mparticle-android-integration-radar), and the [mParticle kit documentation for Radar](https://docs.mparticle.com/integrations/radar/event/).
+The kit identifies the user with the mParticle customer ID. From version 8.0.2 of the iOS kit and 5.15.1 of the Android kit, it also sets Radar `metadata.mParticleId` to the MPID. If it runs automatically and the user has granted location permissions, the kit tracks location in the foreground on app open, in the background, or both.
 
-The kit initializes the [Radar SDK](/sdk/sdk) and identifies the user with the mParticle customer ID. From version 8.0.2 of the iOS kit and 5.15.1 of the Android kit, the kit also sets Radar `metadata.mParticleId` to the [MPID](https://docs.mparticle.com/developers/sdk/web/users/#mparticle-id). If you chose to run automatically and the user has granted location permissions, the kit tracks the user's location in the foreground on app open, in the background, or both.
+## Identity mapping
 
-Automatic tracking starts only after the user has granted location permissions. See [Understand foreground and background location permissions](/fundamentals/location-permissions).
-
-## User mapping
-
-### Identities
-
-Radar sends these identities with each request to the feed. mParticle uses them to resolve the mParticle user.
+Radar sends these identities with each request:
 
 | Radar user field | mParticle field | Sent when |
 | --- | --- | --- |
@@ -76,13 +45,7 @@ Radar sends these identities with each request to the feed. mParticle uses them 
 | `metadata.mParticleOtherId` | `user_identities.other` | The metadata key is set. |
 | `metadata.mParticleId` | `mpid` | The metadata key is set. |
 
-Choose the mapping that matches how your app identifies users in mParticle:
-
-- If your mParticle customer ID equals the Radar `userId`, you need no extra code. Radar sends `userId` as `customer_id`.
-- If your mParticle customer ID is a different value, set `metadata.mParticleCustomerId` to it.
-- If you don't use a customer ID in mParticle, or you want an exact match on the mParticle user, set `metadata.mParticleId` to the MPID. The kit does this for you from the versions listed above.
-
-To map by customer ID:
+If your mParticle customer ID differs from the Radar `userId`, set `metadata.mParticleCustomerId`:
 
 <CodeGroup>
 
@@ -103,7 +66,7 @@ Radar.setMetadata(JSONObject().put("mParticleCustomerId", customerId))
 
 </CodeGroup>
 
-To map by MPID without the kit, read the MPID when mParticle finishes identifying the user and store it in Radar metadata:
+If you don't use a customer ID, or you want an exact match on the mParticle user, set `metadata.mParticleId` to the MPID. Without the kit, read the MPID when mParticle finishes identifying the user:
 
 <CodeGroup>
 
@@ -135,386 +98,149 @@ MParticle.getInstance()?.Identity()?.addIdentityStateListener { user, _ ->
 
 </CodeGroup>
 
-Check the identity callbacks against the mParticle SDK version that you use.
+## User mapping
 
-### User attributes
+An attribute has a value only when the matching Radar feature is enabled. An attribute with no value is sent as JSON `null`, not as the string `"(null)"` that Radar's other analytics integrations send.
 
-Radar sends these user attributes with each request. Unlike Radar's other analytics integrations, an attribute that has no value is sent as JSON `null`, not as the string `"(null)"`.
+| Radar user field | mParticle user attribute | Type | Example value |
+| --- | --- | --- | --- |
+| `_id` | `radar_id` | string | `"5b2c0906f5874b001aecfd8d"` |
+| `location.coordinates[1]` | `radar_location_latitude` | number | `39.525665` |
+| `location.coordinates[0]` | `radar_location_longitude` | number | `-76.350663` |
+| `locationAuthorization` | `radar_location_authorization` | string | `"GRANTED_FOREGROUND"` |
+| `locationAccuracyAuthorization` | `radar_location_accuracy_authorization` | string | `"FULL"` |
+| `updatedAt` | `radar_updated_at` | number (milliseconds since epoch) | `1782141819000` |
+| `metadata[{key}]` | `radar_metadata_{key}` | type of the value | `{value}` |
+| `segments[*].externalId` | `radar_segment_external_ids` | array[string] | `["loyalty-members"]` |
+| `topChains[*].slug` | `radar_top_chain_slugs` | array[string] | `["example-coffee", "example-grocery"]` |
+| `topChains[*].externalId` | `radar_top_chain_external_ids` | array[string] | `["chain-7", "chain-9"]` |
+| `geofences[*]._id` | `radar_geofence_ids` | array[string] | `["5b2c0906f5874b001aecfd8e"]` |
+| `geofences[*].description` | `radar_geofence_descriptions` | array[string] | `["Store #42"]` |
+| `geofences[*].tag` | `radar_geofence_tags` | array[string] | `["store"]` |
+| `geofences[*].externalId` | `radar_geofence_external_ids` | array[string] | `["store-42"]` |
+| `place._id` | `radar_place_id` | string | `"59302bcf8f27e8a156bd4f91"` |
+| `place.name` | `radar_place_name` | string | `"Example Coffee"` |
+| `place.categories` | `radar_place_categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` |
+| `place.chain.slug` | `radar_place_chain_slug` | string | `"example-coffee"` |
+| `place.chain.name` | `radar_place_chain_name` | string | `"Example Coffee"` |
+| `place.chain.externalId` | `radar_place_chain_external_id` | string | `"chain-7"` |
+| `country.code` | `radar_region_country_code` | string | `"US"` |
+| `country.name` | `radar_region_country_name` | string | `"United States"` |
+| `state.code` | `radar_region_state_code` | string | `"MD"` |
+| `state.name` | `radar_region_state_name` | string | `"Maryland"` |
+| `dma.code` | `radar_region_dma_code` | string | `"26"` |
+| `dma.name` | `radar_region_dma_name` | string | `"Baltimore"` |
+| `postalCode.code` | `radar_region_postal_code` | string | `"21014"` |
+| `trip.externalId` | `radar_trip_external_id` | string | `"order-299"` |
+| `trip.destinationGeofenceTag` | `radar_trip_destination_geofence_tag` | string | `"store"` |
+| `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string | `"store-42"` |
+| `beacons[*]._id` | `radar_beacon_ids` | array[string] | `["5b2c0906f5874b001aecfd8f"]` |
+| `beacons[*].description` | `radar_beacon_descriptions` | array[string] | `["Store #42 drive-thru"]` |
+| `beacons[*].tag` | `radar_beacon_tags` | array[string] | `["drive-thru"]` |
+| `beacons[*].externalId` | `radar_beacon_external_ids` | array[string] | `["store-42-drive-thru"]` |
 
-| Radar user field | mParticle user attribute | Type | Example value | Context |
-| --- | --- | --- | --- | --- |
-| `_id` | `radar_id` | string | `"5b2c0906f5874b001aecfd8d"` | |
-| `location.coordinates[1]` | `radar_location_latitude` | number | `39.525665` | |
-| `location.coordinates[0]` | `radar_location_longitude` | number | `-76.350663` | |
-| `locationAuthorization` | `radar_location_authorization` | string | `"GRANTED_FOREGROUND"` | |
-| `locationAccuracyAuthorization` | `radar_location_accuracy_authorization` | string | `"FULL"` | |
-| `updatedAt` | `radar_updated_at` | number (milliseconds since epoch) | `1782141819000` | |
-| `metadata[{key}]` | `radar_metadata_{key}` | type of the value | `{value}` | |
-| `segments[*].externalId` | `radar_segment_external_ids` | array[string] | `["loyalty-members"]` | |
-| `topChains[*].slug` | `radar_top_chain_slugs` | array[string] | `["example-coffee", "example-grocery"]` | |
-| `topChains[*].externalId` | `radar_top_chain_external_ids` | array[string] | `["chain-7", "chain-9"]` | |
-| `geofences[*]._id` | `radar_geofence_ids` | array[string] | `["5b2c0906f5874b001aecfd8e"]` | [Geofences](/fundamentals/context-types#geofences) |
-| `geofences[*].description` | `radar_geofence_descriptions` | array[string] | `["Store #42"]` | Geofences |
-| `geofences[*].tag` | `radar_geofence_tags` | array[string] | `["store"]` | Geofences |
-| `geofences[*].externalId` | `radar_geofence_external_ids` | array[string] | `["store-42"]` | Geofences |
-| `place._id` | `radar_place_id` | string | `"59302bcf8f27e8a156bd4f91"` | [Places](/fundamentals/context-types#places) |
-| `place.name` | `radar_place_name` | string | `"Example Coffee"` | Places |
-| `place.categories` | `radar_place_categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | Places |
-| `place.chain.slug` | `radar_place_chain_slug` | string | `"example-coffee"` | Places |
-| `place.chain.name` | `radar_place_chain_name` | string | `"Example Coffee"` | Places |
-| `place.chain.externalId` | `radar_place_chain_external_id` | string | `"chain-7"` | Places |
-| `country.code` | `radar_region_country_code` | string | `"US"` | [Regions](/fundamentals/context-types#regions) |
-| `country.name` | `radar_region_country_name` | string | `"United States"` | Regions |
-| `state.code` | `radar_region_state_code` | string | `"MD"` | Regions |
-| `state.name` | `radar_region_state_name` | string | `"Maryland"` | Regions |
-| `dma.code` | `radar_region_dma_code` | string | `"26"` | Regions |
-| `dma.name` | `radar_region_dma_name` | string | `"Baltimore"` | Regions |
-| `postalCode.code` | `radar_region_postal_code` | string | `"21014"` | Regions |
-| `trip.externalId` | `radar_trip_external_id` | string | `"order-299"` | [Trips](/fundamentals/context-types#trips) |
-| `trip.destinationGeofenceTag` | `radar_trip_destination_geofence_tag` | string | `"store"` | Trips |
-| `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string | `"store-42"` | Trips |
-| `beacons[*]._id` | `radar_beacon_ids` | array[string] | `["5b2c0906f5874b001aecfd8f"]` | [Beacons](/fundamentals/context-types#beacons) |
-| `beacons[*].description` | `radar_beacon_descriptions` | array[string] | `["Store #42 drive-thru"]` | Beacons |
-| `beacons[*].tag` | `radar_beacon_tags` | array[string] | `["drive-thru"]` | Beacons |
-| `beacons[*].externalId` | `radar_beacon_external_ids` | array[string] | `["store-42-drive-thru"]` | Beacons |
-
-Radar sends every key in the user's Radar metadata as a `radar_metadata_{key}` attribute, except the three mapping keys `mParticleCustomerId`, `mParticleOtherId`, and `mParticleId`. Don't put values in Radar metadata that you don't want in mParticle, or remove them with the request key blocklist.
-
-An attribute has a value only when the matching Radar feature is enabled for your project and applies to the user.
+Radar sends every key in the user's Radar metadata as a `radar_metadata_{key}` attribute, except `mParticleCustomerId`, `mParticleOtherId`, and `mParticleId`. Remove keys you don't want in mParticle with the request key blocklist.
 
 ## Event mapping
 
-Radar sends each Radar event to mParticle as a custom event. The mParticle event name is the Radar event type, unchanged.
+The mParticle event name is the Radar event type, unchanged. An event type that isn't in this table arrives with its name and no type-specific custom attributes.
 
-| Radar event | mParticle event name | Context |
-| --- | --- | --- |
-| `user.entered_geofence` | `user.entered_geofence` | Geofences |
-| `user.exited_geofence` | `user.exited_geofence` | Geofences |
-| `user.dwelled_in_geofence` | `user.dwelled_in_geofence` | Geofences |
-| `user.entered_place` | `user.entered_place` | Places |
-| `user.exited_place` | `user.exited_place` | Places |
-| `user.entered_region_country` | `user.entered_region_country` | Regions |
-| `user.exited_region_country` | `user.exited_region_country` | Regions |
-| `user.entered_region_state` | `user.entered_region_state` | Regions |
-| `user.exited_region_state` | `user.exited_region_state` | Regions |
-| `user.entered_region_dma` | `user.entered_region_dma` | Regions |
-| `user.exited_region_dma` | `user.exited_region_dma` | Regions |
-| `user.entered_region_postal_code` | `user.entered_region_postal_code` | Regions |
-| `user.exited_region_postal_code` | `user.exited_region_postal_code` | Regions |
-| `user.started_trip` | `user.started_trip` | Trips |
-| `user.updated_trip` | `user.updated_trip` | Trips |
-| `user.approaching_trip_destination` | `user.approaching_trip_destination` | Trips |
-| `user.arrived_at_trip_destination` | `user.arrived_at_trip_destination` | Trips |
-| `user.stopped_trip` | `user.stopped_trip` | Trips |
-| `user.entered_beacon` | `user.entered_beacon` | Beacons |
-| `user.exited_beacon` | `user.exited_beacon` | Beacons |
-
-### Fields on every event
-
-| Radar field | mParticle field | Type | Notes |
-| --- | --- | --- | --- |
-| `event.type` | `event_name` | string | |
-| | `event_type` | string | Always `custom_event`. |
-| | `custom_event_type` | string | `location` for an event that has a location. |
-| `event._id` | `source_message_id` | string | The same Radar event always carries the same `source_message_id`. |
-| `event.createdAt` | `timestamp_unixtime_ms` | number (milliseconds since epoch) | When the event occurred. |
-| `event.location.coordinates[1]` | `location.latitude` | number | |
-| `event.location.coordinates[0]` | `location.longitude` | number | |
-| `event.locationAccuracy` | `location.accuracy` | number (meters) | |
-| `event.foreground` | Custom attribute `foreground` | boolean | |
-| `event.replayed` | Custom attribute `replayed` | boolean | Sent only when `true`. |
-
-When the event has region context, Radar also sends these custom attributes on every event type:
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `country.code` | `country_code` | string | `"US"` |
-| `country.name` | `country_name` | string | `"United States"` |
-| `state.code` | `state_code` | string | `"MD"` |
-| `state.name` | `state_name` | string | `"Maryland"` |
-| `dma.code` | `dma_code` | string | `"26"` |
-| `dma.name` | `dma_name` | string | `"Baltimore"` |
-| `postalCode.code` | `postal_code` | string | `"21014"` |
-
-The sections below list the custom attributes that are specific to each event type. `confidence` is one of `"none"`, `"low"`, `"medium"`, or `"high"`. An attribute is omitted when the Radar field has no value.
-
-### user.entered_geofence
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `geofence._id` | `geofence_id` | string | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description` | `geofence_description` | string | `"Store #42"` |
-| `geofence.tag` | `geofence_tag` | string | `"store"` |
-| `geofence.externalId` | `geofence_external_id` | string | `"store-42"` |
-| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type of the value | `{value}` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.exited_geofence
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `geofence._id` | `geofence_id` | string | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description` | `geofence_description` | string | `"Store #42"` |
-| `geofence.tag` | `geofence_tag` | string | `"store"` |
-| `geofence.externalId` | `geofence_external_id` | string | `"store-42"` |
-| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type of the value | `{value}` |
-| `confidence` | `confidence` | string | `"high"` |
-| `duration` | `duration` | number (minutes) | `42.1` |
-
-### user.dwelled_in_geofence
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `geofence._id` | `geofence_id` | string | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description` | `geofence_description` | string | `"Store #42"` |
-| `geofence.tag` | `geofence_tag` | string | `"store"` |
-| `geofence.externalId` | `geofence_external_id` | string | `"store-42"` |
-| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type of the value | `{value}` |
-| `confidence` | `confidence` | string | `"high"` |
-| `duration` | `duration` | number (minutes) | `42.1` |
-
-### user.entered_place
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `place._id` | `place_id` | string | `"59302bcf8f27e8a156bd4f91"` |
-| `place.name` | `place_name` | string | `"Example Coffee"` |
-| `place.chain.slug` | `place_chain_slug` | string | `"example-coffee"` |
-| `place.chain.name` | `place_chain_name` | string | `"Example Coffee"` |
-| `place.chain.externalId` | `place_chain_external_id` | string | `"chain-7"` |
-| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | type of the value | `{value}` |
-| `place.categories` | `place_categories` | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.exited_place
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `place._id` | `place_id` | string | `"59302bcf8f27e8a156bd4f91"` |
-| `place.name` | `place_name` | string | `"Example Coffee"` |
-| `place.chain.slug` | `place_chain_slug` | string | `"example-coffee"` |
-| `place.chain.name` | `place_chain_name` | string | `"Example Coffee"` |
-| `place.chain.externalId` | `place_chain_external_id` | string | `"chain-7"` |
-| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | type of the value | `{value}` |
-| `place.categories` | `place_categories` | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` |
-| `confidence` | `confidence` | string | `"high"` |
-| `duration` | `duration` | number (minutes) | `42.1` |
-
-### user.entered_region_country
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `region_code` | string | `"US"` |
-| `region.name` | `region_name` | string | `"United States"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.exited_region_country
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `region_code` | string | `"US"` |
-| `region.name` | `region_name` | string | `"United States"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.entered_region_state
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `region_code` | string | `"MD"` |
-| `region.name` | `region_name` | string | `"Maryland"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.exited_region_state
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `region_code` | string | `"MD"` |
-| `region.name` | `region_name` | string | `"Maryland"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.entered_region_dma
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `region_code` | string | `"26"` |
-| `region.name` | `region_name` | string | `"Baltimore"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.exited_region_dma
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `region_code` | string | `"26"` |
-| `region.name` | `region_name` | string | `"Baltimore"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.entered_region_postal_code
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `region_code` | string | `"21014"` |
-| `region.name` | `region_name` | string | `"21014"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.exited_region_postal_code
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `region_code` | string | `"21014"` |
-| `region.name` | `region_name` | string | `"21014"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.started_trip
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `trip.externalId` | `trip_external_id` | string | `"order-299"` |
-| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` |
-| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.updated_trip
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `trip.externalId` | `trip_external_id` | string | `"order-299"` |
-| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` |
-| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.approaching_trip_destination
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `trip.externalId` | `trip_external_id` | string | `"order-299"` |
-| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` |
-| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.arrived_at_trip_destination
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `trip.externalId` | `trip_external_id` | string | `"order-299"` |
-| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` |
-| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.stopped_trip
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `trip.externalId` | `trip_external_id` | string | `"order-299"` |
-| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` |
-| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.entered_beacon
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `beacon._id` | `beacon_id` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `beacon.description` | `beacon_description` | string | `"Store #42 drive-thru"` |
-| `beacon.tag` | `beacon_tag` | string | `"drive-thru"` |
-| `beacon.externalId` | `beacon_external_id` | string | `"store-42-drive-thru"` |
-| `beacon.metadata[{key}]` | `beacon_metadata_{key}` | type of the value | `{value}` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.exited_beacon
-
-| Radar event field | mParticle custom attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `beacon._id` | `beacon_id` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `beacon.description` | `beacon_description` | string | `"Store #42 drive-thru"` |
-| `beacon.tag` | `beacon_tag` | string | `"drive-thru"` |
-| `beacon.externalId` | `beacon_external_id` | string | `"store-42-drive-thru"` |
-| `beacon.metadata[{key}]` | `beacon_metadata_{key}` | type of the value | `{value}` |
-| `confidence` | `confidence` | string | `"high"` |
-| `duration` | `duration` | number (minutes) | `1.42` |
-
-## Filtering
-
-On the [Integrations](https://dashboard.radar.com/integrations) page, click **Show advanced** in the **mParticle** section.
-
-| Field | Effect |
+| Radar event and mParticle event name | Context |
 | --- | --- |
-| **Event type allowlist** | When you select one or more event types, Radar sends only those types to mParticle. With nothing selected, Radar sends every event type. |
-| **Request key blocklist (comma-separated)** | Removes the listed keys from the request at any depth. For example, `radar_geofence_ids,geofence_id` removes one user attribute and one event attribute. |
-| **Geofence tag blocklist (comma-separated)** | Skips events for geofences that have one of the listed tags. |
+| `user.entered_geofence` | [Geofences](/fundamentals/context-types#geofences) |
+| `user.exited_geofence` | Geofences |
+| `user.dwelled_in_geofence` | Geofences |
+| `user.entered_place` | [Places](/fundamentals/context-types#places) |
+| `user.exited_place` | Places |
+| `user.entered_region_country` | [Regions](/fundamentals/context-types#regions) |
+| `user.exited_region_country` | Regions |
+| `user.entered_region_state` | Regions |
+| `user.exited_region_state` | Regions |
+| `user.entered_region_dma` | Regions |
+| `user.exited_region_dma` | Regions |
+| `user.entered_region_postal_code` | Regions |
+| `user.exited_region_postal_code` | Regions |
+| `user.started_trip` | [Trips](/fundamentals/context-types#trips) |
+| `user.updated_trip` | Trips |
+| `user.approaching_trip_destination` | Trips |
+| `user.arrived_at_trip_destination` | Trips |
+| `user.stopped_trip` | Trips |
+| `user.entered_beacon` | [Beacons](/fundamentals/context-types#beacons) |
+| `user.exited_beacon` | Beacons |
 
-Radar forwards every event type that passes the filters. An event type that isn't in the [event mapping](#event-mapping) table arrives with its name and no type-specific custom attributes. To keep unmapped event types out of mParticle, select only the types you want in **Event type allowlist**. You can also filter per output in mParticle.
+The first eight rows are mParticle event fields. The rest are custom attributes, omitted when the Radar field has no value. Rows marked All\* need region context.
 
-## Delivery behavior
+| Radar field | mParticle field or custom attribute | Type | Example value | Events |
+| --- | --- | --- | --- | --- |
+| `event.type` | `event_name` | string | | All |
+| | `event_type` | string | `custom_event` | All |
+| | `custom_event_type` | string | `location` | Events that have a location |
+| `event._id` | `source_message_id` | string | | All |
+| `event.createdAt` | `timestamp_unixtime_ms` | number (milliseconds since epoch) | | All. When the event occurred. |
+| `event.location.coordinates[1]` | `location.latitude` | number | | All |
+| `event.location.coordinates[0]` | `location.longitude` | number | | All |
+| `event.locationAccuracy` | `location.accuracy` | number (meters) | | All |
+| `event.foreground` | `foreground` | boolean | | All |
+| `event.replayed` | `replayed` | boolean, sent only when `true` | | All |
+| `confidence` | `confidence` | string: `"none"`, `"low"`, `"medium"`, or `"high"` | `"high"` | All |
+| `duration` | `duration` | number (minutes) | `42.1`, or `1.42` on `user.exited_beacon` | `user.exited_geofence`, `user.dwelled_in_geofence`, `user.exited_place`, `user.exited_beacon` |
+| `country.code` | `country_code` | string | `"US"` | All\* |
+| `country.name` | `country_name` | string | `"United States"` | All\* |
+| `state.code` | `state_code` | string | `"MD"` | All\* |
+| `state.name` | `state_name` | string | `"Maryland"` | All\* |
+| `dma.code` | `dma_code` | string | `"26"` | All\* |
+| `dma.name` | `dma_name` | string | `"Baltimore"` | All\* |
+| `postalCode.code` | `postal_code` | string | `"21014"` | All\* |
+| `geofence._id` | `geofence_id` | string | `"5b2c0906f5874b001aecfd8e"` | Geofence |
+| `geofence.description` | `geofence_description` | string | `"Store #42"` | Geofence |
+| `geofence.tag` | `geofence_tag` | string | `"store"` | Geofence |
+| `geofence.externalId` | `geofence_external_id` | string | `"store-42"` | Geofence |
+| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type of the value | `{value}` | Geofence |
+| `place._id` | `place_id` | string | `"59302bcf8f27e8a156bd4f91"` | Place |
+| `place.name` | `place_name` | string | `"Example Coffee"` | Place |
+| `place.chain.slug` | `place_chain_slug` | string | `"example-coffee"` | Place |
+| `place.chain.name` | `place_chain_name` | string | `"Example Coffee"` | Place |
+| `place.chain.externalId` | `place_chain_external_id` | string | `"chain-7"` | Place |
+| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | type of the value | `{value}` | Place |
+| `place.categories` | `place_categories` | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` | Place |
+| `region.code` | `region_code` | string | `"US"` (country), `"MD"` (state), `"26"` (DMA), `"21014"` (postal code) | Region |
+| `region.name` | `region_name` | string | `"United States"`, `"Maryland"`, `"Baltimore"`, `"21014"` | Region |
+| `trip.externalId` | `trip_external_id` | string | `"order-299"` | Trip |
+| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` | Trip |
+| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` | Trip |
+| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` | Trip |
+| `beacon._id` | `beacon_id` | string | `"5b2c0906f5874b001aecfd8f"` | Beacon |
+| `beacon.description` | `beacon_description` | string | `"Store #42 drive-thru"` | Beacon |
+| `beacon.tag` | `beacon_tag` | string | `"drive-thru"` | Beacon |
+| `beacon.externalId` | `beacon_external_id` | string | `"store-42-drive-thru"` | Beacon |
+| `beacon.metadata[{key}]` | `beacon_metadata_{key}` | type of the value | `{value}` | Beacon |
 
-- **Requests**: For each Radar update that generates events, Radar sends one request to mParticle's server-to-server events endpoint, `https://inbound.mparticle.com/s2s/v2/events`, with the events, the user attributes, and the identities together. If your mParticle workspace ingests through a different endpoint, ask your Radar account team whether it is supported before you enable the integration.
-- **Events without a location**: Radar doesn't send an event that has no location to mParticle.
-- **Timing**: Radar sends events from its servers shortly after it generates them. mParticle's own processing and output delivery times apply after that.
-- **Attempts**: Radar makes one delivery attempt and waits up to 5 seconds for mParticle to respond. It doesn't retry a failed request. Use the [integration logs](#troubleshoot-delivery) to find failures, and the [Events API](/api/events) if you need to backfill.
-- **Deduplication**: `source_message_id` is the Radar event `_id`.
-- **Environment**: Test events are sent with the mParticle `development` environment and Live events with `production`.
+To limit what Radar sends, see [Filters](/integrations/integrations#filters). You can also filter per output in mParticle.
 
-### Send Radar events through mParticle to a messaging platform
+For each update, Radar sends one request to `https://inbound.mparticle.com/s2s/v2/events` with the events, user attributes, and identities. See [Delivery behavior](/integrations/integrations#delivery-behavior).
 
-If you message users from a platform that is connected to mParticle as an output, you can route Radar events through mParticle instead of enabling Radar's direct integration with that platform. In that setup, the names in this page's mapping tables are what the messaging platform receives, subject to how mParticle forwards custom events and user attributes to that output. Use these names, not the ones on Radar's page for the messaging platform, when you build campaign triggers.
-
-Enable one route per platform. If Radar's direct integration and the mParticle route both deliver to the same messaging platform, that platform can receive each event twice under different names.
+A messaging platform connected to mParticle as an output receives the names on this page, not the names on Radar's page for that platform. Enable one route per platform, or the platform can receive each event twice under different names.
 
 ## Test the integration
 
-<Steps>
-  <Step title="Use the Test environment">
-    Confirm that the feed credentials for your test device's platform are saved and that **Enabled** is set to **Yes**. Test events appear in mParticle's development environment.
-  </Step>
-  <Step title="Generate an event">
-    Create a geofence in the Test environment, then send a location inside it with your Test publishable key. Set `deviceType` to the platform whose feed you configured, because Radar uses it to choose the feed. Replace the coordinates with a point inside your geofence:
+Create a geofence in the Test environment, then send a location inside it. Set `deviceType` to the platform whose feed you configured:
 
-    ```bash
-    curl "https://api.radar.io/v1/track" \
-      -H "Authorization: prj_test_pk_..." \
-      -X POST \
-      -d "deviceId=test-device-1" \
-      -d "userId=user-123" \
-      -d "deviceType=iOS" \
-      -d "latitude=40.78382" \
-      -d "longitude=-73.97536" \
-      -d "accuracy=10"
-    ```
+```bash
+curl "https://api.radar.io/v1/track" \
+  -H "Authorization: prj_test_pk_..." \
+  -X POST \
+  -d "deviceId=test-device-1" \
+  -d "userId=user-123" \
+  -d "deviceType=iOS" \
+  -d "latitude=40.78382" \
+  -d "longitude=-73.97536" \
+  -d "accuracy=10"
+```
 
-    The response includes a `user.entered_geofence` event the first time the user enters the geofence. For the parameters, see [Tracking API](/api/tracking).
-  </Step>
-  <Step title="Check Radar's log">
-    In the **mParticle** section, click **View integration logs**. Find a row for the event with the request that Radar sent and a success response from mParticle. In the request, confirm that `environment` is `development` and that `user_identities.customer_id` is `user-123`.
-  </Step>
-  <Step title="Check mParticle">
-    In mParticle, open the live stream for the development environment and filter to the Radar feed. Confirm that the stream shows a `user.entered_geofence` custom event with the `geofence_external_id` of your geofence, and `radar_geofence_external_ids` among the user attributes.
-  </Step>
-</Steps>
+The response includes a `user.entered_geofence` event. In the **mParticle** section, **View integration logs** shows the request with a success response, `environment` set to `development`, and `user_identities.customer_id` set to `user-123`. mParticle's live stream for the development environment shows a `user.entered_geofence` custom event with your geofence's `geofence_external_id`, and `radar_geofence_external_ids` among the user attributes.
 
-## Troubleshoot delivery
-
-On the [Integrations](https://dashboard.radar.com/integrations) page, click **View integration logs** in the **mParticle** section. Each row shows the request and mParticle's response.
-
-| What you see | Likely cause | What to do |
-| --- | --- | --- |
-| No rows | No events were generated, or the integration isn't saved as enabled. | Check the Events page and the **Enabled** setting. |
-| `skipped`: `Integration key(s) missing.` | The key or secret for the user's device type is empty, or the user has no device type. | Enter both the key and the secret for that platform. For API-created users, send `deviceType`. |
-| `skipped`: `Event type ... is not allowed.` | The event type isn't selected in **Event type allowlist**. | Select the type or clear the allowlist. |
-| `skipped`: `Geofence tag '...' is blocklisted.` | The geofence's tag is in **Geofence tag blocklist**. | Remove the tag from the blocklist. |
-| A `4xx` response | mParticle rejected the request. | Read the response body in the log. If it reports invalid credentials, copy the key and secret again from the feed for that platform. |
-| A success response but the event is on a different mParticle user, or creates a new one | The identities that Radar sent don't match the identities your app sends. | Compare `device_info`, `user_identities`, and `mpid` in the logged request with the user in mParticle, then adjust the [identity mapping](#identities). |
-| Events in mParticle but not in an output | The Radar feed isn't connected to the output, or an mParticle filter dropped the event. | Check the connection and its filters in mParticle. |
+If the event is on the wrong mParticle user, compare `device_info`, `user_identities`, and `mpid` in the logged request with that user. Otherwise, see [Troubleshoot delivery](/integrations/integrations#troubleshoot-delivery).
 
 ## Limitations
 
-- Radar doesn't retry failed deliveries to mParticle.
-- The feed has one set of credentials per platform, shared by the Test and Live environments.
-- Events without a location aren't sent.
-- You can't rename events or attributes in Radar. Use the request key blocklist to drop fields.
-- Events generated before you enabled the integration aren't sent.
-- User attributes reflect the user's state when the event was generated. Radar doesn't update mParticle when a user's state changes without generating an event.
-- Events and user attributes reach mParticle through the feed. Configure it even when you use the kit.
+Events without a location aren't sent.

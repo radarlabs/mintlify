@@ -7,15 +7,13 @@ description: "Send Radar location events and user attributes to MoEngage to trig
   The MoEngage integration is available on the [Enterprise plan](https://radar.com/pricing).
 </Info>
 
-By the end of this page, Radar sends an event to [MoEngage](https://www.moengage.com/) for each location event it generates and updates the user's Radar attributes, and you have confirmed delivery for one test user.
-
-Radar sends this data from its servers to the MoEngage Data API. Your app sets one metadata value so Radar knows which MoEngage user to update.
+Radar sends an event to [MoEngage](https://www.moengage.com/) for each location event it generates, and updates the user's Radar attributes.
 
 ## Prerequisites
 
-- A Radar project on the Enterprise plan, with the Radar SDK generating events. See [Detect geofence events and place visits](/geofencing/geofences-and-places).
+- A Radar project on the Enterprise plan that is [generating events](/geofencing/geofences-and-places).
 - A MoEngage workspace, with access to its **APIs** settings page.
-- The MoEngage customer ID (the unique ID you use to identify a logged-in user in MoEngage) available in your app.
+- The MoEngage customer ID of each logged-in user, available in your app.
 
 ## Configuration
 
@@ -24,33 +22,26 @@ Radar sends this data from its servers to the MoEngage Data API. Your app sets o
     In MoEngage, open the **APIs** page and copy your Workspace ID and Data API key. If you use a separate MoEngage test environment, copy its Data API key as well.
   </Step>
   <Step title="Enter the settings in Radar">
-    In the Radar dashboard, open the [Integrations](https://dashboard.radar.com/integrations) page, find the **MoEngage** section, and select **Yes** for **Enabled**. Enter these values:
+    On the [Integrations](https://dashboard.radar.com/integrations) page, select **Yes** for **Enabled** in the **MoEngage** section, enter these values, and click **Save**.
 
     | Field | Value |
     | --- | --- |
-    | **API endpoint** | The Data API host for your MoEngage data center. The default is `https://api-01.moengage.com/v1`. Select the endpoint for your MoEngage data center if it is different. |
-    | **Test Data API key** | Required. The Data API key used for events from the Test environment. |
-    | **Live Data API key** | Required. The Data API key used for events from the Live environment. |
-    | **Workspace ID** | Required. Your MoEngage Workspace ID. |
+    | **API endpoint** | The Data API host for your MoEngage data center. The default is `https://api-01.moengage.com/v1`. |
+    | **Test Data API key** | Required. Used for Test events. |
+    | **Live Data API key** | Required. Used for Live events. |
+    | **Workspace ID** | Required. Your MoEngage Workspace ID. For Test events, Radar appends `_DEBUG` to it in the request, so Test and Live events go to different MoEngage workspaces. |
     | **Update existing only** | When **Yes**, Radar asks MoEngage to update only users that already exist. |
-
-    Click **Save**. The form doesn't save while the integration is enabled and any required field is empty.
-  </Step>
-  <Step title="Set the MoEngage customer ID in your app">
-    Set the metadata described in [Identity mapping](#identity-mapping).
   </Step>
 </Steps>
 
-For events from the Test environment, Radar appends `_DEBUG` to the Workspace ID in the request, so Test and Live events are addressed to different MoEngage workspaces. Confirm in MoEngage where test data for your workspace appears before you test.
-
 ## Identity mapping
+
+Radar doesn't use the Radar `userId`. Set the metadata to the unique ID you pass to the MoEngage SDK when the user logs in.
 
 | Radar value | Sent to MoEngage as | Required |
 | --- | --- | --- |
 | `metadata["moengage:customer_id"]` | `customer_id` on the event and customer requests | Yes. Without it, Radar skips the event and logs `Identifier missing.` |
 | `deviceId` | `device_id` on the event request | Sent automatically |
-
-Radar doesn't use the Radar `userId` to identify a MoEngage user. Set the metadata to the same unique ID you pass to the MoEngage SDK when the user logs in:
 
 <CodeGroup>
 
@@ -69,57 +60,57 @@ Radar.setMetadata(JSONObject().put("moengage:customer_id", "user-123"))
 
 </CodeGroup>
 
-`Radar.setMetadata()` replaces the whole metadata object, so include any other metadata keys you use in the same call. When the user logs out or changes, update the metadata so events stop going to the previous user.
+`Radar.setMetadata()` replaces the whole metadata object. Update it when the user logs out or changes.
 
 ## User mapping
 
-After each event, Radar sends a customer request with these attributes. An attribute with no current value is sent as the string `"(null)"`, so segment on that string, not on an empty attribute.
+After each event, Radar sends a customer request with these attributes. An attribute with no value is sent as the string `"(null)"`, so segment on that string. Beacon attributes are sent only while the user is in range of a beacon.
 
-| Radar user field | MoEngage user attribute | Type | Example value | Context |
-| --- | --- | --- | --- | --- |
-| `metadata["moengage:customer_id"]` | `ID` | string | `"user-123"` | |
-| `_id` | `radar_id` | string | `"5b2c0906f5874b001aecfd8d"` | |
-| `locationAuthorization` | `radar_location_authorization` | string | `"GRANTED_FOREGROUND"` | |
-| `locationAccuracyAuthorization` | `radar_location_accuracy_authorization` | string | `"FULL"` | |
-| `updatedAt` | `radar_updated_at` | timestamp | `"2026-06-22T15:23:39.000Z"` | |
-| `segments[*].externalId` | `radar_segment_external_ids` | array[string] | `["coffee-visitors"]` | |
-| `geofences[*]._id` | `radar_geofence_ids` | array[string] | `["5b2c0906f5874b001aecfd8e"]` | [Geofences](/fundamentals/context-types#geofences) |
-| `geofences[*].description` | `radar_geofence_descriptions` | array[string] | `["Store #42"]` | Geofences |
-| `geofences[*].tag` | `radar_geofence_tags` | array[string] | `["store"]` | Geofences |
-| `geofences[*].externalId` | `radar_geofence_external_ids` | array[string] | `["store-42"]` | Geofences |
-| `place._id` | `radar_place_id` | string | `"59302bcf8f27e8a156bd4f91"` | [Places](/fundamentals/context-types#places) |
-| `place.name` | `radar_place_name` | string | `"Example Coffee"` | Places |
-| `place.categories` | `radar_place_categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | Places |
-| `place.chain.slug` | `radar_place_chain_id` | string | `"example-coffee"` | Places |
-| `place.chain.name` | `radar_place_chain_name` | string | `"Example Coffee"` | Places |
-| `place.chain.externalId` | `radar_place_chain_external_id` | string | `"123"` | Places |
-| `country.code` | `radar_region_country_code` | string | `"US"` | [Regions](/fundamentals/context-types#regions) |
-| `country.name` | `radar_region_country_name` | string | `"United States"` | Regions |
-| `state.code` | `radar_region_state_code` | string | `"MD"` | Regions |
-| `state.name` | `radar_region_state_name` | string | `"Maryland"` | Regions |
-| `dma.code` | `radar_region_dma_code` | string | `"26"` | Regions |
-| `dma.name` | `radar_region_dma_name` | string | `"Baltimore"` | Regions |
-| `postalCode.code` | `radar_region_postal_code` | string | `"21014"` | Regions |
-| `trip.externalId` | `radar_trip_external_id` | string | `"order-299"` | [Trips](/fundamentals/context-types#trips) |
-| `trip.destinationGeofenceTag` | `radar_trip_destination_geofence_tag` | string | `"store"` | Trips |
-| `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string | `"store-42"` | Trips |
-| `beacons[*]._id` | `radar_beacon_ids` | array[string] | `["5b2c0906f5874b001aecfd8f"]` | [Beacons](/fundamentals/context-types#beacons) |
-| `beacons[*].description` | `radar_beacon_descriptions` | array[string] | `["Store #42 - Drive-Thru"]` | Beacons |
-| `beacons[*].tag` | `radar_beacon_tags` | array[string] | `["drive-thru"]` | Beacons |
-| `beacons[*].externalId` | `radar_beacon_external_ids` | array[string] | `["123"]` | Beacons |
-
-The beacon attributes are sent only while the user is in range of at least one beacon.
+| Radar user field | MoEngage user attribute | Type | Example value |
+| --- | --- | --- | --- |
+| `metadata["moengage:customer_id"]` | `ID` | string | `"user-123"` |
+| `_id` | `radar_id` | string | `"5b2c0906f5874b001aecfd8d"` |
+| `locationAuthorization` | `radar_location_authorization` | string | `"GRANTED_FOREGROUND"` |
+| `locationAccuracyAuthorization` | `radar_location_accuracy_authorization` | string | `"FULL"` |
+| `updatedAt` | `radar_updated_at` | timestamp | `"2026-06-22T15:23:39.000Z"` |
+| `segments[*].externalId` | `radar_segment_external_ids` | array[string] | `["coffee-visitors"]` |
+| `geofences[*]._id` | `radar_geofence_ids` | array[string] | `["5b2c0906f5874b001aecfd8e"]` |
+| `geofences[*].description` | `radar_geofence_descriptions` | array[string] | `["Store #42"]` |
+| `geofences[*].tag` | `radar_geofence_tags` | array[string] | `["store"]` |
+| `geofences[*].externalId` | `radar_geofence_external_ids` | array[string] | `["store-42"]` |
+| `place._id` | `radar_place_id` | string | `"59302bcf8f27e8a156bd4f91"` |
+| `place.name` | `radar_place_name` | string | `"Example Coffee"` |
+| `place.categories` | `radar_place_categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` |
+| `place.chain.slug` | `radar_place_chain_id` | string | `"example-coffee"` |
+| `place.chain.name` | `radar_place_chain_name` | string | `"Example Coffee"` |
+| `place.chain.externalId` | `radar_place_chain_external_id` | string | `"123"` |
+| `country.code` | `radar_region_country_code` | string | `"US"` |
+| `country.name` | `radar_region_country_name` | string | `"United States"` |
+| `state.code` | `radar_region_state_code` | string | `"MD"` |
+| `state.name` | `radar_region_state_name` | string | `"Maryland"` |
+| `dma.code` | `radar_region_dma_code` | string | `"26"` |
+| `dma.name` | `radar_region_dma_name` | string | `"Baltimore"` |
+| `postalCode.code` | `radar_region_postal_code` | string | `"21014"` |
+| `trip.externalId` | `radar_trip_external_id` | string | `"order-299"` |
+| `trip.destinationGeofenceTag` | `radar_trip_destination_geofence_tag` | string | `"store"` |
+| `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string | `"store-42"` |
+| `beacons[*]._id` | `radar_beacon_ids` | array[string] | `["5b2c0906f5874b001aecfd8f"]` |
+| `beacons[*].description` | `radar_beacon_descriptions` | array[string] | `["Store #42 - Drive-Thru"]` |
+| `beacons[*].tag` | `radar_beacon_tags` | array[string] | `["drive-thru"]` |
+| `beacons[*].externalId` | `radar_beacon_external_ids` | array[string] | `["123"]` |
 
 ## Event mapping
 
+Each event also carries a `platform` of `iOS`, `ANDROID`, or `web`, taken from the device type. Use the event type allowlist to keep other event types out of MoEngage.
+
 | Radar event | MoEngage event | Context |
 | --- | --- | --- |
-| `user.entered_geofence` | `[Radar] Geofence Entered` | Geofences |
+| `user.entered_geofence` | `[Radar] Geofence Entered` | [Geofences](/fundamentals/context-types#geofences) |
 | `user.exited_geofence` | `[Radar] Geofence Exited` | Geofences |
 | `user.dwelled_in_geofence` | `[Radar] Dwelled in Geofence` | Geofences |
-| `user.entered_place` | `[Radar] Place Entered` | Places |
+| `user.entered_place` | `[Radar] Place Entered` | [Places](/fundamentals/context-types#places) |
 | `user.exited_place` | `[Radar] Place Exited` | Places |
-| `user.entered_region_country` | `[Radar] Country Entered` | Regions |
+| `user.entered_region_country` | `[Radar] Country Entered` | [Regions](/fundamentals/context-types#regions) |
 | `user.exited_region_country` | `[Radar] Country Exited` | Regions |
 | `user.entered_region_state` | `[Radar] State Entered` | Regions |
 | `user.exited_region_state` | `[Radar] State Exited` | Regions |
@@ -127,204 +118,59 @@ The beacon attributes are sent only while the user is in range of at least one b
 | `user.exited_region_dma` | `[Radar] DMA Exited` | Regions |
 | `user.entered_region_postal_code` | `[Radar] Postal Code Entered` | Regions |
 | `user.exited_region_postal_code` | `[Radar] Postal Code Exited` | Regions |
-| `user.started_trip` | `[Radar] Started Trip` | Trips |
+| `user.started_trip` | `[Radar] Started Trip` | [Trips](/fundamentals/context-types#trips) |
 | `user.updated_trip` | `[Radar] Updated Trip` | Trips |
 | `user.approaching_trip_destination` | `[Radar] Approaching Trip Destination` | Trips |
 | `user.arrived_at_trip_destination` | `[Radar] Arrived at Trip Destination` | Trips |
 | `user.stopped_trip` | `[Radar] Stopped Trip` | Trips |
-| `user.entered_beacon` | `[Radar] Beacon Entered` | Beacons |
+| `user.entered_beacon` | `[Radar] Beacon Entered` | [Beacons](/fundamentals/context-types#beacons) |
 | `user.exited_beacon` | `[Radar] Beacon Exited` | Beacons |
 
-Use the event type allowlist to keep other event types out of MoEngage.
+| Radar event field | MoEngage event attribute | Type | Example value | Sent on |
+| --- | --- | --- | --- | --- |
+| `foreground` | `radar_foreground` | boolean | `true` | All |
+| `replayed` | `radar_replayed` | boolean, sent only when `true` | `true` | All |
+| `country.code` | `radar_country_code` | string | `"US"` | With region context |
+| `country.name` | `radar_country_name` | string | `"United States"` | With region context |
+| `state.code` | `radar_state_code` | string | `"MD"` | With region context |
+| `state.name` | `radar_state_name` | string | `"Maryland"` | With region context |
+| `dma.code` | `radar_dma_code` | string | `"26"` | With region context |
+| `dma.name` | `radar_dma_name` | string | `"Baltimore"` | With region context |
+| `postalCode.code` | `radar_postal_code` | string | `"21014"` | With region context |
+| `geofence._id` | `radar_geofence_id` | string | `"5b2c0906f5874b001aecfd8e"` | Geofence events |
+| `geofence.description` | `radar_geofence_description` | string | `"Store #42"` | Geofence events |
+| `geofence.tag` | `radar_geofence_tag` | string | `"store"` | Geofence events |
+| `geofence.externalId` | `radar_geofence_external_id` | string | `"store-42"` | Geofence events |
+| `geofence.metadata[{key}]` | `radar_geofence_metadata_{key}` | type of the value | `{value}` | Geofence events |
+| `duration` | `radar_duration` | number (minutes) | `42.1` | `[Radar] Geofence Exited`, `[Radar] Dwelled in Geofence` (time in the geofence so far), `[Radar] Place Exited`, `[Radar] Beacon Exited` |
+| `place._id` | `radar_place_id` | string | `"59302bcf8f27e8a156bd4f91"` | Place events |
+| `place.name` | `radar_place_name` | string | `"Example Coffee"` | Place events |
+| `place.chain.slug` | `radar_place_chain_slug` | string | `"example-coffee"` | Place events |
+| `place.chain.name` | `radar_place_chain_name` | string | `"Example Coffee"` | Place events |
+| `place.chain.externalId` | `radar_place_chain_external_id` | string | `"123"` | Place events |
+| `place.chain.metadata[{key}]` | `radar_place_chain_metadata_{key}` | type of the value | `{value}` | Place events |
+| `place.categories` | `radar_place_categories` | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` | Place events |
+| `region.code` | `radar_region_code` | string | `"US"`, `"MD"`, `"26"`, or the postal code | Region events |
+| `region.name` | `radar_region_name` | string | `"United States"`, `"Maryland"`, `"Baltimore"` | Region events |
+| `trip.externalId` | `radar_trip_external_id` | string | `"order-299"` | Trip events |
+| `trip.metadata[{key}]` | `radar_trip_metadata_{key}` | type of the value | `{value}` | Trip events |
+| `trip.destinationGeofenceTag` | `radar_trip_destination_geofence_tag` | string | `"store"` | Trip events |
+| `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string | `"store-42"` | Trip events |
+| `beacon._id` | `radar_beacon_id` | string | `"5b2c0906f5874b001aecfd8f"` | Beacon events |
+| `beacon.description` | `radar_beacon_description` | string | `"Store #42 - Drive-Thru"` | Beacon events |
+| `beacon.tag` | `radar_beacon_tag` | string | `"drive-thru"` | Beacon events |
+| `beacon.externalId` | `radar_beacon_external_id` | string | `"123"` | Beacon events |
+| `beacon.metadata[{key}]` | `radar_beacon_metadata_{key}` | type of the value | `{value}` | Beacon events |
+| `confidence` | `radar_confidence` | string | `"high"` | Geofence, place, region, trip, and beacon events |
 
-Each event also carries a `platform` of `iOS`, `ANDROID`, or `web`, taken from the device type.
+To limit what Radar sends, see [Filters](/integrations/integrations#filters).
 
-### Attributes on every event
+Each batch of Radar events produces an event request that carries every event in the batch, then a customer request that carries the user attributes. See [Delivery behavior](/integrations/integrations#delivery-behavior).
 
-| Radar event field | MoEngage event attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `foreground` | `radar_foreground` | boolean | `true` |
-| `replayed` | `radar_replayed` | boolean, sent only when `true` | `true` |
+## Test the integration
 
-When the event carries region context, Radar also sends:
-
-| Radar event field | MoEngage event attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `country.code` | `radar_country_code` | string | `"US"` |
-| `country.name` | `radar_country_name` | string | `"United States"` |
-| `state.code` | `radar_state_code` | string | `"MD"` |
-| `state.name` | `radar_state_name` | string | `"Maryland"` |
-| `dma.code` | `radar_dma_code` | string | `"26"` |
-| `dma.name` | `radar_dma_name` | string | `"Baltimore"` |
-| `postalCode.code` | `radar_postal_code` | string | `"21014"` |
-
-### [Radar] Geofence Entered
-
-| Radar event field | MoEngage event attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `geofence._id` | `radar_geofence_id` | string | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description` | `radar_geofence_description` | string | `"Store #42"` |
-| `geofence.tag` | `radar_geofence_tag` | string | `"store"` |
-| `geofence.externalId` | `radar_geofence_external_id` | string | `"store-42"` |
-| `geofence.metadata[{key}]` | `radar_geofence_metadata_{key}` | type of the value | `{value}` |
-| `confidence` | `radar_confidence` | string | `"high"` |
-
-### [Radar] Geofence Exited
-
-Same attributes as `[Radar] Geofence Entered`, plus:
-
-| Radar event field | MoEngage event attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `duration` | `radar_duration` | number (minutes) | `42.1` |
-
-### [Radar] Dwelled in Geofence
-
-Same attributes as `[Radar] Geofence Exited`. `radar_duration` is the time in the geofence so far.
-
-### [Radar] Place Entered
-
-| Radar event field | MoEngage event attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `place._id` | `radar_place_id` | string | `"59302bcf8f27e8a156bd4f91"` |
-| `place.name` | `radar_place_name` | string | `"Example Coffee"` |
-| `place.chain.slug` | `radar_place_chain_slug` | string | `"example-coffee"` |
-| `place.chain.name` | `radar_place_chain_name` | string | `"Example Coffee"` |
-| `place.chain.externalId` | `radar_place_chain_external_id` | string | `"123"` |
-| `place.chain.metadata[{key}]` | `radar_place_chain_metadata_{key}` | type of the value | `{value}` |
-| `place.categories` | `radar_place_categories` | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` |
-| `confidence` | `radar_confidence` | string | `"high"` |
-
-### [Radar] Place Exited
-
-Same attributes as `[Radar] Place Entered`, plus `radar_duration` (number, minutes).
-
-### [Radar] Country Entered
-
-| Radar event field | MoEngage event attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `radar_region_code` | string | `"US"` |
-| `region.name` | `radar_region_name` | string | `"United States"` |
-| `confidence` | `radar_confidence` | string | `"high"` |
-
-### [Radar] Country Exited
-
-Same attributes as `[Radar] Country Entered`.
-
-### [Radar] State Entered
-
-Same attributes as `[Radar] Country Entered`, with the state's code and name, for example `"MD"` and `"Maryland"`.
-
-### [Radar] State Exited
-
-Same attributes as `[Radar] State Entered`.
-
-### [Radar] DMA Entered
-
-Same attributes as `[Radar] Country Entered`, with the DMA's code and name, for example `"26"` and `"Baltimore"`.
-
-### [Radar] DMA Exited
-
-Same attributes as `[Radar] DMA Entered`.
-
-### [Radar] Postal Code Entered and [Radar] Postal Code Exited
-
-Same attributes as `[Radar] Country Entered`, with the postal code in `radar_region_code`.
-
-### [Radar] Started Trip
-
-| Radar event field | MoEngage event attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `trip.externalId` | `radar_trip_external_id` | string | `"order-299"` |
-| `trip.metadata[{key}]` | `radar_trip_metadata_{key}` | type of the value | `{value}` |
-| `trip.destinationGeofenceTag` | `radar_trip_destination_geofence_tag` | string | `"store"` |
-| `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string | `"store-42"` |
-| `confidence` | `radar_confidence` | string | `"high"` |
-
-### [Radar] Updated Trip
-
-Same attributes as `[Radar] Started Trip`.
-
-### [Radar] Approaching Trip Destination
-
-Same attributes as `[Radar] Started Trip`.
-
-### [Radar] Arrived at Trip Destination
-
-Same attributes as `[Radar] Started Trip`.
-
-### [Radar] Stopped Trip
-
-Same attributes as `[Radar] Started Trip`.
-
-### [Radar] Beacon Entered
-
-| Radar event field | MoEngage event attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `beacon._id` | `radar_beacon_id` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `beacon.description` | `radar_beacon_description` | string | `"Store #42 - Drive-Thru"` |
-| `beacon.tag` | `radar_beacon_tag` | string | `"drive-thru"` |
-| `beacon.externalId` | `radar_beacon_external_id` | string | `"123"` |
-| `beacon.metadata[{key}]` | `radar_beacon_metadata_{key}` | type of the value | `{value}` |
-| `confidence` | `radar_confidence` | string | `"high"` |
-
-### [Radar] Beacon Exited
-
-Same attributes as `[Radar] Beacon Entered`, plus `radar_duration` (number, minutes).
-
-## Filtering
-
-The **MoEngage** section of the [Integrations](https://dashboard.radar.com/integrations) page has these filters:
-
-| Setting | Effect |
-| --- | --- |
-| **Event type allowlist** | Radar sends only the selected event types. Check this list first when an event you expect is missing. |
-| **Request key blocklist** | Keys to remove from the requests, for example `radar_geofence_ids`. Applies to user attributes and event attributes. |
-| **Geofence tag blocklist** | Geofence tags. Radar skips events for geofences with these tags. |
-
-For the filters that every event integration shares, see [Filters](/integrations/integrations#filters).
-
-## Delivery behavior
-
-- Radar sends to MoEngage only when it generates an event for the user. A location update that produces no event doesn't update user attributes.
-- Each batch of Radar events produces two MoEngage requests: an event request that carries all events in the batch, then a customer request that carries the user attributes.
-- Delivery is asynchronous and doesn't block the SDK.
-- Radar sends each request once. It doesn't retry a request that MoEngage rejects or that times out. Both outcomes are recorded in the integration logs.
-- Events from the Test environment use the Test Data API key and the Workspace ID with `_DEBUG` appended. Events from the Live environment use the Live Data API key and the Workspace ID as entered.
-
-## Verify integration data delivery
-
-<Steps>
-  <Step title="Prepare a test user">
-    On a test device, set `moengage:customer_id` in Radar metadata to the ID of a user that exists in MoEngage.
-  </Step>
-  <Step title="Generate an event">
-    Generate an event for that user. Either open the [Simulator](https://dashboard.radar.com/geofencing/simulate) page, choose the user, and move it into a geofence, or use a test build of your app and enter the geofence.
-  </Step>
-  <Step title="Check Radar's log">
-    On the [Events](https://dashboard.radar.com/geofencing/events) page, click **View** on the new event and find the **Logs** section. Confirm that it shows two MoEngage requests, one to the event endpoint and one to the customer endpoint, each with a `2xx` response.
-  </Step>
-  <Step title="Check MoEngage">
-    In MoEngage, open the user's profile in the environment that matches the Radar environment you tested, and confirm the `[Radar] Geofence Entered` event and the `radar_geofence_tags` attribute.
-  </Step>
-</Steps>
-
-## Troubleshoot delivery
-
-Click **View integration logs** in the **MoEngage** section of the [Integrations](https://dashboard.radar.com/integrations) page. Each row shows the timestamp, the request URL, and the response code, and expands to the request and response bodies. New rows can take a few minutes to appear.
-
-| Log response | Meaning |
-| --- | --- |
-| `skipped`: `Integration key(s) missing.` | No Data API key for the event's environment. |
-| `skipped`: `Identifier missing.` | The user has no `moengage:customer_id` metadata, or the Workspace ID is empty. |
-| `skipped`, "Event type ... isn't allowed." | The event type isn't selected in the allowlist. |
-| `skipped`: `Geofence tag '...' is blocklisted.` | The geofence tag is in the blocklist. |
-| A `4xx` response | MoEngage rejected the request. The response body in the log gives the reason. Check the Data API key, the Workspace ID, and the API endpoint for your data center. |
-| `2xx`, but no data on the user | Check that you are looking at the matching MoEngage environment, that the customer ID matches, and the **Update existing only** setting. |
+Set `moengage:customer_id` to the ID of a user that exists in MoEngage, move that user into a geofence with the [Simulator](https://dashboard.radar.com/geofencing/simulate), then click **View** on the new event on the **Events** page. Its **Logs** section shows two MoEngage requests, each with a `2xx` response, and the MoEngage profile, in the environment that matches the Radar environment, shows the `[Radar] Geofence Entered` event and the `radar_geofence_tags` attribute. If not, see [Troubleshoot delivery](/integrations/integrations#troubleshoot-delivery).
 
 ## Limitations
 
-- A user without `moengage:customer_id` metadata is skipped. The Radar `userId` alone isn't enough.
-- User attributes are updated only when an event is generated, so `radar_updated_at` can be older than the user's last location update.
-- Empty attributes are sent as the string `"(null)"`.
-- Top chain attributes aren't sent to MoEngage.
-- There is no automatic retry. A request that fails during a MoEngage outage isn't resent.
+Top chain attributes aren't sent to MoEngage.

@@ -7,54 +7,46 @@ description: "Send Radar location events to Salesforce Marketing Cloud to trigge
 <Info>
   The Salesforce Marketing Cloud integration is available on the [Enterprise plan](https://radar.com/pricing).
 </Info>
-
-By the end of this page, Radar sends each location event to a data extension in [Salesforce Marketing Cloud](https://www.salesforce.com/products/marketing-cloud/overview/) as an API event, where it can trigger a journey in Journey Builder, and you have confirmed delivery for one test contact.
-
-Radar sends events only. It doesn't write Radar user attributes to Salesforce contacts.
+Radar sends each location event to a data extension in [Salesforce Marketing Cloud](https://www.salesforce.com/products/marketing-cloud/overview/) as an API event, where it can trigger a journey in Journey Builder. Radar sends events only. It doesn't write Radar user attributes to Salesforce contacts.
 
 ## Prerequisites
 
-- A Radar project on the Enterprise plan, with the Radar SDK generating events. See [Detect geofence events and place visits](/geofencing/geofences-and-places).
-- A Salesforce Marketing Cloud account, with permission to create installed packages and to edit the data model in Contact Builder.
-- The Marketing Cloud contact key for each user, available in your app. With the Marketing Cloud mobile SDK, this is the SDK's contact key.
+- A Radar project on the Enterprise plan that is [generating events](/geofencing/geofences-and-places).
+- A Salesforce Marketing Cloud account where you can create installed packages and edit the data model in Contact Builder.
+- The Marketing Cloud contact key for each user, available in your app.
 
 ## Configuration
 
 <Steps>
   <Step title="Create an installed package in Salesforce Marketing Cloud">
-    In the Marketing Cloud **Setup** menu, open **Installed Packages** and click **New**. Enter `Radar` as the package name. On the package details page, add an **API Integration** component with the **Server-to-Server** integration type, and grant all permissions for the **Automation**, **Contacts**, **Cross Cloud Platform**, and **Data** scopes.
-
-    Copy the **Client ID**, **Client Secret**, **Authentication Base URI**, and **REST Base URI**.
+    In the Marketing Cloud **Setup** menu, open **Installed Packages** and click **New**. Enter `Radar` as the package name. Add an **API Integration** component with the **Server-to-Server** integration type, and grant all permissions for the **Automation**, **Contacts**, **Cross Cloud Platform**, and **Data** scopes. Copy the client ID, client secret, **Authentication Base URI**, and **REST Base URI**.
   </Step>
   <Step title="Enter the credentials in Radar">
-    In the Radar dashboard, open the [Integrations](https://dashboard.radar.com/integrations) page, find the **Salesforce Marketing Cloud** section, and select **Yes** for **Enabled**. Enter these values:
+    On the [Integrations](https://dashboard.radar.com/integrations) page, select **Yes** for **Enabled** in the **Salesforce Marketing Cloud** section, enter these values, and click **Save**.
 
     | Field | Value |
     | --- | --- |
     | **Client ID**, **Client secret** | From the installed package. |
-    | **Auth base URI** | The **Authentication Base URI**, pasted exactly as Salesforce shows it, including the trailing slash. |
-    | **REST base URI** | The **REST Base URI**, pasted exactly as Salesforce shows it, including the trailing slash. |
+    | **Auth base URI** | The **Authentication Base URI**, exactly as Salesforce shows it, including the trailing slash. |
+    | **REST base URI** | The **REST Base URI**, exactly as Salesforce shows it, including the trailing slash. |
     | **Event definition key** | Optional. The key for the event definition Radar creates. The default is `radar-event`. |
 
-    Click **Save**. Radar authenticates with Salesforce using the credentials. If authentication fails, the save fails with a message that starts with `Error authenticating to Salesforce Marketing Cloud`. If it succeeds, Radar creates an API event definition named **Radar Event** and its data extension, with the event definition key you entered.
+    If authentication fails, the save fails with a message that starts with `Error authenticating to Salesforce Marketing Cloud`. If it succeeds, Radar creates an API event definition named **Radar Event** and its data extension.
   </Step>
   <Step title="Link the data extension to your contacts">
     In **Contact Builder**, open **Data Designer**. Link the **Contact Key** field of your customer data to the `contactKey` field of the Radar data extension, in a one-to-many relationship.
   </Step>
-  <Step title="Set the contact key in your app">
-    Set the metadata described in [Identity mapping](#identity-mapping).
-  </Step>
 </Steps>
 
 ## Identity mapping
+
+Radar doesn't use the Radar `userId` as the contact key. Set `salesforceContactKey` in Radar user metadata.
 
 | Radar value | Sent to Salesforce as | Required |
 | --- | --- | --- |
 | `metadata.salesforceContactKey` | `ContactKey` on the API event, and `contactKey` in the event data | Yes. Without it, Radar skips the event and logs `Identifier missing.` |
 | `userId` | `userUserId` in the event data | No |
 | `deviceId` | `userDeviceId` in the event data | No |
-
-Radar doesn't use the Radar `userId` as the contact key. Set `salesforceContactKey` in Radar user metadata:
 
 <CodeGroup>
 
@@ -81,220 +73,90 @@ SFMCSdk.requestSdk { sdk ->
 
 </CodeGroup>
 
-`Radar.setMetadata()` replaces the whole metadata object, so include any other metadata keys you use in the same call. When the user logs out or changes, update the metadata so events stop going to the previous contact.
+`Radar.setMetadata()` replaces the whole metadata object. Update it when the user logs out or changes.
 
 ## Event mapping
 
-Every Radar event becomes one row in the Radar data extension. The Radar event type is stored in the `type` attribute, so one event definition carries all event types. Filter on `type` in Journey Builder to pick the events you want.
+Every Radar event becomes one row in the Radar data extension, with the Radar event type in the `type` attribute. Other event types that pass your filters are sent with the common attributes only.
 
-Radar sends these event types: `user.entered_geofence`, `user.exited_geofence`, `user.dwelled_in_geofence`, `user.entered_place`, `user.exited_place`, `user.nearby_place_chain`, the `user.entered_region_*` and `user.exited_region_*` events for country, state, DMA, and postal code, `user.started_trip`, `user.updated_trip`, `user.approaching_trip_destination`, `user.arrived_at_trip_destination`, `user.stopped_trip`, `user.entered_beacon`, and `user.exited_beacon`. Other event types that pass your filters are sent with the common attributes only.
-
-The data extension has a fixed schema, created when you first save the integration. Text attributes have a maximum length of 100 characters unless noted. Metadata is sent as one JSON string per object, with a maximum length of 4,000 characters, because Salesforce requires the schema in advance.
-
-### Attributes on every event
-
-| Radar event field | Salesforce event attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `metadata.salesforceContactKey` | `contactKey` | string | `"contact-123"` |
-| `_id` | `id` | string, primary key | `"5b2c0906f5874b001aecfd90"` |
-| `type` | `type` | string | `"user.entered_geofence"` |
-| `createdAt` | `createdAt` | date | `"2026-06-22T15:23:39.000Z"` |
-| `user.userId` | `userUserId` | string | `"user-123"` |
-| `user.deviceId` | `userDeviceId` | string | `"10974a2ee035770b9"` |
-| `foreground` | `foreground` | boolean | `true` |
-| `replayed` | `replayed` | boolean, sent only when `true` | `true` |
-
-When the event carries [region context](/fundamentals/context-types#regions), Radar also sends:
-
-| Radar event field | Salesforce event attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `country.code` | `countryCode` | string | `"US"` |
-| `country.name` | `countryName` | string | `"United States"` |
-| `state.code` | `stateCode` | string | `"MD"` |
-| `state.name` | `stateName` | string | `"Maryland"` |
-| `dma.code` | `dmaCode` | string | `"26"` |
-| `dma.name` | `dmaName` | string | `"Baltimore"` |
-| `postalCode.code` | `postalCode` | string | `"21014"` |
-
-### user.entered_geofence
-
-| Radar event field | Salesforce event attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `geofence._id` | `geofenceId` | string | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description` | `geofenceDescription` | string | `"Store #42"` |
-| `geofence.tag` | `geofenceTag` | string | `"store"` |
-| `geofence.externalId` | `geofenceExternalId` | string | `"store-42"` |
-| `geofence.metadata` | `geofenceMetadata` | JSON string (max length 4,000) | `'{"parking":false}'` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.exited_geofence
-
-Same attributes as `user.entered_geofence`, plus:
-
-| Radar event field | Salesforce event attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `duration` | `duration` | number (minutes, rounded to a whole number) | `42` |
-
-### user.dwelled_in_geofence
-
-Same attributes as `user.exited_geofence`. `duration` is the time in the geofence so far.
-
-### user.entered_place
-
-| Radar event field | Salesforce event attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `place._id` | `placeId` | string | `"59302bcf8f27e8a156bd4f91"` |
-| `place.name` | `placeName` | string | `"Example Coffee"` |
-| `place.chain.slug` | `placeChainSlug` | string | `"example-coffee"` |
-| `place.chain.name` | `placeChainName` | string | `"Example Coffee"` |
-| `place.chain.metadata` | `placeChainMetadata` | JSON string (max length 4,000) | `'{"loyalty":true}'` |
-| `place.categories` | `placeCategories` | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-`placeCategories` is a 100-character text attribute, so a long category list can exceed it.
-
-### user.exited_place
-
-Same attributes as `user.entered_place`, plus `duration` (number of minutes, rounded to a whole number).
-
-### user.entered_region_country
-
-| Radar event field | Salesforce event attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `regionCode` | string | `"US"` |
-| `region.name` | `regionName` | string | `"United States"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.exited_region_country
-
-Same attributes as `user.entered_region_country`.
-
-### user.entered_region_state
-
-Same attributes as `user.entered_region_country`, with the state's code and name, for example `"MD"` and `"Maryland"`.
-
-### user.exited_region_state
-
-Same attributes as `user.entered_region_state`.
-
-### user.entered_region_dma
-
-Same attributes as `user.entered_region_country`, with the DMA's code and name, for example `"26"` and `"Baltimore"`.
-
-### user.exited_region_dma
-
-Same attributes as `user.entered_region_dma`.
-
-### user.started_trip
-
-| Radar event field | Salesforce event attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `trip.externalId` | `tripExternalId` | string | `"order-299"` |
-| `trip.metadata` | `tripMetadata` | JSON string (max length 4,000) | `'{"Car Model":"Green Honda Civic"}'` |
-| `trip.destinationGeofenceTag` | `tripDestinationGeofenceTag` | string | `"store"` |
-| `trip.destinationGeofenceExternalId` | `tripDestinationGeofenceExternalId` | string | `"store-42"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.updated_trip
-
-Same attributes as `user.started_trip`.
-
-### user.approaching_trip_destination
-
-Same attributes as `user.started_trip`.
-
-### user.arrived_at_trip_destination
-
-Same attributes as `user.started_trip`.
-
-### user.stopped_trip
-
-Same attributes as `user.started_trip`.
-
-### user.entered_beacon
-
-| Radar event field | Salesforce event attribute | Type | Example value |
-| --- | --- | --- | --- |
-| `beacon._id` | `beaconId` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `beacon.description` | `beaconDescription` | string | `"Store #42 - Drive-Thru"` |
-| `beacon.tag` | `beaconTag` | string | `"drive-thru"` |
-| `beacon.externalId` | `beaconExternalId` | string | `"123"` |
-| `beacon.metadata` | `beaconMetadata` | JSON string (max length 4,000) | `'{"type":"parking"}'` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### user.exited_beacon
-
-Same attributes as `user.entered_beacon`, plus `duration` (number of minutes, rounded to a whole number).
-
-## Filtering
-
-On the [Integrations](https://dashboard.radar.com/integrations) page, click **Show advanced** in the **Salesforce Marketing Cloud** section.
-
-| Setting | Effect |
+| Radar event, sent unchanged as `type` | Context |
 | --- | --- |
-| **Event type allowlist** | Radar sends only the selected event types. Check this list first when an event you expect is missing. |
-| **Request key blocklist** | Comma-separated keys to remove from each request, for example `userDeviceId`. Don't block `contactKey`, `id`, or `type`. |
-| **Geofence tag blocklist** | Comma-separated geofence tags. Radar skips events for geofences with these tags. |
+| `user.entered_geofence` | [Geofences](/fundamentals/context-types#geofences) |
+| `user.exited_geofence` | Geofences |
+| `user.dwelled_in_geofence` | Geofences |
+| `user.entered_place` | [Places](/fundamentals/context-types#places) |
+| `user.exited_place` | Places |
+| `user.nearby_place_chain` | Places |
+| `user.entered_region_country` | [Regions](/fundamentals/context-types#regions) |
+| `user.exited_region_country` | Regions |
+| `user.entered_region_state` | Regions |
+| `user.exited_region_state` | Regions |
+| `user.entered_region_dma` | Regions |
+| `user.exited_region_dma` | Regions |
+| `user.entered_region_postal_code` | Regions |
+| `user.exited_region_postal_code` | Regions |
+| `user.started_trip` | [Trips](/fundamentals/context-types#trips) |
+| `user.updated_trip` | Trips |
+| `user.approaching_trip_destination` | Trips |
+| `user.arrived_at_trip_destination` | Trips |
+| `user.stopped_trip` | Trips |
+| `user.entered_beacon` | [Beacons](/fundamentals/context-types#beacons) |
+| `user.exited_beacon` | Beacons |
 
-For the filters that every event integration shares, see [Filters](/integrations/integrations#filters). Because every event type arrives in one data extension, also filter by `type` and other attributes in the journey's entry source.
+The data extension schema is fixed when you first save the integration. Text attributes have a maximum length of 100 characters, which a long `placeCategories` list can exceed. Metadata is one JSON string per object.
 
-## Delivery behavior
+| Radar event field | Salesforce event attribute | Type | Example value | Sent on |
+| --- | --- | --- | --- | --- |
+| `metadata.salesforceContactKey` | `contactKey` | string | `"contact-123"` | All |
+| `_id` | `id` | string, primary key | `"5b2c0906f5874b001aecfd90"` | All |
+| `type` | `type` | string | `"user.entered_geofence"` | All |
+| `createdAt` | `createdAt` | date | `"2026-06-22T15:23:39.000Z"` | All |
+| `user.userId` | `userUserId` | string | `"user-123"` | All |
+| `user.deviceId` | `userDeviceId` | string | `"10974a2ee035770b9"` | All |
+| `foreground` | `foreground` | boolean | `true` | All |
+| `replayed` | `replayed` | boolean, sent only when `true` | `true` | All |
+| `country.code` | `countryCode` | string | `"US"` | With region context |
+| `country.name` | `countryName` | string | `"United States"` | With region context |
+| `state.code` | `stateCode` | string | `"MD"` | With region context |
+| `state.name` | `stateName` | string | `"Maryland"` | With region context |
+| `dma.code` | `dmaCode` | string | `"26"` | With region context |
+| `dma.name` | `dmaName` | string | `"Baltimore"` | With region context |
+| `postalCode.code` | `postalCode` | string | `"21014"` | With region context |
+| `geofence._id` | `geofenceId` | string | `"5b2c0906f5874b001aecfd8e"` | Geofence events |
+| `geofence.description` | `geofenceDescription` | string | `"Store #42"` | Geofence events |
+| `geofence.tag` | `geofenceTag` | string | `"store"` | Geofence events |
+| `geofence.externalId` | `geofenceExternalId` | string | `"store-42"` | Geofence events |
+| `geofence.metadata` | `geofenceMetadata` | JSON string (max length 4,000) | `'{"parking":false}'` | Geofence events |
+| `duration` | `duration` | number (minutes, rounded to a whole number) | `42` | `user.exited_geofence`, `user.dwelled_in_geofence` (time in the geofence so far), `user.exited_place`, `user.exited_beacon` |
+| `place._id` | `placeId` | string | `"59302bcf8f27e8a156bd4f91"` | `user.entered_place`, `user.exited_place` |
+| `place.name` | `placeName` | string | `"Example Coffee"` | `user.entered_place`, `user.exited_place` |
+| `place.chain.slug` | `placeChainSlug` | string | `"example-coffee"` | `user.entered_place`, `user.exited_place` |
+| `place.chain.name` | `placeChainName` | string | `"Example Coffee"` | `user.entered_place`, `user.exited_place` |
+| `place.chain.metadata` | `placeChainMetadata` | JSON string (max length 4,000) | `'{"loyalty":true}'` | `user.entered_place`, `user.exited_place` |
+| `place.categories` | `placeCategories` | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` | `user.entered_place`, `user.exited_place` |
+| `region.code` | `regionCode` | string | `"US"`, `"MD"`, `"26"` | Region events |
+| `region.name` | `regionName` | string | `"United States"`, `"Maryland"`, `"Baltimore"` | Region events |
+| `trip.externalId` | `tripExternalId` | string | `"order-299"` | Trip events |
+| `trip.metadata` | `tripMetadata` | JSON string (max length 4,000) | `'{"Car Model":"Green Honda Civic"}'` | Trip events |
+| `trip.destinationGeofenceTag` | `tripDestinationGeofenceTag` | string | `"store"` | Trip events |
+| `trip.destinationGeofenceExternalId` | `tripDestinationGeofenceExternalId` | string | `"store-42"` | Trip events |
+| `beacon._id` | `beaconId` | string | `"5b2c0906f5874b001aecfd8f"` | Beacon events |
+| `beacon.description` | `beaconDescription` | string | `"Store #42 - Drive-Thru"` | Beacon events |
+| `beacon.tag` | `beaconTag` | string | `"drive-thru"` | Beacon events |
+| `beacon.externalId` | `beaconExternalId` | string | `"123"` | Beacon events |
+| `beacon.metadata` | `beaconMetadata` | JSON string (max length 4,000) | `'{"type":"parking"}'` | Beacon events |
+| `confidence` | `confidence` | string | `"high"` | Geofence, region, trip, and beacon events, `user.entered_place`, `user.exited_place` |
 
-- Radar sends to Salesforce only when it generates an event for a user who has a contact key.
-- For each batch of events, Radar first requests an access token from your authentication base URI, then posts each event separately to the `interaction/v1/events` endpoint on your REST base URI.
-- Delivery is asynchronous and doesn't block the SDK.
-- Radar sends each request once. It doesn't retry a request that Salesforce rejects or that times out. If the token request fails, no events from that batch are sent, and the failed token request is recorded in the integration logs.
-- The integration has one set of credentials and one event definition key. Events from the Test and Live environments of the project are sent to the same Salesforce event definition.
+For example, to send a push when a user arrives at a store, create a journey whose entry source is the Radar API event, filtered on `type` equal to `user.entered_geofence` and `geofenceTag` equal to `store`.
 
-## Verify integration data delivery
+To limit what Radar sends, see [Filters](/integrations/integrations#filters). Don't add `contactKey`, `id`, or `type` to the request key blocklist.
 
-<Steps>
-  <Step title="Prepare a test contact">
-    On a test device, set `salesforceContactKey` in Radar metadata to the contact key of a contact that exists in Marketing Cloud.
-  </Step>
-  <Step title="Generate an event">
-    Generate an event for that user. Either open the [Simulator](https://dashboard.radar.com/geofencing/simulate) page, choose the user, and move it into a geofence, or use a test build of your app and enter the geofence.
-  </Step>
-  <Step title="Check Radar's log">
-    On the [Events](https://dashboard.radar.com/geofencing/events) page, click **View** on the new event and find the **Logs** section. Confirm that it shows a Salesforce request to `interaction/v1/events` with a `2xx` response.
-  </Step>
-  <Step title="Check Salesforce">
-    In **Contact Builder**, open the Radar data extension and confirm a new row with your contact key, the event `type`, and the geofence attributes.
-  </Step>
-</Steps>
+Radar requests an access token from your authentication base URI, then posts each event separately to `interaction/v1/events` on your REST base URI. If the token request fails, no events from that batch are sent. See [Delivery behavior](/integrations/integrations#delivery-behavior).
 
-## Troubleshoot delivery
+## Test the integration
 
-Click **View integration logs** in the **Salesforce Marketing Cloud** section of the [Integrations](https://dashboard.radar.com/integrations) page. Each row shows the timestamp, the request URL, and the response code, and expands to the request and response bodies. The client ID and client secret are redacted. New rows can take a few minutes to appear.
-
-| Log response | Meaning |
-| --- | --- |
-| `skipped`: `Integration key(s) missing.` | The client ID, client secret, auth base URI, or REST base URI is empty. |
-| `skipped`: `Identifier missing.` | The user has no `metadata.salesforceContactKey`. |
-| `skipped`, "Event type ... isn't allowed." | The event type isn't selected in the allowlist. |
-| `skipped`: `Geofence tag '...' is blocklisted.` | The geofence tag is in the blocklist. |
-| A failed request to `v2/token` | Salesforce rejected the credentials. Check the client ID and secret, and that the auth base URI ends with a slash. |
-| A `4xx` response from `interaction/v1/events` | Salesforce rejected the event. The response body in the log gives the reason. Check the event definition key, the package scopes, and attribute lengths. |
-| `2xx`, but the journey doesn't start | The row arrived. Check the journey's entry source filter and the **Data Designer** link between `contactKey` and your contact data. |
-
-## Example use cases
-
-### Send a personalized push notification when a user arrives at a store
-
-1. Create [geofences](/geofencing/geofences-and-places) in Radar with the tag `store`.
-2. In Journey Builder, create a journey whose entry source is an API event from the Radar data extension. Filter the entry source on `type` equal to `user.entered_geofence` and `geofenceTag` equal to `store`. Add a push message activity, and use attributes such as `geofenceDescription` to personalize it.
-
-### Message all users who have been nearby a store
-
-1. Create geofences in Radar that cover the area around each store, with the tag `nearby-store`.
-2. In Marketing Cloud, create a mobile list filtered on the Radar data extension: `type` equal to `user.entered_geofence`, `geofenceTag` equal to `nearby-store`, and `createdAt` within the last 7 days.
-3. Create a MobilePush message whose audience is that list.
+Set `salesforceContactKey` to the key of a contact that exists in Marketing Cloud, move that user into a geofence with the [Simulator](https://dashboard.radar.com/geofencing/simulate), then click **View** on the new event on the **Events** page. Its **Logs** section shows a request to `interaction/v1/events` with a `2xx` response, and the Radar data extension in **Contact Builder** shows a new row with your contact key and the event `type`. If not, see [Troubleshoot delivery](/integrations/integrations#troubleshoot-delivery). If the token request to `v2/token` fails, check the client ID and secret, and that the auth base URI ends with a slash.
 
 ## Limitations
 
-- Events only. Radar doesn't sync user attributes, so there is no "current geofences" field on the contact. Build audiences from event rows instead.
-- The data extension schema is fixed when the event definition is created. Metadata is one JSON string per object, not one attribute per key.
-- Durations are rounded to whole minutes.
-- One set of credentials serves both the Test and Live environments.
-- A user without `salesforceContactKey` metadata is skipped. The Radar `userId` alone isn't enough.
-- There is no automatic retry. A request that fails during a Salesforce outage isn't resent.
+One set of credentials and one event definition key serve both the Test and Live environments.

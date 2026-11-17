@@ -51,13 +51,13 @@ Note that Radar uses the string `[]` to represent `null` user attribute values.
 | `place.categories`                   | `RadarPlaceCategories`                   | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | [Places](/geofencing/geofences-and-places#enable-places)               |
 | `place.chain.slug`                   | `RadarPlaceChainId`                      | array[string] | `["starbucks"]`                            | [Places](/geofencing/geofences-and-places#enable-places)               |
 | `place.chain.name`                   | `RadarPlaceChainName`                    | array[string] | `["Starbucks"]`                            | [Places](/geofencing/geofences-and-places#enable-places)               |
-| `country.code`                       | `RadarRegionCountryCode`                 | array[string] | `["US"]`                                   | [Regions](/geofencing/geofences-and-places#regions)             |
-| `country.name`                       | `RadarRegionCountryName`                 | array[string] | `["United States"]`                        | [Regions](/geofencing/geofences-and-places#regions)             |
-| `state.code`                         | `RadarRegionStateCode`                   | array[string] | `["MD"]`                                   | [Regions](/geofencing/geofences-and-places#regions)             |
-| `state.name`                         | `RadarRegionStateName`                   | array[string] | `["Maryland"]`                             | [Regions](/geofencing/geofences-and-places#regions)             |
-| `dma.code`                           | `RadarRegionDmaCode`                     | array[string] | `["26"]`                                   | [Regions](/geofencing/geofences-and-places#regions)             |
-| `dma.name`                           | `RadarRegionDmaName`                     | array[string] | `["Baltimore"]`                            | [Regions](/geofencing/geofences-and-places#regions)             |
-| `postalCode.code`                    | `RadarRegionPostalCode`                  | array[string] | `["21014"]`                                | [Regions](/geofencing/geofences-and-places#regions)             |
+| `country.code`                       | `RadarRegionCountryCode`                 | array[string] | `["US"]`                                   | [Regions](/fundamentals/context-types#regions)             |
+| `country.name`                       | `RadarRegionCountryName`                 | array[string] | `["United States"]`                        | [Regions](/fundamentals/context-types#regions)             |
+| `state.code`                         | `RadarRegionStateCode`                   | array[string] | `["MD"]`                                   | [Regions](/fundamentals/context-types#regions)             |
+| `state.name`                         | `RadarRegionStateName`                   | array[string] | `["Maryland"]`                             | [Regions](/fundamentals/context-types#regions)             |
+| `dma.code`                           | `RadarRegionDmaCode`                     | array[string] | `["26"]`                                   | [Regions](/fundamentals/context-types#regions)             |
+| `dma.name`                           | `RadarRegionDmaName`                     | array[string] | `["Baltimore"]`                            | [Regions](/fundamentals/context-types#regions)             |
+| `postalCode.code`                    | `RadarRegionPostalCode`                  | array[string] | `["21014"]`                                | [Regions](/fundamentals/context-types#regions)             |
 | `trip.externalId`                    | `RadarTripExternalId`                    | array[string] | `["299"]`                                  | [Trip Tracking](/geofencing/trips) |
 | `trip.destinationGeofenceTag`        | `RadarTripDestinationGeofenceTag`        | array[string] | `["store"]`                                | [Trip Tracking](/geofencing/trips) |
 | `trip.destinationGeofenceExternalId` | `RadarTripDestinationGeofenceExternalId` | array[string] | `["123"]`                                  | [Trip Tracking](/geofencing/trips) |
@@ -80,7 +80,7 @@ Note that Radar uses the string `[]` to represent `null` user attribute values.
 | `confidence`               | `Confidence`             | string  | `"high"`                     |
 | `foreground`               | `Foreground`             | boolean | `true`                       |
 
-If [Regions](/geofencing/geofences-and-places#regions) is enabled, Radar will also send the following attributes:
+If [Regions](/fundamentals/context-types#regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Pinpoint Event Attribute | Type   | Example Value     |
 | ----------------- | ------------------------ | ------ | ----------------- |
@@ -105,7 +105,7 @@ If [Regions](/geofencing/geofences-and-places#regions) is enabled, Radar will al
 | `duration`                 | `Duration`               | string  | `"42.1"`                     |
 | `foreground`               | `Foreground`             | boolean | `true`                       |
 
-If [Regions](/geofencing/geofences-and-places#regions) is enabled, Radar will also send the following attributes:
+If [Regions](/fundamentals/context-types#regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Pinpoint Event Attribute | Type   | Example Value     |
 | ----------------- | ------------------------ | ------ | ----------------- |
@@ -130,7 +130,7 @@ If [Regions](/geofencing/geofences-and-places#regions) is enabled, Radar will al
 | `duration`                 | `Duration`               | string  | `"5"`                        |
 | `foreground`               | `Foreground`             | boolean | `true`                       |
 
-If [Regions](/geofencing/geofences-and-places#regions) is enabled, Radar will also send the following attributes:
+If [Regions](/fundamentals/context-types#regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Pinpoint Event Attribute | Type   | Example Value     |
 | ----------------- | ------------------------ | ------ | ----------------- |
@@ -156,7 +156,7 @@ If [Regions](/geofencing/geofences-and-places#regions) is enabled, Radar will al
 | `confidence`                  | `Confidence`              | string                   | `"high"`                           |
 | `foreground`                  | `Foreground`              | boolean                  | `true`                             |
 
-If [Regions](/geofencing/geofences-and-places#regions) is enabled, Radar will also send the following attributes:
+If [Regions](/fundamentals/context-types#regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Pinpoint Event Attribute | Type   | Example Value     |
 | ----------------- | ------------------------ | ------ | ----------------- |
@@ -183,7 +183,7 @@ If [Regions](/geofencing/geofences-and-places#regions) is enabled, Radar will al
 | `duration`                    | `Duration`                | string                   | `"42.1"`                           |
 | `foreground`                  | `Foreground`              | boolean                  | `true`                             |
 
-If [Regions](/geofencing/geofences-and-places#regions) is enabled, Radar will also send the following attributes:
+If [Regions](/fundamentals/context-types#regions) is enabled, Radar will also send the following attributes:
 
 | Radar Event Field | Pinpoint Event Attribute | Type   | Example Value     |
 | ----------------- | ------------------------ | ------ | ----------------- |

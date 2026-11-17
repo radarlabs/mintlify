@@ -7,61 +7,13 @@ description: "Connect Claude, ChatGPT, or another MCP client to Radar's read-onl
   The MCP server must be enabled for your project. Contact your Radar account team.
 </Info>
 
-By the end of this page, your AI assistant is connected to one Radar project and environment, and you have run a query that returns your own data.
-
-Radar's Model Context Protocol (MCP) server lets an AI assistant query Radar data for you. Ask a question in Claude or ChatGPT, and the assistant retrieves the relevant records, analyzes them, and can display locations on a map.
-
-You connect through your Radar account and authorize access to one project. The assistant gets read-only tools. It can't change project settings, create geofences, delete users, or otherwise modify your Radar data.
+Connect your AI assistant to one Radar project and environment through Radar's Model Context Protocol (MCP) server, then ask questions about your own data. The assistant retrieves the relevant records, analyzes them, and can display locations on a map.
 
 ## What this server is and is not
 
-Three things on this site involve AI assistants. They are separate:
-
-| | What it does | Uses your Radar data |
-| --- | --- | --- |
-| Radar MCP server (this page) | Lets an assistant query your project's locations, events, and SDK logs after you sign in. | Yes, read-only. |
-| Documentation search MCP | Lets an assistant search and read these documentation pages. It is provided by the documentation platform. | No. |
-| "Build with an agent" prompts | Copyable prompts in the implementation guides that point a coding agent at the right docs pages. | No. |
-
-Connecting the documentation search server doesn't give an assistant access to your Radar data, and connecting the Radar MCP server doesn't add documentation search.
-
-## What you can do
-
-- Query historical locations by user, device, time range, geography, or other supported filters.
-- Query events, such as [geofence](/fundamentals/context-types#geofences) entries, [place](/fundamentals/context-types#places) visits, and [trip](/fundamentals/context-types#trips) updates.
-- Query SDK logs for a user or device when you troubleshoot an integration.
-- View locations on an interactive map in clients that support MCP apps, such as Claude and ChatGPT.
-- Read additional pages of results, or download the results as JSON through a temporary link.
-
-### Sample prompts
-
-- Why did user `user-123` fail a location check recently?
-- Investigate users `user-123`, `user-456`, and `user-789` for promo abuse.
-- Find all location checks near 111 5th Ave, NYC yesterday.
-
-### Available tools
-
-The assistant selects these tools for you. You don't write API requests.
-
-| Tool | What it does |
-| --- | --- |
-| `query_data` | Runs a query against one dataset and returns a completed query ID, up to three preview records, and a temporary JSON download link. |
-| `get_query_page` | Reads another page of records from a completed query. The assistant can keep reading while more pages are available. |
-| `render_locations_map` | Displays the results of a completed locations query on an interactive map in a compatible client. |
-| `geocode` | Converts an address to coordinates, or coordinates to an address. |
-| `get_dashboard_urls` | Formats links to users, devices, events, locations, geofences, and trips in the Radar dashboard from IDs in query results. |
-
-`query_data` reads one dataset per query. Each dataset needs its own permission:
-
-| Dataset | Contains | Permission |
-| --- | --- | --- |
-| Locations | Historical locations, with fraud detail on request. | `locations:read` |
-| Events | Radar events and conversions. | `events:read` |
-| Logs | SDK device logs. A logs query must name a user, device, installation, or session. | `logs:read` |
-
-The tools that your assistant lists depend on the permissions you grant and on what is enabled for your account, so your list can differ from this table. Every tool is read-only.
-
-Queries can take some time to complete, up to several minutes for large ranges. A query returns at most 1,000 records, and a preview or map can show only part of them. Ask the assistant to read more pages when you need a fuller analysis, or use the JSON download.
+- It lets an assistant query your project's locations, events, and SDK logs after you sign in with your Radar account.
+- It is read-only. The assistant can't change project settings, create geofences, delete users, or otherwise modify your Radar data.
+- It isn't documentation search. The documentation search MCP, provided by the documentation platform, searches these pages and has no access to your Radar data.
 
 ## Before you connect
 
@@ -77,13 +29,9 @@ Use this hosted server URL for every provider:
 https://mcp.radar.com/mcp
 ```
 
-Radar uses OAuth to authorize the connection. Sign in to Radar through the authorization flow. Don't paste a Radar secret key into the chat or into the connector configuration.
-
-Before you start, select the intended project and the Test or Live environment in the [Radar dashboard](https://dashboard.radar.com). Check them again on the consent screen before you allow access.
+Radar uses OAuth to authorize the connection. Don't paste a Radar secret key into the chat or into the connector configuration. Before you start, select the intended project and the Test or Live environment in the [Radar dashboard](https://dashboard.radar.com).
 
 ## Connect Claude
-
-An official Claude connector isn't available yet. Add Radar as a custom connector:
 
 1. In Claude, open **Customize** > **Connectors**.
 2. Click **+**, then select **Add custom connector**.
@@ -92,11 +40,9 @@ An official Claude connector isn't available yet. Add Radar as a custom connecto
 5. Review the project, environment, and requested access on Radar's consent screen. Click **Allow access**.
 6. Start a conversation. In the **+** menu, select **Connectors** and turn on Radar.
 
-For Team and Enterprise workspaces, an owner must first add the connector in **Organization settings** > **Connectors**. Members then connect their own Radar accounts. See [Claude's custom connector guide](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) for current account requirements and controls.
+For Team and Enterprise workspaces, an owner must first add the connector in **Organization settings** > **Connectors**. See [Claude's custom connector guide](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
 
 ## Connect ChatGPT
-
-An official ChatGPT plugin isn't available yet. Add Radar in developer mode:
 
 1. In ChatGPT, open **Settings** > **Security and login** and turn on **Developer mode**. Availability depends on your account and workspace policy.
 2. Open [ChatGPT Plugins](https://chatgpt.com/plugins) and click **+**.
@@ -105,89 +51,61 @@ An official ChatGPT plugin isn't available yet. Add Radar in developer mode:
 5. Complete the Radar sign-in flow. Review the project, environment, and requested access, then click **Allow access**.
 6. Review the discovered tools and turn on the Radar connection in a conversation.
 
-If these controls are unavailable, check your workspace policy with an administrator. OpenAI's [connection guide](https://developers.openai.com/plugins/deploy/connect-chatgpt) describes the current setup flow.
-
-Provider menus change often. If a label in these steps doesn't match what you see, follow the provider's guide and use the same server URL and OAuth sign-in.
-
-## Connect another MCP client
-
-This page documents the Claude and ChatGPT flows. For another client that supports remote MCP servers with OAuth, use the same URL, `https://mcp.radar.com/mcp`, add it as a remote server, and complete the Radar sign-in when the client opens it. Interactive maps appear only in clients that support MCP apps. In other clients, the assistant works from the query results as text. If your client can't complete authorization, contact your Radar account team.
+See OpenAI's [connection guide](https://developers.openai.com/plugins/deploy/connect-chatgpt) if a label doesn't match. For another client that supports remote MCP servers with OAuth, add the same URL as a remote server and complete the Radar sign-in.
 
 ## Review Radar access
 
-The Radar consent screen shows the project, the Test or Live environment, and the requested permissions. Location queries use the `locations:read` permission. Event and log queries use `events:read` and `logs:read`.
+The Radar consent screen shows the project, the Test or Live environment, and the requested permissions. If the project or environment is wrong, cancel, select the correct context in the Radar dashboard, and restart the connection. A prompt can't switch an existing connection to another project or environment.
 
-If the project or environment is wrong, cancel, select the correct context in the Radar dashboard, and restart the connection. A prompt can't switch an existing connection to another project or environment.
+## What you can do
+
+Query historical locations, events such as [geofence](/fundamentals/context-types#geofences) entries, [place](/fundamentals/context-types#places) visits, and [trip](/fundamentals/context-types#trips) updates, and SDK logs, by user, device, time range, geography, or other supported filters.
+
+### Available tools
+
+The assistant selects these tools for you. Every tool is read-only, and the tools that your assistant lists depend on the permissions you grant and on what is enabled for your account.
+
+| Tool | What it does |
+| --- | --- |
+| `query_data` | Runs a query against one dataset and returns a completed query ID, up to three preview records, and a temporary JSON download link. The datasets are locations (permission `locations:read`, with fraud detail on request), events and conversions (`events:read`), and SDK device logs (`logs:read`). A logs query must name a user, device, installation, or session. |
+| `get_query_page` | Reads another page of records from a completed query. |
+| `render_locations_map` | Displays the results of a completed locations query on an interactive map in a client that supports MCP apps, such as Claude and ChatGPT. |
+| `geocode` | Converts an address to coordinates, or coordinates to an address. |
+| `get_dashboard_urls` | Formats links to users, devices, events, locations, geofences, and trips in the Radar dashboard from IDs in query results. |
 
 ## Run a first query
 
-After you connect, confirm the connection with a query whose answer you can check in the dashboard:
-
 1. Pick a user that has recent locations in the environment you authorized, for example `user-123`.
 2. Ask the assistant: `Show the five most recent locations for user user-123 from the last 7 days.`
-3. Approve the tool call if your client asks. The assistant calls `query_data`, reports how many records matched, and summarizes up to three preview records. In Claude and ChatGPT, it also shows the locations on a map.
+3. Approve the tool call if your client asks. The assistant calls `query_data`, reports how many records matched, and summarizes up to three preview records.
 4. Open the same user in the Radar dashboard and compare the latest location's time and coordinates with the assistant's answer.
 
-The connection works when the records match. If the assistant answers without calling a Radar tool, turn on the Radar connection for the conversation and ask again.
+The connection works when the records match. If something goes wrong:
 
-## Troubleshoot a failed query
-
-| Symptom | Likely cause | What to do |
-| --- | --- | --- |
-| The assistant has no Radar tools. | The connection isn't turned on in this conversation, or your workspace blocks custom connections. | Turn on Radar in the conversation's connector menu, or ask a workspace administrator. |
-| You can't complete sign-in or authorization. | Your account may not have access to the MCP server or to that project. | Contact your Radar account team. |
-| The assistant reports that a query requires a permission such as `events:read`. | The connection was authorized without that permission. | Disconnect, reconnect, and allow the permission on the consent screen. |
-| A query returns no records. | Wrong project or environment, wrong identifier, or a time range outside your data. | Check the authorized project and environment, the user or device ID, and the time range. |
-| A query times out. | The time range or filter is too broad. | Narrow the time range and add a user, device, or geography filter. |
-| A download link no longer works. | The link passed its `expiresAt` time. | Ask the assistant to run the query again. |
+| Symptom | What to do |
+| --- | --- |
+| The assistant has no Radar tools, or answers without calling one. | Turn on Radar in the conversation's connector menu, or ask a workspace administrator whether custom connections are blocked. |
+| A query requires a permission such as `events:read`. | Disconnect, reconnect, and allow the permission on the consent screen. |
+| A query returns no records. | Check the authorized project and environment, the user or device ID, and the time range. |
+| A query times out. | Narrow the time range and add a user, device, or geography filter. |
 
 ## Limitations
 
-- The server is read-only. It has no tools that create, update, or delete Radar data or settings.
 - A connection covers one project and one environment. To query another, disconnect and reconnect.
-- Access is enabled per account by Radar.
-- A query returns at most 1,000 records, and the inline preview holds at most three.
-- Queries return only data within your project's retention period.
-- Interactive maps require a client that supports MCP apps.
+- A query returns at most 1,000 records, and the inline preview holds at most three. Ask the assistant to read more pages, or use the JSON download, before you draw conclusions about the full query.
+- Queries can take up to several minutes for large ranges, and return only data within your project's retention period.
+- Download links expire at the `expiresAt` time returned with each result. Until then, anyone who has the link can download its results.
 
 ## FAQ
 
-### Can the assistant change my Radar data?
-
-No. The MCP tools provide read-only access. They create query jobs and temporary results to retrieve data, but they don't provide tools for editing or deleting your Radar records or settings.
-
-### Can it access every project in my account?
-
-No. Each connection is limited to the project, environment, and permissions authorized during sign-in. Radar checks your current access when the assistant uses a tool. To work with another project or environment, disconnect Radar and reconnect it, authorizing the new project or environment.
-
-### Why are results missing or incomplete?
-
-Check the authorized project, the Test or Live environment, the identifier, and the time range. Queries return only data that is still within the applicable retention period.
-
-The initial preview contains at most three records. A map or a result page can also contain a subset. Ask the assistant to retrieve additional pages or to use the JSON download before you draw conclusions about the full query. If a query times out, narrow the time range and filters before you try again.
-
 ### What data does the AI provider receive?
 
-The provider receives the tool results used in your conversation. These can include coordinates, timestamps, user or device identifiers, device information, and fraud details, depending on the query and permissions. The assistant can also use the temporary link to retrieve query results.
-
-Radar doesn't send your project's secret key to the assistant. OAuth grants access without requiring you to share your Radar password with the AI provider. Treat returned records and download links as sensitive, and query only the data that your task needs.
-
-See [Radar's privacy notice](https://radar.com/privacy).
-
-### How long is data retained?
-
-Connecting an assistant doesn't change how long Radar keeps your data. Your project's data retention settings still apply. Download links expire at the `expiresAt` timestamp returned with each result.
-
-Once results are in a conversation or downloaded, they fall under your AI provider's retention policies and your own storage practices. Radar can't delete those copies.
+The provider receives the tool results used in your conversation. These can include coordinates, timestamps, user or device identifiers, device information, and fraud details. Radar doesn't send your project's secret key to the assistant. Once results are in a conversation or downloaded, they fall under your AI provider's retention policies and your own storage practices, and Radar can't delete those copies. See [Radar's privacy notice](https://radar.com/privacy).
 
 ### Will my data be used to train AI models?
 
-That depends on your AI provider's terms and your account or workspace settings, not on Radar. Connecting through MCP doesn't by itself establish a no-training or zero-retention policy. Review your provider's data controls before you connect customer data.
-
-### What if a download link expires?
-
-Ask the assistant to run the query again to get a new link, provided the source data is still available and you still have access. Don't share result URLs publicly. Anyone who has a valid link can download its results until it expires.
+That depends on your AI provider's terms and your account or workspace settings, not on Radar. Review your provider's data controls before you connect customer data.
 
 ### How do I disconnect?
 
-Turn off or remove Radar in your AI provider's connector or plugin settings to stop using it there. If you need help revoking Radar authorization, contact [Radar support](https://radar.com/support). Disconnecting doesn't erase records already returned to the provider or files that you downloaded. Manage those copies through the provider's deletion controls and your own storage policies.
+Turn off or remove Radar in your AI provider's connector or plugin settings. If you need help revoking Radar authorization, contact [Radar support](https://radar.com/support).

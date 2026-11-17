@@ -4,13 +4,11 @@ sidebarTitle: "Overview"
 description: "Choose a Radar integration to send events and user state to your own systems, analytics and messaging platforms, order systems, or an AI assistant."
 ---
 
-Pick the integration that matches where your Radar data needs to go, then learn the settings and delivery behavior that the server-side event integrations share.
+Pick the integration that matches where your Radar data needs to go. The event integrations share the [filters](#filters), [delivery behavior](#delivery-behavior), and [troubleshooting](#troubleshoot-delivery) described at the end of this page.
 
-Radar integrations fall into three kinds:
-
-- **Event integrations**: Run on Radar's servers. When Radar generates an event, such as a geofence entry or a trip update, it forwards the event and the current user state to the destinations you enable. Webhooks, the analytics platforms, and the messaging platforms work this way.
-- **Data export**: Delivers events and locations in bulk to storage that you own. AWS S3 works this way.
-- **Operational and AI integrations**: Connect Radar to another product's workflow: Olo for order firing, and the MCP server for querying Radar data from an AI assistant.
+- **Event integrations**: When Radar generates an event, such as a geofence entry or a trip update, its servers forward the event and the current user state to the destinations you enable. Webhooks, the analytics platforms, and the messaging platforms work this way.
+- **Data export**: AWS S3 receives events and locations in bulk.
+- **Operational and AI integrations**: Olo for order firing, and the MCP server for querying Radar data from an AI assistant.
 
 ## General
 
@@ -20,7 +18,7 @@ Radar integrations fall into three kinds:
   </Card>
 </CardGroup>
 
-Webhooks are also the route to any system that has no native integration listed here. Receive the request on your backend and forward it in the format the other system expects.
+Webhooks are also the route to any system that has no native integration listed here: receive the request on your backend and forward it. Or receive events in your app from the [Radar SDK](/sdk/sdk) and pass them to the other platform's SDK.
 
 ## Data and analytics
 
@@ -44,6 +42,8 @@ Webhooks are also the route to any system that has no native integration listed 
     Send events and user attributes to mParticle input feeds, or install Radar as a kit.
   </Card>
 </CardGroup>
+
+To load geofences into Radar from a CSV in S3 on a schedule, see [Sync geofences from a CSV in S3](/integrations/aws-s3#sync-geofences-from-a-csv-in-s3).
 
 ## Messaging
 
@@ -84,27 +84,9 @@ Webhooks are also the route to any system that has no native integration listed 
   </Card>
 </CardGroup>
 
-## How event integrations work
+## Filters
 
-The following applies to webhooks and to the analytics and messaging integrations. Each integration page lists its own exceptions.
-
-### Where you configure them
-
-You configure event integrations on the [Integrations](https://dashboard.radar.com/integrations) page of the Radar dashboard. Each integration has its own section with an **Enabled** selector, credential fields, and a **Save** button. Settings belong to the project that is selected in the dashboard.
-
-Most integrations take separate Test and Live credentials. Events from the Test environment use the Test credential and events from the Live environment use the Live credential. If the credential for an environment is empty, Radar skips events from that environment and records the reason in the integration logs. For how environments and keys work, see [Set up organizations, projects, accounts, and authentication](/fundamentals/authentication-and-access).
-
-Many native integrations require the [Enterprise plan](https://radar.com/pricing), and each integration page states its requirement. When your plan doesn't include an integration, its section shows an upgrade prompt in place of the form.
-
-### What triggers a delivery
-
-Radar generates events when it processes a location update, a trip change, or another server-side state change. Each delivery carries the events from one update together with the user's state after that update, including the [context types](/fundamentals/context-types) that are turned on for your project. An integration that is enabled receives nothing until an event is generated, so a location update that produces no event produces no delivery.
-
-Geofence geometry is removed from payloads before delivery.
-
-### Filters
-
-Click **Show advanced** in an integration's section to show its filters. For webhooks, the same fields are in the **New webhook** and **Edit webhook** dialogs.
+Click **Show advanced** in an integration's section on the [Integrations](https://dashboard.radar.com/integrations) page to show its filters. For webhooks, the same fields are in the **New webhook** and **Edit webhook** dialogs.
 
 | Field | Effect |
 | --- | --- |
@@ -114,11 +96,32 @@ Click **Show advanced** in an integration's section to show its filters. For web
 
 A filtered event is skipped for that integration only. Other integrations still receive it, and the event still appears in the dashboard and the [Events API](/api/events).
 
-### Inspect deliveries and failures
+You can't rename events or properties. Use the request key blocklist to drop the ones you don't want.
 
-Each integration's section has a **View integration logs** button. The logs page lists one row per delivery attempt with the **Timestamp**, **Integration**, **Request**, and **Response**, and you can filter by date range, response, and integration.
+## Delivery behavior
 
-Skipped events appear in the logs with a response of `skipped` and one of these reasons:
+This applies to webhooks and to the analytics and messaging integrations. Each integration page lists its own exceptions.
+
+- **Setup**: Each integration has its own section on the Integrations page, with an **Enabled** selector, credential fields, and a **Save** button. Settings belong to the project that is selected in the dashboard. Many native integrations require the [Enterprise plan](https://radar.com/pricing).
+- **Trigger**: Radar generates events when it processes a location update, a trip change, or another server-side state change. Each delivery carries the events from one update with the user's state after that update, including the [context types](/fundamentals/context-types) that are turned on for your project. A location update that generates no event produces no delivery, and events generated before you enabled the integration aren't sent.
+- **Timing**: Radar sends events from its servers shortly after it generates them. The destination's own processing time applies after that.
+- **Attempts**: Radar sends each request once. It doesn't retry a request that the destination rejects or that times out. Webhooks and the analytics integrations wait up to 5 seconds for a response, and [webhooks](/integrations/webhooks#retries) retry only when retries are enabled for your project. Find failures in the integration logs, and backfill from the [Events API](/api/events).
+- **Environments**: Most integrations take separate Test and Live credentials. Events from the Test environment use the Test credential, and events from the Live environment use the Live credential. If the credential for an environment is empty, Radar skips events from that environment and logs the reason. See [Set up organizations, projects, accounts, and authentication](/fundamentals/authentication-and-access).
+- **Payload**: Geofence geometry is removed before delivery.
+
+## Troubleshoot delivery
+
+Each integration's section has a **View integration logs** button. The logs list one row per delivery attempt with the **Timestamp**, **Integration**, **Request**, and **Response**, and you can filter by date range, response, and integration.
+
+Check these first:
+
+| What you see | Likely cause | What to do |
+| --- | --- | --- |
+| No rows | No events were generated in that environment, or the integration isn't saved as enabled. | Check the Events page for the environment and the **Enabled** setting. |
+| A `4xx` response | The destination rejected the request. | Read the response body in the log, and check that the credential belongs to the intended destination and environment. |
+| A success response, but nothing on the expected user | The identifiers differ between Radar and the destination. | Compare the identifiers in the logged request with the user in the destination. |
+
+Skipped events have a response of `skipped` and one of these reasons:
 
 | Reason | Meaning |
 | --- | --- |
@@ -127,12 +130,3 @@ Skipped events appear in the logs with a response of `skipped` and one of these 
 | `Identifier missing.` | The user has no identifier that the destination requires. The integration page says which one. |
 | `Event type ... is not allowed.` | The event type isn't selected in **Event type allowlist**. |
 | `Geofence tag '...' is blocklisted.` | The geofence's tag is in **Geofence tag blocklist**. |
-
-### Events without a native integration
-
-To send Radar data to a platform that isn't listed on this page, use one of these routes:
-
-- **Server-side**: Create a [webhook](/integrations/webhooks) and forward the payload from your own endpoint.
-- **Client-side**: Receive events in your app from the [Radar SDK](/sdk/sdk) and pass them to the other platform's SDK.
-
-To load geofences into Radar from a CSV file on a schedule, including a CSV stored in S3, see geofence sync in [Detect geofence events and place visits](/geofencing/geofences-and-places).

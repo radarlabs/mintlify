@@ -7,49 +7,28 @@ description: "Send Radar events and user traits to a Segment source with identif
   The Segment integration is available on the [Enterprise plan](https://radar.com/pricing).
 </Info>
 
-By the end of this page, Radar is a source in your Segment workspace: each Radar update that generates events produces an `identify` call with location traits and a `track` call per event, which Segment forwards to your warehouse and destinations.
-
-This is a server-side integration: Radar's servers call Segment. You don't need the Segment SDK in your app for Radar events to reach Segment, but your app and Radar must agree on user IDs for the events to join the right Segment user.
+Radar is a source in Segment: each Radar update that generates events produces an `identify` call with location traits and a `track` call per event.
 
 ## Prerequisites
 
-- A Radar project on the Enterprise plan that generates events. See [Geofencing overview and quickstart](/geofencing/overview).
-- Access to the [Integrations](https://dashboard.radar.com/integrations) page in the Radar dashboard.
-- A Segment workspace where you can add a source and read its write key. Use a separate source for testing so that Test events stay out of production destinations.
-- A user identifier that is the same in both systems. See [User mapping](#user-mapping).
+- A Radar project that generates events.
+- A Segment workspace where you can add a source.
+- A user ID shared by both systems.
 
 ## Configuration
 
-<Steps>
-  <Step title="Add Radar as a source in Segment">
-    In Segment, add Radar as a source and copy the source's write key. Repeat for a development source if you want Test events kept separate.
-  </Step>
-  <Step title="Enable the integration in Radar">
-    On the [Integrations](https://dashboard.radar.com/integrations) page, find the **Segment** section and select **Yes** for **Enabled**. Credential fields appear.
-  </Step>
-  <Step title="Enter your write keys">
-    Enter the production source's key in **Live write key** and the development source's key in **Test write key**. Radar uses the Live key for events from the Live environment and the Test key for events from the Test environment. If you leave a field empty, Radar sends nothing for that environment.
-  </Step>
-  <Step title="Save">
-    Click **Save**. From now on, Radar sends each new event to Segment. Events generated before you saved aren't sent.
-  </Step>
-  <Step title="Connect destinations in Segment">
-    In Segment, connect the Radar source to the warehouse and destinations that receive Radar events and traits.
-  </Step>
-</Steps>
+1. In Segment, add Radar as a source and copy its write key. Repeat for a development source to keep Test events out of production destinations.
+2. On the [Integrations](https://dashboard.radar.com/integrations) page, find the **Segment** section, select **Yes** for **Enabled**, enter the keys in **Live write key** and **Test write key**, and click **Save**.
+3. In Segment, connect the Radar source to your warehouse and destinations.
 
-## User mapping
-
-### Identifiers
-
-By default, the Radar `userId` maps to the Segment `userId` for logged-in users, and the Radar `deviceId` maps to the Segment `anonymousId`.
+## Identity mapping
 
 | Segment field | Value Radar sends |
 | --- | --- |
 | `userId` | `metadata.segmentUserId` when set. Otherwise the Radar `userId`. Omitted when the user has neither. |
 | `anonymousId` | `metadata.segmentAnonymousId` when set. Otherwise the Radar `deviceId`. |
 
-The Radar device ID isn't the anonymous ID that the Segment SDK generates in your app. If you want logged-out Radar events to join the same anonymous Segment user that your app tracks, pass the Segment anonymous ID to Radar. If your Segment user ID differs from the Radar `userId`, pass it too.
+The Radar device ID isn't the anonymous ID that the Segment SDK generates. To join logged-out Radar events to that anonymous user, or to send a Segment user ID that differs from the Radar `userId`, set the metadata keys:
 
 <CodeGroup>
 
@@ -76,71 +55,67 @@ Radar.setMetadata(JSONObject().put("segmentUserId", userId))
 
 </CodeGroup>
 
-Neither call is required when the default mapping fits. Call them after you [initialize the SDK](/sdk/sdk).
-
-Radar also fills the Segment `context` of each batch:
+Radar also fills the batch `context`:
 
 | Radar user field | Segment context field | Sent when |
 | --- | --- | --- |
 | `deviceId` | `context.device.id` | The user has a `deviceId`. |
-| `deviceType` | `context.device.type` | The user has a device type. The value is lowercased, for example `ios`. |
+| `deviceType` | `context.device.type` | The user has a device type. Lowercased, for example `ios`. |
 | Advertising ID | `context.device.advertisingId`, with `context.device.adTrackingEnabled` set to `true` | The device is iOS or Android, Radar has an advertising ID, and the user hasn't opted out. |
 | `location.coordinates` | `context.location.latitude`, `context.location.longitude` | Always. |
 
-### User traits
+## User mapping
 
-Radar sends these traits in the `identify` call. A trait that has no value is sent as the string `"(null)"`, so a user who leaves all geofences gets `"(null)"` in the geofence traits and not a stale value.
+Radar sends these traits in the `identify` call. A trait has a value only when the matching Radar feature is enabled. A trait with no value is sent as the string `"(null)"`.
 
-| Radar user field | Segment user trait | Type | Example value | Context |
-| --- | --- | --- | --- | --- |
-| `_id` | `radar_id` | string | `"5b2c0906f5874b001aecfd8d"` | |
-| `location.coordinates[1]` | `radar_location_latitude` | number | `39.525665` | |
-| `location.coordinates[0]` | `radar_location_longitude` | number | `-76.350663` | |
-| `locationAuthorization` | `radar_location_authorization` | string | `"GRANTED_FOREGROUND"` | |
-| `locationAccuracyAuthorization` | `radar_location_accuracy_authorization` | string | `"FULL"` | |
-| `updatedAt` | `radar_updated_at` | timestamp | `"2026-06-22T15:23:39.000Z"` | |
-| `segments[*].externalId` | `radar_segment_external_ids` | array[string] | `["loyalty-members"]` | |
-| `topChains[*].slug` | `radar_top_chain_slugs` | array[string] | `["example-coffee", "example-grocery"]` | |
-| `topChains[*].externalId` | `radar_top_chain_external_ids` | array[string] | `["chain-7", "chain-9"]` | |
-| `geofences[*]._id` | `radar_geofence_ids` | array[string] | `["5b2c0906f5874b001aecfd8e"]` | [Geofences](/fundamentals/context-types#geofences) |
-| `geofences[*].description` | `radar_geofence_descriptions` | array[string] | `["Store #42"]` | Geofences |
-| `geofences[*].tag` | `radar_geofence_tags` | array[string] | `["store"]` | Geofences |
-| `geofences[*].externalId` | `radar_geofence_external_ids` | array[string] | `["store-42"]` | Geofences |
-| `place._id` | `radar_place_id` | string | `"59302bcf8f27e8a156bd4f91"` | [Places](/fundamentals/context-types#places) |
-| `place.name` | `radar_place_name` | string | `"Example Coffee"` | Places |
-| `place.categories` | `radar_place_categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | Places |
-| `place.chain.slug` | `radar_place_chain_id` | string | `"example-coffee"` | Places |
-| `place.chain.name` | `radar_place_chain_name` | string | `"Example Coffee"` | Places |
-| `place.chain.externalId` | `radar_place_chain_external_id` | string | `"chain-7"` | Places |
-| `country.code` | `radar_region_country_code` | string | `"US"` | [Regions](/fundamentals/context-types#regions) |
-| `country.name` | `radar_region_country_name` | string | `"United States"` | Regions |
-| `state.code` | `radar_region_state_code` | string | `"MD"` | Regions |
-| `state.name` | `radar_region_state_name` | string | `"Maryland"` | Regions |
-| `dma.code` | `radar_region_dma_code` | string | `"26"` | Regions |
-| `dma.name` | `radar_region_dma_name` | string | `"Baltimore"` | Regions |
-| `postalCode.code` | `radar_region_postal_code` | string | `"21014"` | Regions |
-| `trip.externalId` | `radar_trip_external_id` | string | `"order-299"` | [Trips](/fundamentals/context-types#trips) |
-| `trip.destinationGeofenceTag` | `radar_trip_destination_geofence_tag` | string | `"store"` | Trips |
-| `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string | `"store-42"` | Trips |
-| `beacons[*]._id` | `radar_beacon_ids` | array[string] | `["5b2c0906f5874b001aecfd8f"]` | [Beacons](/fundamentals/context-types#beacons) |
-| `beacons[*].description` | `radar_beacon_descriptions` | array[string] | `["Store #42 drive-thru"]` | Beacons |
-| `beacons[*].tag` | `radar_beacon_tags` | array[string] | `["drive-thru"]` | Beacons |
-| `beacons[*].externalId` | `radar_beacon_external_ids` | array[string] | `["store-42-drive-thru"]` | Beacons |
-
-A trait has a value only when the matching Radar feature is enabled for your project and applies to the user.
+| Radar user field | Segment user trait | Type | Example value |
+| --- | --- | --- | --- |
+| `_id` | `radar_id` | string | `"5b2c0906f5874b001aecfd8d"` |
+| `location.coordinates[1]` | `radar_location_latitude` | number | `39.525665` |
+| `location.coordinates[0]` | `radar_location_longitude` | number | `-76.350663` |
+| `locationAuthorization` | `radar_location_authorization` | string | `"GRANTED_FOREGROUND"` |
+| `locationAccuracyAuthorization` | `radar_location_accuracy_authorization` | string | `"FULL"` |
+| `updatedAt` | `radar_updated_at` | timestamp | `"2026-06-22T15:23:39.000Z"` |
+| `segments[*].externalId` | `radar_segment_external_ids` | array[string] | `["loyalty-members"]` |
+| `topChains[*].slug` | `radar_top_chain_slugs` | array[string] | `["example-coffee", "example-grocery"]` |
+| `topChains[*].externalId` | `radar_top_chain_external_ids` | array[string] | `["chain-7", "chain-9"]` |
+| `geofences[*]._id` | `radar_geofence_ids` | array[string] | `["5b2c0906f5874b001aecfd8e"]` |
+| `geofences[*].description` | `radar_geofence_descriptions` | array[string] | `["Store #42"]` |
+| `geofences[*].tag` | `radar_geofence_tags` | array[string] | `["store"]` |
+| `geofences[*].externalId` | `radar_geofence_external_ids` | array[string] | `["store-42"]` |
+| `place._id` | `radar_place_id` | string | `"59302bcf8f27e8a156bd4f91"` |
+| `place.name` | `radar_place_name` | string | `"Example Coffee"` |
+| `place.categories` | `radar_place_categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` |
+| `place.chain.slug` | `radar_place_chain_id` | string | `"example-coffee"` |
+| `place.chain.name` | `radar_place_chain_name` | string | `"Example Coffee"` |
+| `place.chain.externalId` | `radar_place_chain_external_id` | string | `"chain-7"` |
+| `country.code` | `radar_region_country_code` | string | `"US"` |
+| `country.name` | `radar_region_country_name` | string | `"United States"` |
+| `state.code` | `radar_region_state_code` | string | `"MD"` |
+| `state.name` | `radar_region_state_name` | string | `"Maryland"` |
+| `dma.code` | `radar_region_dma_code` | string | `"26"` |
+| `dma.name` | `radar_region_dma_name` | string | `"Baltimore"` |
+| `postalCode.code` | `radar_region_postal_code` | string | `"21014"` |
+| `trip.externalId` | `radar_trip_external_id` | string | `"order-299"` |
+| `trip.destinationGeofenceTag` | `radar_trip_destination_geofence_tag` | string | `"store"` |
+| `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string | `"store-42"` |
+| `beacons[*]._id` | `radar_beacon_ids` | array[string] | `["5b2c0906f5874b001aecfd8f"]` |
+| `beacons[*].description` | `radar_beacon_descriptions` | array[string] | `["Store #42 drive-thru"]` |
+| `beacons[*].tag` | `radar_beacon_tags` | array[string] | `["drive-thru"]` |
+| `beacons[*].externalId` | `radar_beacon_external_ids` | array[string] | `["store-42-drive-thru"]` |
 
 ## Event mapping
 
-Radar sends one `track` call per Radar event. Only the event types in this table are sent to Segment.
+Radar sends only the event types in this table.
 
 | Radar event | Segment event | Context |
 | --- | --- | --- |
-| `user.entered_geofence` | `Geofence Entered` | Geofences |
+| `user.entered_geofence` | `Geofence Entered` | [Geofences](/fundamentals/context-types#geofences) |
 | `user.exited_geofence` | `Geofence Exited` | Geofences |
 | `user.dwelled_in_geofence` | `Dwelled in Geofence` | Geofences |
-| `user.entered_place` | `Place Entered` | Places |
+| `user.entered_place` | `Place Entered` | [Places](/fundamentals/context-types#places) |
 | `user.exited_place` | `Place Exited` | Places |
-| `user.entered_region_country` | `Country Entered` | Regions |
+| `user.entered_region_country` | `Country Entered` | [Regions](/fundamentals/context-types#regions) |
 | `user.exited_region_country` | `Country Exited` | Regions |
 | `user.entered_region_state` | `State Entered` | Regions |
 | `user.exited_region_state` | `State Exited` | Regions |
@@ -148,309 +123,81 @@ Radar sends one `track` call per Radar event. Only the event types in this table
 | `user.exited_region_dma` | `DMA Exited` | Regions |
 | `user.entered_region_postal_code` | `Postal Code Entered` | Regions |
 | `user.exited_region_postal_code` | `Postal Code Exited` | Regions |
-| `user.started_trip` | `Trip Started` | Trips |
+| `user.started_trip` | `Trip Started` | [Trips](/fundamentals/context-types#trips) |
 | `user.updated_trip` | `Trip Updated` | Trips |
 | `user.approaching_trip_destination` | `Trip Approaching Destination` | Trips |
 | `user.arrived_at_trip_destination` | `Trip Arrived Destination` | Trips |
 | `user.stopped_trip` | `Trip Stopped` | Trips |
-| `user.entered_beacon` | `Beacon Entered` | Beacons |
+| `user.entered_beacon` | `Beacon Entered` | [Beacons](/fundamentals/context-types#beacons) |
 | `user.exited_beacon` | `Beacon Exited` | Beacons |
 
-### Fields on every track call
+The first two rows are `track` call fields. The rest are event properties, omitted when the Radar field has no value. Rows marked All\* need region context.
 
-| Radar field | Segment field | Type | Notes |
-| --- | --- | --- | --- |
-| `event._id` | `messageId` | string | The same Radar event always carries the same `messageId`. |
-| `event.createdAt` | `timestamp` | timestamp | When the event occurred. |
-| `event.location.coordinates[1]` | Property `latitude` | number | |
-| `event.location.coordinates[0]` | Property `longitude` | number | |
-| `event.locationAccuracy` | Property `accuracy` | number (meters) | |
-| `event.foreground` | Property `foreground` | boolean | |
-| `event.replayed` | Property `replayed` | boolean | Sent only when `true`. |
+| Radar field | Segment field or event property | Type | Example value | Events |
+| --- | --- | --- | --- | --- |
+| `event._id` | `messageId` | string | | All |
+| `event.createdAt` | `timestamp` | timestamp | | All. When the event occurred. |
+| `event.location.coordinates[1]` | `latitude` | number | | All |
+| `event.location.coordinates[0]` | `longitude` | number | | All |
+| `event.locationAccuracy` | `accuracy` | number (meters) | | All |
+| `event.foreground` | `foreground` | boolean | | All |
+| `event.replayed` | `replayed` | boolean, sent only when `true` | | All |
+| `confidence` | `confidence` | string: `"none"`, `"low"`, `"medium"`, or `"high"` | `"high"` | All |
+| `duration` | `duration` | number (minutes) | `42.1`, or `1.42` on `Beacon Exited` | `Geofence Exited`, `Dwelled in Geofence`, `Place Exited`, `Beacon Exited` |
+| `country.code` | `country_code` | string | `"US"` | All\* |
+| `country.name` | `country_name` | string | `"United States"` | All\* |
+| `state.code` | `state_code` | string | `"MD"` | All\* |
+| `state.name` | `state_name` | string | `"Maryland"` | All\* |
+| `dma.code` | `dma_code` | string | `"26"` | All\* |
+| `dma.name` | `dma_name` | string | `"Baltimore"` | All\* |
+| `postalCode.code` | `postal_code` | string | `"21014"` | All\* |
+| `geofence._id` | `geofence_id` | string | `"5b2c0906f5874b001aecfd8e"` | Geofence |
+| `geofence.description` | `geofence_description` | string | `"Store #42"` | Geofence |
+| `geofence.tag` | `geofence_tag` | string | `"store"` | Geofence |
+| `geofence.externalId` | `geofence_external_id` | string | `"store-42"` | Geofence |
+| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type of the value | `{value}` | Geofence |
+| `place._id` | `place_id` | string | `"59302bcf8f27e8a156bd4f91"` | Place |
+| `place.name` | `place_name` | string | `"Example Coffee"` | Place |
+| `place.chain.slug` | `place_chain_id` | string | `"example-coffee"` | Place |
+| `place.chain.name` | `place_chain_name` | string | `"Example Coffee"` | Place |
+| `place.chain.externalId` | `place_chain_external_id` | string | `"chain-7"` | Place |
+| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | type of the value | `{value}` | Place |
+| `place.categories` | `place_categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | Place |
+| `region.code` | `region_code` | string | `"US"` (country), `"MD"` (state), `"26"` (DMA), `"21014"` (postal code) | Region |
+| `region.name` | `region_name` | string | `"United States"`, `"Maryland"`, `"Baltimore"`, `"21014"` | Region |
+| `trip.externalId` | `trip_external_id` | string | `"order-299"` | Trip |
+| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` | Trip |
+| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` | Trip |
+| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` | Trip |
+| `beacon._id` | `beacon_id` | string | `"5b2c0906f5874b001aecfd8f"` | Beacon |
+| `beacon.description` | `beacon_description` | string | `"Store #42 drive-thru"` | Beacon |
+| `beacon.tag` | `beacon_tag` | string | `"drive-thru"` | Beacon |
+| `beacon.externalId` | `beacon_external_id` | string | `"store-42-drive-thru"` | Beacon |
+| `beacon.metadata[{key}]` | `beacon_metadata_{key}` | type of the value | `{value}` | Beacon |
 
-When the event has region context, Radar also sends these properties on every event type:
+To limit what Radar sends, see [Filters](/integrations/integrations#filters). You can also filter per destination.
 
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `country.code` | `country_code` | string | `"US"` |
-| `country.name` | `country_name` | string | `"United States"` |
-| `state.code` | `state_code` | string | `"MD"` |
-| `state.name` | `state_name` | string | `"Maryland"` |
-| `dma.code` | `dma_code` | string | `"26"` |
-| `dma.name` | `dma_name` | string | `"Baltimore"` |
-| `postalCode.code` | `postal_code` | string | `"21014"` |
-
-The sections below list the properties that are specific to each event type. `confidence` is one of `"none"`, `"low"`, `"medium"`, or `"high"`. A property is omitted when the Radar field has no value.
-
-### Geofence Entered
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `geofence._id` | `geofence_id` | string | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description` | `geofence_description` | string | `"Store #42"` |
-| `geofence.tag` | `geofence_tag` | string | `"store"` |
-| `geofence.externalId` | `geofence_external_id` | string | `"store-42"` |
-| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type of the value | `{value}` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### Geofence Exited
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `geofence._id` | `geofence_id` | string | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description` | `geofence_description` | string | `"Store #42"` |
-| `geofence.tag` | `geofence_tag` | string | `"store"` |
-| `geofence.externalId` | `geofence_external_id` | string | `"store-42"` |
-| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type of the value | `{value}` |
-| `confidence` | `confidence` | string | `"high"` |
-| `duration` | `duration` | number (minutes) | `42.1` |
-
-### Dwelled in Geofence
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `geofence._id` | `geofence_id` | string | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description` | `geofence_description` | string | `"Store #42"` |
-| `geofence.tag` | `geofence_tag` | string | `"store"` |
-| `geofence.externalId` | `geofence_external_id` | string | `"store-42"` |
-| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type of the value | `{value}` |
-| `confidence` | `confidence` | string | `"high"` |
-| `duration` | `duration` | number (minutes) | `42.1` |
-
-### Place Entered
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `place._id` | `place_id` | string | `"59302bcf8f27e8a156bd4f91"` |
-| `place.name` | `place_name` | string | `"Example Coffee"` |
-| `place.chain.slug` | `place_chain_id` | string | `"example-coffee"` |
-| `place.chain.name` | `place_chain_name` | string | `"Example Coffee"` |
-| `place.chain.externalId` | `place_chain_external_id` | string | `"chain-7"` |
-| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | type of the value | `{value}` |
-| `place.categories` | `place_categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### Place Exited
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `place._id` | `place_id` | string | `"59302bcf8f27e8a156bd4f91"` |
-| `place.name` | `place_name` | string | `"Example Coffee"` |
-| `place.chain.slug` | `place_chain_id` | string | `"example-coffee"` |
-| `place.chain.name` | `place_chain_name` | string | `"Example Coffee"` |
-| `place.chain.externalId` | `place_chain_external_id` | string | `"chain-7"` |
-| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | type of the value | `{value}` |
-| `place.categories` | `place_categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` |
-| `confidence` | `confidence` | string | `"high"` |
-| `duration` | `duration` | number (minutes) | `42.1` |
-
-### Country Entered
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `region_code` | string | `"US"` |
-| `region.name` | `region_name` | string | `"United States"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### Country Exited
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `region_code` | string | `"US"` |
-| `region.name` | `region_name` | string | `"United States"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### State Entered
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `region_code` | string | `"MD"` |
-| `region.name` | `region_name` | string | `"Maryland"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### State Exited
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `region_code` | string | `"MD"` |
-| `region.name` | `region_name` | string | `"Maryland"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### DMA Entered
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `region_code` | string | `"26"` |
-| `region.name` | `region_name` | string | `"Baltimore"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### DMA Exited
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `region_code` | string | `"26"` |
-| `region.name` | `region_name` | string | `"Baltimore"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### Postal Code Entered
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `region_code` | string | `"21014"` |
-| `region.name` | `region_name` | string | `"21014"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### Postal Code Exited
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `region.code` | `region_code` | string | `"21014"` |
-| `region.name` | `region_name` | string | `"21014"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### Trip Started
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `trip.externalId` | `trip_external_id` | string | `"order-299"` |
-| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` |
-| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### Trip Updated
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `trip.externalId` | `trip_external_id` | string | `"order-299"` |
-| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` |
-| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### Trip Approaching Destination
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `trip.externalId` | `trip_external_id` | string | `"order-299"` |
-| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` |
-| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### Trip Arrived Destination
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `trip.externalId` | `trip_external_id` | string | `"order-299"` |
-| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` |
-| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### Trip Stopped
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `trip.externalId` | `trip_external_id` | string | `"order-299"` |
-| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` |
-| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### Beacon Entered
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `beacon._id` | `beacon_id` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `beacon.description` | `beacon_description` | string | `"Store #42 drive-thru"` |
-| `beacon.tag` | `beacon_tag` | string | `"drive-thru"` |
-| `beacon.externalId` | `beacon_external_id` | string | `"store-42-drive-thru"` |
-| `beacon.metadata[{key}]` | `beacon_metadata_{key}` | type of the value | `{value}` |
-| `confidence` | `confidence` | string | `"high"` |
-
-### Beacon Exited
-
-| Radar event field | Segment event property | Type | Example value |
-| --- | --- | --- | --- |
-| `beacon._id` | `beacon_id` | string | `"5b2c0906f5874b001aecfd8f"` |
-| `beacon.description` | `beacon_description` | string | `"Store #42 drive-thru"` |
-| `beacon.tag` | `beacon_tag` | string | `"drive-thru"` |
-| `beacon.externalId` | `beacon_external_id` | string | `"store-42-drive-thru"` |
-| `beacon.metadata[{key}]` | `beacon_metadata_{key}` | type of the value | `{value}` |
-| `confidence` | `confidence` | string | `"high"` |
-| `duration` | `duration` | number (minutes) | `1.42` |
-
-## Filtering
-
-On the [Integrations](https://dashboard.radar.com/integrations) page, click **Show advanced** in the **Segment** section.
-
-| Field | Effect |
-| --- | --- |
-| **Event type allowlist** | When you select one or more event types, Radar sends only those types to Segment. With nothing selected, Radar sends every mapped event type. |
-| **Request key blocklist (comma-separated)** | Removes the listed keys from the request at any depth. For example, `radar_geofence_ids,geofence_id` removes `radar_geofence_ids` from the `identify` call and `geofence_id` from the `track` call. |
-| **Geofence tag blocklist (comma-separated)** | Skips events for geofences that have one of the listed tags. |
-
-You can also filter after delivery in Segment, per destination.
-
-## Delivery behavior
-
-- **Requests**: For each Radar update that generates events, Radar sends one request to Segment's batch endpoint, `https://api.segment.io/v1/batch`. The batch contains the `identify` call first, then one `track` call per event. If your Segment workspace ingests through a different endpoint, ask your Radar account team whether it is supported before you enable the integration.
-- **Events without a location**: Radar doesn't send an event that has no location to Segment, except trip events, which can be generated by a server-side change to a trip.
-- **Timing**: Radar sends events from its servers shortly after it generates them. Segment's own processing and destination delivery times apply after that.
-- **Attempts**: Radar makes one delivery attempt and waits up to 5 seconds for Segment to respond. It doesn't retry a failed request. Use the [integration logs](#troubleshoot-delivery) to find failures, and the [Events API](/api/events) if you need to backfill.
-- **Deduplication**: `messageId` is the Radar event `_id`.
-- **Environment**: The event's environment selects the write key. Radar doesn't send a Test event with the Live key or the reverse.
+For each update, Radar sends one request to `https://api.segment.io/v1/batch` with the `identify` call first, then one `track` call per event. Events that have no location aren't sent, except trip events. See [Delivery behavior](/integrations/integrations#delivery-behavior).
 
 ## Test the integration
 
-<Steps>
-  <Step title="Use the Test environment">
-    Confirm that **Test write key** holds the key of a Segment source that you can inspect, and that the integration is saved with **Enabled** set to **Yes**.
-  </Step>
-  <Step title="Generate an event">
-    Create a geofence in the Test environment, then send a location inside it with your Test publishable key. Replace the coordinates with a point inside your geofence:
+Create a geofence in the Test environment, then send a location inside it:
 
-    ```bash
-    curl "https://api.radar.io/v1/track" \
-      -H "Authorization: prj_test_pk_..." \
-      -X POST \
-      -d "deviceId=test-device-1" \
-      -d "userId=user-123" \
-      -d "latitude=40.78382" \
-      -d "longitude=-73.97536" \
-      -d "accuracy=10"
-    ```
+```bash
+curl "https://api.radar.io/v1/track" \
+  -H "Authorization: prj_test_pk_..." \
+  -X POST \
+  -d "deviceId=test-device-1" \
+  -d "userId=user-123" \
+  -d "latitude=40.78382" \
+  -d "longitude=-73.97536" \
+  -d "accuracy=10"
+```
 
-    The response includes a `user.entered_geofence` event the first time the user enters the geofence. For the parameters, see [Tracking API](/api/tracking).
-  </Step>
-  <Step title="Check Radar's log">
-    In the **Segment** section, click **View integration logs**. Find a row for the event with the batch that Radar sent and a `200` response from Segment.
-  </Step>
-  <Step title="Check Segment">
-    In Segment, open the debugger for the source that owns the Test write key. Confirm that the debugger shows an `identify` call for `user-123` with `radar_geofence_external_ids`, followed by a `Geofence Entered` track call with the `geofence_external_id` of your geofence.
-  </Step>
-</Steps>
+The response includes a `user.entered_geofence` event. In the **Segment** section, **View integration logs** shows the batch with a `200` response. The debugger for your Test source in Segment shows an `identify` call for `user-123` with `radar_geofence_external_ids`, then a `Geofence Entered` track call with your geofence's `geofence_external_id`.
 
-## Troubleshoot delivery
-
-On the [Integrations](https://dashboard.radar.com/integrations) page, click **View integration logs** in the **Segment** section. Each row shows the request and Segment's response.
-
-| What you see | Likely cause | What to do |
-| --- | --- | --- |
-| No rows | No events were generated in that environment, or the integration isn't saved as enabled. | Check the Events page for the environment and the **Enabled** setting. |
-| `skipped`: `Integration key(s) missing.` | The write key for the event's environment is empty. | Enter the **Test write key** or **Live write key**. |
-| `skipped`: `Event type ... is not allowed.` | The event type isn't selected in **Event type allowlist**. | Select the type or clear the allowlist. |
-| `skipped`: `Geofence tag '...' is blocklisted.` | The geofence's tag is in **Geofence tag blocklist**. | Remove the tag from the blocklist. |
-| A `4xx` response | Segment rejected the request. | Read the response body in the log, and check that the write key belongs to the intended source. |
-| A `200` response but nothing in a destination | The call reached Segment but the destination isn't connected to the Radar source, or a Segment filter dropped it. | Check the source debugger first, then the destination's settings in Segment. |
-| Events on the wrong Segment user | The IDs differ between Radar and your app. | Compare `userId` and `anonymousId` in the logged request with your app's Segment calls, then set `metadata.segmentUserId` or `metadata.segmentAnonymousId`. |
+If events land on the wrong Segment user, compare `userId` and `anonymousId` in the logged request with your app's Segment calls. Otherwise, see [Troubleshoot delivery](/integrations/integrations#troubleshoot-delivery).
 
 ## Limitations
 
-- Radar doesn't retry failed deliveries to Segment.
-- Only the event types in the [event mapping](#event-mapping) table are sent.
-- You can't rename events, traits, or properties in Radar. Use the request key blocklist to drop fields, or transform them in Segment.
-- Events generated before you enabled the integration aren't sent.
-- The integration has no setting for the Segment ingestion endpoint.
-- Traits reflect the user's state when the event was generated. Radar doesn't call `identify` when a user's state changes without generating an event.
+The integration has no setting for the Segment ingestion endpoint.
