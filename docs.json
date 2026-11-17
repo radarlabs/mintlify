@@ -49,20 +49,16 @@
       "destination": "/"
     },
     {
-      "source": "/sdk/fraud",
-      "destination": "/geofencing/fraud"
-    },
-    {
       "source": "/trip-tracking",
       "destination": "/geofencing/trips"
     },
     {
       "source": "/places",
-      "destination": "/geofencing/places"
+      "destination": "/geofencing/geofences-and-places#enable-places"
     },
     {
       "source": "/geofences",
-      "destination": "/geofencing/geofences"
+      "destination": "/geofencing/geofences-and-places"
     },
     {
       "source": "/beacons",
@@ -70,15 +66,15 @@
     },
     {
       "source": "/regions",
-      "destination": "/geofencing/regions"
+      "destination": "/geofencing/geofences-and-places#regions"
     },
     {
       "source": "/fraud",
-      "destination": "/geofencing/fraud"
+      "destination": "/fraud/overview"
     },
     {
       "source": "/campaigns",
-      "destination": "/geofencing/campaigns"
+      "destination": "/geofencing/geofences-and-places#use-radar-campaigns"
     },
     {
       "source": "/sdk",
@@ -94,119 +90,264 @@
     },
     {
       "source": "/tutorials/building-a-delivery-tracker-with-live-location-and-etas",
-      "destination": "/tutorials/building-a-delivery-tracking-app"
+      "destination": "/geofencing/trips#track-deliveries"
+    },
+    {
+      "source": "/geofencing/geofences",
+      "destination": "/geofencing/geofences-and-places"
+    },
+    {
+      "source": "/geofencing/places",
+      "destination": "/geofencing/geofences-and-places#enable-places"
+    },
+    {
+      "source": "/geofencing/regions",
+      "destination": "/geofencing/geofences-and-places#regions"
+    },
+    {
+      "source": "/geofencing/user-insights",
+      "destination": "/geofencing/geofences-and-places#user-insights"
+    },
+    {
+      "source": "/geofencing/campaigns",
+      "destination": "/geofencing/geofences-and-places#use-radar-campaigns"
+    },
+    {
+      "source": "/geofencing/testing",
+      "destination": "/fundamentals/testing-and-launch"
+    },
+    {
+      "source": "/maps/geocoding",
+      "destination": "/maps/addresses#use-the-other-operations"
+    },
+    {
+      "source": "/maps/search",
+      "destination": "/api/search"
+    },
+    {
+      "source": "/maps/autocomplete",
+      "destination": "/maps/addresses#add-the-autocomplete-component"
+    },
+    {
+      "source": "/maps/routing",
+      "destination": "/api/routing"
+    },
+    {
+      "source": "/maps/static-maps",
+      "destination": "/maps/maps#static-maps"
+    },
+    {
+      "source": "/tutorials",
+      "destination": "/get-started/choose-your-integration#find-your-guide"
+    },
+    {
+      "source": "/tutorials/building-a-delivery-tracking-app",
+      "destination": "/geofencing/trips#track-deliveries"
+    },
+    {
+      "source": "/tutorials/building-a-live-activity-for-trip-tracking",
+      "destination": "/geofencing/trips#update-a-live-activity-from-trip-state"
+    },
+    {
+      "source": "/tutorials/building-a-store-locator-on-ios",
+      "destination": "/maps/store-locators#native-apps"
+    },
+    {
+      "source": "/tutorials/building-a-web-store-locator",
+      "destination": "/maps/store-locators"
+    },
+    {
+      "source": "/tutorials/building-a-workforce-management-experience",
+      "destination": "/geofencing/trips#track-workers"
+    },
+    {
+      "source": "/tutorials/building-an-app-with-location-enabled-curbside-pickup",
+      "destination": "/geofencing/trips#track-pickups"
+    },
+    {
+      "source": "/tutorials/building-an-on-premise-mode",
+      "destination": "/geofencing/geofences-and-places#show-an-on-premise-experience"
+    },
+    {
+      "source": "/tutorials/building-menuboard-detection-with-in-geofence-tracking-options",
+      "destination": "/geofencing/trips#choose-tracking-options-for-trips"
+    },
+    {
+      "source": "/tutorials/building-place-based-push-notifications",
+      "destination": "/geofencing/geofences-and-places#send-location-triggered-messages"
+    },
+    {
+      "source": "/tutorials/building-place-based-push-notifications-native",
+      "destination": "/geofencing/geofences-and-places#send-location-triggered-messages"
+    },
+    {
+      "source": "/tutorials/building-place-based-push-notifications-react",
+      "destination": "/geofencing/geofences-and-places#send-location-triggered-messages"
+    },
+    {
+      "source": "/tutorials/create-a-custom-map-style",
+      "destination": "/maps/maps#custom-styles"
+    },
+    {
+      "source": "/tutorials/displaying-radar-maps-on-android",
+      "destination": "/maps/maps#android"
+    },
+    {
+      "source": "/tutorials/displaying-radar-maps-on-ios",
+      "destination": "/maps/maps#ios"
+    },
+    {
+      "source": "/tutorials/displaying-radar-maps-with-flutter",
+      "destination": "/maps/maps#flutter"
+    },
+    {
+      "source": "/tutorials/displaying-radar-maps-with-react-native",
+      "destination": "/maps/maps#react-native"
+    },
+    {
+      "source": "/tutorials/embedding-radar-maps-to-create-geofences",
+      "destination": "/maps/maps#display-a-polygon"
+    },
+    {
+      "source": "/tutorials/localizing-a-website-based-on-current-country-or-city",
+      "destination": "/maps/addresses#ip-geocode"
+    },
+    {
+      "source": "/tutorials/logging-and-analyzing-where-conversions-occur",
+      "destination": "/geofencing/geofences-and-places#log-conversions"
+    },
+    {
+      "source": "/tutorials/migrate-from-google-maps",
+      "destination": "/maps/overview#migrate-to-radar-maps"
+    },
+    {
+      "source": "/tutorials/showing-a-notification-when-a-user-enters-a-geofence",
+      "destination": "/geofencing/geofences-and-places#receive-events-in-the-app"
+    },
+    {
+      "source": "/tutorials/:slug*",
+      "destination": "/get-started/choose-your-integration#find-your-guide"
     }
   ],
   "navigation": {
     "groups": [
       {
-        "group": "Home",
+        "group": "Get started",
         "pages": [
-          "index"
+          "index",
+          "get-started/choose-your-integration"
         ]
       },
       {
-        "group": "Geofencing Platform",
+        "group": "Geo-compliance",
+        "pages": [
+          "geo-compliance/overview",
+          "geo-compliance/sportsbooks-and-casinos",
+          "geo-compliance/predictions-dfs-and-sweepstakes",
+          "geo-compliance/non-gaming"
+        ]
+      },
+      {
+        "group": "Fraud",
+        "pages": [
+          "fraud/overview",
+          "fraud/account-takeover-and-sharing",
+          "fraud/new-account-fraud",
+          "fraud/risky-transactions"
+        ]
+      },
+      {
+        "group": "Geofencing",
         "pages": [
           "geofencing/overview",
-          "geofencing/geofences",
+          "geofencing/geofences-and-places",
           "geofencing/trips",
-          "geofencing/places",
-          "geofencing/regions",
-          "geofencing/user-insights",
-          "geofencing/beacons",
-          "geofencing/fraud",
-          "geofencing/campaigns",
-          {
-            "group": "Integrations",
-            "pages": [
-              "integrations/integrations",
-              "integrations/webhooks",
-              "integrations/airship",
-              "integrations/amplitude",
-              "integrations/aws-pinpoint",
-              "integrations/aws-s3",
-              "integrations/attentive",
-              "integrations/branch",
-              "integrations/brandify",
-              "integrations/braze",
-              "integrations/cordial",
-              "integrations/census",
-              "integrations/iterable",
-              "integrations/leanplum",
-              "integrations/lytics",
-              "integrations/mcp",
-              "integrations/mixpanel",
-              "integrations/moengage",
-              "integrations/mparticle",
-              "integrations/olo",
-              "integrations/onesignal",
-              "integrations/salesforce",
-              "integrations/segment",
-              "integrations/yext"
-            ]
-          },
-          "geofencing/testing"
+          "geofencing/beacons"
         ]
       },
       {
-        "group": "Maps Platform",
+        "group": "Maps",
         "pages": [
           "maps/overview",
-          "maps/geocoding",
-          "maps/search",
-          "maps/routing",
           "maps/maps",
-          "maps/static-maps",
-          "maps/autocomplete",
-          "maps/migration-sdk"
+          "maps/store-locators",
+          "maps/addresses"
         ]
       },
       {
-        "group": "SDK Reference",
+        "group": "Fundamentals",
+        "pages": [
+          "fundamentals/authentication-and-access",
+          "fundamentals/location-permissions",
+          "fundamentals/testing-and-launch"
+        ]
+      },
+      {
+        "group": "SDK reference",
         "pages": [
           "sdk/sdk",
           "sdk/ios",
           "sdk/android",
-          "sdk/react-native",
           "sdk/web",
-          "sdk/cordova",
-          "sdk/capacitor",
+          "sdk/react-native",
           "sdk/flutter",
+          "sdk/capacitor",
+          "sdk/cordova",
           "sdk/maui",
+          "sdk/fraud",
           "sdk/tracking",
           "sdk/remote-configuration",
           "sdk/silent-push"
         ]
       },
       {
-        "group": "API",
+        "group": "API reference",
         "pages": [
-          "api"
+          "api",
+          "api/fundamentals",
+          "api/geolocation-tokens",
+          "api/tracking",
+          "api/fraud",
+          "api/users",
+          "api/geofences",
+          "api/events",
+          "api/trips",
+          "api/beacons",
+          "api/labels",
+          "api/geocoding",
+          "api/search",
+          "api/routing",
+          "api/maps",
+          "api/project-settings"
         ]
       },
       {
-        "group": "Tutorials",
+        "group": "Integrations",
         "pages": [
-          "tutorials"
+          "integrations/integrations",
+          "integrations/webhooks",
+          "integrations/aws-s3",
+          "integrations/amplitude",
+          "integrations/branch",
+          "integrations/mixpanel",
+          "integrations/segment",
+          "integrations/mparticle",
+          "integrations/airship",
+          "integrations/braze",
+          "integrations/cordial",
+          "integrations/iterable",
+          "integrations/moengage",
+          "integrations/salesforce",
+          "integrations/olo",
+          "integrations/mcp"
         ]
-      },
-      {
-        "group": "Waypoint",
-        "pages": [
-          "waypoint"
-        ]
-      },
-      {
-        "group": "FAQs",
-        "pages": [
-          "faqs"
-        ]
-      },
-      {
-        "group": "Radar.com",
-        "pages": []
       }
+    ]
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view"
     ]
   }
 }

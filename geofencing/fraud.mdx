@@ -1,1079 +1,159 @@
 ---
 title: "Fraud"
-description: "Detect GPS spoofing, proxies and VPNs, and device tampering with Radar Fraud, and block or allow users by country or state for compliance."
+description: "Find the new location of each section of the former Fraud page, which moved to the Geo-compliance and Fraud guides, Fraud plugin setup, and the geolocation token schema."
+hidden: true
 ---
 
-<Info>
-  Fraud is available on the [Enterprise plan](https://radar.com/pricing).
-</Info>
-
-With Fraud, you can detect GPS spoofing, proxy and VPN usage, device tampering, and much more.
-
-Along with [Regions](/geofencing/regions), you can also detect a user's country and state and mark specific regions as allowed or blocked to comply with regulations.
-
-<img
-  src="/images/illustrations/fraud-illustration.png"
-  alt="Fraud illustration"
-  style={{ width:"40%" }}
-/>
-
-Together, Fraud and Regions provide the following user context:
-
-```json
-{
-  "fraud": {
-    "verified": true,
-    "passed": false,
-    "bypassed": false,
-    "blocked": false,
-    "mocked": true,
-    "jumped": false,
-    "compromised": false,
-    "inaccurate": false,
-    "proxy": false,
-    "sharing": false,
-    "lastMockedAt": "2023-07-27T17:18:28.536Z",
-    "lastJumpedAt": "2023-07-27T17:18:28.536Z",
-    "lastCompromisedAt": null,
-    "lastInaccurateAt": null,
-    "lastProxyAt": null,
-    "lastSharingAt": null
-  },
-  "country": {
-    "code": "US",
-    "name": "United States",
-    "flag": "🇺🇸",
-    "passed": true,
-    "allowed": true
-  },
-  "state": {
-    "code": "NJ",
-    "name": "New Jersey",
-    "passed": true,
-    "allowed": true,
-    "distanceToBorder": 1092,
-    "inBufferZone": false,
-    "inExclusionZone": false
-  }
-}
-```
+The content of this page moved to the [Geo-compliance](/geo-compliance/overview) and [Fraud](/fraud/overview) guides, [Fraud plugin setup](/sdk/fraud), and the [geolocation token schema](/api/geolocation-tokens). Each heading below keeps its old link and points to the new location.
 
 ## Quickstart
 
-First, [sign up](https://radar.com/signup) for Radar and get an API key.
-
-Then, enable Fraud on the [Settings page](https://dashboard.radar.com/settings#fraud-settings).
-
-From there, [integrate the SDK](/sdk/sdk), complete the steps below, and call `Radar.trackVerified()` or `Radar.startTrackingVerified()`. Radar will perform fraud and jurisdiction checks as described below.
+Moved to the [Geo-compliance quickstart](/geo-compliance/overview#quickstart).
 
 ## How it works
 
-You can call `Radar.trackOnce()` to accurately detect a user's current [geofences](/geofencing/geofences), current [place](/geofencing/places), or current [country and state](/regions/countries).
-
-However, users can spoof a device's location. For example, a gaming app user may spoof their location to access sports betting features only available in specific states. Or, a retail app user may spoof their location to access offers only available inside a store geofence.
-
-To ensure you can trust a user's location, you can call `Radar.trackVerified()` instead. Radar will collect a variety of fraud signals and perform fraud and jurisdiction checks, calculating flags and a signed geolocation token that you can use for fraud detection and geo-compliance in your app.
+Moved to [How it works](/geo-compliance/overview#how-it-works) in the Geo-compliance overview.
 
 ## Fraud flags
 
-If fraud detection is enabled, Radar exposes the following flags in `user.fraud`:
-
-- **`mocked`**: Indicates whether a user's location is being mocked, such as in a simulator or using a location spoofing app (e.g., [Fake GPS location](https://play.google.com/store/apps/details?id=com.lexa.fakegps&hl=en_US&gl=US)).
-- **`jumped`**: Indicates whether the user moved too far too fast (e.g., "jumped" across the country in only a few seconds).
-- **`compromised`**: Indicates whether the user's device or app has been compromised (e.g., rooted, jailbroken). On Android, uses the [Play Integrity API](https://developer.android.com/google/play/integrity).
-- **`inaccurate`**: Indicates whether the user's location accuracy is too low to pass verification.
-- **`sharing`**: Indicates whether the user is using screen sharing or remote desktop software (e.g., using [TeamViewer](https://www.teamviewer.com/en-us/)).
-- **`proxy`**: Indicates whether the user's IP address is a known proxy or VPN.
-- **`verified`**: Indicates whether the request was made with `Radar.trackVerified()`.
-
-While you can work with individual flags, Radar also exposes a single `user.fraud.passed` flag that indicates whether all fraud checks passed.
-
-Additionally, the `lastMockedAt`, `lastJumpedAt`, `lastCompromisedAt`, `lastInaccurateAt`, `lastProxyAt`, and `lastSharingAt` timestamps indicate the last time that the user failed each fraud check.
-
-Finally, more detailed [failure reasons](#failure-reasons) are also exposed.
+Moved to the [Fraud object](/api/fraud#fraud-object) in the Fraud API.
 
 ## Bypassing checks for testing
 
-If desired, you can bypass fraud checks for individual users using the _Mark as Bypassed_ button on the user detail page.
-
-If a user is marked as bypassed, `user.fraud.bypassed = true` and `user.fraud.passed = true`, regardless of whether the user passes fraud checks.
+Moved to [Force a pass or a fail](/fundamentals/testing-and-launch#force-a-pass-or-a-fail).
 
 ## Blocking users and devices
 
-You can manually block a user or device using the _Blocked_ button on its detail page.
-
-If a user is blocked, `user.fraud.blocked = true` and `user.fraud.passed = false`, regardless of whether the user passes fraud checks.
-
-You can also [block users and devices](/api#block-users-and-devices) or [unblock them](/api#unblock-users-and-devices) using the API.
-
-<Info>
-  These API endpoints must be enabled for your project. Contact your customer success manager for access.
-</Info>
+Moved to [Block rules](/fraud/overview#block-rules) in the Fraud overview.
 
 ## Allowed states and countries
 
-With [Regions](/geofencing/regions), you can mark specific countries or states as allowed or blocked to comply with regulations. For example, a sportsbook or daily fantasy sports app may only be allowed to operate in specific US states.
-
-Radar exposes your settings in `user.country.allowed` and `user.state.allowed`.
-
-Additionally, you can enable buffer zones and exclusion zones for different states. If buffer zones and exclusion zones are enabled, `user.state.inBufferZone` and `user.state.inExclusionZone` indicates whether the user is within a buffer zone or exclusion zone.
-
-While you can work with individual flags, Radar also exposes `user.state.passed` and `user.country.passed` flags that indicate whether all jurisdiction checks passed.
-
-Finally, more detailed [failure reasons](#failure-reasons) are also exposed.
-
-<Info>
-  Contact your customer success manager for access to buffer zones and exclusion zones.
-</Info>
+Moved to [Configure allowed locations](/geo-compliance/sportsbooks-and-casinos#configure-allowed-locations).
 
 ## Platform-specific configuration
 
+Moved to [Fraud plugin setup](/sdk/fraud).
+
 ### SDK compatibility
 
-Starting with [Android SDK](/sdk/android) version `3.39.0` and [iOS SDK](/sdk/ios) version `3.44.0`, you must use a compatible Fraud SDK plugin version. Use the table below to select compatible core SDK and plugin versions.
-
-| Platform | Core SDK | Fraud plugin |
-| --- | --- | --- |
-| iOS | `3.44.x` | `1.6.x` |
-| Android | `3.39.x` -> `4.3.x` | `1.3.x` |
-
-If using React Native, see [React Native](#react-native) for how to install the plugins.
+Moved to [Compatibility](/sdk/fraud#compatibility) in Fraud plugin setup.
 
 ### Android
 
+Moved to [Android](/sdk/fraud#android) in Fraud plugin setup.
+
 #### Install plugin
 
-If using [Android SDK](/sdk/android) version `3.25.0` or higher, you must install an additional plugin. Use the [SDK compatibility table](#sdk-compatibility) to select compatible core SDK and plugin versions.
-
-Add the plugin to the `dependencies` section of your app's `build.gradle` file:
-
-```gradle
-dependencies {   
-  implementation 'io.radar:sdk:4.3.+'
-  implementation 'io.radar:sdk-fraud:1.3.1'
-}
-```
-
-If you do not install the plugin, `Radar.trackVerified()` will return `ERROR_PLUGIN`.
+Moved to [Install the Android plugin](/sdk/fraud#install-the-android-plugin).
 
 #### Initialize SDK
 
-To support the `sharing` flag on Android, pass `fraud = true` to `RadarInitializeOptions` in `Radar.initialize()`:
-
-```java
-val options = RadarInitializeOptions(
-  fraud = true
-)
-
-Radar.initialize(
-  context = this,
-  publishableKey = "prj_test_pk_...",
-  options = options
-)
-```
-
-Starting in Android SDK `4.2.0`, `Radar.trackVerified()` retries against a backup host by default when the primary host doesn't return a response from Radar. To opt out, pass `trackVerifiedAutoFailover = false` to `RadarInitializeOptions`. In earlier versions, pass `trackVerifiedAutoFailover = true` to turn on failover.
+Moved to [Initialize the SDK on Android](/sdk/fraud#initialize-the-sdk-on-android).
 
 #### Play Integrity API
 
-To support the `compromised` flag on Android, enable the [Play Integrity API](https://developer.android.com/google/play/integrity) on the [Settings page](https://dashboard.radar.com/settings#fraud-settings).
-
-If the user's device or app does not meet [basic integrity checks](https://developer.android.com/google/play/integrity/verdict#device-integrity-field), `user.fraud.compromised = true`.
-
-You must add the Play Integrity API dependency before calling `Radar.trackVerified()`.
-
-Add the dependency to the `dependencies` section of your app's `build.gradle` file:
-
-```java
-dependencies {
-    implementation 'com.google.android.play:integrity:1.6.0'
-}
-```
-
-If `Radar.trackVerified()` returns `ERROR_FORBIDDEN`, check the logs. The Play Services version on the device may be out of date.
+Moved to [Configure the Play Integrity API](/sdk/fraud#configure-the-play-integrity-api).
 
 #### SSL pinning
 
-To enable SSL pinning and prevent man-in-the-middle attacks, add a `res/xml/network_security_config.xml` file:
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<network-security-config>
-    <!-- for React Native -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">localhost</domain>
-    </domain-config>
-
-    <!-- for SSL pinning -->
-    <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">api-verified.radar.io</domain>
-        <pin-set>
-            <pin digest="SHA-256">15ktYXSSU2llpy7YyCgeqUKDBkjcimK/weUcec960sI=</pin>
-            <pin digest="SHA-256">15ktYXSSU2llpy7YyCgeqUKDBkjcimK/weUcec960sI=</pin>
-        </pin-set>
-    </domain-config>
-
-    <!-- for SSL pinning (if automatic failover enabled) -->
-    <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">api-verified.radar.com</domain>
-        <pin-set>
-            <pin digest="SHA-256">++MBgDH5WGvL9Bcn5Be30cRcL0f5O+NyoXuWtQdX1aI=</pin>
-            <pin digest="SHA-256">f0KW/FtqTjs108NpYj42SrGvOB2PpxIVM8nWxjPqJGE=</pin>
-            <pin digest="SHA-256">NqvDJlas/GRcYbcWE8S/IceH9cq77kg0jVhZeAPXq8k=</pin>
-            <pin digest="SHA-256">9+ze1cZgR9KO1kZrVDxA4HQ6voHRCSVNz4RdTCx4U8U=</pin>
-            <pin digest="SHA-256">KwccWaCgrnaw6tsrrSO61FgLacNgG2MMLq8GE6+oP5I=</pin>
-        </pin-set>
-    </domain-config>
-</network-security-config>
-```
-
-Then, reference this file in your manifest:
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<manifest>
-    <application android:networkSecurityConfig="@xml/network_security_config"
-        <!-- other items -->
-    </application>
-</manifest>
-```
-
-Learn more about [Network Security Configuration on Android](https://developer.android.com/training/articles/security-config).
+Moved to [Configure SSL pinning on Android](/sdk/fraud#configure-ssl-pinning-on-android).
 
 ### iOS
 
+Moved to [iOS](/sdk/fraud#ios) in Fraud plugin setup.
+
 #### Install plugin
 
-If using [iOS SDK](/sdk/ios) version `3.26.0` or higher, you must install an additional plugin. The plugin requires iOS 15 or higher. Use the [SDK compatibility table](#sdk-compatibility) to select compatible core SDK and plugin versions.
-
-In Xcode, go to _File \> Swift Packages \> Add Package Dependency_. Enter `https://github.com/radarlabs/radar-sdk-ios-fraud-spm.git` for the _Package Repository URL_.
-
-```text
-.package(url: "https://github.com/radarlabs/radar-sdk-ios-spm.git", "3.46.0"..<"3.47.0")
-.package(url: "https://github.com/radarlabs/radar-sdk-ios-fraud-spm.git", "1.6.0"..<"1.7.0")
-```
-
-If you do not install the plugin, `Radar.trackVerified()` will return `ERROR_PLUGIN`.
+Moved to [Install the iOS plugin](/sdk/fraud#install-the-ios-plugin).
 
 #### Initialize SDK
 
-To enable automatic failover of `trackVerified()` requests to a secondary host if the primary host is unreachable, set `trackVerifiedAutoFailover = true` on `RadarInitializeOptions`:
-
-<CodeGroup>
-
-```swift Swift
-let radarInitializeOptions = RadarInitializeOptions()
-radarInitializeOptions.trackVerifiedAutoFailover = true
-Radar.initialize(publishableKey: "prj_test_pk_...", options: radarInitializeOptions)
-```
-
-```c Objective-C
-RadarInitializeOptions *radarInitializeOptions = [[RadarInitializeOptions alloc] init];
-radarInitializeOptions.trackVerifiedAutoFailover = YES;
-[Radar initializeWithPublishableKey:@"prj_test_pk_..." options:radarInitializeOptions];
-```
-
-</CodeGroup>
+Moved to [Initialize the SDK on iOS](/sdk/fraud#initialize-the-sdk-on-ios).
 
 #### App Attest
 
-To support the `compromised` flag on iOS, enable [App Attest](https://developer.apple.com/documentation/devicecheck/preparing-to-use-the-app-attest-service) and configure a list of valid [App IDs](https://developer.apple.com/library/archive/documentation/General/Conceptual/DevPedia-CocoaCore/AppID.html) (e.g., `A1B2C3D4E5.com.yourapp.app1,A1B2C3D4E5.com.yourapp.app2`) on the [Settings page](https://dashboard.radar.com/settings#fraud-settings).
-
-If App Attest indicates that the user's device or app has been compromised, `user.fraud.compromised = true`.
-
-App Attest requires iOS 14 and above. If `Radar.trackVerified()` returns `ERROR_FORBIDDEN`, check the logs. The iOS version on the device may not support App Attest.
+Moved to [Configure App Attest](/sdk/fraud#configure-app-attest).
 
 #### SSL pinning
 
-To enable SSL pinning and prevent man-in-the-middle attacks, add the following to your `Info.plist` file:
-
-```html
-<key>NSAppTransportSecurity</key>
-<dict>
-    <key>NSAllowsArbitraryLoads</key>
-    <false/>
-    <key>NSPinnedDomains</key>
-    <dict>
-        <key>api-verified.radar.io</key>
-        <dict>
-            <key>NSIncludesSubdomains</key>
-            <true/>
-            <key>NSPinnedLeafIdentities</key>
-            <array>
-                <dict>
-                    <key>SPKI-SHA256-BASE64</key>
-                    <string>15ktYXSSU2llpy7YyCgeqUKDBkjcimK/weUcec960sI=</string>
-                </dict>
-                <dict>
-                    <key>SPKI-SHA256-BASE64</key>
-                    <string>15ktYXSSU2llpy7YyCgeqUKDBkjcimK/weUcec960sI=</string>
-                </dict>
-            </array>
-        </dict>
-        <!-- if automatic failover enabled -->
-        <key>api-verified.radar.com</key>
-        <dict>
-            <key>NSIncludesSubdomains</key>
-            <true/>
-            <key>NSPinnedCAIdentities</key>
-            <array>
-                <dict>
-                    <key>SPKI-SHA256-BASE64</key>
-                    <string>++MBgDH5WGvL9Bcn5Be30cRcL0f5O+NyoXuWtQdX1aI=</string>
-                </dict>
-                <dict>
-                    <key>SPKI-SHA256-BASE64</key>
-                    <string>f0KW/FtqTjs108NpYj42SrGvOB2PpxIVM8nWxjPqJGE=</string>
-                </dict>
-                <dict>
-                    <key>SPKI-SHA256-BASE64</key>
-                    <string>NqvDJlas/GRcYbcWE8S/IceH9cq77kg0jVhZeAPXq8k=</string>
-                </dict>
-                <dict>
-                    <key>SPKI-SHA256-BASE64</key>
-                    <string>9+ze1cZgR9KO1kZrVDxA4HQ6voHRCSVNz4RdTCx4U8U=</string>
-                </dict>
-                <dict>
-                    <key>SPKI-SHA256-BASE64</key>
-                    <string>KwccWaCgrnaw6tsrrSO61FgLacNgG2MMLq8GE6+oP5I=</string>
-                </dict>
-            </array>
-        </dict>
-    </dict>
-</dict>
-```
-
-Learn more about [SSL pinning on iOS](https://developer.apple.com/news/?id=g9ejcf8y).
+Moved to [Configure SSL pinning on iOS](/sdk/fraud#configure-ssl-pinning-on-ios).
 
 ### React Native
 
+Moved to [React Native](/sdk/fraud#react-native) in Fraud plugin setup.
+
 #### Install plugin
 
-If using [React Native SDK](/sdk/react-native) version `4.0.0` or higher, you must opt in to the fraud plugin on each platform. `react-native-radar` bundles a compatible iOS plugin. On Android, use the plugin version from the [SDK compatibility table](#sdk-compatibility).
-
-If using Expo, set `iosFraud` and `androidFraud` in the `react-native-radar` plugin options in `app.json`, then run `npx expo prebuild --clean`:
-
-```json
-{
-  "expo": {
-    "plugins": [
-      [
-        "react-native-radar",
-        {
-          "iosFraud": true,
-          "androidFraud": true
-        }
-      ]
-    ]
-  }
-}
-```
-
-The Expo plugin adds `io.radar:sdk-fraud` and the [Play Integrity API](#play-integrity-api) dependency to `android/app/build.gradle` only if they are not already present. If you are upgrading and your `build.gradle` has an older `io.radar:sdk-fraud` version, update it to a [compatible version](#sdk-compatibility) or run `npx expo prebuild --clean`.
-
-If not using Expo, add the iOS plugin to the app target in your `ios/Podfile`, then run `pod install`:
-
-```ruby
-pod 'RadarSDKFraud', :path => '../node_modules/react-native-radar'
-```
-
-Then, add the Android plugin and the [Play Integrity API](#play-integrity-api) dependency to the `dependencies` section of `android/app/build.gradle`:
-
-```gradle
-dependencies {
-  implementation 'io.radar:sdk-fraud:1.3.1'
-  implementation 'com.google.android.play:integrity:1.6.0'
-}
-```
-
-If you do not install the plugin, `Radar.trackVerified()` will return `ERROR_PLUGIN`.
+Moved to [Install the React Native plugin](/sdk/fraud#install-the-react-native-plugin).
 
 #### Initialize SDK
 
-Pass `true` as the second argument to `Radar.initialize()` to enable fraud detection. This is required to support the `sharing` flag on Android.
-
-If using React Native SDK version `4.38.0` or higher, you can enable automatic failover of `trackVerified()` requests to a secondary host if the primary host is unreachable by passing `trackVerifiedAutoFailover: true` in the options:
-
-```javascript
-Radar.initialize('prj_test_pk_...', true, {
-  trackVerifiedAutoFailover: true,
-});
-```
-
-If using Expo, `iosFraud` and `androidFraud` also configure SSL pinning for `api-verified.radar.io`. If not using Expo, configure SSL pinning as described in the [Android](#android) and [iOS](#ios) sections above, including `api-verified.radar.com` if automatic failover is enabled.
+Moved to [Initialize the SDK on React Native](/sdk/fraud#initialize-the-sdk-on-react-native).
 
 ### Web and desktop
 
+Moved to [Web](/sdk/fraud#web) and [Desktop](/sdk/fraud#desktop) in Fraud plugin setup.
+
 #### Install plugin
 
-If using [web SDK](/sdk/web) version `5.0.0` or higher, you must install an additional plugin.
-
-In an HTML page, add the SDK script and the plugin script:
-
-```html
-<script src="https://js.radar.com/v5.1.1/radar.min.js"></script>
-<script src="https://js.radar.com/fraud/v1.4.0/radar-fraud.min.js"></script>
-```
-
-In a web app, install the SDK package and the plugin package from npm:
-
-```bash
-npm install @radarlabs/plugin-fraud radar-sdk-js
-```
+Moved to [Install the web plugin](/sdk/fraud#install-the-web-plugin).
 
 #### Companion apps and no-download solution
 
-The web SDK supports a companion app solution and a pure-JavaScript no-download solution.
-
-The companion app solution uses the Radar Verify apps to support remote desktop detection with the `sharing` flag, more advanced `mocked` and `proxy` detection, and more stable device IDs. Download the [Radar Verify Mac app](https://app.radar-verify.com/mac/latest) or the [Radar Verify Windows app](https://app.radar-verify.com/windows/latest). By default, `Radar.trackVerified()` expects the Radar Verify app to be running and returns `ERROR_VERIFY_APP` if it is not.
-
-To skip the Radar Verify app and use the no-download solution, pass `{ skipVerifyApp: true }` to `Radar.trackVerified()`, `Radar.startTrackingVerified()`, and `Radar.getVerifiedLocationToken()`.
-
-<Info>
-  Contact your customer success manager to learn how you can customize the Radar Verify app installer or branding.
-</Info>
+Moved to [Choose the companion app or the no-download path](/sdk/fraud#choose-the-companion-app-or-the-no-download-path).
 
 #### Native desktop SDKs
 
-A native Mac SDK (supporting macOS 12.4\+), a native Windows SDK (supporting Windows 10\+ and .NET 8\+), and an Electron plugin are available.
-
-<Info>
-  Contact your customer success manager for access to desktop SDKs.
-</Info>
+Moved to [Desktop](/sdk/fraud#desktop) in Fraud plugin setup.
 
 ## Verifying user locations
 
-Once the above configuration is complete, you can perform location checks and verify a user's location with just a few lines of code.
-
-Choose your implementation pattern depending on your use cases:
-
-- Less regulated gaming implementations, non-US gaming implementations, and non-gaming implementations should generally choose [Manual location checks](#manual-location-checks) and, on web, the no-download solution.
-- US sportsbook and iGaming implementations should generally choose [Automatic location checks with caching](#automatic-location-checks-with-caching) and, on web, the companion app solution.
+Moved to the Geo-compliance guides. Start with [Choose a guide](/geo-compliance/overview#choose-a-guide).
 
 ### Manual location checks
 
-You can call `Radar.trackVerified()` to manually perform a location check. `Radar.trackVerified()` returns a `RadarVerifiedLocationToken` with:
-
-- `passed`: A boolean indicating whether the user passed all fraud and jurisdiction checks (`user.fraud.passed && user.country.passed && user.state.passed`).
-- `token`: A tamper-proof JSON Web Token (JWT) that you can send to your server to validate the signature, signed with the _JSON Web Token (JWT) Secret Key_ found under _Fraud_ on the [Settings page](https://dashboard.radar.com/settings#fraud-settings).
-- `failureReasons`: If `passed == false`, an array of more detailed [failure reasons](#failure-reasons).
-- `expiresAt`: The datetime when the token expires, by default in 20 minutes, but earlier when close to the border based on compliance requirements.
-- `expiresIn`: The number of seconds until the token expires.
-- `user`: The user, with detailed information in `user.fraud`, `user.country`, and `user.state`.
-- `events`: The events generated, if any.
-
-You can optionally pass a `reason` to `Radar.trackVerified()` to specify the reason for performing the location check (e.g., `"login"`, `"signup"`, `"withdrawal"`). Location check reasons are exposed in filters, reports, and rules.
-
-<CodeGroup>
-
-```swift Swift (iOS)
-Radar.trackVerified { (status, token) in
-  if token?.passed == true {
-    // allow access, send token to server
-  } else {
-    // deny access, show error message
-  }
-}
-```
-
-```kotlin Kotlin
-Radar.trackVerified { status, token ->
-  if (token?.passed == true) {
-    // allow access, send token to server
-  } else {
-    // deny access, show error message
-  }
-}
-```
-
-```javascript Web
-const skipVerifyApp = false; // use true for no-download solution
-
-Radar.trackVerified({ skipVerifyApp }).then((result) => {
-  const { passed, token, expiresIn, user } = result;
-  if (passed) {
-    // allow access, send token to server
-  } else {
-    // deny access, show error message
-  }
-}).catch((err) => {
-  // deny access, show error message
-});
-```
-
-```javascript React Native
-Radar.trackVerified().then((result) => {
-  const { token } = result;
-  if (token?.passed) {
-    // allow access, send token to server
-  } else {
-    // deny access, show error message
-  }
-}).catch((err) => {
-  // deny access, show error message
-});
-```
-
-```javascript Capacitor
-Radar.trackVerified().then((result) => {
-  const { token } = result;
-  if (token?.passed) {
-    // allow access, send token to server
-  } else {
-    // deny access, show error message
-  }
-}).catch((err) => {
-  // deny access, show error message
-});
-```
-
-```javascript Flutter
-var res = await Radar.trackVerified();
-```
-
-```swift Swift (Mac)
-import RadarVerifySDK
-
-// request location permissions and warm up location services
-RadarVerify.setup()
-
-// perform a location check
-let result = await RadarVerify.trackVerified(
-  publishableKey: publishableKey,
-  userId: userId,
-  expectedCountryCode: expectedCountryCode,
-  expectedStateCode: expectedStateCode,
-  product: product,
-  reason: reason,
-  transactionId: transactionId,
-  metadata: metadata
-)
-
-if result.token?.passed == true {
-  // allow access, send token to server
-} else {
-  // deny access, show error message
-}
-```
-
-```csharp C# (Windows)
-using RadarVerify;
-
-// request location permissions and warm up location services
-await Radar.Setup();
-
-// perform a location check
-var (status, token) = await Radar.TrackVerified(
-  publishableKey: publishableKey,
-  userId: userId,
-  expectedCountryCode: expectedCountryCode,
-  expectedStateCode: expectedStateCode,
-  product: product,
-  reason: reason,
-  transactionId: transactionId,
-  metadata: metadata
-);
-
-if (token?.Passed == true)
-{
-  // allow access, send token to server
-}
-else
-{
-  // deny access, show error message
-}
-```
-
-</CodeGroup>
-
-You can send the JWT to your server and validate the signature. For example, in JavaScript:
-
-```javascript
-import { jwtVerify } from 'jose';
-
-try {
-  const { payload } = await jwtVerify(token, SECRET_KEY);
-  const { user } = payload;
-  // token is valid, check payload to allow or deny access
-} catch (err) {
-  // token is invalid, deny access, show error message
-}
-```
+Moved to [Run a manual check](/geo-compliance/sportsbooks-and-casinos#run-a-manual-check).
 
 #### Ranging beacons
 
-On iOS and Android, you can pass `beacons: true` to `Radar.trackVerified()` to range nearby [beacons](/geofencing/beacons) and include them in the location check. By default, each call waits up to 5 seconds to range beacons. The wait ends early only if every nearby beacon is found.
-
-If you need beacon ranging often, call `Radar.startRangingBeacons()` before the location check. The SDK then ranges nearby beacons continuously while the app is in the foreground and searches for nearby beacons again every 60 seconds. `Radar.trackVerified(beacons: true)` uses the beacons seen in the last 5 seconds instead of starting a new ranging window.
-
-Call `Radar.startRangingBeacons()` after initializing the SDK and after the user grants location permissions (and, on Android, Bluetooth permissions). To limit battery use, call it when the user enters the flow that calls `Radar.trackVerified(beacons: true)`, and call `Radar.stopRangingBeacons()` when they leave it. Ranging pauses automatically when the app goes to the background and resumes when it returns to the foreground.
-
-<CodeGroup>
-
-```swift Swift
-// when the user enters the flow
-Radar.startRangingBeacons()
-
-// perform a location check with nearby beacons
-Radar.trackVerified(beacons: true) { (status, token) in
-  if token?.passed == true {
-    // allow access, send token to server
-  } else {
-    // deny access, show error message
-  }
-}
-
-// when the user leaves the flow
-Radar.stopRangingBeacons()
-```
-
-```kotlin Kotlin
-// when the user enters the flow
-Radar.startRangingBeacons()
-
-// perform a location check with nearby beacons
-Radar.trackVerified(beacons = true) { status, token ->
-  if (token?.passed == true) {
-    // allow access, send token to server
-  } else {
-    // deny access, show error message
-  }
-}
-
-// when the user leaves the flow
-Radar.stopRangingBeacons()
-```
-
-</CodeGroup>
-
-<Note>
-`Radar.startRangingBeacons()` and `Radar.stopRangingBeacons()` require iOS SDK `3.43.0`+ or Android SDK `3.38.0`+. Android requires Android 8.0 (API level 26) or later.
-</Note>
+Moved to [Use beacons with verified location checks](/geofencing/beacons#use-beacons-with-verified-location-checks).
 
 ### Automatic location checks with caching
 
-You can call `Radar.startTrackingVerified()` to automatically perform location checks on connection changes, on the specified `interval`, or more frequently if `token.expiresIn < interval` (based on current state, distance to border, and so on).
-
-Instead of calling `Radar.trackVerified()`, which always fetches a fresh location token, you can call `Radar.getVerifiedLocationToken()`, which returns a cached location token immediately if the last location token is still valid, or fetches a fresh location token if not.
-
-If you set a delegate on iOS with `Radar.setVerifiedDelegate()` or a receiver on Android with `Radar.setVerifiedReceiver()`, fresh location tokens are also delivered to `RadarVerifiedDelegate.didUpdateToken()` and `RadarVerifiedReceiver.onTokenUpdated()`, respectively.
-
-For example, to automatically verify the user's location at least every 20 minutes (1200 seconds), without ranging beacons:
-
-<CodeGroup>
-
-```swift Swift
-Radar.setVerifiedDelegate(delegate)
-
-Radar.startTrackingVerified(interval: 1200, beacons: false)
-
-// get a cached token if available, or fetch a fresh token if not
-Radar.getVerifiedLocationToken { (status, token) in
-  if token?.passed == true {
-    // allow access, send token to server
-  } else {
-    // deny access, show error message
-  }
-}
-
-// delivers fresh tokens to RadarVerifiedDelegate
-func didUpdateToken(_ token: RadarVerifiedLocationToken) {
-  // send token to server
-}
-```
-
-```kotlin Kotlin
-Radar.setVerifiedReceiver(receiver)
-
-Radar.startTrackingVerified(interval = 1200, beacons = false)
-
-// get a cached token if available, or fetch a fresh token if not
-Radar.getVerifiedLocationToken { status, token ->
-  if (token?.passed == true) {
-    // allow access, send token to server
-  } else {
-    // deny access, show error message
-  }
-}
-
-// delivers fresh tokens to RadarVerifiedReceiver
-override fun onTokenUpdated(context: Context, token: RadarVerifiedLocationToken) {
-  // send token to server
-}
-```
-
-```javascript Web
-const skipVerifyApp = false; // use true for no-download solution
-
-Radar.startTrackingVerified({ skipVerifyApp, interval: 1200 });
-
-// get a cached token if available, or fetch a fresh token if not
-Radar.getVerifiedLocationToken({ skipVerifyApp }).then((result) => {
-  const { passed, token, expiresIn, user } = result;
-  if (passed) {
-    // allow access, send token to server
-  } else {
-    // deny access, show error message
-  }
-}).catch((err) => {
-  // deny access, show error message
-});
-
-Radar.onTokenUpdated((result) => {
-  const { passed, token, expiresIn, user } = result;
-  // send token to server
-});
-```
-
-```javascript React Native
-Radar.startTrackingVerified({
-  interval: 1200,
-  beacons: false,
-});
-
-// get a cached token if available, or fetch a fresh token if not
-Radar.getVerifiedLocationToken().then((result) => {
-  const { token } = result;
-  if (token?.passed) {
-    // allow access, send token to server
-  } else {
-    // deny access, show error message
-  }
-}).catch((err) => {
-  // deny access, show error message
-});
-
-// delivers fresh tokens to listener
-Radar.onTokenUpdated((result) => {
-  const { token } = result;
-  // send token to server
-});
-```
-
-```javascript Capacitor
-Radar.startTrackingVerified({
-  interval: 1200,
-  beacons: false,
-});
-
-// get a cached token if available, or fetch a fresh token if not
-Radar.getVerifiedLocationToken().then((result) => {
-  const { token } = result;
-  if (token?.passed) {
-    // allow access, send token to server
-  } else {
-    // deny access, show error message
-  }
-}).catch((err) => {
-  // deny access, show error message
-});
-
-// delivers fresh tokens to listener
-Radar.addListener('token', (result) => {
-  const { token } = result;
-  // send token to server
-});
-```
-
-```javascript Flutter
-Radar.startTrackingVerified(1200, false)
-
-// get a cached token if available, or fetch a fresh token if not
-var res = await Radar.getVerifiedLocationToken();
-
-// delivers fresh tokens to listener
-Radar.onToken(onToken);
-```
-
-</CodeGroup>
+Moved to [Use automatic checks](/geo-compliance/sportsbooks-and-casinos#use-automatic-checks).
 
 ### Setting product type
 
-You can configure multiple product types within a project, each with its own [allowed states and countries](#allowed-states-and-countries) and other settings. Call `Radar.setProduct(product)` to pass the product type before performing a location check.
-
-<Info>
-  Contact your customer success manager for help configuring product types and allowed jurisdictions.
-</Info>
+Moved to [Select the product](/geo-compliance/sportsbooks-and-casinos#select-the-product).
 
 ### Setting expected jurisdiction
 
-In addition to setting [allowed states and countries](#allowed-states-and-countries), you can optionally set an expected jurisdiction and fail location checks outside of that jurisdiction regardless of whether that jurisdiction is allowed in settings. Call `Radar.setExpectedJurisdiction(expectedCountryCode, expectedStateCode)` to set the expected jurisdiction before performing a location check.
+Moved to [Select the product](/geo-compliance/sportsbooks-and-casinos#select-the-product), which covers `Radar.setExpectedJurisdiction()`.
 
 ### Setting expected address
 
-<Info>
-  Contact your customer success manager to enable address verification on your project.
-</Info>
-
-You can optionally set an expected address, such as the user's billing or home address, and check whether the user is at that address. Call `Radar.setExpectedAddress(address)` to set the expected address before performing a location check. Radar sends the address with each subsequent location check until you call `Radar.setExpectedAddress(nil)` (`null` on Android).
-
-Setting an expected address is supported on [iOS SDK](/sdk/ios) version `3.42.0` or higher and [Android SDK](/sdk/android) version `3.38.0` or higher.
-
-<CodeGroup>
-
-```swift Swift
-Radar.setExpectedAddress("841 Broadway, New York, NY 10003")
-
-Radar.trackVerified { (status, token) in
-  if let expectedAddress = token?.user?.expectedAddress {
-    // check expectedAddress.atAddress, check expectedAddress.confidence
-  }
-}
-```
-
-```kotlin Kotlin
-Radar.setExpectedAddress("841 Broadway, New York, NY 10003")
-
-Radar.trackVerified { status, token ->
-  val expectedAddress = token?.user?.setExpectedAddress
-  if (expectedAddress != null) {
-    // check expectedAddress.atAddress, check expectedAddress.confidence
-  }
-}
-```
-
-</CodeGroup>
-
-Radar geocodes the address and compares it to the user's location. The result is returned in `user.expectedAddress`:
-
-- `expectedAddress`: The expected address, as passed to `Radar.setExpectedAddress()`.
-- `formattedAddress`: The formatted address, as geocoded by Radar. May be `nil` if the address could not be geocoded.
-- `latitude`: The latitude of the geocoded address. May be `nil` if the address could not be geocoded.
-- `longitude`: The longitude of the geocoded address. May be `nil` if the address could not be geocoded.
-- `atAddress`: A boolean indicating whether the user is within the distance threshold of the geocoded address. The threshold is 60 meters by default.
-- `distance`: The distance in meters between the user's location and the geocoded address. May be `nil` if the address could not be geocoded.
-- `confidence`: The confidence of `atAddress`, one of `high`, `medium`, `low`, or `unknown`. Confidence accounts for the accuracy of the user's location and the uncertainty of the geocoded address. `high` means the result holds even at the edge of that uncertainty, `low` means the uncertainty is more than twice the distance threshold, and `unknown` means the address could not be geocoded or the location accuracy was not available.
-
-If the user is not at the expected address, the location check includes an `address_not_expected` warning. Unlike [failure reasons](#failure-reasons), this warning does not cause the location check to fail, so `passed` is unaffected. Use `user.expectedAddress.atAddress` and `user.expectedAddress.confidence` to decide how to handle the result in your app.
-
-<Info>
-  Contact your customer success manager to change the distance threshold.
-</Info>
+Moved to [Address condition](/geo-compliance/non-gaming#address-condition).
 
 ### Auth tokens
 
-<Info>
-  Contact your customer success manager to access temporary auth tokens and/or disable publishable API keys on your project.
-</Info>
-
-As an alternative to publishable API keys, you can create temporary auth tokens. Auth tokens are JSON Web Tokens (JWTs) created by you on your server, signed with a private key, and sent by you to your client to be used instead of publishable API keys. They have a `ttl` and optional `constraints` (e.g., `product`, `expectedCountryCode`, `expectedStateCode`) as claims.
-
-Auth tokens are supported on [iOS SDK](/sdk/ios) version `3.28.0` or higher, [Android SDK](/sdk/android) version `3.27.0` or higher, and web SDK version `5.1.0` or higher.
-
-First, create an EC P-256 key pair. Save your private key. Your private key should never leave your server. Copy your public key. For example:
-
-```bash
-openssl ecparam -genkey -name prime256v1 -noout -out private-key.pem
-openssl ec -in private-key.pem -pubout -out public-key.pem
-cat public-key.pem | pbcopy
-```
-
-Under _Auth tokens_ on the [Settings page](https://dashboard.radar.com/settings), add a new public key. Paste the full contents of your public key PEM file, including the `BEGIN` and `END` lines.
-
-To create an auth token, sign a JWT using ES256 on your server. The payload should include `now` for `iat`, `now + ttl` for `exp`, the public key _Key ID_ from the dashboard for `kid`, and any optional `constraints` as claims. For example:
-
-```javascript
-import { SignJWT } from 'jose';
-
-const payload = {
-  constraints: { // optional
-    expectedCountryCode,
-    expectedStateCode,
-    product,
-  },
-};
-
-const authToken = await new SignJWT(payload)
-  .setProtectedHeader({
-    alg: 'ES256',
-    typ: 'JWT',
-    kid: PUBLIC_KEY_ID,
-  })
-  .setIssuedAt(now)
-  .setExpirationTime(now + ttl)
-  .sign(PRIVATE_KEY);
-```
-
-Send the auth token to your client and use it to initialize the SDK instead of your publishable API key.
-
-<CodeGroup>
-
-```swift Swift
-Radar.initialize(authToken: authToken)
-```
-
-```kotlin Kotlin
-Radar.initialize(RadarInitializeOptions(authToken = authToken, fraud = true))
-```
-
-```javascript Web
-Radar.initialize({ authToken });
-```
-
-```javascript React Native
-Radar.initializeWithAuthToken(authToken, true);
-```
-
-</CodeGroup>
-
-If the auth token is invalid or the signature is invalid, `Radar.trackVerified()` will return `ERROR_UNAUTHORIZED`. If any of the claims don't match, `Radar.trackVerified()` will return `ERROR_FORBIDDEN`.
+Moved to [Use auth tokens instead of a publishable key](/fundamentals/authentication-and-access#use-auth-tokens-instead-of-a-publishable-key).
 
 ### Failure reasons
 
-<Info>
-  Some more sensitive or proprietary failure reasons are not documented here. Contact your customer success manager for more information.
-</Info>
-
-If `passed == false`, responses include an array of more detailed [failure reasons](#failure-reasons).
-
-- **`country_not_allowed`**: The user's location is in a country that is not allowed based on [jurisdiction settings](#allowed-states-and-countries).
-- **`country_not_expected`**: The user's location is in a country that is not expected based on `Radar.setExpectedJurisdiction()`.
-- **`country_in_buffer_zone`**: The user's location is too close to [the border of a country](#allowed-states-and-countries), either based on a jurisdiction-specific threshold or based on the location accuracy reported by the device (i.e., a "radius of uncertainty" that overlaps a country border).
-- **`country_in_exclusion_zone`**: The user's location is in a [country-specific exclusion zone](#allowed-states-and-countries), if enabled.
-- **`state_not_allowed`**: The user's location is in a state or province that is not allowed according to [jurisdiction settings](#allowed-states-and-countries)
-- **`state_not_expected`**: The user's location is in a state or province that is not expected according to `Radar.setExpectedJurisdiction()`.
-- **`state_in_buffer_zone`**: The user's location is too close to [the border of a state or province](#allowed-states-and-countries), either based on a jurisdiction-specific threshold or based on the location accuracy reported by the device (i.e., a "radius of uncertainty" that overlaps a state or province border).
-- **`state_in_exclusion_zone`**: The user's location is in a [state- or province-specific exclusion zone](#allowed-states-and-countries), if enabled.
-- **`fraud_blocked_user_id`**: The `userId` of the user is blocked (all platforms).
-- **`fraud_blocked_device_id`**: The `deviceId` of the user is blocked (all platforms).
-- **`fraud_blocked_ip`**: The IP of the user is blocked (all platforms).
-- **`fraud_blocked_mac_address`**: The MAC address of the user is blocked (macOS and Windows only).
-- **`fraud_blocked_risk_score_auto_block`**: The user or device was automatically blocked based on a [high risk score](#fraud-flags) (all platforms).
-- **`fraud_compromised_jailbroken`**: The user's iOS device is jailbroken (iOS only).
-- **`fraud_compromised_app_attest`**: The user's iOS device failed [App Attest](#app-attest) checks (iOS only).
-- **`fraud_compromised_play_integrity_api`**: The user's Android device failed [Play Integrity API](#play-integrity-api) basic integrity checks (Android only).
-- **`fraud_mocked_from_mock_provider`**: The user's location is mocked or spoofed according to iOS, Android, macOS, or Windows location services (all platforms).
-- **`fraud_mocked_known_spoofing_app`**: The user's device is running a known location spoofing app (macOS and Windows only).
-- **`fraud_mocked_inconsistent_ip_country`**: The user's location is in a country inconsistent with the IP geolocation country (all platforms).
-- **`fraud_jumped_single_device`**: The user's location moved too far too fast (e.g., "jumped" across the country in a few seconds), possibly indicating impossible travel (all platforms).
-- **`fraud_jumped_multiple_devices`**: The device's location is inconsistent with another device's location with the same `userId`, possibly indicating account sharing (all platforms).
-- **`fraud_inaccurate_exceeded_accuracy_threshold`**: The user's location accuracy reported by the device is too low and exceeds a specified threshold (all platforms).
-- **`fraud_sharing_known_screen_sharing_app`**: The user's device is running a known screen sharing or remote desktop app (macOS and Windows only).
-- **`fraud_sharing_multiple_displays`**: The user's Android device has multiple displays, indicating possible screen sharing (Android only).
-- **`fraud_sharing_virtual_input_device`**: The user's Android device has a virtual input device, indicating possible screen sharing (Android only).
-- **`fraud_proxy_known_proxy_ip`**: The user's IP address is a known proxy or VPN (all platforms).
-- **`fraud_proxy_network_configuration`**: The user's network configuration indicates the use of a proxy or VPN (macOS and Windows only).
+Moved to [Failure reasons](/api/geolocation-tokens#failure-reasons) in the geolocation token schema.
 
 ### Troubleshooting
 
-To troubleshoot a failed geolocation check, go to the [Locations page](https://dashboard.radar.com/geofencing/locations). Use the _Filters_ button to filter down to specific user IDs, IP addresses, or jurisdictions, and use the _date filters_ to filter down to specific dates or times.
-
-Click on a specific geolocation check to see all the details, including a map view, [failure reasons](#failure-reasons), detailed user, device, IP, and jurisdiction information, and more.
-
-<Info>
-  If you need help, please contact your customer success manager.
-</Info>
+Moved to [Inspect a check](/fraud/overview#inspect-a-check) in the Fraud overview.
 
 ## Revealing device and network risk
 
-<Info>
-  Contact your customer success manager for access.
-</Info>
-
-If using `@radarlabs/plugin-fraud` version `1.4.0` or higher, iOS SDK version `3.38.0` or higher, Android SDK version `3.35.0` or higher, or React Native SDK version `4.36.0` or higher, you can call `Radar.revealRisk()` to reveal device and network risk signals before verifying a user's location.
-
-`Radar.revealRisk()` returns a `RadarRevealRiskToken` with:
-- `risk`: Risk information, including a risk `level` (none, low, medium, high, configurable with [Risk scores](#risk-scores)) and `reasons` (includes `proxy`, `compromised`, and `sharing` reasons from [Failure reasons](#failure-reasons)).
-- `network`: Network information, including IP address, IP geolocation, privacy information, and ASN information.
-- `device`: Device and browser information.
-- `token`: A tamper-proof JSON Web Token (JWT) that you can send to your server to validate the signature, signed with the _JSON Web Token (JWT) Secret Key_ found under _Fraud_ on the [Settings page](https://dashboard.radar.com/settings#fraud-settings).
-- `expiresAt`: The datetime when the token expires.
-- `expiresIn`: The number of seconds until the token expires.
-
-<CodeGroup>
-
-```swift Swift (iOS)
-Radar.revealRisk { (status, token) in
-  if status == .success {
-    if token?.risk?.level == 'high' {
-      // high risk, step up to location verification
-    } else {
-      // low risk
-    }
-  } else {
-    // handle error
-  }
-}
-```
-
-```kotlin Kotlin
-Radar.revealRisk { status, token ->
-  if (status == SUCCESS) {
-    if (token?.risk?.level == HIGH) {
-      // high risk, step up to location verification
-    } else {
-      // low risk
-    }
-  } else {
-    // handle error
-  }
-}
-```
-
-```javascript Web
-Radar.fraud.revealRisk().then((result) => {
-  const { risk } = result;
-
-  if (risk.level === 'high') {
-    // high risk, step up to location verification
-  } else {
-    // low risk
-  }
-}).catch((err) => {
-  // handle error
-});
-```
-
-```javascript React Native
-Radar.revealRisk().then((result) => {
-  const { token } = result;
-
-  if (token?.risk.level === 'high') {
-    // high risk, step up to location verification
-  } else {
-    // low risk
-  }
-}).catch((err) => {
-  // handle error
-});
-```
-
-</CodeGroup>
+Moved to [Quickstart: assess device and network risk](/fraud/overview#quickstart-assess-device-and-network-risk).
 
 ## Risk scores
 
-You can use risk scores to identify high-risk users and devices.
-
-By default, risk score weights are based on a "strikes" system:
-
-- No strikes = none
-- 1 strike = low
-- 2 strikes = medium
-- 3 strikes = high
-
-Users and devices receive strikes for the following risk signals within a lookback period, by default the last 7 days:
-
-- `mocked`, `jumped`, `compromised`, `sharing`, and `proxy` flags: 1 strike
-- More than 5 user IDs per device ID: 1 strike
-- More than 5 device IDs per user ID: 1 strike
-
-When the risk score changes for a user or device, it also changes for all associated users and devices (i.e., all users associated with that device ID, or all device IDs associated with that user).
-
-Risk score weights and the lookback period are configurable.
-
-You can also automatically block high-risk users.
-
-<Info>
-  Contact your customer success manager or fraud operations manager for access to risk scores, or to automatically block high-risk users.
-</Info>
+Moved to [Risk scores](/fraud/overview#risk-scores) in the Fraud overview.
 
 ## Error handling
 
-On errors or failed fraud checks, you may want to display a message to the end user. For example:
-
-- On **`ERROR_PERMISSIONS`**: Unable to determine your location. Please make sure you've granted location permissions and try again.
-- On **`ERROR_LOCATION`**: Unable to determine your location. Please make sure location services and wi-fi are enabled and try again.
-- On **`ERROR_NETWORK`**: Unable to determine your location. Please make sure you're connected to the Internet and try again.
-- On **`country.allowed == false`** or **`state.allowed == false`**: Unable to verify your location. Please make sure you're in an allowed area and try again.
-- On **`fraud.proxy == true`**: Unable to verify your location. Please disconnect from any VPNs or proxy servers you may be using and try again.
-- On other error cases, or as a fallback: Unable to verify your location. Please contact support.
+Moved to [Show the right message](/geo-compliance/sportsbooks-and-casinos#show-the-right-message).
