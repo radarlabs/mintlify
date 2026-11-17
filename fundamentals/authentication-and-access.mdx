@@ -1,0 +1,263 @@
+---
+title: "Set up organizations, projects, accounts, and authentication"
+sidebarTitle: "Accounts and authentication"
+description: "Set up a Radar organization and project, give teammates the least access they need, choose the right API keys, and find the data retention and deletion controls."
+---
+
+import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
+import IdentifyUser from '/snippets/identify-user.mdx';
+
+By the end of this page you have a project with Test and Live environments, teammates invited with the least access they need, and the correct key in each part of your stack. You also know where the data retention, export, and deletion controls are.
+
+## How organizations, projects, accounts, and users relate
+
+Four terms are easy to confuse:
+
+| Term | What it is | Where you manage it |
+| --- | --- | --- |
+| Organization | Your company's Radar workspace. It holds your projects, your teammates' accounts, and your plan. | Organization page |
+| Project | One app or integration inside the organization. Each project has its own settings, API keys, and Test and Live environments. | Settings page |
+| Account | A teammate's sign-in to the Radar dashboard. An account belongs to the organization and is granted a role, one or more projects, and one or both environments. | Organization page |
+| User | An end user or device seen by the Radar SDK or API in your app. Users don't sign in to the dashboard. | Users page, SDK, and API |
+
+An account isn't limited to one project. When an organization has more than one project, the invite form asks which projects the account can open. Owners always have access to every project.
+
+## Set up a project and its environments
+
+1. Sign in to the [Radar dashboard](https://dashboard.radar.com). If you're new to Radar, sign up to create your organization.
+2. Open the [Settings](https://dashboard.radar.com/settings) page for your project.
+3. Switch the dashboard between Test and Live as you work. Lists such as users, geofences, events, and locations show data for the selected environment only.
+4. Do all integration work in Test. Move to Live when you complete the [go-live checklist](/fundamentals/testing-and-launch#go-live-checklist).
+
+Use a separate project when two apps must not share geofences, settings, keys, or user data. Use the Test and Live environments of one project to separate development from production for the same app.
+
+## Choose the right API key
+
+<EnvironmentAndKeys />
+
+### Restrict where publishable keys can be used
+
+Publishable keys ship inside your app, so restrict them to your own apps and sites. On the [Settings](https://dashboard.radar.com/settings) page:
+
+- Under **Website restrictions**, add the domains allowed to use your publishable keys. Multiple domains and wildcards are supported, for example `example.com`, `*.example.com`, and `localhost:8080`.
+- Under **Mobile restrictions**, add the iOS bundle IDs and Android package names allowed to use your publishable keys, for example `com.example.app`. Wildcards aren't supported for mobile restrictions.
+
+### Rotate a key
+
+Only an Owner can reset a key. On the [Settings](https://dashboard.radar.com/settings) page, under **API keys**, click **Reset key** on the row for the key you want to replace, then confirm.
+
+A project has one key of each type, so a reset replaces the key. It doesn't add a second one. Plan the change before you click **Reset key**:
+
+1. Decide when to deploy the new key. For a secret key, that's a backend configuration change. For a publishable key, that can require an app release, because the key is compiled into your mobile builds.
+2. Reset the key and copy the new value.
+3. Update your secret store or build configuration, deploy, and confirm that requests succeed. A request with an invalid key returns `401`.
+
+Rotate a secret key immediately if it appears in client code, logs, a ticket, or a source repository.
+
+### Use auth tokens instead of a publishable key
+
+<Info>
+  Auth tokens must be enabled for your project. Contact your Radar account team.
+</Info>
+
+For verified location checks, you can initialize the SDK with a short-lived auth token instead of a publishable key. An auth token is a JSON Web Token that your backend signs with your own private key and sends to the client. You register the matching public key with Radar, and you can add constraints as claims.
+
+- An Owner adds or disables public keys under **Auth tokens** on the [Settings](https://dashboard.radar.com/settings) page. Disabling a public key can't be undone.
+- Your private key stays on your backend. Radar stores only the public key.
+
+For the signing steps and the SDK versions that support auth tokens, see [Authenticate the SDK with auth tokens](/sdk/fraud#authenticate-the-sdk-with-auth-tokens).
+
+### Handle secrets on your backend
+
+- Store secret keys and signing keys in a secret manager or environment variables, not in source control.
+- Use the Test secret key in development and CI, and the Live secret key only in production.
+- Never return a secret key to a browser or mobile client. If a client needs data that requires a secret key, call Radar from your backend and return only the fields the client needs.
+- Encrypt Radar data that you store outside Radar, including webhook payloads and data sent to integrations.
+
+## Sign in to the dashboard
+
+- **Email and password**: Use a unique password of at least 10 characters with upper-case and lower-case letters, a number, and a symbol.
+- **Multi-factor authentication (MFA)**: Turn it on from the [Account](https://dashboard.radar.com/account) page. Radar supports an authenticator app or SMS.
+- **Single sign-on (SSO)**: SSO is available on the [Enterprise plan](https://radar.com/pricing). Radar supports SAML, LDAP, OpenID, and other identity providers. Your Radar account team turns it on for your organization. After it's on, sign in from the [SSO sign-in](https://dashboard.radar.com/sso) page.
+
+To set up a SAML identity provider, your Radar account team gives you the assertion consumer service URL and application callback URL. Send back:
+
+- The SAML protocol URL
+- The sign-in URL
+- The sign-out URL (optional)
+- The X.509 signing certificate as a `.pem` file
+- The user ID attribute, if it isn't the default name identifier claim
+
+Don't share one account between teammates. When someone leaves, delete their account from the [Organization](https://dashboard.radar.com/organization) page. Deleting an account ends its dashboard sessions.
+
+## Invite teammates
+
+You need the Admin or Owner role to invite accounts.
+
+<Steps>
+  <Step title="Open the invite form">
+    Open the [Organization](https://dashboard.radar.com/organization) page and click **Invite** in the **Accounts** section.
+  </Step>
+  <Step title="Enter the email and choose a role">
+    Enter the teammate's work email and select a **Role**: Read, Write, Admin, or Owner. Start with the lowest role in [Roles and what each can do](#roles-and-what-each-can-do) that covers the person's job.
+  </Step>
+  <Step title="Choose project and environment access">
+    If your organization has more than one project, select **Project access**. For Read and Write accounts, select **Environment access**: Test, Live, or Test and live. Admin and Owner accounts always have both environments.
+  </Step>
+  <Step title="Send the invite">
+    Click **Invite**. The teammate receives an email with a link to confirm the account.
+  </Step>
+</Steps>
+
+To verify, find the new account in the **Accounts** list and check its role, projects, and environments. By default, an organization can have up to 100 accounts. Contact your Radar account team if you need more.
+
+## Roles and what each can do
+
+Radar has four built-in roles. Each role includes everything the role before it can do.
+
+| Action | Read | Write | Admin | Owner |
+| --- | --- | --- | --- | --- |
+| View users, geofences, events, and location data | Yes | Yes | Yes | Yes |
+| View saved reports | Yes | Yes | Yes | Yes |
+| Create and edit geofences | No | Yes | Yes | Yes |
+| Create, save, and delete reports and report subscriptions | No | Yes | Yes | Yes |
+| Create block rules | No | Yes | Yes | Yes |
+| Create and edit bypass rules | No | No | Yes | Yes |
+| Delete block and bypass rules | No | No | Yes | Yes |
+| Set test overrides on a user | No | No | Yes | Yes |
+| Invite accounts | No | No | Yes | Yes |
+| Change project settings, integrations, and webhooks | No | No | Yes | Yes |
+| View API keys | No | No | Yes | Yes |
+| View and export audit logs | No | No | Yes | Yes |
+| Create and edit custom roles | No | No | Yes | Yes |
+| Delete custom roles | No | No | No | Yes |
+| Reset API keys and manage auth token public keys | No | No | No | Yes |
+| Change data retention settings | No | No | No | Yes |
+
+Owners can edit any other account's role and project access, and only an Owner can delete another Owner's account. No account can change its own role.
+
+Guidance for common cases:
+
+- **Support and operations staff**: Read, with Live access, for people who look up users and checks.
+- **Developers**: Write in Test, for people integrating the SDK. Add Live only when they need to investigate Live data.
+- **Admins**: Admin, for the people who manage settings, integrations, bypass rules, and teammates. Keep this group small.
+- **Owners**: Keep at least two, so that key rotation and retention changes don't depend on one person.
+
+### Who can change jurisdiction settings and block or bypass rules
+
+If you use Geo-compliance, your allowed countries and states define where your users can pass a check. Treat the ability to change them, or to bypass them for a user, as a controlled permission:
+
+- **Block rules**: Write accounts and above can create them. Deleting a block rule needs Admin or Owner.
+- **Bypass rules**: They make checks pass for a specific user, device, or IP address. Creating or editing one needs Admin or Owner. Bypass rules are for internal testing only, never for real end users. See [Force a pass or a fail](/fundamentals/testing-and-launch#force-a-pass-or-a-fail).
+- **Allowed countries and states**: Whether your organization can edit its own jurisdiction settings is account-specific. Ask your Radar account team whether it's turned on for your organization and which accounts hold that access. Limit it to the few people who are accountable for where your product is offered.
+
+Review who holds the Admin and Owner roles whenever your allowed jurisdictions change. On the Enterprise plan, use the audit log to confirm who changed a rule and when.
+
+### Limit access to location data with custom roles
+
+<Info>
+  Data access controls are available on the [Enterprise plan](https://radar.com/pricing).
+</Info>
+
+When the built-in roles are too broad, create a custom role in the **Roles** section of the [Organization](https://dashboard.radar.com/organization) page. A custom role sets:
+
+- A base access level: Read, Write, or Admin
+- Environment access: Test, Live, or both
+- An access level for each product area of the dashboard, from no access up to Admin
+- Geofence access by tag and by external ID, so that an account can work with only some geofences
+
+Data access controls also cover location data specifically:
+
+- **User locations**: The map and location information on the user detail page, and the user locations page.
+- **Trip locations**: The map and location information on the trip detail page, and the trip tracking dashboard.
+- **Geofence tags and geofence external IDs**: An empty list gives access to all geofences. When both lists are set, a geofence must satisfy both to be visible.
+
+Assign a custom role from the **Role** field when you invite or edit an account. Admins can create and edit custom roles. Only an Owner can delete one.
+
+### Review account activity with audit logs
+
+<Info>
+  Audit logs are available on the [Enterprise plan](https://radar.com/pricing).
+</Info>
+
+Admin and Owner accounts can view audit logs. Each entry records a request made from the dashboard with the account, project, environment, IP address, and timestamp. The dashboard shows the most recent entries, and you can export up to the most recent 100,000 entries to CSV. Contact your Radar account team if you need older entries.
+
+## Identify the users in your app
+
+Accounts are your teammates. Users are the people and devices in your app. You identify users from the SDK, not from the Organization page.
+
+<IdentifyUser />
+
+### How Radar counts users
+
+- **User record**: One exists for each unique combination of `installId`, `deviceId`, and `userId`. Each record also has a Radar-assigned `_id`, shown as **Radar ID** in the dashboard.
+- **Tracked user**: A unique user that sends one or more location events to Radar in a given period. A user record created or updated in the period counts as tracked in that period.
+- **Active user**: A unique user with an app session in a given period. A new app session starts when the app is opened and at least 5 minutes have passed since the last session started.
+
+Active and tracked counts differ because a user can open the app without sending a location, and a user with background access can send a location without opening the app. Usage statistics on the [Home](https://dashboard.radar.com) page are recalculated nightly.
+
+## Control what data Radar keeps
+
+### What the SDK collects
+
+By default the SDK collects location (latitude and longitude), device IDs, IP address, and device information. Radar also stores any user ID and metadata you choose to send. Radar doesn't collect names or email addresses by default. Don't send them.
+
+The SDK calls the Radar API over HTTPS with TLS 1.2 or later.
+
+We recommend that you:
+
+- Send only opaque IDs. Don't send names, email addresses, or publicly known identifiers as the `userId`, description, or metadata.
+- Turn on only the context types your use case needs.
+- Tell your users what you collect and why, in your permission prompts and your privacy policy. See [Explain the request before the system prompt](/fundamentals/location-permissions#explain-the-request-before-the-system-prompt).
+
+### Find and change data retention
+
+Retention settings are on the [Privacy](https://dashboard.radar.com/privacy) page, in the **Data retention** section. Any account can view them.
+
+| Data | Default retention |
+| --- | --- |
+| Users | 1 year |
+| Events | 1 year |
+| Trips | 90 days |
+| User locations | 7 days |
+| API calls | 1 year |
+
+What is a default, what is configurable, and what is account-specific:
+
+- **Default**: New projects start with the values in the table.
+- **Configurable**: On the [Enterprise plan](https://radar.com/pricing), an Owner can select a different period for each data type and click **Save**. Settings are per project and apply to both Test and Live. A change can take up to 24 hours to take effect.
+- **Account-specific**: On some accounts, retention is managed by Radar and the controls are read-only. Contact your Radar account team to change them.
+
+Choose retention to match your own obligations. A shorter period limits what you can investigate later. A longer period keeps more location history on file.
+
+### Export data
+
+- **A single user**: Export a user with their events and locations from the user detail page. Use this for data access requests.
+- **Lists**: Export locations, users, events, geofences, and trips from the dashboard. Exporting users, events, geofences, and trips requires the Write role or above.
+- **Reports**: Export a saved report, or schedule it by email. See [Create, save, and subscribe to reports](/fundamentals/testing-and-launch#create-save-and-subscribe-to-reports).
+
+Exports contain location data. Send them only to people who are permitted to see it, and store them encrypted.
+
+### Delete data
+
+- **One user**: Delete a user from the user detail page in the dashboard, or with the [Users API](/api/users). Deletion is immediate.
+- **Expired data**: Radar removes data that is older than the retention period for its type.
+
+Use the Test environment for experiments so that you never need to clean test records out of Live.
+
+## Security and compliance
+
+- Radar is SOC 2 Type II certified. Ask your Radar account team for the attestation report.
+- Radar supports CCPA and GDPR requests through the export and delete controls above. You can also forward a request to your Radar account team.
+- To report a potential vulnerability, email [security@radar.com](mailto:security@radar.com).
+
+## Verify your setup
+
+- Each teammate can sign in with their own account and sees only the projects and environments you intended.
+- Development builds use `prj_test_pk_...`. Production builds use `prj_live_pk_...`.
+- No secret key appears in client code, logs, or your repository.
+- Website and mobile restrictions list only your own domains and app IDs.
+- At least two people hold the Owner role, and the Admin list is short.
+- The Privacy page shows the retention periods you expect.
+
+Next, [request location permissions](/fundamentals/location-permissions), then [test and go live](/fundamentals/testing-and-launch).

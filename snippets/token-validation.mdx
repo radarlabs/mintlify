@@ -1,0 +1,217 @@
+Your backend makes the allow or deny decision. The client result is a hint for your UI. A value such as `passed` that arrives from the client outside a verified token can be changed by the user, so never authorize a protected action from it.
+
+Decoding a token isn't validating it. Decoding only reads the payload, and anyone can produce a payload that decodes. Validation means verifying the signature with your secret key and then checking the claims described here.
+
+### Token format and key
+
+| Property | Value |
+| --- | --- |
+| Format | A JSON Web Token in JWS compact serialization: three base64url segments separated by periods. |
+| Algorithm | `HS256` (HMAC with SHA-256). |
+| Key | Your project's JWT secret key, shown under **Fraud** on the [Settings](https://dashboard.radar.com/settings#fraud-settings) page. The same key signs and verifies, so it belongs only on your backend. |
+| Key identifier | None. The token header has no `kid`. |
+| Registered claims | `iat` (issued at) and `exp` (expiry), both in seconds since the Unix epoch. |
+| Confidentiality | The token is signed, not encrypted. The signature makes changes detectable. It doesn't hide the payload from someone who holds the token. |
+
+Store the secret key in your secret manager and load it from an environment variable. Don't ship it in a mobile app, a web bundle, or a repository.
+
+### Validation steps
+
+Run every step, in this order, for every token. Stop and deny at the first failure.
+
+| Step | Check | Performed by |
+| --- | --- | --- |
+| 1 | The token arrived on an authenticated request, so you know which user is asking. | Your code |
+| 2 | The algorithm is `HS256`. Pass an explicit allowlist so that a token with `alg` set to `none` or to another algorithm is rejected. | JWT library, when you pass the allowlist |
+| 3 | The signature verifies with your JWT secret key. | JWT library |
+| 4 | The token hasn't expired: the current time is before `exp`. | JWT library |
+| 5 | `user.userId` equals the ID of the authenticated user on this request. | Your code |
+| 6 | `product` equals the product the user is trying to use, when your project uses products. | Your code |
+| 7 | `transactionId` equals the action you are authorizing, when you passed one to the check. | Your code |
+| 8 | `user.live` is `true` in production, so that a token from the Test environment isn't accepted. | Your code |
+| 9 | `passed` is `true`. | Your code |
+
+A JWT library does steps 2 to 4 and nothing else. It knows nothing about your users, products, or actions, so steps 5 to 9 are code you write. A token that passes steps 2 to 4 is authentic. It isn't yet a decision.
+
+Notes on specific steps:
+
+- **Trusted key selection**: Select the key from your own configuration for the project and environment that the request belongs to. Don't select a key based on anything inside the token.
+- **Clock skew**: If you allow a tolerance on `exp`, keep it to a few seconds.
+- **Product result**: `passed` is the result for the product in `product`. When your project returns a `products` object, it holds one `passed` value per configured product, and you can read `products.<name>.passed` for the product you are authorizing.
+- **Replay**: Radar doesn't track whether a token has already been presented. A token stays valid until `exp`. If an action must be authorized only once, pass a `transactionId` to the check, and have your backend mark that identifier as used.
+- **Unknown fields**: The payload can gain fields. Ignore fields you don't use instead of rejecting the token.
+
+### Example: Node.js
+
+This example uses the [`jose`](https://github.com/panva/jose) library, which verifies the signature, the algorithm allowlist, and `exp`. The remaining checks are explicit.
+
+```javascript Node.js
+import { jwtVerify, errors } from 'jose';
+
+// Load the secret from your environment. Never hardcode it.
+const secret = new TextEncoder().encode(process.env.RADAR_JWT_SECRET_KEY);
+
+/**
+ * @param {string} token Geolocation token sent by the client
+ * @param {{ userId: string, product?: string, transactionId?: string, requireLive: boolean }} expected
+ *   Values from your own session and request, not from the client payload
+ * @returns {Promise<{ decision: 'allow' | 'deny' | 'retry', reasons: string[], expiresAt?: Date }>}
+ */
+export async function validateGeolocationToken(token, expected) {
+  let payload;
+
+  try {
+    // Library checks: signature, HS256 only, and exp.
+    ({ payload } = await jwtVerify(token, secret, {
+      algorithms: ['HS256'],
+      clockTolerance: 5, // seconds
+    }));
+  } catch (err) {
+    if (err instanceof errors.JWTExpired) {
+      // Authentic but stale. Ask the client to run a new check.
+      return { decision: 'retry', reasons: ['token_expired'] };
+    }
+    // Bad signature, wrong algorithm, or malformed token.
+    return { decision: 'deny', reasons: ['token_invalid'] };
+  }
+
+  // Application checks.
+  if (!payload.user || payload.user.userId !== expected.userId) {
+    return { decision: 'deny', reasons: ['user_mismatch'] };
+  }
+
+  if (expected.product && payload.product !== expected.product) {
+    return { decision: 'deny', reasons: ['product_mismatch'] };
+  }
+
+  if (expected.transactionId && payload.transactionId !== expected.transactionId) {
+    return { decision: 'deny', reasons: ['transaction_mismatch'] };
+  }
+
+  if (expected.requireLive && payload.user.live !== true) {
+    return { decision: 'deny', reasons: ['wrong_environment'] };
+  }
+
+  if (payload.passed !== true) {
+    // Authentic token, failed check. Return the reasons so the client can explain.
+    return { decision: 'deny', reasons: payload.failureReasons ?? [] };
+  }
+
+  return {
+    decision: 'allow',
+    reasons: [],
+    expiresAt: new Date(payload.exp * 1000),
+  };
+}
+```
+
+Call it from an authenticated route and take the expected values from the session:
+
+```javascript Node.js
+app.post('/api/wagers', requireSession, async (req, res) => {
+  const result = await validateGeolocationToken(req.body.geolocationToken, {
+    userId: req.session.userId,
+    product: 'sportsbook',
+    requireLive: process.env.NODE_ENV === 'production',
+  });
+
+  if (result.decision !== 'allow') {
+    return res.status(403).json({ decision: result.decision, reasons: result.reasons });
+  }
+
+  // Place the wager.
+});
+```
+
+### Example: Python
+
+This example uses [PyJWT](https://pyjwt.readthedocs.io), which verifies the signature, the algorithm allowlist, and `exp`. The remaining checks are explicit.
+
+```python Python
+import os
+from datetime import datetime, timezone
+
+import jwt  # PyJWT
+
+SECRET = os.environ["RADAR_JWT_SECRET_KEY"]
+
+
+def validate_geolocation_token(token, user_id, product=None, transaction_id=None, require_live=True):
+    try:
+        # Library checks: signature, HS256 only, and exp.
+        payload = jwt.decode(
+            token,
+            SECRET,
+            algorithms=["HS256"],
+            leeway=5,
+            options={"require": ["exp", "iat"]},
+        )
+    except jwt.ExpiredSignatureError:
+        return {"decision": "retry", "reasons": ["token_expired"]}
+    except jwt.InvalidTokenError:
+        return {"decision": "deny", "reasons": ["token_invalid"]}
+
+    # Application checks.
+    user = payload.get("user") or {}
+
+    if user.get("userId") != user_id:
+        return {"decision": "deny", "reasons": ["user_mismatch"]}
+
+    if product and payload.get("product") != product:
+        return {"decision": "deny", "reasons": ["product_mismatch"]}
+
+    if transaction_id and payload.get("transactionId") != transaction_id:
+        return {"decision": "deny", "reasons": ["transaction_mismatch"]}
+
+    if require_live and user.get("live") is not True:
+        return {"decision": "deny", "reasons": ["wrong_environment"]}
+
+    if payload.get("passed") is not True:
+        return {"decision": "deny", "reasons": payload.get("failureReasons", [])}
+
+    return {
+        "decision": "allow",
+        "reasons": [],
+        "expiresAt": datetime.fromtimestamp(payload["exp"], tz=timezone.utc),
+    }
+```
+
+### Allow, deny, and retry
+
+| Situation | Decision | What the client does |
+| --- | --- | --- |
+| All steps pass | Allow | Proceed. Schedule the next check before the returned expiry. |
+| No token on the request | Deny | Run a check and resend. |
+| Signature, algorithm, or format is invalid | Deny | Don't retry with the same token. Log the event on your backend. |
+| Token expired | Retry | Run a new check and resend. |
+| `user.userId` doesn't match the session user | Deny | Call `Radar.setUserId()` with the signed-in user, then run a new check. |
+| `product` or `transactionId` doesn't match | Deny | Set the correct product or transaction, then run a new check. |
+| `passed` is `false` | Deny | Show a message based on `failureReasons`. Let the user correct the cause and run a new check. |
+| `passed` is `true` and `warningReasons` isn't empty | Allow | Proceed. Warnings don't fail a check. Record them if your own policy uses them. |
+| The client check returned an error and no token | Deny | Handle the client error and run a new check. A technical error isn't a failed check, and it isn't a pass. |
+
+Fail closed. When your backend can't validate a token, including when your own validation code throws, deny the action.
+
+### Change the secret key
+
+The token header has no key identifier, so your backend can't pick a key per token. If your project's JWT secret key is replaced, tokens signed with the previous key stop verifying once your backend loads the new key. To avoid rejecting tokens during the change, configure both keys for a short overlap, try the current key first, then the previous key, and remove the previous key after the longest token lifetime has elapsed.
+
+### Negative tests
+
+Cover each of these in your backend tests. Sign test tokens with a test-only secret.
+
+| Fixture | Expected result |
+| --- | --- |
+| Valid token, `passed` is `true`, matching user and product | Allow |
+| Valid token, `passed` is `false` with `failureReasons` | Deny with reasons |
+| Valid token, `passed` is `true` with `warningReasons` | Allow |
+| Token signed with a different secret | Deny |
+| Token with `alg` set to `none`, or with the signature removed | Deny |
+| Token with one payload character changed | Deny |
+| Token with `exp` in the past | Retry |
+| Valid token for `user-456` presented in a `user-123` session | Deny |
+| Valid token for `casino` presented for a `sportsbook` action | Deny |
+| Valid token with `user.live` set to `false` presented in production | Deny |
+| No token | Deny |
+
+For the full payload, see [Geolocation token schema](/api/geolocation-tokens).

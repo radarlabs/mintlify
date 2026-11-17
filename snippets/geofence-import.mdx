@@ -1,0 +1,103 @@
+A geofence is identified by its `tag` (a group you choose, such as `store`) and its `externalId` (your own ID for the location, such as `store-42`). Every import path below upserts on that pair: if a geofence with the same `tag` and `externalId` exists, Radar updates it. If not, Radar creates it. To change a location's shape, metadata, or enabled state, send it again with the same `tag` and `externalId`.
+
+Geofences live in one environment. Import into Test while you build, then import the same data into Live for production.
+
+| Method | Use it when |
+| --- | --- |
+| [Dashboard](#dashboard) | You are creating a few geofences by hand, or drawing a polygon. |
+| [CSV import](#csv-import) | You are loading your location list for the first time, or making an occasional bulk change. |
+| [API](#api) | Your backend creates or changes locations and updates Radar at the same moment. |
+| [Geofence sync](#geofence-sync) | You can publish a CSV of all locations and want Radar to pick up changes every night. |
+
+### Dashboard
+
+1. Open the [Geofences](https://dashboard.radar.com/geofencing/geofences) page and click **Create**.
+2. Optionally search for an address or place to center the map.
+3. Enter a description, tag, external ID, and any metadata.
+4. Select **circle**, **polygon**, or **isochrone** (a time-based shape: the area within a given travel time of a point), then set the radius or draw the shape.
+5. Click **Create**. The geofence appears in the list on the Geofences page with the tag and external ID you entered.
+
+### CSV import
+
+On the [Geofences](https://dashboard.radar.com/geofencing/geofences) page, click **Import** and select a CSV file. The first row must be a header row. When the import finishes, open the [import history](https://dashboard.radar.com/geofencing/geofences/imports) page to see how many rows succeeded and the error for each row that failed.
+
+Required columns:
+
+| Column | Type | Description |
+| --- | --- | --- |
+| `description` | string | A display name for the geofence, such as `Store 42`. |
+| `tag` | string | A group for the geofence, such as `store`. |
+| `externalId` | string | Your ID for the location. Unique within the tag. |
+| `type` | string | `circle`, `polygon`, or `isochrone`. |
+| `coordinates` | array | Required unless `address` or `placeId` is set. For `circle` and `isochrone`, the center as `[longitude,latitude]`. For `polygon`, a closed ring of 4 to 2,000 points as `[[longitude0,latitude0],[longitude1,latitude1],...,[longitude0,latitude0]]`. |
+| `address` | string | Required unless `coordinates` or `placeId` is set. Radar geocodes the address and uses the result as the center of a `circle` or `isochrone`. If you send both `address` and `coordinates`, they must be near each other and `coordinates` wins. Ignored for `polygon`. |
+| `radius` | number | Required for `circle` and `isochrone`. For `circle`, the radius in meters, from `10` to `10000`. For `isochrone`, the travel time in minutes. Ignored for `polygon`. |
+| `mode` | string | Required for `isochrone`. The travel mode, such as `car` or `foot`. |
+
+<Note>
+  Longitude comes before latitude in `coordinates`. This is the GeoJSON order, and it is the most common cause of geofences that import without errors but appear in the wrong place.
+</Note>
+
+Optional columns:
+
+| Column | Type | Description |
+| --- | --- | --- |
+| `enabled` | boolean | If `false`, the geofence stays in your project but generates no events. Defaults to `true`. |
+| `metadata` | dictionary | A JSON string with up to 16 keys and values of type string, boolean, or number. Returned on user context and on every event for this geofence. Can't be combined with `metadata.{key}` columns. |
+| `metadata.{key}` | string | One column per metadata key, as an alternative to a JSON string. A column named `metadata.pickupMode` with the value `curbside` becomes `"pickupMode": "curbside"`. Avoid spaces and commas in keys. Can't be combined with the `metadata` column. |
+| `operatingHours` | dictionary | A JSON string keyed by day (`Sunday` or `Sun`, case insensitive). Each value is a list of open and close pairs, such as `{"Sun": [["11:00", "14:00"], ["19:00", "22:00"]]}`. Times use `HH:mm` or `h:mm aa`. If omitted, the geofence is always open. Can't be combined with `operatingHours.{day}` columns. |
+| `operatingHours.{day}` | string | One column per day, such as `operatingHours.sunday`, as an alternative to a JSON string. Can't be combined with the `operatingHours` column. |
+| `stopDetection` | boolean | Overrides the project-level stop detection setting for this geofence. |
+| `dwellThreshold` | number | Minutes a user must stay inside before Radar generates `user.dwelled_in_geofence`. Requires that event type to be enabled for the project. |
+| `disableAfter` | datetime | An ISO 8601 date after which the geofence is disabled. Use it for temporary geofences. |
+| `deleteAfter` | datetime | An ISO 8601 date after which the geofence is deleted. |
+| `userIds` | string | Comma-separated user IDs. If set, only those users generate events for this geofence. |
+| `ip` | string | Comma-separated IP addresses or ranges (`203.0.113.7`, `203.0.113.*`, or `203.0.113.0/24`). If set, only requests from those addresses generate events for this geofence. |
+| `placeId` | string | The `_id` of a Radar place to match this geofence to. Can stand in for `coordinates` and `address`. |
+
+This example imports a store, a larger geofence around the same store, a polygon, and a geofence created from an address:
+
+```text
+description,tag,externalId,type,radius,coordinates,address,enabled,metadata
+"Store 42",store,store-42,circle,100,"[-73.975363,40.783826]",,true,"{""curbside"":true}"
+"Near Store 42",nearby,store-42,circle,1000,"[-73.975363,40.783826]",,true,"{""curbside"":true}"
+"Example neighborhood",neighborhood,example-1,polygon,,"[[-73.996973,40.725660],[-74.001072,40.727660],[-74.004998,40.723530],[-73.999827,40.718016],[-73.996973,40.725660]]",,true,
+"Store 43",store,store-43,circle,100,,"20 Jay St, Brooklyn, NY 11201",true,
+```
+
+### API
+
+Call the upsert endpoint from your backend when a location is created, changed, or closed. Authenticate with a secret key, and keep that key on your backend.
+
+```bash
+curl "https://api.radar.io/v1/geofences/store/store-42" \
+  -X PUT \
+  -H "Authorization: prj_test_sk_..." \
+  -d "description=Store 42" \
+  -d "type=circle" \
+  -d "coordinates=[-73.975363,40.783826]" \
+  -d "radius=100"
+```
+
+The path is `/v1/geofences/:tag/:externalId`. A successful response returns the stored geofence. To stop a closed location from generating events without deleting it, send the same request with `enabled=false`. For every field and the delete and list operations, see the [Geofences API](/api/geofences).
+
+### Geofence sync
+
+Geofence sync reads a CSV from a location you control and upserts its rows once a night. The file uses the same columns as [CSV import](#csv-import).
+
+1. Open the [Integrations](https://dashboard.radar.com/integrations) page and find **Geofence Sync**.
+2. Set **Enabled** to **Yes**.
+3. Enter a **Notification Email**. Radar emails that address after each sync with the result.
+4. Select a **Protocol**:
+   - **HTTP**: enter the URL of a CSV that is reachable over public HTTP or HTTPS.
+   - **AWS S3**: enter the bucket region, bucket name, and object key of a CSV in a private bucket, plus the access key ID and secret access key of an IAM user that has `GetObject` permission on that object.
+5. Enter a file for Test, for Live, or for both. The two environments sync from separate files.
+6. Click **Save and Sync**. Radar runs one sync immediately, emails the result, and then syncs nightly.
+
+To verify, check the notification email, then open the [Geofences](https://dashboard.radar.com/geofencing/geofences) page and confirm that a location you changed in the file shows the new values.
+
+<Note>
+  Sync and import both upsert. Rows missing from the file aren't deleted.
+</Note>
+
+To retire a location, keep its row in the file and set `enabled` to `false`, or delete the geofence in the dashboard or with the API.

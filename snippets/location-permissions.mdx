@@ -1,0 +1,178 @@
+Request location access in two separate steps: foreground first, then background only if a feature needs it. Don't start Radar tracking until the operating system has reported the user's choice.
+
+<Steps>
+  <Step title="Declare the permissions you request">
+    On iOS, add `NSLocationWhenInUseUsageDescription` to `Info.plist`. Add `NSLocationAlwaysAndWhenInUseUsageDescription` as well if you request background access. A request fails immediately if its key is missing.
+
+    On Android, the Radar SDK manifest already declares `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION`. Add `ACCESS_BACKGROUND_LOCATION` to your own manifest only if you request background access.
+  </Step>
+  <Step title="Request foreground access when the user reaches a location feature">
+    Show your own short explanation first, then trigger the system prompt. On Android, request `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` together in one request.
+  </Step>
+  <Step title="Wait for the result">
+    Both platforms deliver the result asynchronously. Read the new status in the callback, then start the foreground feature, for example `Radar.trackOnce()`.
+  </Step>
+  <Step title="Request background access later, and only if you need it">
+    After foreground access is granted and the user opts in to a feature that needs it, explain the benefit and request background access as its own step. Never combine it with the foreground request.
+  </Step>
+  <Step title="Start background tracking after the status is known">
+    Call `Radar.startTracking()` from the authorization callback once the status you need is confirmed. If the user declines, keep the foreground features working.
+  </Step>
+</Steps>
+
+The examples below implement the foreground and background requests on each platform.
+
+<Tabs>
+  <Tab title="Swift">
+    This example targets iOS 15 or later.
+
+    ```swift
+    import CoreLocation
+    import RadarSDK
+
+    final class LocationPermissionController: NSObject, CLLocationManagerDelegate {
+        private let locationManager = CLLocationManager()
+
+        override init() {
+            super.init()
+            locationManager.delegate = self
+        }
+
+        // Call when the user continues from your foreground explanation.
+        func requestForeground() {
+            if locationManager.authorizationStatus == .notDetermined {
+                locationManager.requestWhenInUseAuthorization()
+            }
+        }
+
+        // Call when the user continues from your background explanation.
+        func requestBackground() {
+            if locationManager.authorizationStatus == .authorizedWhenInUse {
+                locationManager.requestAlwaysAuthorization()
+            }
+        }
+
+        // Called when the manager is created, when the user answers a prompt,
+        // and when the user changes the setting later.
+        func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+            switch manager.authorizationStatus {
+            case .authorizedAlways:
+                Radar.startTracking(trackingOptions: .presetResponsive)
+            case .authorizedWhenInUse:
+                Radar.trackOnce { status, location, events, user in
+                    // Update the foreground experience.
+                }
+            case .denied, .restricted:
+                Radar.stopTracking()
+                // Show the foreground-only or no-location experience.
+            case .notDetermined:
+                break
+            @unknown default:
+                break
+            }
+        }
+    }
+    ```
+  </Tab>
+  <Tab title="Kotlin">
+    This example uses the AndroidX Activity Result APIs.
+
+    ```kotlin
+    import android.Manifest
+    import android.content.pm.PackageManager
+    import android.os.Build
+    import androidx.activity.result.contract.ActivityResultContracts
+    import androidx.appcompat.app.AppCompatActivity
+    import androidx.core.content.ContextCompat
+    import io.radar.sdk.Radar
+    import io.radar.sdk.RadarTrackingOptions
+
+    class MainActivity : AppCompatActivity() {
+
+        private val foregroundRequest = registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { grants ->
+            val granted = grants[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            if (granted) {
+                Radar.trackOnce { status, location, events, user ->
+                    // Update the foreground experience.
+                }
+            } else {
+                // Show the no-location experience.
+            }
+        }
+
+        private val backgroundRequest = registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            if (granted) {
+                Radar.startTracking(RadarTrackingOptions.RESPONSIVE)
+            } else {
+                // Keep the foreground-only experience.
+            }
+        }
+
+        // Call when the user continues from your foreground explanation.
+        fun requestForeground() {
+            foregroundRequest.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+
+        // Call when the user continues from your background explanation.
+        fun requestBackground() {
+            val hasForeground = ContextCompat.checkSelfPermission(
+                this, Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (hasForeground && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                backgroundRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            }
+        }
+    }
+    ```
+
+    On Android 11 and later, the background request sends the user to your app's location settings page, where they choose **Allow all the time**. The result arrives when they return to the app.
+  </Tab>
+  <Tab title="React Native">
+    `Radar.requestPermissions(background)` resolves with `GRANTED_FOREGROUND`, `GRANTED_BACKGROUND`, `DENIED`, `NOT_DETERMINED`, or `UNKNOWN`. Complete the native declarations in step 1 in the `ios` and `android` projects first.
+
+    ```javascript
+    import Radar from 'react-native-radar';
+
+    // Call when the user continues from your foreground explanation.
+    export async function requestForeground() {
+      const status = await Radar.requestPermissions(false);
+      return status === 'GRANTED_FOREGROUND' || status === 'GRANTED_BACKGROUND';
+    }
+
+    // Call later, when the user continues from your background explanation.
+    export async function requestBackground() {
+      const status = await Radar.requestPermissions(true);
+      return status === 'GRANTED_BACKGROUND';
+    }
+    ```
+  </Tab>
+  <Tab title="Flutter">
+    `Radar.getPermissionsStatus()` returns the status as a string: `GRANTED_FOREGROUND`, `GRANTED_BACKGROUND`, `DENIED`, or `NOT_DETERMINED`. Complete the native declarations in step 1 in the `ios` and `android` projects first.
+
+    ```dart
+    import 'package:flutter_radar/flutter_radar.dart';
+
+    // Call when the user continues from your foreground explanation.
+    Future<bool> requestForeground() async {
+      await Radar.requestPermissions(false);
+      final status = await Radar.getPermissionsStatus();
+      return status == 'GRANTED_FOREGROUND' || status == 'GRANTED_BACKGROUND';
+    }
+    ```
+
+    Request background access as a separate, later step, after `requestForeground()` returns `true`. See the [Flutter SDK reference](/sdk/flutter) for the background request on each platform.
+  </Tab>
+</Tabs>
+
+For which features need which permission, what to do after a denial, and how an active trip keeps tracking with foreground access only, see [Understand foreground and background location permissions](/fundamentals/location-permissions).
