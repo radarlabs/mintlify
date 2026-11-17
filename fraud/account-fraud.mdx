@@ -1,0 +1,253 @@
+---
+title: "Prevent account takeover, new account fraud, and promo abuse"
+sidebarTitle: "Account fraud"
+description: "Assess device and network risk at login, during a session, at registration, and at promotion redemption, and read the signed result on your backend."
+---
+
+By the end of this guide, your app runs a device and network risk assessment at login, when a session continues, at registration, and at promotion redemption. Your backend verifies each signed result and reads Radar's risk level and the signals behind it. The call and the validation are the same everywhere. Only the moment and the fields you look at change.
+
+## Complete example
+
+This is the client side of every checkpoint. `sendRiskToken` is the function you write that posts the token and the checkpoint name to your backend.
+
+<CodeGroup>
+
+```swift Swift
+import RadarSDK
+
+// At app launch
+Radar.initialize(publishableKey: "prj_test_pk_...")
+
+// After you authenticate the user, or after you create the account
+Radar.setUserId("user-123")
+
+// At each checkpoint: "login", "session", "account_change", "registration", or "promo_redemption"
+func assessRisk(at checkpoint: String) {
+  Radar.revealRisk { status, risk in
+    // A nil token tells your backend that the risk is unknown.
+    let riskToken = status == .success ? risk?.token : nil
+    sendRiskToken(riskToken, checkpoint: checkpoint)
+  }
+}
+```
+
+```kotlin Kotlin
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarInitializeOptions
+
+// In Application.onCreate()
+Radar.initialize(
+  context = this,
+  publishableKey = "prj_test_pk_...",
+  options = RadarInitializeOptions(fraud = true)
+)
+
+// After you authenticate the user, or after you create the account
+Radar.setUserId("user-123")
+
+// At each checkpoint: "login", "session", "account_change", "registration", or "promo_redemption"
+fun assessRisk(checkpoint: String) {
+  Radar.revealRisk { status, risk ->
+    // A null token tells your backend that the risk is unknown.
+    val riskToken = if (status == Radar.RadarStatus.SUCCESS) risk?.token else null
+    sendRiskToken(riskToken, checkpoint)
+  }
+}
+```
+
+```javascript JavaScript
+import Radar from 'radar-sdk-js';
+import { createFraudPlugin } from '@radarlabs/plugin-fraud';
+
+// When the page loads
+Radar.registerPlugin(createFraudPlugin());
+Radar.initialize('prj_test_pk_...');
+
+// After you authenticate the user, or after you create the account
+Radar.setUserId('user-123');
+
+// At each checkpoint: 'login', 'session', 'account_change', 'registration', or 'promo_redemption'
+async function assessRisk(checkpoint) {
+  let riskToken = null;
+  try {
+    riskToken = (await Radar.fraud.revealRisk()).token ?? null;
+  } catch (err) {
+    // The assessment didn't complete. Your backend treats the risk as unknown.
+  }
+  return sendRiskToken(riskToken, checkpoint);
+}
+```
+
+```javascript React Native
+import Radar from 'react-native-radar';
+
+// At app launch. The second argument turns on fraud detection.
+Radar.initialize('prj_test_pk_...', true);
+
+// After you authenticate the user, or after you create the account
+Radar.setUserId('user-123');
+
+// At each checkpoint: 'login', 'session', 'account_change', 'registration', or 'promo_redemption'
+async function assessRisk(checkpoint) {
+  let riskToken = null;
+  try {
+    riskToken = (await Radar.revealRisk()).token?.token ?? null;
+  } catch (err) {
+    // The assessment didn't complete. Your backend treats the risk as unknown.
+  }
+  return sendRiskToken(riskToken, checkpoint);
+}
+```
+
+</CodeGroup>
+
+Your backend verifies the token with your project's JWT secret key, ties it to the session, and reads the result. `requireSession` and `sessions` are your own session middleware and store.
+
+<CodeGroup>
+
+```javascript Node.js
+import express from 'express';
+import { jwtVerify } from 'jose';
+
+const app = express();
+app.use(express.json());
+
+const secret = new TextEncoder().encode(process.env.RADAR_JWT_SECRET_KEY);
+
+app.post('/api/risk', requireSession, async (req, res) => {
+  const { checkpoint, riskToken } = req.body;
+
+  let assessment;
+  try {
+    // Checks the signature and the expiry, and accepts HS256 only.
+    ({ payload: assessment } = await jwtVerify(riskToken ?? '', secret, {
+      algorithms: ['HS256'],
+    }));
+  } catch (err) {
+    // Missing, changed, or expired. The risk is unknown, not low.
+    await sessions.recordRisk(req.session.id, { checkpoint, level: null });
+    return res.json({ riskLevel: null, riskReasons: [] });
+  }
+
+  // The token has no user ID. Tie it to this session, and accept each assessment once.
+  const firstUse = await sessions.recordRisk(req.session.id, {
+    checkpoint,
+    assessmentId: assessment.jti,
+    level: assessment.risk.level,
+    reasons: assessment.risk.reasons,
+    privacy: assessment.network?.privacy,
+    deviceId: assessment.device?.deviceId,
+  });
+  if (!firstUse) {
+    return res.status(409).json({ error: 'risk_token_reused' });
+  }
+
+  res.json({ riskLevel: assessment.risk.level, riskReasons: assessment.risk.reasons });
+});
+```
+
+</CodeGroup>
+
+## Prerequisites
+
+- The device and network risk assessment must be enabled for your project. Contact your Radar account team.
+- The Radar SDK and fraud plugin for your platform. See [Fraud plugin setup](/sdk/fraud). `Radar.revealRisk()` requires iOS SDK 3.38.0 or later, Android SDK 3.35.0 or later, `@radarlabs/plugin-fraud` 1.4.0 or later, or React Native SDK 4.36.0 or later.
+- A Test publishable key in your app, and the project's JWT secret key on your backend only. See [Choose the right API key](/fundamentals/authentication-and-access#choose-the-right-api-key).
+- A stable, opaque ID for each account in your own system. Don't use an email address or a phone number.
+
+## Assess risk on the client
+
+Call `Radar.revealRisk()` at each checkpoint and send the signed `token` to your backend with the checkpoint name. The call doesn't request location permission and doesn't need a user ID, so it works before an account exists.
+
+The token is optional in every SDK model. When the call fails or returns no token, still call your backend without one, so your backend records the risk as unknown instead of never hearing about the checkpoint.
+
+Call `Radar.setUserId()` with your account ID after you authenticate the user, or as soon as your backend creates the account. The `userId` is nullable. See [Handle login, logout, and user switching](/fundamentals/authentication-and-access#handle-login-logout-and-user-switching).
+
+## Verify the token and read the result on your backend
+
+The risk token is a JSON Web Token signed with `HS256` and your project's JWT secret key. Verify the signature and the expiry before you read any field, and accept `HS256` only, as the `/api/risk` route does. Never act on a risk level that your app sends outside a verified token.
+
+Then read `risk.level`, which is one of `none`, `low`, `medium`, or `high`, and `risk.reasons`, which lists the signals found. `network.privacy` and `network.asn` carry the detail behind a network signal, and `device.deviceId` identifies the device. For every field, see [Read the result](/fraud/overview#read-the-result).
+
+A risk level isn't a probability of fraud, and there is no universal level at which to block. Choose what each level means at each checkpoint, and review that choice against recorded outcomes.
+
+## Bind the token to the request and record it once
+
+The risk token carries no user ID. Your backend knows whose assessment it is only from the request that delivered it:
+
+- At login, during a session, and at redemption, accept the token only on an authenticated request, and store the result against that session's user.
+- At registration, no account exists yet. Accept the token with the registration request, and store the assessment ID and `device.deviceId` with the account you create.
+- Record the token's `jti` claim, which equals the assessment `_id`, with a unique constraint, and reject a `jti` you have already recorded.
+
+## Read the fields for your scenario
+
+Each scenario runs the same assessment at a different moment.
+
+| Scenario | When to run the assessment | Fields to read | What an app typically does |
+| --- | --- | --- | --- |
+| Login (account takeover) | After you verify credentials and before you treat the session as fully trusted | `risk.level`, `risk.reasons`, `network.privacy`, and whether `device.deviceId` is one you stored for this user | Continues on `none` or `low`. On `medium` or `high`, or with no valid token, asks for another authentication factor. |
+| Session continuation or sensitive account action (account sharing) | When the app returns to the foreground after a long gap, and before a change of email, password, phone number, or payout details | `risk.level`, `risk.reasons`, and the set of `device.deviceId` values you stored for this user | Records the result during a session. Before a sensitive change, asks for another factor or a [verified location check](/fraud/risky-transactions). For sharing, limits concurrent sessions or asks the user to sign in again. |
+| Registration (new account fraud and multi-accounting) | When the user submits the registration form, before you create the account | `risk.level`, `risk.reasons`, `network.privacy`, and `device.deviceId` against your earlier registrations | Creates the account on `none` or `low`. On `medium` or `high`, asks for phone or document verification, or holds promotions and payouts for review. Doesn't refuse only because the assessment was unavailable. |
+| Promotion redemption (promo abuse) | Before your backend grants the promotion | `risk.level`, `risk.reasons`, and `device.deviceId` against earlier redemptions of the same promotion | Grants from your backend, at most once. Holds a redemption with a second signal for review. |
+
+A new device, several devices for one user, several users on one device, or a shared network is context, not proof. People replace phones, households share devices, and offices put many people behind one IP address, so don't block on one of these alone.
+
+Signals that depend on the user ID or on location come only from a verified location check: `user.fraud.devicesForThisUser`, `user.fraud.usersForThisDevice`, `user.fraud.mocked`, and the `fraud_jumped_multiple_devices` failure reason. To add one at a checkpoint, see [Detect risky transactions and verify precise location](/fraud/risky-transactions). Compare `device.deviceId` values only with other values from risk assessments.
+
+When an outcome is confirmed, record it as a label with the [Labels API](/api/labels).
+
+## Handle results and errors
+
+| Result or error | What it means | What to do |
+| --- | --- | --- |
+| `risk.level` is `none` or `low` | Radar found no signals, or weak ones, on this device and network. | Continue. |
+| `risk.level` is `medium` or `high` | Radar found more, or stronger, signals. `risk.reasons` says which. | Apply the follow-up you chose for this checkpoint. |
+| The assessment didn't complete in your app | The status isn't success, the promise rejects, or there is no `token`. | Send the checkpoint with no token. The risk is unknown, not low. |
+| The token fails verification | It is missing, changed, or expired. | Record the risk as unknown. Don't read or store its contents. |
+| The `jti` was already recorded | The token was sent twice. | Respond with `409`. Your app runs a new assessment. |
+| A reason you don't recognize | Some reasons aren't published. | Record it without failing. |
+
+## Test the integration
+
+Use Test keys and dedicated test accounts.
+
+- **Passing case**: Sign in as `test-user-123` on a normal network. Confirm that your backend records a risk level and an assessment ID for the session.
+- **Failing case**: Send the checkpoint with a token that has one character changed, and confirm that your backend records a level of `null`. Then send a valid token twice, and confirm that the second request returns `409`.
+
+To see signals, repeat the passing case while connected to a commercial VPN, and confirm that `network.privacy.vpn` is `true` or that `risk.reasons` isn't empty. For more, see [Test, troubleshoot, and go live](/fundamentals/testing-and-launch).
+
+## Production checklist
+
+- [ ] The risk token is verified on your backend with the JWT secret key and an explicit `HS256` allowlist.
+- [ ] The token is accepted only on an authenticated request or a registration request, and each `jti` is recorded once.
+- [ ] A missing or invalid risk token is recorded as unknown risk, not as no risk.
+- [ ] No code path blocks on a new device, a device count, a user count, or a shared network alone.
+- [ ] What your product does at each risk level was chosen for each checkpoint.
+- [ ] Production builds use a Live publishable key, and the token isn't written to logs.
+
+## Build with an agent
+
+Copy this prompt into a coding agent that has access to your repository.
+
+```text
+Add Radar risk assessment at login, session continuation, sensitive account
+actions, registration, and promotion redemption in this repository.
+Read https://docs.radar.com/fraud/account-fraud.md, then
+https://docs.radar.com/fraud/overview.md and https://docs.radar.com/sdk/fraud.md.
+Client: call Radar.revealRisk() at each checkpoint and send the signed token to
+the backend, or no token when the call fails.
+Backend: verify the token with the project JWT secret key (HS256 only, expiry),
+accept it only on an authenticated or registration request, and record jti once.
+Ask me what the product does at each checkpoint for a medium or high risk.level.
+Never put the JWT secret key in client code. Don't invent methods or fields.
+Add backend tests: a valid token is recorded, a missing or tampered token is
+recorded as unknown risk, and a token sent twice is rejected.
+```
+
+## See also
+
+- [Fraud overview and quickstart](/fraud/overview)
+- [Detect risky transactions and verify precise location](/fraud/risky-transactions)
+- [Fraud plugin setup](/sdk/fraud)
+- [Fraud API](/api/fraud)
+- [Labels API](/api/labels)
