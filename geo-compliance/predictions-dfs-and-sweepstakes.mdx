@@ -1,0 +1,349 @@
+---
+title: "Verify location eligibility for predictions, DFS, and sweepstakes"
+sidebarTitle: "Predictions, DFS, and sweepstakes"
+description: "Run verified location checks for prediction markets, daily fantasy sports, and sweepstakes products, and enforce the result on your backend."
+---
+
+import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
+import IdentifyUser from '/snippets/identify-user.mdx';
+import LocationPermissions from '/snippets/location-permissions.mdx';
+import VerifiedCheck from '/snippets/verified-check.mdx';
+import CheckResults from '/snippets/check-results.mdx';
+import TokenValidation from '/snippets/token-validation.mdx';
+import TestBlockBypass from '/snippets/test-block-bypass.mdx';
+
+At the end of this guide, your app runs a verified location check when a user is about to enter a contest, place a trade, make a purchase, or redeem a prize, and your backend allows or denies that action from a geolocation token it has validated.
+
+Your backend returns one decision per protected request. The examples on this page use this response shape:
+
+```json
+{
+  "decision": "allow",
+  "reasons": [],
+  "expiresAt": "2026-11-17T18:20:00.000Z"
+}
+```
+
+This guide is complete without the sportsbooks and casinos guide. It uses the same check, token, and validation code, and explains what you configure and time differently.
+
+## Build with an agent
+
+Copy this prompt into a coding agent that has access to your repository.
+
+```text
+Implement Radar verified location checks for a prediction market, daily fantasy
+sports, or sweepstakes product in this repository using the current Radar
+documentation.
+
+First inspect the application framework, platform versions, existing Radar code,
+authentication flow, and tests. Identify every action that must be restricted by
+location (for example contest entry, trade, purchase, redemption) and list them
+for me before you change code. Preserve existing behavior outside this task.
+
+Read:
+- https://docs.radar.com/geo-compliance/predictions-dfs-and-sweepstakes.md
+- https://docs.radar.com/sdk/fraud.md
+- https://docs.radar.com/api/geolocation-tokens.md
+- The SDK reference for this platform: https://docs.radar.com/sdk/ios.md,
+  https://docs.radar.com/sdk/android.md, or https://docs.radar.com/sdk/web.md
+
+Implement, as documented:
+- SDK and fraud plugin setup with a publishable key from an environment variable.
+- Radar.setUserId() with the authenticated user ID, cleared on logout.
+- Radar.setProduct() when the project has more than one product.
+- A check with Radar.trackVerified() (Radar.fraud.trackVerified() on web) at
+  each restricted action, with a reason, reusing a result only until its
+  returned expiry. One check in flight at a time.
+- A backend validator that verifies the HS256 signature with the project's JWT
+  secret key from an environment variable, enforces an algorithm allowlist and
+  expiry, and then checks user.userId against the session user, product when
+  used, transactionId when used, user.live in production, and passed.
+- Separate handling for a failed check (token with passed false) and a
+  technical error (error status, no token). Fail closed in both cases.
+
+Do not authorize any action from a client-supplied passed value. Do not invent
+methods, fields, supported platforms, or defaults. On web, ask me whether to use
+the companion app path or the no-download path before you choose. Do not assume
+which states or countries are allowed. Ask me for the list per product.
+
+Add backend tests for: valid token, failed eligibility, tampered token, expired
+token, wrong user, wrong product, test-environment token in production, and
+missing token. Add a client test that a restricted action with an expired
+result triggers exactly one new check.
+
+Run the repository's relevant checks. Report changed files, test results,
+required dashboard setup (products, country and state lists, test block rule),
+and anything that still needs confirmation. Do not change production settings
+or deploy without approval.
+```
+
+## Prerequisites
+
+- **Access**: Fraud is enabled for your project under **Fraud** on the [Settings](https://dashboard.radar.com/settings#fraud-settings) page of the Radar dashboard.
+- **Platform**: iOS, Android, React Native, or web. Use a Radar SDK and fraud plugin pair from the [compatibility table](/sdk/fraud#compatibility).
+- **SDK versions**: The examples use iOS SDK 3.46.0, Android SDK 4.3.0, and Web SDK 5.3.0 with `@radarlabs/plugin-fraud` 1.6.1.
+- **Platform setup**: The fraud plugin is installed. See [Fraud plugin setup](/sdk/fraud).
+- **Keys**: A Test publishable key for your app and your project's JWT secret key for your backend.
+- **Backend**: An authenticated endpoint for each restricted action, and a JWT library that supports `HS256`.
+- **Permissions**: Foreground location permission on the device.
+- **Footprint**: A written list, per product, of the countries and states where the product is allowed or blocked.
+- **Dashboard access**: An account that can view locations and create block rules in the Test environment. See [Roles and what each can do](/fundamentals/authentication-and-access#roles-and-what-each-can-do).
+
+## How it works
+
+| Party | Responsibility |
+| --- | --- |
+| Your app | Identifies the user, requests location permission, runs a check at each restricted action, sends the token to your backend, and shows your backend's decision. |
+| Radar | Collects location with device and network integrity signals, evaluates your country and state lists and fraud checks, and returns a signed geolocation token with `passed`, `failureReasons`, and an expiry. |
+| Your backend | Verifies the token signature and expiry, binds the token to the session user, the product, and the action, reads `passed`, and allows, denies, or asks for a new check. |
+| Your downstream systems | Contest, trading, payment, and prize systems act only on your backend's decision. |
+
+## Choose this guide or the sportsbooks and casinos guide
+
+Both guides use the same verified location check and the same backend validation. They differ in how much configuration and orchestration they walk through. Use the row that matches your product, not its label.
+
+| Question | Start with this guide | Start with [sportsbooks and casinos](/geo-compliance/sportsbooks-and-casinos) |
+| --- | --- | --- |
+| What does the check protect? | Specific actions, such as contest entry, a trade, a purchase, or a redemption | A whole wagering session plus specific actions |
+| How is your footprint defined? | Lists of allowed or blocked countries and states, per product | The same lists, plus buffer zones, exclusion zones, and property geofences or beacons |
+| How many products share a project? | One, or a few with different lists | Several, with per-product results and frequent product switching |
+| Are you replacing another geolocation provider? | No | Yes, with a shadow test and staged cutover |
+| Do you need continuous rechecks for a session? | Not necessarily. Check at the actions. | Yes |
+
+Your requirements decide the configuration, not the product category. Prediction markets, daily fantasy sports, and sweepstakes are offered under different rules in different places, and two products in the same category can need different footprints. Confirm the footprint and the required controls for each product with your legal and compliance team. If your product needs anything in the right-hand column, use that guide for those sections and this one for the rest.
+
+## Set up the project and identity
+
+<EnvironmentAndKeys />
+
+Your backend also needs your project's JWT secret key, shown under **Fraud** on the Settings page.
+
+### Identify the user
+
+<IdentifyUser />
+
+For eligibility checks, clear the user ID at logout, so that a check is never attributed to the previous user on a shared device.
+
+## Configure products and footprint
+
+### Decide whether you need products
+
+A product is a named configuration inside a project, with its own country and state lists. A product setting overrides the project setting with the same name, and the project value applies where a product doesn't set one.
+
+| Your situation | Configuration |
+| --- | --- |
+| One offering, one footprint | No products. Set the lists on the project. |
+| Several offerings with different footprints, such as a fantasy contest product and a sweepstakes product in one app | One product per offering, each with its own lists. Call `Radar.setProduct()` before each check. |
+| The same offering under several brands that share accounts | One project, with products only if the footprints differ. |
+
+Don't assume two offerings share a footprint because they share an app. If the allowed states differ at all, use separate products, so that a token for one can't be presented for the other. Your backend compares `product` in the token to the product of the action.
+
+Set the product before each check:
+
+<CodeGroup>
+
+```swift Swift
+Radar.setProduct("fantasy")
+```
+
+```kotlin Kotlin
+Radar.setProduct("fantasy")
+```
+
+```javascript JavaScript
+Radar.setProduct('fantasy');
+```
+
+</CodeGroup>
+
+Product names are short identifiers made of letters, numbers, hyphens, and underscores. Contact your Radar account team for help configuring products.
+
+### Set the country and state lists
+
+The lists are in the **Fraud** section of the [Settings](https://dashboard.radar.com/settings#fraud-settings) page, for the project and for each product.
+
+- Each list has a type: allowlist or blocklist. Use an allowlist when the product is offered in a short list of places. Use a blocklist when it is offered everywhere except a short list.
+- An empty list allows every country or state. Check that each product's lists are populated before you go live.
+- The result appears in the token as `user.country.allowed` and `user.state.allowed`, and a check outside the footprint fails with `country_not_allowed` or `state_not_allowed`.
+- Changes apply to checks made after you save. A token issued before the change keeps its result until it expires.
+- Whether your organization can edit the lists itself is account-specific. See [Who can change jurisdiction settings and block or bypass rules](/fundamentals/authentication-and-access#who-can-change-jurisdiction-settings-and-block-or-bypass-rules).
+
+Buffer zones, exclusion zones, and custom geofence zones are available for products that need them. See [Configure allowed locations](/geo-compliance/sportsbooks-and-casinos#configure-allowed-locations).
+
+Verify the configuration in the Test environment: run a check, open it on the [Locations](https://dashboard.radar.com/geofencing/locations) page, and confirm that the state and its allowed status match your written footprint for that product.
+
+## Choose the web path
+
+On web, a check runs through the Radar Verify companion app or through the no-download path in the browser.
+
+| | Companion app | No-download |
+| --- | --- | --- |
+| Supported platforms | Desktop browsers on macOS and Windows, with Radar Verify running on the same computer | Browsers supported by the [Web SDK](/sdk/web) |
+| What the user installs | Radar Verify for Mac or Windows | Nothing |
+| How to select it | `skipVerifyApp: false`, which is the default | `skipVerifyApp: true` |
+| Permission the user grants | Location access for the Radar Verify app | Location access for your site in the browser |
+| Signals | Adds remote desktop detection for the `sharing` flag, more advanced `mocked` and `proxy` detection, and more stable device IDs | Browser signals |
+| Path-specific error | `ERROR_VERIFY_APP` when the app isn't installed or isn't running | None |
+
+Selection criteria: if your requirements include detecting screen sharing or remote control on desktop, only the companion app path reports that signal. If your users can't or won't install software, only the no-download path works. Confirm which signals each product requires with your compliance team and your Radar account team. For details, see [Choose the companion app or the no-download path](/sdk/fraud#choose-the-companion-app-or-the-no-download-path).
+
+## Request location permission
+
+A verified location check needs foreground location permission. Ask for it when the user first reaches a restricted action, with a short explanation of why. Background permission isn't needed, so stop after the foreground steps below.
+
+<LocationPermissions />
+
+## Run a check
+
+<VerifiedCheck />
+
+## Decide when to check
+
+Check at the actions your requirements restrict. A common set:
+
+| Moment | What to do | Example `reason` |
+| --- | --- | --- |
+| Account registration | Run a check to tell the user early if the product is unavailable where they are. | `signup` |
+| Contest entry, trade, or purchase | Run a check if you have no accepted result that is still current. | `entry`, `trade`, `purchase` |
+| Prize redemption or withdrawal | Run a new check bound to the action with a `transactionId`. | `redemption` |
+| Product change | Set the new product and run a check. | `product_change` |
+| App returns to the foreground, or the page becomes visible | Compare the current time to the stored expiry before you reuse a result. | `resume` |
+| Logout or user switch | Clear the user ID and your stored result. | Not applicable |
+
+The `reason` values are examples. `reason` is a free-form string, so choose a small fixed set and use the same spelling on every platform. Reasons appear on each check in the dashboard, can be used as a filter and in reports, and can be used as a condition in fraud rules, which makes them worth adding from the first build.
+
+Two rules apply to every moment in the table:
+
+- **Reuse a result only until its expiry**: Each token carries its own expiry, which is shorter near a border. Read `expiresIn` or `expiresAt` from the token. Don't hardcode an interval. See [Expiry](/api/geolocation-tokens#expiry).
+- **Run one check at a time**: If the user taps twice, the second tap waits for the check that is already running.
+
+If your product needs a current result for the whole session instead of at specific actions, schedule rechecks from the returned expiry or use the SDK's automatic checks. See [Choose manual or automatic checks](/geo-compliance/sportsbooks-and-casinos#choose-manual-or-automatic-checks) and [Orchestrate manual checks](/geo-compliance/sportsbooks-and-casinos#orchestrate-manual-checks).
+
+### Check at an action
+
+This example gates one action on web. The same pattern applies on iOS and Android with the calls shown in [Run a check](#run-a-check).
+
+```javascript JavaScript
+import Radar from 'radar-sdk-js';
+
+const skipVerifyApp = true; // your chosen web path
+
+let inFlight = null;
+
+// Returns the backend's response for the action.
+export async function enterContest(contestId) {
+  // One check at a time. A second tap shares the first check.
+  if (!inFlight) {
+    inFlight = Radar.fraud
+      .trackVerified({ skipVerifyApp, reason: 'entry' })
+      .finally(() => {
+        inFlight = null;
+      });
+  }
+
+  let result;
+  try {
+    result = await inFlight;
+  } catch (err) {
+    // Technical error. No token was issued. Do not attempt the action.
+    return { decision: 'retry', reasons: [err.status ?? 'ERROR_UNKNOWN'] };
+  }
+
+  // Send the token with the action, whether or not result.passed is true.
+  // The backend validates the token and performs or refuses the entry.
+  const response = await fetch(`/api/contests/${contestId}/entries`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ geolocationToken: result.token }),
+  });
+
+  return response.json();
+}
+```
+
+## Validate the response on the backend
+
+<TokenValidation />
+
+For these products, pay attention to three of the steps:
+
+- **Product**: If you use products, pass the product of the action as the expected product. A token for one product must not authorize another.
+- **Expiry**: If you remember an accepted result for a session instead of requiring a token on each request, store it on the server with the token's `exp` and refuse the action after that time.
+- **Single-use actions**: For a redemption or withdrawal, generate a `transactionId` on your backend, pass it to the check, compare it in the token, and mark it used. Radar returns `transactionId` unchanged and doesn't check it for uniqueness.
+
+## Operate the integration
+
+- **Investigate a check**: Find it on the [Locations](https://dashboard.radar.com/geofencing/locations) page by user ID, product, reason, or failure reason. For the steps, see [Inspect data and control access](/geo-compliance/sportsbooks-and-casinos#inspect-data-and-control-access).
+- **Understand fraud signals and rules**: See [Fraud overview and quickstart](/fraud/overview).
+- **Retention and exports**: See [Control what data Radar keeps](/fundamentals/authentication-and-access#control-what-data-radar-keeps).
+
+## Handle results and errors
+
+<CheckResults />
+
+When your backend denies an action, choose the message from the failure reason. A jurisdiction reason such as `state_not_allowed` means the product isn't available at the user's location, and retrying from the same place won't help. A fraud reason such as `fraud_proxy_known_proxy_ip` names something the user can change. A technical error means the check didn't complete, so say that and offer a retry without telling the user they are ineligible.
+
+## Test the integration
+
+Use the Test environment with a Test publishable key and a dedicated test account.
+
+### Test the happy path
+
+<Steps>
+  <Step title="Sign in from an allowed location">
+    Sign in as the test user from a location inside the product's footprint.
+  </Step>
+  <Step title="Perform the restricted action">
+    Confirm that one check runs, your backend returns `allow`, and the action completes.
+  </Step>
+  <Step title="Inspect the check">
+    Open the check on the [Locations](https://dashboard.radar.com/geofencing/locations) page and confirm the user ID, product, and reason.
+  </Step>
+  <Step title="Confirm reuse and recheck">
+    Perform the action again before the expiry and confirm your app reuses the result. Perform it after the expiry and confirm exactly one new check runs.
+  </Step>
+</Steps>
+
+### Test failed checks with block and bypass rules
+
+<TestBlockBypass />
+
+### Test the backend rejections
+
+Send each case directly to your backend and confirm the result. For the fixture list, see [Negative tests](#negative-tests).
+
+| Case | Expected result |
+| --- | --- |
+| Token with one payload character changed | Deny |
+| Token presented after its `exp` | Retry, and the action isn't performed |
+| Token for another test user | Deny |
+| Token for another product | Deny |
+| Token from a blocked test user | Deny with reasons |
+| `"passed": true` in the request body with no token | Deny |
+| No token because the client check returned an error | The action isn't performed |
+
+## Production checklist
+
+- [ ] Each product's country and state lists match the written footprint, and no list that is meant to restrict is empty.
+- [ ] Every restricted action has a backend check. None reads a client-supplied `passed`.
+- [ ] Your backend checks signature, algorithm, expiry, user, product when used, `transactionId` when used, `user.live`, and `passed`, and fails closed.
+- [ ] Live publishable key in production clients. JWT secret key only on your backend, loaded from a secret manager.
+- [ ] `Radar.setUserId()` is set at login and cleared at logout.
+- [ ] Every check passes a `reason` from your fixed list.
+- [ ] Results are reused only until the returned expiry, and one check runs at a time.
+- [ ] Failed checks and technical errors show different messages.
+- [ ] No bypass rule or override exists in the Live environment for a real user, and test block rules are removed.
+- [ ] The people who can change the lists and create bypass rules are a small, named group. See [Roles and what each can do](/fundamentals/authentication-and-access#roles-and-what-each-can-do).
+- [ ] The [go-live checklist](/fundamentals/testing-and-launch#go-live-checklist) is complete.
+
+## See also
+
+- [Geo-compliance overview and quickstart](/geo-compliance/overview): the common flow and a minimal end-to-end example.
+- [Geolocation token schema](/api/geolocation-tokens): the verified location check payload, [failure reasons](/api/geolocation-tokens#failure-reasons), and [warning reasons](/api/geolocation-tokens#warning-reasons).
+- [Fraud plugin setup](/sdk/fraud): plugin installation and attestation setup.
+- [Fraud API](/api/fraud): the block and unblock endpoints.
+- [Set up organizations, projects, accounts, and authentication](/fundamentals/authentication-and-access): roles, keys, and data retention.
+- [Test, troubleshoot, and go live](/fundamentals/testing-and-launch): test procedures and launch steps.
+
+To have a coding agent implement this guide, use the prompt in [Build with an agent](#build-with-an-agent).

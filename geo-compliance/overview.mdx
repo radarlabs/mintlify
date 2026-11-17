@@ -1,0 +1,171 @@
+---
+title: "Geo-compliance overview and quickstart"
+sidebarTitle: "Overview and quickstart"
+description: "Understand how Radar verified location checks work, then run one check end to end and make an allow or deny decision on your backend."
+---
+
+import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
+import VerifiedCheck from '/snippets/verified-check.mdx';
+import CheckResults from '/snippets/check-results.mdx';
+import TokenValidation from '/snippets/token-validation.mdx';
+
+Geo-compliance verifies that a user is in a location where your product is allowed, and that the location can be trusted. At the end of this quickstart, your app runs one verified location check, your backend validates the returned geolocation token, and you have seen both an allowed and a rejected result.
+
+<Info>
+  Fraud is available on the [Enterprise plan](https://radar.com/pricing).
+</Info>
+
+## Quickstart
+
+The quickstart has four parts: configure where your product is allowed, run a check in your app, validate the token on your backend, and produce both results.
+
+### Before you start
+
+- Enable Fraud for your project: under **Fraud** on the [Settings](https://dashboard.radar.com/settings#fraud-settings) page of the Radar dashboard, select **Yes** for **Enabled**.
+- Have a backend route that knows which user is signed in.
+
+<EnvironmentAndKeys />
+
+Your backend also needs your project's JWT secret key, which is a different value from the API keys in the table. [Validate the token on your backend](#validate-the-token-on-your-backend) shows where to find it.
+
+## Configure where your product is allowed
+
+In the **Fraud** section of the [Settings](https://dashboard.radar.com/settings#fraud-settings) page, set the country list and state list for your project. Each list is an allowlist or a blocklist, and an empty list allows every country or state. For this quickstart, allow the state you are testing from, so that the first check passes.
+
+Whether you can edit these lists yourself is account-specific. If the controls are read-only, ask your Radar account team to set them.
+
+## Run a check in your app
+
+<VerifiedCheck />
+
+## Validate the token on your backend
+
+<TokenValidation />
+
+## See an allowed and a rejected result
+
+Run the flow twice, once for each result.
+
+For the allowed result, sign in as `user-123` from an allowed state and trigger the action. After signature verification, the decoded payload includes these fields:
+
+```json
+{
+  "_id": "66f1c2a9e4b0a1b2c3d4e5f6",
+  "passed": true,
+  "failureReasons": [],
+  "warningReasons": [],
+  "product": "sportsbook",
+  "reason": "login",
+  "expiresIn": 1200,
+  "user": {
+    "userId": "user-123",
+    "live": false,
+    "state": {
+      "code": "NJ",
+      "allowed": true,
+      "passed": true
+    },
+    "fraud": {
+      "passed": true,
+      "verified": true
+    }
+  }
+}
+```
+
+Your backend returns an `allow` decision:
+
+```json
+{
+  "decision": "allow",
+  "reasons": [],
+  "expiresAt": "2026-11-17T18:20:00.000Z"
+}
+```
+
+For the rejected result, produce a failed check without changing location. On the **Block rules** page in the dashboard, create a rule that blocks the user ID `user-123`, then trigger the action again. The request succeeds, and the token now carries a failed result:
+
+```json
+{
+  "_id": "66f1c2a9e4b0a1b2c3d4e5f7",
+  "passed": false,
+  "failureReasons": ["fraud_blocked_user_id"],
+  "warningReasons": [],
+  "product": "sportsbook",
+  "reason": "login",
+  "expiresIn": 1200,
+  "user": {
+    "userId": "user-123",
+    "live": false,
+    "state": {
+      "code": "NJ",
+      "allowed": true,
+      "passed": true
+    },
+    "fraud": {
+      "passed": false,
+      "verified": true,
+      "blocked": true
+    }
+  }
+}
+```
+
+Your backend returns a `deny` decision with the failure reason:
+
+```json
+{
+  "decision": "deny",
+  "reasons": ["fraud_blocked_user_id"]
+}
+```
+
+The payloads are synthetic and omit most fields, and your `expiresIn` differs because Radar sets the expiry for each check. For the full payload, see [Geolocation token schema](/api/geolocation-tokens).
+
+Now confirm that your backend is the one deciding. With the block rule in place, send the protected request to your backend directly, with `"passed": true` in the request body and the failed token. Your backend must still deny it.
+
+Remove the block rule when you finish. For the full test procedure, including bypass rules for internal testing, see [Test the integration](/geo-compliance/sportsbooks-and-casinos#test-the-integration).
+
+## How it works
+
+Every Geo-compliance integration follows the same eight steps. The three guides add the details for each kind of product.
+
+| Step | Where it happens | What you do |
+| --- | --- | --- |
+| 1. Configure the product and footprint | The dashboard | Enable Fraud, define products if you have more than one, and set the countries and states where each is allowed. |
+| 2. Initialize the SDK | Your app | Install the Radar SDK and the fraud plugin, and initialize with a publishable key. |
+| 3. Identify the user | Your app | Call `Radar.setUserId()` with the ID of the signed-in user. |
+| 4. Run a verified location check | Your app | Call `Radar.trackVerified()` with a reason. Radar returns a signed geolocation token. |
+| 5. Send the token to your backend | Your app to your backend | Send it on an authenticated request, whether the check passed or failed. |
+| 6. Validate the token | Your backend | Verify the signature and expiry, then check the user, product, and result. |
+| 7. Enforce the result | Your backend | Allow or deny the action. Your app shows what your backend decided. |
+| 8. Recheck | Your app | Run a new check before the token expires, when the product or user changes, and before sensitive actions. |
+
+A backend can't produce a verified location result by itself. The check has to run on the user's device, because that is where the location and integrity signals come from.
+
+## Understand check results
+
+<CheckResults />
+
+## Choose a guide
+
+<CardGroup cols={3}>
+  <Card title="Sportsbooks and casinos" icon="dice" href="/geo-compliance/sportsbooks-and-casinos">
+    Per-product footprints, exclusion zones, check orchestration, shadow testing, and rollout.
+  </Card>
+  <Card title="Predictions, DFS, and sweepstakes" icon="trophy" href="/geo-compliance/predictions-dfs-and-sweepstakes">
+    The same building blocks with the configuration and timing differences for these products.
+  </Card>
+  <Card title="Non-gaming use cases" icon="location-dot" href="/geo-compliance/non-gaming">
+    Verify presence in a region, at a store or workplace, or near an expected address.
+  </Card>
+</CardGroup>
+
+To assess device and network risk without a location requirement, start with [Fraud overview and quickstart](/fraud/overview) instead.
+
+## See also
+
+- [Geolocation token schema](/api/geolocation-tokens): every field, the [failure reasons](/api/geolocation-tokens#failure-reasons), and [expiry](/api/geolocation-tokens#expiry).
+- [Fraud plugin setup](/sdk/fraud): install and initialize the fraud plugin on each platform.
+- [Set up organizations, projects, accounts, and authentication](/fundamentals/authentication-and-access): roles and keys.
+- [Test, troubleshoot, and go live](/fundamentals/testing-and-launch): test procedures and launch steps.
