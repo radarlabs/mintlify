@@ -720,6 +720,8 @@ const tags = await Radar.getTags();
 
 ### Set up campaign notifications
 
+For what campaigns are and how to configure them, see [Campaigns](/geofencing/campaigns).
+
 [Radar campaigns](/geofencing/geofences-and-places#use-radar-campaigns) can open a deep link when the user taps a notification, and can log the tap as an `opened_app` conversion. On iOS, both are turned on with `RadarInitializeOptions` in native code, so that they apply when a notification tap launches the app, before the JavaScript bundle loads. On Android, no setup is needed for conversions. Configure deep links as you would for any Android app.
 
 <Tabs>

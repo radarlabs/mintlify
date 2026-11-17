@@ -48,7 +48,7 @@ A trip is a sequence of location updates with metadata and a unique ID, optional
 | `user` | object | The [user](/api/users#user-object) for which the trip is being tracked. |
 | `userId` | string | The `userId` of the user for which the trip is being tracked. |
 | `locations` | array of objects | The location updates tracked while the trip was active. An array of `Point` objects in [GeoJSON](https://geojson.org/) format, each with an `updatedAt`. |
-| `delay` | object | The predicted delay for the trip, including a `delayed` boolean and `scheduledArrivalTimeDelay`, the delay in minutes. |
+| `delay` | object | For trips with `scheduledArrivalAt`, the predicted delay for the trip. `scheduledArrivalTimeDelay` is the predicted number of minutes late. `delayed` is `true` when that number exceeds the delay threshold set in the **Trips** section of the [Settings](https://dashboard.radar.com/settings) page. |
 | `currentLegId` | string | For [multi-leg trips](#trip-legs), the `_id` of the current leg. |
 | `legs` | array of objects | For [multi-leg trips](#trip-legs), the legs of the trip in order. |
 
@@ -588,6 +588,8 @@ A multi-leg trip has several destinations, visited in order. Each destination is
   Multi-leg trips must be enabled for your project. Contact your Radar account team.
 </Info>
 
+When a leg ends, Radar generates a `user.stopped_trip_leg` event on the server. iOS SDK 3.46.0 and Android SDK 4.3.0 have no enum case for this event type, so handle it on your backend.
+
 ### Leg object
 
 | Field | Type | Description |
@@ -970,3 +972,18 @@ Radar returns this response:
 | `401` | The API key is missing or invalid. | Send a valid API key in the `Authorization` header. |
 | `404` | No trip matches the ID, the leg isn't on the trip, or multi-leg trips aren't enabled for your project. | Check the ID and the environment of your API key. If both are correct, contact your Radar account team. |
 | `409` | The request conflicts with another change to the same trip. | Retry the request. |
+
+## Trip analytics
+
+The [trip analytics](https://dashboard.radar.com/geofencing/trips/analytics) page in the Radar dashboard summarizes completed trips for the environment you are viewing. It is updated nightly, so a trip appears the day after it completes.
+
+| Metric | Definition |
+| --- | --- |
+| Median wait time | The median time between arrival at the destination and completion of the trip. |
+| Number of trips | The count of trips with status `completed`. |
+| Median trip time | The median time between the start of the trip and arrival at the destination. |
+| Repeat customers | The number of users who completed more than one trip. |
+
+Wait time and trip time are calculated only for completed trips that have start, arrival, and completion times. A trip that was completed without reaching `arrived` is left out of both.
+
+You can filter by date range, destination geofence tag, destination geofence external ID, and travel mode. The **By Destination** table groups the same metrics by destination geofence. Your project's data retention settings apply to analytics.

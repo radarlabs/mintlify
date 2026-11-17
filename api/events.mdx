@@ -71,6 +71,35 @@ This event was generated when `user-123` exited a geofence after 48 minutes.
 }
 ```
 
+### Event confidence
+
+Every geofence and place event has a `confidence` from `1` (low) to `3` (high). For a geofence event, confidence depends on the accuracy of the location the device reported and on the shape of the geofence.
+
+| Confidence | Meaning |
+| --- | --- |
+| `3` (high) | The reported location, including its accuracy radius, is completely inside the geofence. |
+| `2` (medium) | The location is mostly inside. |
+| `1` (low) | The location is only partly inside. |
+
+Small geofences and inaccurate locations produce lower confidence. If a low-confidence entry would cause a wrong decision, ignore events below the level you need.
+
+For a place event, confidence uses location accuracy, the footprint of the place, how dense the area is, and other signals. In a mall or on a dense street, expect more medium and low confidence events than for your own geofences. A `user.entered_place` event can include `alternatePlaces`, the other candidates Radar considered. To tell Radar which place was correct, see [Verify an event](#verify-an-event).
+
+### Delayed and replayed events
+
+Radar generates an event when the location update that causes it reaches Radar's servers. How soon that happens depends on the tracking mode: immediately for a foreground `Radar.trackOnce()` call, and within the update interval of the [tracking preset](/sdk/tracking#choose-a-preset) for background tracking. The operating system can delay background updates further, for example in Low Power Mode on iOS or in Doze on Android.
+
+Two fields tell you about delay:
+
+- **`createdAt`**: When the location was recorded on the device.
+- **`actualCreatedAt`**: When Radar created the event on the server.
+
+A large gap between the two means the update was delivered late. If your action is time-sensitive, compare `createdAt` with the current time and skip actions that are no longer relevant.
+
+Some tracking options store locations while the device is offline and send them later. Events from those updates have `replayed` set to `true` in the native SDKs, and a `createdAt` in the past. Treat them as history, not as a current arrival.
+
+Every event has a unique `_id`. Store the IDs you have processed and ignore repeats, so that a webhook request delivered more than once doesn't trigger the action twice.
+
 ## Generate an entry or exit event
 
 There is no operation that creates an entry or exit event directly. Radar generates these events when a location update changes a user's state.
@@ -181,7 +210,7 @@ Accepts or rejects an event. Event verifications are used to improve the accurac
 - **Rate limit**: 10 requests per second
 - **Used by**: [Detect geofence events and place visits](/geofencing/geofences-and-places)
 
-In the SDKs, this operation is the accept event and reject event methods. See the [SDK reference](/sdk/sdk) for your platform.
+In the SDKs, this operation is the accept event and reject event methods. See Verify events in the [iOS SDK](/sdk/ios#verify-events) and [Android SDK](/sdk/android#verify-events) references, or the [SDK reference](/sdk/sdk) for another platform.
 
 ### Path parameters
 

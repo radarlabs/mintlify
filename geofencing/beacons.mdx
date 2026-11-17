@@ -4,11 +4,11 @@ sidebarTitle: "Indoor location with beacons"
 description: "Register Bluetooth beacons with Radar, range them from the iOS and Android SDKs, and use the beacons in range to detect presence in indoor areas where GPS isn't precise enough."
 ---
 
-At the end of this guide, your app can tell which of your registered Bluetooth beacons a device is near, and Radar generates an event when the device comes into range of a beacon and when it leaves. Use this to detect presence in an area that GPS can't resolve: a floor, a room, a counter, a drive-thru lane, or a parking space.
+At the end of this guide, your app can tell which of your registered Bluetooth beacons a device is near, and Radar generates an event when the device comes into range of a beacon and when it leaves. A detection means the device is within radio range of that beacon: it is proximity, not an indoor coordinate.
 
 ## Complete example
 
-This is the whole task in two blocks: the app initializes, identifies the user, requests permission, ranges beacons in a `trackOnce()` call, and reads the beacons in range from the result and from entry and exit events. The sections below explain each part.
+The app initializes, identifies the user, requests permission, ranges beacons in a `trackOnce()` call, and reads the beacons in range from the result and from entry and exit events.
 
 <CodeGroup>
 
@@ -264,7 +264,7 @@ async function registerBeacon() {
 
 </CodeGroup>
 
-With beacons registered and ranging turned on, the user's context includes the beacons in range:
+With beacons registered and ranging on, the user's context includes the beacons in range:
 
 ```json
 {
@@ -284,166 +284,26 @@ With beacons registered and ranging turned on, the user's context includes the b
 }
 ```
 
-## Build with an agent
-
-Copy this prompt into a coding agent that has access to your repository.
-
-```text
-Implement Radar beacon detection in this repository using the current Radar
-documentation.
-
-First inspect the application framework, platform versions, existing Radar code,
-location and Bluetooth permission handling, manifest and Info.plist entries, and
-tests. Preserve existing behavior outside this task.
-
-Read:
-- https://docs.radar.com/geofencing/beacons.md
-- https://docs.radar.com/sdk/ios.md or https://docs.radar.com/sdk/android.md
-  (the SDK reference for this app's platform)
-- https://docs.radar.com/api/beacons.md
-- https://docs.radar.com/fundamentals/location-permissions.md
-
-Implement:
-1. The permission flow: location on both platforms, and on Android the
-   Bluetooth manifest entries and runtime Bluetooth permissions.
-2. A foreground check with Radar.trackOnce(desiredAccuracy, beacons: true) at the
-   point in the app where indoor presence matters, reading user.beacons and
-   branching on beacon tag and externalId.
-3. Only if background detection is required: tracking options with beacons
-   enabled, started after background location permission is granted.
-4. Handling for user.entered_beacon and user.exited_beacon in the existing
-   RadarDelegate or RadarReceiver.
-5. A fallback experience when no beacon is detected, Bluetooth is off, or
-   permission is denied.
-
-Do not invent methods, fields, beacon types, or defaults. A detected beacon
-means the device is within radio range of that beacon. Do not compute or
-display indoor coordinates from it. iOS ranges iBeacon only; Android ranges
-iBeacon and Eddystone-UID. Do not hard-code beacon UUIDs as authorization; the
-list of registered beacons lives in Radar.
-
-Add tests for: one beacon in range, no beacon in range, two beacons in range at
-once, Bluetooth turned off, Bluetooth permission denied on Android, and location
-permission denied. Run the repository's relevant checks. Report changed files,
-test results, the dashboard setup I still need to do (register beacons, enable
-beacon event types), and anything that needs confirmation on physical hardware.
-Do not change production settings or deploy without approval.
-```
-
 ## Prerequisites
 
-- A Radar project with Beacons enabled. Beacons depends on your plan.
-- iOS SDK 3.46.0 or Android SDK 4.3.0 for the native examples, or React Native SDK 4.39.0 for the React Native example. The Web SDK doesn't range beacons.
-- Android 8.0 (API level 26) or later for beacon ranging on Android.
-- Beacon hardware that broadcasts iBeacon. Android can also range Eddystone-UID.
-- A physical iOS or Android device with Bluetooth. Simulators and emulators can't range beacons.
-- Location permission, and on Android, Bluetooth permissions.
-- The SDK initialized and the user identified, as in [Detect geofence events and place visits](/geofencing/geofences-and-places#initialize-the-sdk-and-identify-the-user).
-
-## How it works
-
-| Part | Responsibility |
-| --- | --- |
-| Your beacons | Broadcast their identifiers over Bluetooth Low Energy. They don't connect to the phone or to Radar. |
-| Radar | Stores your registered beacons, tells the SDK which ones to listen for near the device, and generates `user.entered_beacon` and `user.exited_beacon`. |
-| Your app | Requests permissions, turns on ranging in a tracking call, and reads `user.beacons`. |
-| Your backend | Receives beacon events by [webhook](/integrations/webhooks) or integration, and applies business rules. |
-
-When ranging is on, each tracking call works like this:
-
-1. The SDK gets the device's location.
-2. The SDK asks Radar for registered beacons near that location. Radar returns up to 10 beacons within 1 kilometer, using the coordinates you registered for each beacon.
-3. The SDK listens for those beacons for up to about 5 seconds: by `uuid`, `major`, and `minor` for iBeacon, or by `uid` and `instance` for Eddystone.
-4. The SDK sends the location and the beacons it heard to Radar.
-5. Radar returns the user context with `user.beacons`, and generates `user.entered_beacon` for a beacon that is newly in range and `user.exited_beacon` for one that no longer is.
-
-Beacon events are delivered to the SDK, to webhooks, and to integrations in the same way as geofence events.
-
-| Platform | iBeacon | Eddystone-UID |
-| --- | --- | --- |
-| iOS | Yes | No |
-| Android | Yes | Yes |
-
-### Ranging by UUID only
-
-By default, the SDK ranges the specific beacons that Radar returns for the device's location. As an alternative, the SDK can range every beacon that broadcasts a given UUID (or Eddystone UID), regardless of the coordinates registered for each beacon.
-
-To turn this on, enter your **iBeacon UUIDs** or **Eddystone UIDs** in the **Beacons** section of the [Settings](https://dashboard.radar.com/settings) page. On iOS, you must also turn on the **Location updates** background mode.
-
-Consider this mode when all of your beacons share one UUID and a site has more beacons than the default lookup returns, or when registered coordinates are approximate.
-
-## Beacon proximity and indoor positioning
-
-These are two different things, and this guide covers the first.
-
-| | Beacon proximity | Indoor positioning |
-| --- | --- | --- |
-| What it answers | "Is this device within radio range of beacon X?" | "Where in the building is this device, as a point on a floor plan?" |
-| What Radar returns | The list of registered beacons in range, each with your tag, external ID, and metadata, plus entry and exit events. | Not provided by the beacon setup in this guide. |
-| What sets the detection area | Each beacon's transmit power and where you mount it. | Not applicable. |
-
-Treat a detection as "near this beacon", not as a coordinate. The coordinates you enter when you register a beacon tell Radar which beacons to send to a nearby device. They are approximate by design and aren't a measured position for the user. If your requirement is a position on a floor plan, contact your Radar account team about what is available for your project before you design around beacons.
-
-## Provision and place beacons
-
-Radar works with beacon hardware you supply. Before you register anything in Radar:
-
-1. Configure each beacon with its vendor's tool. Set it to broadcast iBeacon (or Eddystone-UID if you only need Android). Record the identifiers it broadcasts.
-2. Plan identifiers. A common scheme uses one `uuid` for your organization, `major` for the site, and `minor` for the position within the site. Whatever scheme you use, each physical beacon needs a unique combination.
-3. Mount beacons for the area you want to detect. A beacon's detection area is roughly a sphere around it, shaped by walls, shelving, people, and the phone's orientation. Mount it at the center of the area you care about, away from large metal surfaces.
-4. Start with low transmit power and raise it. Detection area is controlled at the beacon, by transmit power. A beacon at high power is often heard through walls and floors, and from the sidewalk outside.
-5. Label the hardware. Put the `externalId` you plan to register on the physical beacon, so that you can find a specific unit when you tune or replace it.
-
-Record these identifiers for each beacon type:
-
-| Beacon type | Identifiers to record |
-| --- | --- |
-| `ibeacon` | `uuid`, `major`, `minor` |
-| `eddystone` | `uid`, `instance` |
+- A Radar project with Beacons, which depends on your plan.
+- The [iOS](/sdk/ios), [Android](/sdk/android), or [React Native](/sdk/react-native) SDK, initialized, with the user identified. The web SDK doesn't range beacons. Ranging on Android needs Android 8.0 (API level 26) or later.
+- Beacon hardware that broadcasts iBeacon. Android can also range Eddystone-UID. iOS can't.
+- A physical device with Bluetooth. Simulators and emulators can't range beacons.
 
 ## Create beacons
 
-Register each beacon in Radar so that the SDK knows to listen for it. Like geofences, beacons are identified by a `tag` (a group, such as `store-register`) and an `externalId` (your ID for the unit, such as `store-42-register-1`), and are created separately in Test and Live. Creating a beacon with a `tag` and `externalId` that already exist updates it. To replace a failed unit or rotate identifiers, send the beacon again with the same `tag` and `externalId` and the new identifiers.
+Register each beacon so that the SDK knows to listen for it. A beacon is identified by a `tag` (a group, such as `store-register`) and an `externalId` (your ID for the unit), and is created separately in Test and Live. Creating a beacon with a `tag` and `externalId` that already exist updates it, which is how you replace a failed unit.
 
-You also give each beacon approximate coordinates. Radar uses them to decide which beacons to send to a device (those within 1 kilometer). Use the building's location. Precision within the building doesn't matter for this purpose.
+Each beacon also needs the identifiers it broadcasts (`uuid`, `major`, and `minor` for `ibeacon`, or `uid` and `instance` for `eddystone`) and approximate `coordinates` as `[longitude,latitude]`. Radar uses the coordinates only to choose which beacons to send to a device: up to 10 within 1 kilometer of its location. Use the building's location.
 
-### Dashboard
+Configure each beacon with its vendor's tool first, and give each physical unit a unique combination of identifiers. The detection area is set at the beacon, by its transmit power and where you mount it, so start with low power and raise it.
 
-<Steps>
-  <Step title="Start a new beacon">
-    Open the [Beacons](https://dashboard.radar.com/geofencing/beacons) page and click **New**.
-  </Step>
-  <Step title="Find the building">
-    Optionally search for the address of the building.
-  </Step>
-  <Step title="Enter the beacon details">
-    Enter the type, tag, external ID, a description, the beacon's identifiers, and any metadata.
-  </Step>
-  <Step title="Create the beacon">
-    Click **Create**. The beacon appears in the list on the Beacons page.
-  </Step>
-</Steps>
+- **Dashboard**: On the [Beacons](https://dashboard.radar.com/geofencing/beacons) page, click **New**, enter the details, and click **Create**.
+- **CSV import**: On the Beacons page, click **Import** and select a CSV file with a header row. The columns are `description`, `tag`, `externalId`, `type`, `uuid`, `major`, `minor`, `uid`, `instance`, `coordinates`, `enabled`, and `metadata`.
+- **API**: Call [Upsert a beacon](/api/beacons#upsert-a-beacon) from your backend, as in the complete example.
 
-### CSV import
-
-On the [Beacons](https://dashboard.radar.com/geofencing/beacons) page, click **Import** and select a CSV file. The first row must be a header row. Past imports are listed on the [beacon import history](https://dashboard.radar.com/geofencing/beacons/imports) page.
-
-| Column | Type | Required | Description |
-| --- | --- | --- | --- |
-| `description` | string | Yes | A display name for the beacon. |
-| `tag` | string | No | A group for the beacon. |
-| `externalId` | string | No | Your ID for the beacon. Set both `tag` and `externalId` so that you can update the beacon later. |
-| `type` | string | Yes | `ibeacon` (iOS and Android) or `eddystone` (Android only). |
-| `uuid` | string | For `ibeacon` | The UUID the beacon broadcasts. |
-| `major` | string | For `ibeacon` | The major ID. |
-| `minor` | string | For `ibeacon` | The minor ID. |
-| `uid` | string | For `eddystone` | The Eddystone UID. |
-| `instance` | string | For `eddystone` | The Eddystone instance ID. |
-| `coordinates` | array | Yes | The approximate location of the beacon as `[longitude,latitude]`. Longitude comes first. |
-| `enabled` | boolean | Yes | If `false`, the beacon generates no events. |
-| `metadata` | dictionary | No | A JSON string with up to 16 keys and values of type string, boolean, or number. |
-
-This example imports three iBeacon beacons and one Eddystone beacon:
+This CSV imports three iBeacon beacons and one Eddystone beacon:
 
 ```text
 description,tag,externalId,type,uuid,major,minor,uid,instance,coordinates,enabled,metadata
@@ -453,41 +313,13 @@ description,tag,externalId,type,uuid,major,minor,uid,instance,coordinates,enable
 "Store 42 - Aisle A",store-aisle,store-42-aisle-a,eddystone,,,,"f7826da6bc5b71e0893e","4456384b726a","[-73.975384,40.783747]",true,{}
 ```
 
-### API
+Then, in the **Beacons** section of the [Settings](https://dashboard.radar.com/settings) page, turn on `user.entered_beacon` and `user.exited_beacon` under **Event types**, in Test and in Live.
 
-To create or update a beacon from your backend, call the upsert endpoint with a secret key:
-
-```bash
-curl "https://api.radar.io/v1/beacons/store-register/store-42-register-1" \
-  -X PUT \
-  -H "Authorization: prj_test_sk_..." \
-  -d "description=Store 42 - Register 1" \
-  -d "type=ibeacon" \
-  -d "uuid=b9407f30-f5f8-466e-aff9-25556b57fe6d" \
-  -d "major=100" \
-  -d "minor=1" \
-  -d "coordinates=[-73.975384,40.783747]" \
-  -d "enabled=true"
-```
-
-The path is `/v1/beacons/:tag/:externalId`. For the full request and response, see the [Beacons API](/api/beacons).
-
-### Enable beacon events
-
-In the **Beacons** section of the [Settings](https://dashboard.radar.com/settings) page, under **Event types**, enable `user.entered_beacon` and `user.exited_beacon`. Do this in Test and in Live.
+If a site has more than 10 beacons that share a UUID, enter the UUID under **iBeacon UUIDs** in the same section. The SDK then ranges every beacon that broadcasts it, regardless of registered coordinates. On iOS, this also needs the **Location updates** background mode.
 
 ## Request permissions
 
-Beacon ranging needs location permission on both platforms, because a beacon reveals where the device is.
-
-| Platform | Foreground ranging | Background monitoring |
-| --- | --- | --- |
-| iOS | "While Using the App" location permission. | "Always" location permission. |
-| Android | Precise location (`ACCESS_FINE_LOCATION`) and Bluetooth permissions. | The same, plus background location. |
-
-For the location flow, see [Understand foreground and background location permissions](/fundamentals/location-permissions). On Android, an approximate-only location grant isn't enough to range beacons.
-
-On Android, add the Bluetooth permissions to your manifest:
+Ranging needs location permission on both platforms: foreground access for `trackOnce()`, and background access for background monitoring. See [Understand foreground and background location permissions](/fundamentals/location-permissions). On Android, it needs precise location (`ACCESS_FINE_LOCATION`), because an approximate-only grant isn't enough, and these Bluetooth permissions in your manifest:
 
 ```xml AndroidManifest.xml
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -498,101 +330,15 @@ On Android, add the Bluetooth permissions to your manifest:
 </manifest>
 ```
 
-If your app targets API level 31 or later, `BLUETOOTH_SCAN` and `BLUETOOTH_CONNECT` are runtime permissions. Request them before you range, with the same explain-then-ask pattern you use for location.
+If your app targets API level 31 or later, `BLUETOOTH_SCAN` and `BLUETOOTH_CONNECT` are runtime permissions. Request them before you range.
 
 ## Detect beacons in the foreground
 
-Call `trackOnce()` with `beacons` set to `true` at the point where indoor presence matters, for example when the user opens a store-mode screen. Use high desired accuracy.
-
-<CodeGroup>
-
-```swift Swift
-import RadarSDK
-
-// iOS SDK 3.46.0
-func checkNearbyBeacons() {
-    Radar.trackOnce(desiredAccuracy: .high, beacons: true) { status, location, events, user in
-        guard status == .success, let user = user else {
-            print("trackOnce failed: \(Radar.stringForStatus(status))")
-            return
-        }
-
-        let beacons = user.beacons ?? []
-        if beacons.isEmpty {
-            // No registered beacon in range. Show the experience for the
-            // wider geofence, if the user is in one.
-            return
-        }
-
-        for beacon in beacons {
-            print("Near \(beacon.tag ?? "") / \(beacon.externalId ?? "") rssi=\(beacon.rssi)")
-        }
-
-        if beacons.contains(where: { $0.tag == "store-register" }) {
-            // The user is at a register.
-        }
-    }
-}
-```
-
-```kotlin Kotlin
-import android.util.Log
-import io.radar.sdk.Radar
-import io.radar.sdk.RadarTrackingOptions
-
-// Android SDK 4.3.0
-fun checkNearbyBeacons() {
-    Radar.trackOnce(
-        RadarTrackingOptions.RadarTrackingOptionsDesiredAccuracy.HIGH,
-        true
-    ) { status, location, events, user ->
-        if (status != Radar.RadarStatus.SUCCESS || user == null) {
-            Log.w("Beacons", "trackOnce failed: $status")
-            return@trackOnce
-        }
-
-        val beacons = user.beacons ?: emptyArray()
-        if (beacons.isEmpty()) {
-            // No registered beacon in range. Show the experience for the
-            // wider geofence, if the user is in one.
-            return@trackOnce
-        }
-
-        for (beacon in beacons) {
-            Log.d("Beacons", "Near ${beacon.tag} / ${beacon.externalId} rssi=${beacon.rssi}")
-        }
-
-        if (beacons.any { it.tag == "store-register" }) {
-            // The user is at a register.
-        }
-    }
-}
-```
-
-```javascript React Native
-import Radar from 'react-native-radar';
-
-// React Native SDK 4.39.0
-async function checkNearbyBeacons() {
-  try {
-    const { user } = await Radar.trackOnce({ desiredAccuracy: 'high', beacons: true });
-    const beacons = user?.beacons ?? [];
-    if (beacons.some((beacon) => beacon.tag === 'store-register')) {
-      // The user is at a register.
-    }
-  } catch (err) {
-    console.warn('trackOnce failed', err);
-  }
-}
-```
-
-</CodeGroup>
-
-The call takes a few seconds longer than a `trackOnce()` without beacons, because the SDK listens before it sends the update. Show a loading state.
+Call `trackOnce()` with `beacons` set to `true` and high desired accuracy at the point where indoor presence matters, for example when the user opens a store-mode screen. The SDK gets the device's location, asks Radar for registered beacons nearby, listens for them for up to about 5 seconds, and sends what it heard. The call takes a few seconds longer than a `trackOnce()` without beacons, so show a loading state.
 
 ## Monitor beacons in the background
 
-To generate beacon entry and exit events while the app isn't open, enable beacons in your tracking options and start tracking after the user grants background location permission.
+To generate beacon events while the app isn't open, turn on `beacons` in your tracking options and start tracking after the user grants background location permission:
 
 <CodeGroup>
 
@@ -611,139 +357,74 @@ Radar.startTracking(trackingOptions)
 
 </CodeGroup>
 
-You can also turn on `beacons` in custom tracking options from the Radar dashboard with [remote configuration](/sdk/remote-configuration). Background beacon detection is subject to the same operating system limits as background location: it is opportunistic and can be delayed. Use foreground ranging when the user is in your app and needs an immediate result.
+Background detection is opportunistic and can be delayed, like background location. Use foreground ranging when the user needs an immediate result.
 
 ## Read the returned data
 
-### Current beacons
+`user.beacons` lists the registered, enabled beacons heard during the most recent update. Branch on `tag` and `externalId`. A device in range of several beacons gets all of them, so decide what overlap means for your feature. An empty list means no registered beacon was heard during that update. It doesn't prove that the user is away from every beacon.
 
-`user.beacons` lists the registered, enabled beacons heard during the most recent update. Each beacon has:
+In the native SDKs, each beacon also has `rssi`, the signal strength. Use it to compare beacons while you tune. Don't convert it to a distance.
 
-| Field | Description |
+| Event | When it fires |
 | --- | --- |
-| `_id` | Radar's ID for the beacon. |
-| `tag`, `externalId`, `description`, `metadata` | What you registered. Branch on `tag` and `externalId`. |
-| `type` | `ibeacon` or `eddystone`. |
-| `uuid`, `major`, `minor` | The iBeacon identifiers. In the Android SDK, an Eddystone beacon's UID and instance are exposed as `uuid` and `major`. |
-| `rssi` | Signal strength as seen by the device, in the native SDKs. `0` on iOS or `null` on Android when not available. |
+| `user.entered_beacon` | A beacon is heard that wasn't in the user's previous state. |
+| `user.exited_beacon` | A beacon in the user's previous state is no longer heard. |
 
-An empty or missing `beacons` list means no registered beacon was heard during that update. It doesn't prove that the user is away from every beacon. See [Tune and troubleshoot detection](#tune-and-troubleshoot-detection).
+Handle these in the same delegate or receiver as geofence events, and on your backend by [webhook](/integrations/webhooks). Use events for one-time triggers and `user.beacons` for what the user sees now.
 
-### Events
-
-| Event | Generated when | Carries |
-| --- | --- | --- |
-| `user.entered_beacon` | A beacon is heard that wasn't in the user's previous state. | `beacon` |
-| `user.exited_beacon` | A beacon in the user's previous state is no longer heard. | `beacon` |
-
-Handle them in the same delegate or receiver as geofence events (`.userEnteredBeacon` and `.userExitedBeacon` in Swift, `USER_ENTERED_BEACON` and `USER_EXITED_BEACON` in Kotlin), as shown in [Receive events in the app](/geofencing/geofences-and-places#receive-events-in-the-app). As with geofences, use events for one-time triggers and `user.beacons` for what the user sees now.
-
-Radar campaigns can also target beacons for notifications on iOS. See [Use Radar campaigns](/geofencing/geofences-and-places#use-radar-campaigns).
-
-## Use beacons with verified location checks
-
-If you use Radar for location verification, you can include nearby beacons in a verified check by passing `beacons: true` to `Radar.trackVerified()`. The beacons heard are then included in the user context of the check result that your backend validates. This is useful when a rule depends on being inside or outside a specific indoor area.
-
-When checks are frequent, call `Radar.startRangingBeacons()` when the user enters the flow that makes them, and `Radar.stopRangingBeacons()` when they leave it. The SDK then ranges continuously while the app is in the foreground, so a check doesn't wait for a new ranging window. Continuous ranging needs iOS SDK 3.43.0 or later, or Android SDK 3.38.0 or later on API level 26 or later.
-
-For requesting the check, validating the result on your backend, and binding it to the user, see the [Geo-compliance gaming guide](/geo-compliance/gaming). Follow that guide for the validation code. Two points are specific to beacons:
-
-- **Keep the decision on your backend**: Tag beacons by role, for example one tag for areas where an action is allowed and another for areas where it isn't, and let your backend read the beacons from the validated result and apply your rule. Don't make the decision in the app.
-- **Absence is weak evidence**: A beacon that isn't in the result may be out of range, or may not have been heard in that window. Decide deliberately what a result with no beacons means for your rule.
-
-## Tune and troubleshoot detection
-
-### Signal strength and leakage
-
-The most common problem on site is a beacon that is heard outside its intended area: through a wall, on the floor above, or outside the building.
-
-- Lower the beacon's transmit power, then walk the boundary of the intended area with a test device and check where detection starts and stops.
-- Tune one beacon at a time and record the setting for each `externalId`.
-- Use `rssi` to compare beacons during tuning. Don't convert RSSI to a distance in production logic. It varies with the phone model, how the phone is held, and what is between the phone and the beacon.
-
-### Overlapping beacons
-
-A device is often in range of several beacons at once, and `user.beacons` then lists all of them. Decide what that means for your use case:
-
-- If any beacon with a given tag is enough ("the user is somewhere in the store"), check for the tag.
-- If you need the single nearest position ("which register"), reduce transmit power so that areas don't overlap. If overlap remains, compare `rssi` across the beacons in the same result and treat the answer as approximate.
-- If one area must exclude another, give the areas different tags and handle the case where both are present explicitly.
-
-### Missing beacons
-
-If a beacon you expect isn't in `user.beacons`, check in this order:
-
-1. The beacon is broadcasting. Confirm with the vendor's app or a generic Bluetooth scanner on the same phone. Batteries fail.
-2. The identifiers match exactly. Compare `uuid`, `major`, and `minor` in Radar with what the beacon broadcasts.
-3. The environment matches. A beacon registered in Test isn't returned for a Live key.
-4. The beacon is enabled.
-5. The registered coordinates are within 1 kilometer of the device's reported location. If the location is wrong or the coordinates were entered as latitude then longitude, Radar doesn't send that beacon to the device.
-6. The site has more beacons than one lookup returns. The default lookup returns up to 10 nearby beacons. For denser sites, consider [ranging by UUID only](#ranging-by-uuid-only).
-7. Bluetooth is on and permissions are granted. See [Handle results and errors](#handle-results-and-errors).
-8. The type is supported on the platform. iOS doesn't range Eddystone beacons.
-
-### Find out which beacon was detected
-
-- In the app, log `tag`, `externalId`, and `rssi` for each beacon in `user.beacons`, as the foreground example does.
-- In the dashboard, open the [Events](https://dashboard.radar.com/geofencing/events) page to see `user.entered_beacon` and `user.exited_beacon` events and the beacon each one refers to.
-- Match the `externalId` to the label on the physical unit.
-
-### Battery
-
-Ranging uses the Bluetooth radio in addition to location. A foreground check ranges for a few seconds per call. Continuous ranging with `startRangingBeacons()` runs for as long as the app is in the foreground, so stop it when the user leaves the flow that needs it. Enable beacons in background tracking options only if you need beacon events while the app is closed.
+To include beacons in a verified location check, pass `beacons: true` to `Radar.trackVerified()`, and make the decision on your backend from the validated result. See the [Geo-compliance gaming guide](/geo-compliance/gaming).
 
 ## Handle results and errors
 
-| Situation | What you see | What to do |
+| Result | Meaning | What to do |
 | --- | --- | --- |
-| Bluetooth is off or unavailable | A Bluetooth error status (`.errorBluetooth`, `ERROR_BLUETOOTH`) is reported to your delegate's `didFail(status:)` or your receiver's `onError()`. | Ask the user to turn on Bluetooth. Fall back to the geofence-level experience. |
-| Bluetooth permission not granted on Android | A permissions error is reported to your receiver's `onError()`. The location update is still sent, without beacons, and the `trackOnce()` callback can still report success. | Don't treat a successful call with no beacons as "not near a beacon" unless you know ranging ran. Check the permission yourself before you call. |
-| Location permission denied | `trackOnce()` fails with a permissions status. | Beacons can't be ranged. Show the default experience. |
-| No location fix indoors | `trackOnce()` fails with a location status, or succeeds with a location far from the building. | Retry. If the reported location is more than 1 kilometer from the registered coordinates, the default lookup returns no beacons. Consider ranging by UUID only. |
-| Simulator or emulator | No beacons, or a Bluetooth error. | Test on a physical device. |
-| Beacon heard intermittently | Alternating entry and exit events. | The device is at the edge of the beacon's range. Adjust power or placement, and avoid triggering irreversible actions on a single exit event. |
-| Larger responses | Each beacon and geofence in the result adds its metadata to the response, and to the result of a verified check. | Register only the beacons you use, and keep beacon and geofence metadata small. |
+| A Bluetooth error (`.errorBluetooth`, `ERROR_BLUETOOTH`) in `didFail(status:)` or `onError()` | Bluetooth is off or unavailable. | Ask the user to turn on Bluetooth, and fall back to the geofence-level experience. |
+| A permissions error in `onError()` on Android, while `trackOnce()` reports success | Bluetooth permission isn't granted. The update is sent without beacons. | Check the permission before you call. Don't read a result with no beacons as "not near a beacon". |
+| `trackOnce()` fails with a permissions status | Location permission is denied. | Show the default experience. |
+| An expected beacon is missing | It isn't broadcasting, its identifiers or environment don't match, it is disabled, or its registered coordinates are more than 1 kilometer from the device's reported location. | Confirm the broadcast with a Bluetooth scanner, then compare the identifiers, environment, and coordinates in Radar. |
+| An Eddystone beacon is missing on iOS | iOS ranges iBeacon only. | Use iBeacon hardware. |
+| A beacon is heard outside its intended area | Transmit power is too high. Beacons are often heard through walls and floors. | Lower the transmit power at the beacon, then walk the boundary with a test device. |
+| Alternating entry and exit events | The device is at the edge of the beacon's range. | Adjust power or placement. Don't trigger irreversible actions on a single exit event. |
 
 ## Test the integration
 
-Test on site, with production hardware, on at least one iOS and one Android device. Use the Test environment.
+Test on a physical device, in the Test environment.
 
-| Test | Steps | Expected result |
-| --- | --- | --- |
-| Register | Create one beacon in the dashboard with the identifiers from a unit on your desk. | It appears on the Beacons page as enabled. |
-| Presence | Stand next to the beacon and run the foreground check. | `user.beacons` contains the beacon with your tag and external ID. `user.entered_beacon` appears on the Events page. |
-| Absence | Move well out of range, or power the beacon off, and run the check again. | `user.beacons` is empty. `user.exited_beacon` appears on the Events page. |
-| Overlap | Place two registered beacons near each other and stand between them. | Both appear in `user.beacons`. Your app handles the case the way you decided. |
-| Boundary | Walk away from a mounted beacon until detection stops. Repeat on the other side of each wall and on adjacent floors. | Detection stops where you intend. If not, lower transmit power and repeat. |
-| Bluetooth off | Turn Bluetooth off and run the check. | A Bluetooth error is reported, and the app falls back without crashing. |
-| Android Bluetooth permission denied | Deny the Bluetooth permission and run the check. | A permissions error is reported to the receiver, and the app doesn't conclude "not near a beacon". |
-| Wrong environment | Use the Live key with beacons registered only in Test. | No beacons are returned. |
-| Disabled beacon | Set `enabled` to `false` and run the check next to the beacon. | The beacon isn't returned and no events are generated. |
-| Background | With background permission and beacons enabled in tracking options, lock the phone and walk into range. | `user.entered_beacon` arrives, possibly after a delay. |
+- **Presence**: Stand next to a registered beacon and run the foreground check. `user.beacons` contains the beacon with your tag and external ID, and `user.entered_beacon` appears on the [Events](https://dashboard.radar.com/geofencing/events) page.
+- **Absence**: Move well out of range, or power the beacon off, and run the check again. `user.beacons` is empty, and `user.exited_beacon` appears on the Events page.
 
-For general testing tools, see [Test, troubleshoot, and go live](/fundamentals/testing-and-launch).
+See [Test, troubleshoot, and go live](/fundamentals/testing-and-launch).
 
 ## Production checklist
 
 - [ ] Every installed beacon is registered in Live with a unique `tag` and `externalId`, and the physical unit is labeled with the `externalId`.
 - [ ] Transmit power and placement were tuned on site, including checks through walls and on adjacent floors.
-- [ ] Beacon event types are enabled in Live.
+- [ ] Beacon event types are turned on in Live.
 - [ ] Android manifest entries and runtime Bluetooth permission requests are in place.
 - [ ] The app has a defined behavior for no beacons, several beacons, Bluetooth off, and permission denied.
-- [ ] No business rule treats "no beacon detected" as proof of absence without a deliberate decision.
-- [ ] Continuous ranging is stopped when the user leaves the flow that needs it.
-- [ ] There is a process for battery replacement and for re-registering a replaced unit under the same `tag` and `externalId`.
-- [ ] For verified checks, the decision is made on your backend from the validated result.
+- [ ] No business rule treats "no beacon detected" as proof of absence.
+
+## Build with an agent
+
+Copy this prompt into a coding agent that has access to your repository.
+
+```text
+Implement Radar beacon detection in this repository.
+Read https://docs.radar.com/geofencing/beacons.md, https://docs.radar.com/api/beacons.md,
+and the SDK reference for this app's platform (https://docs.radar.com/sdk/ios.md
+or https://docs.radar.com/sdk/android.md).
+Constraints: a detected beacon means the device is within radio range of it. Do
+not compute indoor coordinates from it. iOS ranges iBeacon only. On Android,
+add the Bluetooth manifest entries and request the runtime Bluetooth
+permissions before ranging. Do not invent methods, fields, or beacon types.
+Add tests for: one beacon in range, no beacon in range, two beacons in range,
+Bluetooth off, and location permission denied.
+Report changed files, test results, and the dashboard setup I still need to do.
+```
 
 ## See also
 
-- [Beacons API](/api/beacons) and [Events API](/api/events)
-- SDK references: [iOS](/sdk/ios), [Android](/sdk/android), [React Native](/sdk/react-native)
-- [Tracking options](/sdk/tracking) and [remote configuration](/sdk/remote-configuration)
+- [Beacons API](/api/beacons)
+- Beacon methods in the [iOS](/sdk/ios#beacons), [Android](/sdk/android#beacons), and [React Native](/sdk/react-native#beacons) SDK references
 - [Detect geofence events and place visits](/geofencing/geofences-and-places)
-- [Geo-compliance gaming guide](/geo-compliance/gaming)
-- [Understand foreground and background location permissions](/fundamentals/location-permissions)
-- [Test, troubleshoot, and go live](/fundamentals/testing-and-launch)
 - [Understand geofences, places, regions, beacons, and fraud context](/fundamentals/context-types)
-
-To have a coding agent implement this guide, use the prompt in [Build with an agent](#build-with-an-agent).

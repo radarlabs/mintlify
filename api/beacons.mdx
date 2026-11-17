@@ -445,3 +445,24 @@ Radar returns this response:
 | `400` | `id` isn't a valid Radar ID. | Fix the request before you retry. |
 | `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
 | `404` | No beacon matches the ID in this project and environment. | Check the ID and the environment of your API key. |
+
+## CSV import columns
+
+A beacon CSV file has a header row followed by one row per beacon. To import one, open the [Beacons](https://dashboard.radar.com/geofencing/beacons) page, click **Import**, and select the file. Past imports are listed on the [beacon import history](https://dashboard.radar.com/geofencing/beacons/imports) page. For an example file, see [Create beacons](/geofencing/beacons#create-beacons).
+
+| Column | Type | Required | Description |
+| --- | --- | --- | --- |
+| `description` | string | Yes | A display name for the beacon. |
+| `tag` | string | No | A group for the beacon. |
+| `externalId` | string | No | Your ID for the beacon. Set both `tag` and `externalId` so that you can update the beacon later. |
+| `type` | string | Yes | One of `ibeacon` (iOS and Android) or `eddystone` (Android only). |
+| `uuid` | string | Conditional | Required for `ibeacon`. The UUID the beacon broadcasts. |
+| `major` | string | Conditional | Required for `ibeacon`. The major ID. |
+| `minor` | string | Conditional | Required for `ibeacon`. The minor ID. |
+| `uid` | string | Conditional | Required for `eddystone`. The Eddystone UID. |
+| `instance` | string | Conditional | Required for `eddystone`. The Eddystone instance ID. |
+| `coordinates` | array | Yes | The approximate location of the beacon as `[longitude,latitude]`. Longitude comes first. Radar uses it to decide which beacons to send to a device, so the building's location is precise enough. |
+| `enabled` | boolean | Yes | If `false`, the beacon generates no events. |
+| `metadata` | string | No | A JSON string with up to 16 keys and values of type string, boolean, or number. |
+
+A row with a `tag` and `externalId` that already exist updates that beacon. To replace a failed unit or rotate identifiers, import the beacon again with the same `tag` and `externalId` and the new identifiers.

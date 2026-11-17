@@ -4,28 +4,11 @@ sidebarTitle: "Overview and quickstart"
 description: "Learn what Radar Geofencing does, make a first foreground location check that returns the user's current geofences, and choose the right guide for events, trips, or beacons."
 ---
 
-import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
-
 At the end of this page, your app can open inside one of your locations and show the right experience immediately, without waiting for an entry event. Geofencing tells your app and your backend where a user is in terms you define: which of your locations they are in, which places they are visiting, how far they are from a destination, and which beacons are nearby.
 
-## What Geofencing does
+## Quickstart
 
-For what geofences, places, regions, and beacons are and the user fields and events each one adds, see [Understand geofences, places, regions, beacons, and fraud context](/fundamentals/context-types).
-
-| Capability | What you get | How you get it |
-| --- | --- | --- |
-| Foreground state check | The user's current geofences, place, region, trip, and beacons, at the moment you ask. | Call `Radar.trackOnce()` while the app is open. |
-| Background event detection | Events such as `user.entered_geofence` and `user.exited_geofence` as the user moves, including while the app is closed. | Call `Radar.startTracking()` after the user grants background location access. |
-| Trips | A live ETA to a destination and `user.approaching_trip_destination` and `user.arrived_at_trip_destination` events for one journey. | Call `Radar.startTrip()` when the journey starts and end the trip when it finishes. |
-| Beacons | Which registered Bluetooth beacons are in range, for areas where GPS isn't precise enough. | Register beacons, then turn on beacon ranging in a tracking call. |
-
-Radar generates events on its servers from the location updates the SDK sends. Your app receives the result in the SDK callback and in a delegate or receiver. Your backend receives the same events through [webhooks](/integrations/webhooks) or another [integration](/integrations/integrations).
-
-## Quickstart: show the right experience when the app opens inside a location
-
-This quickstart needs only foreground location permission. It uses the Test environment.
-
-This is the whole quickstart in one block: initialize, identify the user, request foreground permission, and read the user's current geofences each time the app becomes active. The steps below explain each part.
+This quickstart needs only foreground location permission and the Test environment. The code initializes the SDK, identifies the user, requests permission, and reads the user's current geofences each time the app becomes active.
 
 <CodeGroup>
 
@@ -246,70 +229,22 @@ class _ResumeObserver with WidgetsBindingObserver {
 
 </CodeGroup>
 
-### 1. Get your Test publishable key
+<Steps>
+  <Step title="Get your Test publishable key">
+    Copy it from the [Settings](https://dashboard.radar.com/settings) page. See [Choose the right API key](/fundamentals/authentication-and-access#choose-the-right-api-key).
+  </Step>
+  <Step title="Create a geofence around a place you can test">
+    On the [Geofences](https://dashboard.radar.com/geofencing/geofences) page, with the environment set to **Test**, click **Create**, search for your current address, and select **circle**. Enter the tag `store` and the external ID `store-42`, then click **Create**. Make the circle large enough to contain the spot where you test, because indoors a phone's reported location can be tens of meters off.
+  </Step>
+  <Step title="Install and initialize the SDK">
+    Follow the install steps for [iOS](/sdk/ios), [Android](/sdk/android), [web](/sdk/web), [React Native](/sdk/react-native), or [Flutter](/sdk/flutter), and initialize once, at app startup, with the Test publishable key.
+  </Step>
+  <Step title="Run the app inside the geofence">
+    Grant location permission when the app asks. `trackOnce()` returns the user with your geofence in `user.geofences`.
+  </Step>
+</Steps>
 
-<EnvironmentAndKeys />
-
-### 2. Create a geofence around a place you can test
-
-1. Open the [Geofences](https://dashboard.radar.com/geofencing/geofences) page in the Radar dashboard, with the environment switch set to **Test**.
-2. Click **Create**, search for your current address, and select **circle**.
-3. Enter the description `Store 42`, the tag `store`, and the external ID `store-42`.
-4. Click **Create**. The geofence appears in the list.
-
-Draw the circle large enough to contain the spot where you test. Indoors, a phone's reported location can be tens of meters from where you are standing.
-
-### 3. Install and initialize the SDK
-
-Follow the install and initialize steps for your platform: [iOS](/sdk/ios), [Android](/sdk/android), [web](/sdk/web), [React Native](/sdk/react-native), or [Flutter](/sdk/flutter). Initialize once, at app startup, with the Test publishable key. On iOS and Android, initialize in the native application lifecycle (`AppDelegate` and `Application.onCreate()`), not in a screen that loads later.
-
-### 4. Request foreground location permission
-
-Ask for "While Using the App" access on iOS or `ACCESS_FINE_LOCATION` on Android before the next step. For the full flow, including what to do after a denial, see [Understand foreground and background location permissions](/fundamentals/location-permissions).
-
-### 5. Read the user's current state
-
-Call `Radar.trackOnce()` when the app opens and each time it returns to the foreground. The call gets one location, sends it to Radar, and returns the user's current context. Look for your geofence in `user.geofences`, and show the default experience when the call fails:
-
-<CodeGroup>
-
-```swift Swift
-Radar.trackOnce { status, location, events, user in
-    guard status == .success, let user = user else { return }
-    let store = user.geofences?.first(where: { $0.tag == "store" })
-}
-```
-
-```kotlin Kotlin
-Radar.trackOnce { status, location, events, user ->
-    if (status != Radar.RadarStatus.SUCCESS || user == null) return@trackOnce
-    val store = user.geofences?.firstOrNull { it.tag == "store" }
-}
-```
-
-```javascript JavaScript
-const { user } = await Radar.trackOnce();
-const store = user?.geofences?.find((geofence) => geofence.tag === 'store');
-```
-
-```javascript React Native
-const { user } = await Radar.trackOnce();
-const store = user?.geofences?.find((geofence) => geofence.tag === 'store');
-```
-
-```dart Flutter
-final res = await Radar.trackOnce();
-final geofences = (res?['user']?['geofences'] as List?) ?? [];
-final stores = geofences.where((geofence) => geofence['tag'] == 'store');
-```
-
-</CodeGroup>
-
-On the web and in React Native, a failed call rejects the promise. In Flutter, check that `res['status']` is `SUCCESS` before you read `user`.
-
-### 6. Check the result
-
-Run the app while you are inside the geofence. The `user` returned by `trackOnce()` includes the geofence you created:
+The `user` in the result looks like this:
 
 ```json
 {
@@ -333,49 +268,22 @@ Run the app while you are inside the geofence. The `user` returned by `trackOnce
 }
 ```
 
-Then confirm in the dashboard:
-
-- The [Users](https://dashboard.radar.com/geofencing/users) page shows your device with a recent location.
-- The [Events](https://dashboard.radar.com/geofencing/events) page shows a `user.entered_geofence` event for `Store 42`, generated by the first update inside the geofence.
-
-If `geofences` is empty, check that the geofence and the publishable key are in the same environment, that the geofence is enabled, and that the device's reported location falls inside the circle. For more checks, see [Test, troubleshoot, and go live](/fundamentals/testing-and-launch).
+The [Users](https://dashboard.radar.com/geofencing/users) page shows your device, and the [Events](https://dashboard.radar.com/geofencing/events) page shows a `user.entered_geofence` event. If `geofences` is empty, check that the geofence and the publishable key are in the same environment, and that the device's reported location falls inside the circle. See [Test, troubleshoot, and go live](/fundamentals/testing-and-launch).
 
 ## Read current state or wait for an event
 
-Radar gives you two views of the same facts. Use the one that matches the question you are asking.
-
-| Question | Use | Why |
-| --- | --- | --- |
-| "Is this user in a store right now?" | Current state: `user.geofences`, `user.place`, `user.beacons`, and `user.trip` from `trackOnce()`, or from the location-update callback while tracking. | State is true on every update for as long as the user is inside. It answers correctly when the app opens and the user is already there. |
-| "Did this user arrive a moment ago?" | Events: `user.entered_geofence`, `user.exited_geofence`, and the others your project has enabled. | An event is generated once, at the transition. Use it to trigger something that happens one time, such as a notification or a backend workflow. |
-
-An app that shows an in-store mode only when it receives `user.entered_geofence` misses every user who was already inside when the app launched, because Radar doesn't generate a second entry event until the user leaves and returns. Read state for what the user sees on screen. Use events for one-time triggers.
+Read current state (`user.geofences`, `user.place`, `user.beacons`, and `user.trip` from `trackOnce()`) for what the user sees on screen, because it is true on every update while the user is inside, including when the app opens with the user already there. Use events, such as `user.entered_geofence`, for one-time triggers such as a notification or a backend workflow, because Radar generates an event once, at the transition. Events while the app is closed need background location permission and `Radar.startTracking()`.
 
 ## Custom geofences and Places
 
 | | Custom geofences | Places |
 | --- | --- | --- |
-| What they represent | Locations you define: your stores, venues, delivery zones, or job sites. | Places from Radar's point-of-interest dataset, grouped by chain (such as `starbucks`) and category (such as `airport`). |
-| How you set them up | Create or import them, and keep them up to date as your locations change. | Turn on Places for your project and choose the chains and categories to monitor. |
-| What identifies them | Your `tag`, `externalId`, and `metadata`. | Radar's chain slug and category names, plus chain IDs or metadata you map in settings. |
+| What they represent | Locations you define: your stores, venues, or job sites. | Places from Radar's dataset, grouped by chain (such as `starbucks`) and category (such as `airport`). |
+| How you set them up | Create or import them. | Turn on Places and choose chains and categories. |
 | User context | `user.geofences`, a list. | `user.place`, one place. |
 | Events | `user.entered_geofence`, `user.exited_geofence`, `user.dwelled_in_geofence` | `user.entered_place`, `user.exited_place` |
 
-Use custom geofences for locations you operate. Use Places for locations you don't, such as partner venues or airports. See [Detect geofence events and place visits](/geofencing/geofences-and-places).
-
-## Permissions and tracking modes
-
-What you can detect depends on the location permission the user grants and on how often the SDK sends updates.
-
-| Mode | Call | Permission needed | Update frequency | Use it for |
-| --- | --- | --- | --- | --- |
-| Foreground check | `Radar.trackOnce()` | Foreground | One update per call | In-app experiences on open and resume. |
-| Background tracking | `Radar.startTracking()` with the responsive or efficient preset | Background ("Always" on iOS, "Allow all the time" on Android) | Responsive: about every 2.5 minutes while moving, paused when stopped. Efficient: less often. | Entry and exit events and messaging while the app is closed. |
-| Trip tracking | `Radar.startTrip()` with the continuous preset | Foreground, with the iOS background location indicator or the Android foreground service active | About every 30 seconds for the length of the trip | Live ETAs and arrival detection for a pickup, delivery, or shift. |
-
-Continuous tracking uses more battery and shows a visible system indicator, so use it only between the start and end of a trip. Background tracking for geofence events is lower frequency and can run for as long as the user keeps the permission. On Android, background location updates can be delayed by Doze and other system limits. On iOS, they can be delayed by Low Power Mode.
-
-You can set the tracking mode in code or from the dashboard with [remote configuration](/sdk/remote-configuration). For every option and preset value, see [Tracking options](/sdk/tracking). For the permission flow on each platform, see [Understand foreground and background location permissions](/fundamentals/location-permissions).
+Use custom geofences for locations you operate, and Places for locations you don't, such as partner venues or airports.
 
 ## Choose a guide
 
@@ -390,12 +298,3 @@ You can set the tracking mode in code or from the dashboard with [remote configu
     Register beacons and detect which ones are in range where GPS isn't precise enough.
   </Card>
 </CardGroup>
-
-## Reference
-
-- SDKs: [iOS](/sdk/ios), [Android](/sdk/android), [web](/sdk/web), [React Native](/sdk/react-native), [Flutter](/sdk/flutter)
-- [Tracking options](/sdk/tracking) and [remote configuration](/sdk/remote-configuration)
-- APIs: [Geofences](/api/geofences), [Events](/api/events), [Trips](/api/trips), [Beacons](/api/beacons)
-- [Webhooks](/integrations/webhooks) and other [integrations](/integrations/integrations)
-- [Understand geofences, places, regions, beacons, and fraud context](/fundamentals/context-types)
-- [Test, troubleshoot, and go live](/fundamentals/testing-and-launch)

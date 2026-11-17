@@ -15,7 +15,7 @@ Use the Geofences API to manage the custom regions and places monitored in your 
 
 The base URL is `https://api.radar.io`. Send your API key in the `Authorization` header. For key types, the error format, and rate limits, see [Authentication, errors, and rate limits](/api/fundamentals).
 
-To find geofences near a location from a client, use [Search geofences](/api/search#search-geofences), which accepts a publishable key. To create geofences in bulk from a CSV file or a scheduled sync, see [Detect geofence events and place visits](/geofencing/geofences-and-places).
+To find geofences near a location from a client, use [Search geofences](/api/search#search-geofences), which accepts a publishable key. To create geofences in bulk from a CSV file or a scheduled sync, see [Detect geofence events and place visits](/geofencing/geofences-and-places). For the file format, see [CSV import columns](#csv-import-columns).
 
 ## Geofence object
 
@@ -463,3 +463,80 @@ Radar returns this response:
 | `400` | A parameter is invalid. `meta.param` names the parameter. | Fix the parameter named in `meta.param`. |
 | `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
 | `429` | The rate limit was exceeded. | Retry with backoff. See [Rate limits](/api/fundamentals#rate-limits). |
+
+## CSV import columns
+
+A geofence CSV file has a header row followed by one row per geofence. The same columns apply to an import on the [Geofences](https://dashboard.radar.com/geofencing/geofences) page and to a nightly geofence sync. Both upsert on `tag` and `externalId`: a row that matches an existing geofence updates it, and any other row creates a geofence. For the import and sync procedures and an example file, see [CSV import](/geofencing/geofences-and-places#csv-import).
+
+| Column | Type | Required | Description |
+| --- | --- | --- | --- |
+| `description` | string | Yes | A display name for the geofence, such as `Store 42`. |
+| `tag` | string | Yes | A group for the geofence, such as `store`. |
+| `externalId` | string | Yes | Your ID for the location. Unique within the tag. |
+| `type` | string | Yes | One of `circle`, `polygon`, or `isochrone`. |
+| `coordinates` | array | Conditional | Required unless `address` or `placeId` is set. For `circle` and `isochrone`, the center as `[longitude,latitude]`. For `polygon`, a closed ring of 4 to 2,000 points as `[[longitude0,latitude0],[longitude1,latitude1],[longitude2,latitude2],[longitude0,latitude0]]`. Longitude comes before latitude. |
+| `address` | string | Conditional | Required unless `coordinates` or `placeId` is set. Radar geocodes the address and uses the result as the center of a `circle` or `isochrone`. If you send both `address` and `coordinates`, they must be near each other, and `coordinates` takes precedence. Ignored for `polygon`. |
+| `placeId` | string | Conditional | The `_id` of a Radar place to match this geofence to. Can stand in for `coordinates` and `address`. See [Place matching](#place-matching). |
+| `radius` | number | Conditional | Required for `circle` and `isochrone`. For `circle`, the radius in meters, from `10` to `10000`. For `isochrone`, the travel time in minutes. Ignored for `polygon`. |
+| `mode` | string | Conditional | Required for `isochrone`. The [travel mode](/api/routing#units-modes-and-geometry), such as `car` or `foot`. |
+| `enabled` | boolean | No | If `false`, the geofence stays in your project but generates no events. Defaults to `true`. |
+| `metadata` | string | No | A JSON string with up to 16 keys and values of type string, boolean, or number. Returned on user context and on every event for this geofence. Can't be combined with `metadata.{key}` columns. |
+| `metadata.{key}` | string | No | One column per metadata key, as an alternative to a JSON string. A column named `metadata.pickupMode` with the value `curbside` becomes `"pickupMode": "curbside"`. Avoid spaces and commas in keys. Can't be combined with the `metadata` column. |
+| `operatingHours` | string | No | A JSON string keyed by day (`Sunday` or `Sun`, case insensitive). Each value is a list of open and close pairs, such as `{"Sun": [["11:00", "14:00"], ["19:00", "22:00"]]}`. Times use `HH:mm` or `h:mm aa`. If omitted, the geofence is always open. Can't be combined with `operatingHours.{day}` columns. See [Operating hours](#operating-hours). |
+| `operatingHours.{day}` | string | No | One column per day, such as `operatingHours.sunday`, as an alternative to a JSON string. Can't be combined with the `operatingHours` column. |
+| `stopDetection` | boolean | No | Overrides the project-level [stop detection](#stop-detection) setting for this geofence. |
+| `dwellThreshold` | number | No | Minutes a user must stay inside before Radar generates `user.dwelled_in_geofence`. That event type must be turned on for the project. |
+| `disableAfter` | ISO 8601 string | No | A datetime after which the geofence is disabled. Use it for temporary geofences. |
+| `deleteAfter` | ISO 8601 string | No | A datetime after which the geofence is deleted. |
+| `userIds` | string | No | Comma-separated user IDs. If set, only those users generate events for this geofence. |
+| `ip` | string | No | Comma-separated IP addresses or ranges (`203.0.113.7`, `203.0.113.*`, or `203.0.113.0/24`). If set, only requests from those addresses generate events for this geofence. |
+
+Rows missing from the file aren't deleted. To retire a location, keep its row in the file and set `enabled` to `false`, or delete the geofence in the dashboard or with [Delete a geofence](#delete-a-geofence).
+
+## Geofence settings
+
+These settings change when a geofence generates entry and exit events. The project-level settings are in the **Geofences** section of the [Settings](https://dashboard.radar.com/settings) page of the Radar dashboard. The per-geofence fields are set in a CSV import, with [Upsert a geofence](#upsert-a-geofence), or in the dashboard.
+
+### Stop detection
+
+With **Geofence stop detection** on, Radar generates an entry event only when the user stops in the geofence, not when they pass through it. A user counts as stopped when the location update has `stopped` set to `true` according to your [tracking options](/sdk/tracking), or when the update was made in the foreground.
+
+Turn it on for the whole project on the Settings page, or per geofence with the `stopDetection` field, which overrides the project-level setting.
+
+### Buffer entries and exits
+
+These two project settings trade missed events against early ones.
+
+| Setting | Off | On |
+| --- | --- | --- |
+| **Buffer entries** | An entry requires the reported location to be inside the boundary. | An entry is generated when the device is within its reported accuracy of the boundary. With an accuracy of 50 meters, that is up to 50 meters outside. Fewer entries are missed. |
+| **Buffer exits** | An exit is generated as soon as the reported location is outside the boundary. | An exit requires the device to be farther outside than its reported accuracy. Fewer false exits are generated when the location jumps. |
+
+### Operating hours
+
+Set `operatingHours` on a geofence to tell Radar when the location is open. Radar then adds a boolean `currentlyOperating` to every event for that geofence. To restrict event generation to operating hours for the whole project, use the setting in the **Geofences** section of the Settings page.
+
+Set operating hours in a CSV import, with [Upsert a geofence](#upsert-a-geofence), or in the **Advanced** section when you create or edit a geofence in the dashboard.
+
+### Place matching
+
+Place matching links a geofence you import to the corresponding place in Radar's dataset, so that the geofence can use the place's location and shape instead of a hand-entered point and radius.
+
+<Info>
+  Place matching must be enabled for your project and requires Places. Contact your Radar account team.
+</Info>
+
+There are two ways to match:
+
+- **During CSV import**: In the import dialog on the [Geofences](https://dashboard.radar.com/geofencing/geofences) page, turn on **Enable place matching** and select the chains to match your rows against. After the import, the [import history](https://dashboard.radar.com/geofencing/geofences/imports) page shows the outcome for each row.
+- **Per geofence**: Set `placeId` to the `_id` of a Radar place in a CSV row or an API request.
+
+What a match changes depends on the geofence type:
+
+| Geofence type | Result of a match |
+| --- | --- |
+| `circle` | Takes the center and shape of the Radar place. |
+| `polygon` | Is linked to the Radar place but keeps its own shape. |
+| `isochrone` | Takes the center of the Radar place, and Radar regenerates the travel-time shape from that center. |
+
+A row that didn't match keeps the coordinates you supplied.

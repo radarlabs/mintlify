@@ -4,13 +4,11 @@ sidebarTitle: "Pickups, deliveries, and workers"
 description: "Use Radar trips to track a journey to a destination with live ETAs and arrival events, with patterns for order pickups, deliveries with one or many stops, and on-shift workers."
 ---
 
-import TripLifecycle from '/snippets/trip-lifecycle.mdx';
-
-At the end of this guide, your app starts a trip when a journey begins, your backend receives a live ETA and approaching and arrival events, and tracking returns to its earlier state when the journey ends. The guide has one common trip lifecycle and three sections that apply it: [pickups](#track-pickups), [deliveries](#track-deliveries), and [workers](#track-workers).
+At the end of this guide, your app starts a trip when a journey begins, your backend receives a live ETA and approaching and arrival events, and tracking returns to its earlier state when the journey ends. The guide follows an order pickup, then shows what changes for [deliveries](#track-deliveries) and [workers](#track-workers).
 
 ## Complete example
 
-This is the client side of the common trip lifecycle in one block, using a pickup: initialize, identify the user, request permission, start a trip to the store's geofence with continuous tracking, receive approaching and arrival events, and complete or cancel the trip. The sections below explain each part.
+This is the client side of a pickup: initialize, identify the user, request permission, start a trip to the store's geofence with continuous tracking, receive approaching and arrival events, and complete or cancel the trip.
 
 <CodeGroup>
 
@@ -418,9 +416,9 @@ Future<void> cancelPickupTrip() async {
 
 </CodeGroup>
 
-Your backend receives the same trip events by webhook. See [Trip events](#trip-events).
+The web SDK has no background tracking, so the JavaScript tab sends a location on a timer while the page is open. The React Native tab uses React Native SDK 4.39.0, which passes `trackingOptions` to `startTrip()`.
 
-While a trip is active, the user's context includes the trip:
+While a trip is active, the user's context includes it, with `eta.duration` in minutes and `eta.distance` in meters:
 
 ```json
 {
@@ -449,458 +447,61 @@ While a trip is active, the user's context includes the trip:
 }
 ```
 
-`eta.duration` is in minutes and `eta.distance` is in meters.
-
-## Build with an agent
-
-Copy this prompt into a coding agent that has access to your repository.
-
-Replace the bracketed choice with the section you are implementing.
-
-```text
-Implement Radar trip tracking for [order pickup | delivery | worker shifts] in
-this repository using the current Radar documentation.
-
-First inspect the application framework, platform versions, existing Radar code,
-authentication flow, the order or job model, background modes and manifest
-entries, and tests. Preserve existing behavior outside this task.
-
-Read:
-- https://docs.radar.com/geofencing/trips.md (the common lifecycle, and only the
-  section for the scenario named above)
-- https://docs.radar.com/sdk/ios.md or https://docs.radar.com/sdk/android.md
-  (the SDK reference for this app's platform)
-- https://docs.radar.com/sdk/tracking.md
-- https://docs.radar.com/api/trips.md
-- https://docs.radar.com/integrations/webhooks.md
-
-Implement the documented flow:
-1. Start a trip when the journey begins, with externalId set to this app's own
-   order, delivery, or shift ID, and the destination geofence tag and external
-   ID from the existing location model.
-2. Use the continuous tracking preset only for the length of the trip. Add the
-   required iOS background modes or Android foreground service declaration.
-3. Complete or cancel the trip at every exit from the journey, including order
-   cancellation, logout, and errors. Do not call stopTracking() after a trip on
-   iOS or Android unless all tracking should stop.
-4. On app open and on resume, reconcile with Radar.trackOnce(): if user.trip is
-   present, restore the trip UI and make sure tracking is on; if it is absent,
-   clear the trip UI.
-5. If this repository contains the backend: handle user.updated_trip,
-   user.approaching_trip_destination, user.arrived_at_trip_destination, and
-   user.stopped_trip from the webhook, deduplicate on event._id, and add a
-   time-based fallback for journeys that never report a location.
-
-Do not invent methods, fields, trip statuses, event names, or defaults. Trip
-statuses are pending (API only), started, approaching, arrived, completed,
-canceled, and expired.
-Do not assume the app runs at a scheduled time or after a force-quit. Do not
-leave continuous tracking on after a trip ends.
-
-Add tests for: a trip that starts, approaches, arrives, and completes; a trip
-canceled before arrival; startTrip failing with no network and with an unknown
-destination; app relaunch during an active trip; app relaunch after the trip
-ended on the server; location permission denied; and the time-based fallback.
-Run the repository's relevant checks. Report changed files, test results,
-required dashboard setup (destination geofences, trip settings, webhook), and
-anything that needs confirmation. Do not change production settings or deploy
-without approval.
-```
-
 ## Prerequisites
 
-- A Radar project with Trips enabled. Use the Test environment while you build.
-- iOS SDK 3.46.0 or Android SDK 4.3.0 for the native examples, or React Native SDK 4.39.0 for the React Native examples. The complete example also has tabs for Web SDK 5.3.0 and Flutter SDK 3.12.4. Multi-leg trips in this guide use the native SDKs.
 - A destination geofence for each place a trip can end. See [Create geofences](/geofencing/geofences-and-places#create-geofences).
-- Foreground location permission. Background permission isn't required for a trip that uses the continuous preset. See [Understand foreground and background location permissions](/fundamentals/location-permissions).
-- On iOS, the **Location updates** and **Background fetch** background modes. On Android, the foreground service declared in your manifest. For setup, see the [iOS SDK](/sdk/ios#background-tracking-for-trips) and [Android SDK](/sdk/android#background-tracking-for-trips) references.
-- A stable ID for each journey from your own system: an order ID, a delivery ID, or a shift ID.
-- For server-side handling: an HTTPS endpoint for [webhooks](/integrations/webhooks) and a secret key kept on your backend.
-- Multi-leg trips, the trip tracking dashboard, and order-firing integrations must be enabled for your project. Contact your Radar account team.
+- Foreground location permission. A trip that uses the continuous preset doesn't need background permission. See [location permissions](/fundamentals/location-permissions).
+- On iOS, the **Location updates** and **Background fetch** background modes. On Android, the foreground service declared in your manifest. See the [iOS SDK](/sdk/ios#background-tracking-for-trips) and [Android SDK](/sdk/android#background-tracking-for-trips) references.
+- A stable ID for each journey, such as an order ID, and one for the user. See [Handle login, logout, and user switching](/fundamentals/authentication-and-access#handle-login-logout-and-user-switching).
+- An HTTPS endpoint for [webhooks](/integrations/webhooks), so that your backend receives trip events.
 
-## How it works
+## Track pickups
 
-| Part | Responsibility |
+A customer orders ahead and travels to one of your locations, and the order needs to be ready when they arrive. Use the order ID as the trip `externalId`, the store ID as the destination geofence `externalId`, and trip `metadata` for handoff details such as a parking space.
+
+In the **Trips** section of the [Settings](https://dashboard.radar.com/settings) page, turn on the trip event types you consume. Set **Approaching threshold (minutes)**, the ETA at which a trip becomes `approaching`, to the notice the store needs. Set **Expiration**, the number of hours after which a trip that nobody ended is ended automatically. Test and Live have separate settings.
+
+### Start the pickup trip
+
+Call `Radar.startTrip()` when the journey begins. For an order the customer wants as soon as possible, that is when the order is confirmed. For a scheduled order, wait until the customer taps "I'm on my way". Otherwise a customer at home five minutes from the store is already below the approaching threshold, and the order is prepared far too early.
+
+| Option | Description |
 | --- | --- |
-| Your app | Starts the trip with your ID and a destination, keeps location updates flowing during the trip, ends the trip, and reconciles state when it opens. |
-| Radar | Calculates the ETA from each location update using the trip's travel mode, moves the trip through its statuses, and generates trip events. |
-| Your backend | Owns the order, delivery, or shift. Receives trip events, decides what they mean for the business (start preparing, notify the customer, clock in), and runs a fallback when no location arrives. |
-| Downstream systems | Kitchen displays, dispatch tools, messaging platforms, and customer tracking pages that your backend or an integration updates. |
+| `externalId` | Required. Your stable ID for the journey, such as an order ID. |
+| `destinationGeofenceTag` and `destinationGeofenceExternalId` | The destination geofence. If it doesn't exist in the environment of your publishable key, the call fails with a not-found status and no trip is created. |
+| `mode` | Travel mode used for the ETA: `car` (default), `foot`, `bike`, `truck`, or `motorbike`. |
+| `metadata` | Custom key-value pairs, returned on the trip in every trip event. |
+| `scheduledArrivalAt` | The time the user is expected to arrive, such as the pickup time of a scheduled order. |
+| `approachingThreshold` | Overrides the project's approaching threshold, in minutes, for this trip. |
 
-### Trip status
+Starting a trip is a network request, so disable the button that starts it until the callback returns. If the call fails, keep the order on its time-based path.
 
-| Status | Meaning | How a trip gets here |
-| --- | --- | --- |
-| `pending` | The trip was created through the Trips API but hasn't started. | Your backend creates the trip with `status` set to `pending`. The SDKs always create trips as `started`. |
-| `started` | The journey is in progress. | `startTrip()` succeeds. |
-| `approaching` | The ETA is at or below the approaching threshold. | A location update with a short enough ETA, or your update. |
-| `arrived` | The user is at the destination. | A location update inside the destination geofence, or your update. |
-| `completed` | The journey finished. | `completeTrip()`, the Trips API, an integration, or completing the last leg of a multi-leg trip. |
-| `canceled` | The journey was abandoned. | `cancelTrip()`, the Trips API, or an integration. |
-| `expired` | Nobody ended the trip. | The trip stayed active past the project's expiration setting. |
-
-`started`, `approaching`, and `arrived` are active statuses. `completed`, `canceled`, and `expired` are final. A trip doesn't have to pass through every active status: a user who starts a trip while already at the destination can go from `started` straight to `arrived`.
-
-### Trip state and tracking state
-
-A trip and location tracking are two different things, and most trip bugs come from treating them as one.
-
-| | Trip state | Tracking state |
-| --- | --- | --- |
-| What it is | A record on Radar's servers: this user is going to this destination for this order. | Whether this device's SDK is collecting and sending locations, and how often. |
-| Who changes it | Your app, your backend, an integration, or expiration. | Your app, the SDK when a trip starts or ends, remote configuration, the user, and the operating system. |
-| Read it with | `user.trip` on a track response, `Radar.getTrip()`, or the Trips API. | `Radar.isTracking()` and `Radar.getTrackingOptions()`. |
-
-An active trip with tracking off produces no ETA updates and no arrival. Tracking left on after a trip ends drains the battery and collects location with no purpose. The lifecycle below keeps the two in step.
-
-## Set up trips
-
-### Create destination geofences
-
-A single-destination trip ends at a geofence, identified by `tag` and `externalId`. Import your locations as described in [Create geofences](/geofencing/geofences-and-places#create-geofences), using the same ID your order or dispatch system uses for the location as the `externalId`. Radar marks the trip `arrived` when the user enters this geofence, so its shape decides what "arrived" means: include the parking area for curbside pickup, and keep it off the adjacent road.
-
-### Configure trip settings
-
-In the **Trips** section of the [Settings](https://dashboard.radar.com/settings) page:
-
-- **Event types**: Enable the trip events you consume.
-- **Approaching threshold (minutes)**: The ETA at which a trip becomes `approaching`. Set it to how much notice the destination needs. You can override it for one trip with `approachingThreshold` in the trip options.
-- **Expiration**: The number of hours after which a trip that nobody ended is ended automatically.
-
-Set these in Test and Live separately.
+If your orders run through Olo, see [Olo pickup and order firing](/integrations/olo). Your backend can also create a trip with [Create a new trip](/api/trips#create-a-new-trip), but the device still has to be sending locations for the trip to progress.
 
 ### Choose tracking options for trips
 
-Use the continuous preset while a trip is active. You can pass it to `startTrip()` in code, as the lifecycle examples do. You can instead set on-trip tracking options in the **SDK configuration** section of the [Settings](https://dashboard.radar.com/settings) page: turn on **Remotely set tracking options**, enable on-trip tracking options, and choose a preset or custom options. The SDK then uses those options whenever the user is on a trip, and you can tune them without an app release. Remote options reach a device when the SDK next syncs while the app is running. They don't wake an app that isn't running. See [Remote configuration](/sdk/remote-configuration) and [Tracking options](/sdk/tracking).
+Pass the continuous preset to `startTrip()`. It sends an update about every 30 seconds, and while the iOS location indicator or the Android foreground service is active, foreground permission is enough for the trip to keep updating in the background. If the SDK was already tracking, it remembers the earlier options and restores them when the trip ends.
 
-To raise the update frequency only near the destination, for example to detect a car reaching a specific lane or parking space, use in-geofence tracking options in the same section. Create a larger geofence around the location with its own tag, enter that tag, and choose more frequent options. The SDK switches to them while the user is inside a geofence with that tag.
+To change on-trip options without an app release, see [On-trip tracking options](/sdk/remote-configuration#on-trip-tracking-options). For preset values, see [Tracking options](/sdk/tracking).
 
-## Common trip lifecycle
+### Trip events
 
-Every scenario in this guide uses the same four operations: start, update, stop, and recover.
-
-<TripLifecycle />
-
-### Create trips from your backend
-
-Your backend can create and update trips with the [Trips API](/api/trips), for example when an order is placed on the web and picked up with the app. A server-created trip appears as `user.trip` on the device's next track response. The device still has to be sending locations for the trip to progress, so either start tracking in the app when you see `user.trip`, as the recovery example does, or enable on-trip tracking options in remote configuration. Creating a trip on the server doesn't start tracking on a device that isn't running your app.
-
-## Trip events
-
-| Event | Generated when |
+| Event | When it fires |
 | --- | --- |
 | `user.started_trip` | The trip starts. |
 | `user.updated_trip` | A location update changes the trip, for example its ETA. |
 | `user.approaching_trip_destination` | The ETA drops to the approaching threshold. |
 | `user.arrived_at_trip_destination` | The user enters the destination geofence. |
 | `user.stopped_trip` | The trip is completed, canceled, or expired. Check `trip.status` to see which. |
-| `user.arrived_at_wrong_trip_destination` | Optional. See [Wrong destination arrival detection](#wrong-destination-arrival-detection). |
+| `user.arrived_at_wrong_trip_destination` | Optional. The user enters a geofence with the destination's `tag` and a different `externalId`. |
 
-ETAs use the trip's travel mode and the same routing engine as the [Routing API](/api/routing).
+A trip's `status` is `started`, `approaching`, or `arrived` while it is active, and `completed`, `canceled`, or `expired` when it ends. A trip created through the Trips API can also be `pending`.
 
-Receive trip events in the app with the delegate or receiver described in [Receive events in the app](/geofencing/geofences-and-places#receive-events-in-the-app). The native SDKs expose `trip.etaDuration` (minutes) and `trip.etaDistance` (meters) on the trip object. Receive them on your backend with a [webhook](/integrations/webhooks) or another [integration](/integrations/integrations):
-
-```json
-{
-  "event": {
-    "_id": "64f0a1b2c3d4e5f6a7b8ca00",
-    "type": "user.approaching_trip_destination",
-    "createdAt": "2026-03-02T17:06:55.837Z",
-    "live": false,
-    "trip": {
-      "_id": "64f0a1b2c3d4e5f6a7b8c9f0",
-      "live": false,
-      "status": "approaching",
-      "externalId": "order-1001",
-      "metadata": {
-        "handoff": "curbside"
-      },
-      "mode": "car",
-      "destinationGeofenceTag": "store",
-      "destinationGeofenceExternalId": "store-42",
-      "eta": {
-        "duration": 2.9,
-        "distance": 840
-      },
-      "createdAt": "2026-03-02T17:00:55.830Z",
-      "updatedAt": "2026-03-02T17:06:55.837Z"
-    }
-  },
-  "user": {
-    "_id": "64f0a1b2c3d4e5f6a7b8c9d0",
-    "live": false,
-    "userId": "user-123"
-  }
-}
-```
-
-On your backend, look up the order by `trip.externalId`, deduplicate on `event._id`, and make each handler safe to run twice. A location update isn't a clock: events arrive when updates do, which is about every 30 seconds with the continuous preset in good conditions and less often when the operating system limits the app.
-
-## Track pickups
-
-Use this section when a customer orders ahead and travels to one of your locations: curbside, in-store pickup, or drive-thru. The goal is to have the order ready when the customer arrives, not before and not after.
-
-This block is a pickup from end to end: start the trip when the customer leaves, record the parking space when they arrive, and end the trip at handoff or cancellation. It assumes the setup in the [complete example](#complete-example).
-
-<CodeGroup>
-
-```swift Swift
-import RadarSDK
-
-// ASAP orders: call when the order is confirmed.
-// Scheduled orders: call when the customer taps "I'm on my way".
-func customerIsOnTheWay(orderId: String, storeId: String) {
-    let tripOptions = RadarTripOptions(
-        externalId: orderId,
-        destinationGeofenceTag: "store",
-        destinationGeofenceExternalId: storeId
-    )
-    tripOptions.mode = .car
-
-    Radar.startTrip(
-        options: tripOptions,
-        trackingOptions: .presetContinuous
-    ) { status, trip, events in
-        if status != .success {
-            // The order stays on the time-based path.
-            print("startTrip failed: \(Radar.stringForStatus(status))")
-        }
-    }
-}
-
-// The customer taps "I'm here" and enters a parking space.
-func customerIsHere(parkingSpace: String) {
-    guard let tripOptions = Radar.getTripOptions() else { return }
-    var metadata = tripOptions.metadata ?? [:]
-    metadata["parkingSpace"] = parkingSpace
-    tripOptions.metadata = metadata
-
-    Radar.updateTrip(options: tripOptions, status: .arrived) { status, trip, events in
-        if status != .success {
-            print("updateTrip failed: \(Radar.stringForStatus(status))")
-        }
-    }
-}
-
-// Staff confirm the handoff. For a canceled order, call Radar.cancelTrip the same way.
-func orderHandedOff() {
-    Radar.completeTrip { status, trip, events in
-        if status != .success && status != .errorNotFound {
-            // The trip is still active on the server. Retry.
-            print("completeTrip failed: \(Radar.stringForStatus(status))")
-        }
-    }
-}
-```
-
-```kotlin Kotlin
-import android.util.Log
-import io.radar.sdk.Radar
-import io.radar.sdk.RadarTrackingOptions
-import io.radar.sdk.RadarTripOptions
-import io.radar.sdk.model.RadarTrip
-import org.json.JSONObject
-
-// ASAP orders: call when the order is confirmed.
-// Scheduled orders: call when the customer taps "I'm on my way".
-fun customerIsOnTheWay(orderId: String, storeId: String) {
-    val tripOptions = RadarTripOptions(
-        externalId = orderId,
-        destinationGeofenceTag = "store",
-        destinationGeofenceExternalId = storeId,
-        mode = Radar.RadarRouteMode.CAR
-    )
-
-    Radar.startTrip(tripOptions, RadarTrackingOptions.CONTINUOUS) { status, trip, events ->
-        if (status != Radar.RadarStatus.SUCCESS) {
-            // The order stays on the time-based path.
-            Log.w("Trips", "startTrip failed: $status")
-        }
-    }
-}
-
-// The customer taps "I'm here" and enters a parking space.
-fun customerIsHere(parkingSpace: String) {
-    val tripOptions = Radar.getTripOptions() ?: return
-    val metadata = tripOptions.metadata ?: JSONObject()
-    metadata.put("parkingSpace", parkingSpace)
-    tripOptions.metadata = metadata
-
-    Radar.updateTrip(tripOptions, RadarTrip.RadarTripStatus.ARRIVED) { status, trip, events ->
-        if (status != Radar.RadarStatus.SUCCESS) {
-            Log.w("Trips", "updateTrip failed: $status")
-        }
-    }
-}
-
-// Staff confirm the handoff. For a canceled order, call Radar.cancelTrip the same way.
-fun orderHandedOff() {
-    Radar.completeTrip { status, trip, events ->
-        if (status != Radar.RadarStatus.SUCCESS && status != Radar.RadarStatus.ERROR_NOT_FOUND) {
-            // The trip is still active on the server. Retry.
-            Log.w("Trips", "completeTrip failed: $status")
-        }
-    }
-}
-```
-
-```javascript React Native
-import Radar, { presetContinuous } from 'react-native-radar';
-
-// ASAP orders: call when the order is confirmed.
-// Scheduled orders: call when the customer taps "I'm on my way".
-export async function customerIsOnTheWay(orderId, storeId) {
-  try {
-    await Radar.startTrip({
-      tripOptions: {
-        externalId: orderId,
-        destinationGeofenceTag: 'store',
-        destinationGeofenceExternalId: storeId,
-        mode: 'car',
-      },
-      trackingOptions: presetContinuous,
-    });
-  } catch (err) {
-    // The order stays on the time-based path.
-    console.warn('startTrip failed', err.code);
-  }
-}
-
-// The customer taps "I'm here" and enters a parking space.
-export async function customerIsHere(parkingSpace) {
-  try {
-    const tripOptions = await Radar.getTripOptions();
-    await Radar.updateTrip({
-      options: {
-        ...tripOptions,
-        metadata: { ...tripOptions.metadata, parkingSpace },
-      },
-      status: 'arrived',
-    });
-  } catch (err) {
-    console.warn('updateTrip failed', err.code);
-  }
-}
-
-// Staff confirm the handoff. For a canceled order, call Radar.cancelTrip() the same way.
-export async function orderHandedOff() {
-  try {
-    await Radar.completeTrip();
-  } catch (err) {
-    // Unless the code is ERROR_NOT_FOUND, the trip is still active on the server. Retry.
-    console.warn('completeTrip failed', err.code);
-  }
-}
-```
-
-</CodeGroup>
-
-### Pickup states
-
-| Customer journey | Trip status | Tracking | What your backend does |
-| --- | --- | --- | --- |
-| Order placed for later, customer hasn't left | No trip yet | Unchanged | Holds the order. Schedules the time-based fallback. |
-| Customer is on the way | `started` | Continuous | Shows the ETA to staff. |
-| Customer is a few minutes away | `approaching` | Continuous | Starts preparing the order. |
-| Customer is on site | `arrived` | Continuous | Alerts staff to hand off. |
-| Order handed over | `completed` | Restored or stopped | Closes the order. |
-| Order canceled | `canceled` | Restored or stopped | Stops preparation. |
-| Nobody ended the trip | `expired` | Restored or stopped on the next update | Closes out by time. |
-
-### ASAP and scheduled orders
-
-The two kinds of order start trips at different moments.
-
-- **ASAP orders**: The customer wants the order as soon as possible and is usually about to leave. Start the trip when the order is confirmed.
-- **Scheduled orders**: The customer chose a pickup time that may be hours away. Don't start continuous tracking at order time. Start the trip when the customer taps an "I'm on my way" button, and set `scheduledArrivalAt` to the pickup time so that Radar can report delay.
-
-The "I'm on my way" action matters for one more reason. If a trip for a scheduled order starts while the customer is at home five minutes from the store, the ETA is already below the approaching threshold, and the order would be prepared far too early. Gating the trip on an explicit action ties the ETA to a real departure.
-
-### Connect the order and the trip
-
-| Your data | Radar field |
-| --- | --- |
-| Order ID | Trip `externalId` |
-| Store ID | Destination geofence `externalId`, with a tag such as `store` |
-| Customer ID | `Radar.setUserId()` |
-| Handoff details (pickup type, vehicle, parking space) | Trip `metadata`, updated with `updateTrip()` as the customer supplies them |
-| Promised pickup time | `scheduledArrivalAt` |
-
-### Start the pickup trip
-
-This example starts a trip to the order's store and sets the scheduled arrival time for a scheduled order.
-
-<CodeGroup>
-
-```swift Swift
-import RadarSDK
-
-struct PickupOrder {
-    let id: String              // "order-1001"
-    let storeId: String         // "store-42"
-    let scheduledPickupAt: Date?  // nil for ASAP orders
-}
-
-// ASAP orders: call when the order is confirmed.
-// Scheduled orders: call when the customer taps "I'm on my way".
-func startPickupTrip(for order: PickupOrder, completion: @escaping (Bool) -> Void) {
-    let tripOptions = RadarTripOptions(
-        externalId: order.id,
-        destinationGeofenceTag: "store",
-        destinationGeofenceExternalId: order.storeId
-    )
-    tripOptions.mode = .car
-    tripOptions.scheduledArrivalAt = order.scheduledPickupAt
-
-    Radar.startTrip(
-        options: tripOptions,
-        trackingOptions: RadarTrackingOptions.presetContinuous
-    ) { status, trip, events in
-        // On failure the order stays on the time-based path.
-        completion(status == .success)
-    }
-}
-```
-
-```kotlin Kotlin
-import io.radar.sdk.Radar
-import io.radar.sdk.RadarTrackingOptions
-import io.radar.sdk.RadarTripOptions
-import java.util.Date
-
-data class PickupOrder(
-    val id: String,               // "order-1001"
-    val storeId: String,          // "store-42"
-    val scheduledPickupAt: Date?  // null for ASAP orders
-)
-
-// ASAP orders: call when the order is confirmed.
-// Scheduled orders: call when the customer taps "I'm on my way".
-fun startPickupTrip(order: PickupOrder, onResult: (Boolean) -> Unit) {
-    val tripOptions = RadarTripOptions(
-        externalId = order.id,
-        destinationGeofenceTag = "store",
-        destinationGeofenceExternalId = order.storeId,
-        mode = Radar.RadarRouteMode.CAR,
-        scheduledArrivalAt = order.scheduledPickupAt
-    )
-
-    Radar.startTrip(tripOptions, RadarTrackingOptions.CONTINUOUS) { status, trip, events ->
-        // On failure the order stays on the time-based path.
-        onResult(status == Radar.RadarStatus.SUCCESS)
-    }
-}
-```
-
-</CodeGroup>
-
-Complete the trip when staff or the customer confirms the handoff, and cancel it when the order is canceled, as shown in [Stopping trips](#stopping-trips).
+Receive trip events in the app with the delegate or receiver in the complete example, and on your backend by webhook. There, look up the order by `trip.externalId` and deduplicate on `event._id`.
 
 ### Prepare the order from ETA and arrival, with a time-based fallback
 
-Location improves timing when it is available. It must never be the only thing that gets an order made. Decide the fallback first: the latest time at which preparation must start for the order to be ready by the promised time, whether or not Radar has reported anything.
-
-The backend logic, in pseudocode:
+Location improves timing when it is available. It must never be the only thing that gets an order made, because a force-quit app, a phone that is off, or a denied permission produces no updates. Decide the latest time at which preparation must start, schedule a fallback for it, and start preparing at whichever comes first. This is the backend logic in pseudocode:
 
 ```text
 on order confirmed:
@@ -922,232 +523,155 @@ on webhook user.stopped_trip:
     if event.trip.status == "canceled": stop preparing if still possible
 ```
 
-Both paths lead to the same "start preparing" action, and that action must be safe to call twice.
+Both paths lead to the same "start preparing" action, which must be safe to call twice. A customer who starts the trip while already at the store can go from `started` straight to `arrived`.
 
-### Handle pickup edge cases
-
-| Case | What happens | What to do |
-| --- | --- | --- |
-| Location permission denied | No trip can be tracked. | Don't start a trip. Place the order on the time-based path, and tell the customer how to announce their arrival, for example with an "I'm here" button. |
-| No updates after the trip starts | The app was force-quit, the phone is off, or the operating system suspended the app. The trip stays `started` with a stale ETA. | The fallback prepares the order on time. On the staff display, show when the ETA was last updated so that a stale value isn't trusted. |
-| Someone else collects the order | The phone that placed the order never approaches. | Same as above. Let staff complete the order by hand, and complete or cancel the trip from your backend with the Trips API. |
-| Customer is already at or near the store | The first update is inside the destination geofence, or the ETA is already below the threshold. `arrived` or `approaching` arrives within seconds of `started`. | Treat `arrived` without a preceding `approaching` as normal. For scheduled orders, rely on the "I'm on my way" gate. |
-| A second order for the same visit | The SDK holds one active trip per device. | Don't start a second trip. Attach the new order to the existing trip, for example by adding its ID to the trip metadata with `updateTrip()`, and prepare the orders together. |
-| Customer goes somewhere nearby instead | The trip reaches `arrived` or stays `approaching` without a handoff. | Complete the trip on handoff, not on arrival, and rely on expiration to close trips that are never handed off. |
-| Order placed close to closing time | Waiting for the customer's approach could push preparation past closing. | Skip location-based timing for these orders and prepare them immediately. |
-| Menu changeover (for example breakfast to lunch) | An order held for arrival could be made after its items are no longer available. | Skip location-based timing for orders near a changeover. |
-| Customer changes the pickup time | The promised time and the fallback are stale. | Update `scheduledArrivalAt` with `updateTrip()` and reschedule the fallback. |
-
-### Use Olo order firing
-
-If your orders run through Olo, Radar can tell Olo when to send an order to the kitchen, based on the trip. For the partner setup in Olo, the order events Radar consumes, the trip and order identifiers, the timing fields for ASAP and scheduled orders, and the backup firing behavior, see [Olo pickup and order firing](/integrations/olo). The lifecycle on this page still applies: your app starts the trip, keeps tracking for its duration, and reconciles on open.
-
-### Test pickups
-
-| Test | Expected result |
-| --- | --- |
-| ASAP order, drive or simulate a route to the store | `user.started_trip`, then `user.updated_trip` with a falling ETA, `user.approaching_trip_destination`, and `user.arrived_at_trip_destination`. Preparation starts once. |
-| Scheduled order, no "I'm on my way" tap | No trip exists. Preparation starts at the fallback time. |
-| Scheduled order placed while standing in the store, then "I'm on my way" | `arrived` follows `started` directly. Preparation starts once. |
-| Trip started, then app force-quit | No further updates. Preparation starts at the fallback time. Reopening the app restores the trip UI and tracking. |
-| Order canceled on the way | The trip is `canceled`, `user.stopped_trip` is delivered, and tracking returns to its earlier state. |
-| Handoff confirmed | The trip is `completed`, and the blue indicator on iOS or the notification on Android disappears, unless background tracking was on before the trip. |
-| Location permission denied | No trip is started and the order follows the time-based path. |
-
-## Track deliveries
-
-Use this section when the tracked device belongs to the person doing the traveling: a driver or courier going to one or more customer addresses, or a traveler moving through a sequence of stops.
-
-This block is a single-stop delivery from end to end in the driver app: identify the driver, start a trip to the delivery's geofence, and end the trip at drop-off or reassignment. Your backend creates the geofence first, as shown in [Single-destination deliveries](#single-destination-deliveries). The block assumes the setup in the [complete example](#complete-example).
+When your app knows the customer has arrived before Radar detects it, for example from an "I'm here" button, update the trip. This example adds a parking space and moves the trip to `arrived`:
 
 <CodeGroup>
 
 ```swift Swift
-import RadarSDK
+guard let tripOptions = Radar.getTripOptions() else { return }
 
-// The driver signs in.
-func driverSignedIn(driverId: String) {
-    Radar.setUserId(driverId)
-}
+var metadata = tripOptions.metadata ?? [:]
+metadata["parkingSpace"] = "4"
+tripOptions.metadata = metadata
 
-// The driver accepts the job.
-func startDelivery(deliveryId: String, orderId: String) {
-    let tripOptions = RadarTripOptions(
-        externalId: deliveryId,
-        destinationGeofenceTag: "delivery",
-        destinationGeofenceExternalId: deliveryId
-    )
-    tripOptions.mode = .car
-    tripOptions.metadata = ["orderId": orderId]
-
-    Radar.startTrip(
-        options: tripOptions,
-        trackingOptions: .presetContinuous
-    ) { status, trip, events in
-        if status != .success {
-            // No trip was created. Don't show the route as live.
-            print("startTrip failed: \(Radar.stringForStatus(status))")
-        }
+Radar.updateTrip(options: tripOptions, status: .arrived) { status, trip, events in
+    if status != .success {
+        print("updateTrip failed: \(Radar.stringForStatus(status))")
     }
 }
+```
 
-// The driver confirms the drop-off.
-func deliveryDroppedOff() {
-    Radar.completeTrip { status, trip, events in
-        if status != .success && status != .errorNotFound {
-            // The trip is still active on the server. Retry.
-            print("completeTrip failed: \(Radar.stringForStatus(status))")
-        }
+```kotlin Kotlin
+import io.radar.sdk.model.RadarTrip
+import org.json.JSONObject
+
+val tripOptions = Radar.getTripOptions() ?: return
+
+val metadata = tripOptions.metadata ?: JSONObject()
+metadata.put("parkingSpace", "4")
+tripOptions.metadata = metadata
+
+Radar.updateTrip(tripOptions, RadarTrip.RadarTripStatus.ARRIVED) { status, trip, events ->
+    if (status != Radar.RadarStatus.SUCCESS) {
+        Log.w("Trips", "updateTrip failed: $status")
     }
 }
+```
 
-// The job is reassigned or abandoned.
-func deliveryReassigned() {
-    Radar.cancelTrip { status, trip, events in
-        if status != .success && status != .errorNotFound {
-            print("cancelTrip failed: \(Radar.stringForStatus(status))")
+```javascript React Native
+const tripOptions = await Radar.getTripOptions();
+
+await Radar.updateTrip({
+  options: {
+    ...tripOptions,
+    metadata: { ...tripOptions.metadata, parkingSpace: '4' },
+  },
+  status: 'arrived',
+});
+```
+
+</CodeGroup>
+
+### Stopping trips
+
+End every trip explicitly. Call `completeTrip()` at handoff, not at arrival, and `cancelTrip()` when the order is canceled. When either call returns, the SDK restores the tracking options that were running before the trip, or stops tracking if it wasn't tracking before.
+
+On iOS and Android, don't call `Radar.stopTracking()` after a trip unless you want all tracking off, including background tracking that was running before the trip.
+
+If the call fails with anything other than a not-found status, for example with no network, the trip is still active on the server. Retry, or end the trip from your backend with [Update a trip](/api/trips#update-a-trip). A trip that nobody ends becomes `expired`.
+
+### Recover on app open and resume
+
+Trip state lives on Radar's servers and tracking state lives on the device. They drift apart when the user force-quits the app, the device restarts, or the trip ends on the server while the app is closed. Each time the app opens or returns to the foreground, call `trackOnce()` and read `user.trip`:
+
+<CodeGroup>
+
+```swift Swift
+// Call from applicationDidBecomeActive or the scene equivalent.
+func reconcileTrip() {
+    Radar.trackOnce { status, location, events, user in
+        guard status == .success else {
+            // Unknown state. Show the last known order status and try again
+            // on the next foreground.
+            return
+        }
+
+        if let trip = user?.trip {
+            // A trip is active on the server.
+            if !Radar.isTracking() {
+                Radar.startTracking(trackingOptions: RadarTrackingOptions.presetContinuous)
+            }
+            // Restore the trip UI from `trip`.
+        } else {
+            // No active trip. The SDK has already cleared its stored trip and
+            // restored or stopped tracking. Remove any trip UI.
         }
     }
 }
 ```
 
 ```kotlin Kotlin
-import android.util.Log
-import io.radar.sdk.Radar
-import io.radar.sdk.RadarTrackingOptions
-import io.radar.sdk.RadarTripOptions
-import org.json.JSONObject
-
-// The driver signs in.
-fun driverSignedIn(driverId: String) {
-    Radar.setUserId(driverId)
-}
-
-// The driver accepts the job.
-fun startDelivery(deliveryId: String, orderId: String) {
-    val tripOptions = RadarTripOptions(
-        externalId = deliveryId,
-        metadata = JSONObject().put("orderId", orderId),
-        destinationGeofenceTag = "delivery",
-        destinationGeofenceExternalId = deliveryId,
-        mode = Radar.RadarRouteMode.CAR
-    )
-
-    Radar.startTrip(tripOptions, RadarTrackingOptions.CONTINUOUS) { status, trip, events ->
+// Call from onStart or a ProcessLifecycleOwner observer.
+fun reconcileTrip() {
+    Radar.trackOnce { status, location, events, user ->
         if (status != Radar.RadarStatus.SUCCESS) {
-            // No trip was created. Don't show the route as live.
-            Log.w("Trips", "startTrip failed: $status")
+            // Unknown state. Show the last known order status and try again
+            // on the next foreground.
+            return@trackOnce
         }
-    }
-}
 
-// The driver confirms the drop-off.
-fun deliveryDroppedOff() {
-    Radar.completeTrip { status, trip, events ->
-        if (status != Radar.RadarStatus.SUCCESS && status != Radar.RadarStatus.ERROR_NOT_FOUND) {
-            // The trip is still active on the server. Retry.
-            Log.w("Trips", "completeTrip failed: $status")
-        }
-    }
-}
-
-// The job is reassigned or abandoned.
-fun deliveryReassigned() {
-    Radar.cancelTrip { status, trip, events ->
-        if (status != Radar.RadarStatus.SUCCESS && status != Radar.RadarStatus.ERROR_NOT_FOUND) {
-            Log.w("Trips", "cancelTrip failed: $status")
+        val trip = user?.trip
+        if (trip != null) {
+            // A trip is active on the server.
+            if (!Radar.isTracking()) {
+                Radar.startTracking(RadarTrackingOptions.CONTINUOUS)
+            }
+            // Restore the trip UI from `trip`.
+        } else {
+            // No active trip. The SDK has already cleared its stored trip and
+            // restored or stopped tracking. Remove any trip UI.
         }
     }
 }
 ```
 
 ```javascript React Native
-import Radar, { presetContinuous } from 'react-native-radar';
-
-// The driver signs in.
-export function driverSignedIn(driverId) {
-  Radar.setUserId(driverId);
-}
-
-// The driver accepts the job.
-export async function startDelivery(deliveryId, orderId) {
+// Call when AppState changes to 'active'.
+async function reconcileTrip() {
   try {
-    await Radar.startTrip({
-      tripOptions: {
-        externalId: deliveryId,
-        destinationGeofenceTag: 'delivery',
-        destinationGeofenceExternalId: deliveryId,
-        mode: 'car',
-        metadata: { orderId },
-      },
-      trackingOptions: presetContinuous,
-    });
-  } catch (err) {
-    // No trip was created. Don't show the route as live.
-    console.warn('startTrip failed', err.code);
-  }
-}
+    const { user } = await Radar.trackOnce();
 
-// The driver confirms the drop-off.
-export async function deliveryDroppedOff() {
-  try {
-    await Radar.completeTrip();
+    if (user?.trip) {
+      // A trip is active on the server.
+      if (!(await Radar.isTracking())) {
+        Radar.startTrackingContinuous();
+      }
+      // Restore the trip UI from user.trip.
+    } else {
+      // No active trip. The SDK has already cleared its stored trip and
+      // restored or stopped tracking. Remove any trip UI.
+    }
   } catch (err) {
-    // Unless the code is ERROR_NOT_FOUND, the trip is still active on the server. Retry.
-    console.warn('completeTrip failed', err.code);
-  }
-}
-
-// The job is reassigned or abandoned.
-export async function deliveryReassigned() {
-  try {
-    await Radar.cancelTrip();
-  } catch (err) {
-    console.warn('cancelTrip failed', err.code);
+    // Unknown state. Show the last known order status and try again
+    // on the next foreground.
   }
 }
 ```
 
 </CodeGroup>
 
-For a route with several stops, see [Multi-leg trips](#multi-leg-trips).
+A force-quit app doesn't track until the user opens it again, which is why the time-based fallback exists.
 
-### Delivery states
+## Track deliveries
 
-| Driver journey | Trip status | Current leg status | What your backend does |
-| --- | --- | --- | --- |
-| Assigned, not yet moving | No trip, or `started` if you start at assignment | `started` on the first leg | Shows the job as assigned. |
-| En route to a stop | `started` | `started` | Publishes the ETA to the customer. |
-| Close to a stop | `approaching` | `approaching` | Sends "arriving soon". |
-| At a stop | `arrived` | `arrived` | Marks the driver on site. |
-| Stop finished, more stops remain | `started` | Finished leg `completed`, next leg `started` | Marks the stop delivered and publishes the next ETA. |
-| Last stop finished | `completed` | `completed` | Closes the route. |
-| Route abandoned or reassigned | `canceled` | `canceled` | Reassigns the remaining stops. |
+Here the tracked device belongs to the traveler: a driver going to one or more customer addresses. The lifecycle is the same as a pickup, with these differences:
 
-For a single-destination delivery, ignore the leg column.
-
-### Identify the driver and the delivery
-
-- Call `Radar.setUserId()` with the driver's ID from your system when the driver signs in. `userId` is nullable, so on a shared device you can clear it at sign-out. See [Handle login, logout, and user switching](/fundamentals/authentication-and-access#handle-login-logout-and-user-switching).
-- Use the delivery or route ID as the trip `externalId`.
-- Put what the customer-facing side needs, such as the order number, into trip or leg `metadata`. Don't put customer names or addresses in metadata unless you need them there.
-
-### Single-destination deliveries
-
-A single-destination trip needs a destination geofence. Customer addresses are usually not geofences you already have, so create one for the delivery from your backend when the job is created, and let it delete itself afterwards:
-
-```bash
-curl "https://api.radar.io/v1/geofences/delivery/delivery-7001" \
-  -X PUT \
-  -H "Authorization: prj_test_sk_..." \
-  -d "description=Delivery 7001" \
-  -d "type=circle" \
-  -d "coordinates=[-73.990550,40.735225]" \
-  -d "radius=75" \
-  -d "deleteAfter=2026-03-03T06:00:00Z"
-```
-
-Then start the trip in the driver app with `destinationGeofenceTag` set to `delivery` and `destinationGeofenceExternalId` set to `delivery-7001`, as in [Starting trips](#starting-trips). Complete the trip when the driver confirms the drop-off, and cancel it if the job is reassigned.
+- **Identity**: Call `Radar.setUserId()` with the driver's ID at sign-in, and use the delivery or route ID as the trip `externalId`.
+- **Destination**: A customer address usually isn't a geofence you already have. Create one from your backend when the job is created, with [Upsert a geofence](/api/geofences#upsert-a-geofence), and set `deleteAfter` so that it deletes itself afterwards.
+- **End**: Complete the trip when the driver confirms the drop-off, and cancel it if the job is reassigned.
+- **Customer-facing ETA**: Store the latest `trip.eta` from `user.updated_trip` webhooks for each `trip.externalId`, and serve it from your backend. The Trips API needs a secret key, so never call it from a customer's browser or app.
 
 ### Multi-leg trips
 
@@ -1155,65 +679,7 @@ Then start the trip in the driver app with `destinationGeofenceTag` set to `deli
   Multi-leg trips must be enabled for your project. Contact your Radar account team.
 </Info>
 
-A multi-leg trip is one trip with an ordered list of stops. Each leg has its own destination, status, ETA, and metadata, and the trip has a `currentLegId`. The top-level destination fields are absent because each leg carries its own:
-
-```json
-{
-  "trip": {
-    "_id": "64f0a1b2c3d4e5f6a7b8c9f0",
-    "live": false,
-    "status": "started",
-    "externalId": "route-555",
-    "mode": "car",
-    "currentLegId": "64f0a1b2c3d4e5f6a7b8cb01",
-    "legs": [
-      {
-        "_id": "64f0a1b2c3d4e5f6a7b8cb01",
-        "status": "started",
-        "destinationGeofenceTag": "delivery",
-        "destinationGeofenceExternalId": "delivery-7001",
-        "stopDuration": 5,
-        "metadata": {
-          "orderId": "order-2001"
-        },
-        "eta": {
-          "duration": 8.2,
-          "distance": 3200
-        }
-      },
-      {
-        "_id": "64f0a1b2c3d4e5f6a7b8cb02",
-        "status": "pending",
-        "destinationGeofenceTag": "delivery",
-        "destinationGeofenceExternalId": "delivery-7002",
-        "metadata": {
-          "orderId": "order-2002"
-        },
-        "eta": {
-          "duration": 15.7,
-          "distance": 6100
-        }
-      }
-    ],
-    "eta": {
-      "duration": 15.7,
-      "distance": 6100
-    },
-    "createdAt": "2026-03-02T17:00:55.830Z",
-    "updatedAt": "2026-03-02T17:03:55.837Z"
-  }
-}
-```
-
-#### Creating a multi-leg trip
-
-Define a leg for each stop and attach the legs to the trip options. A leg's destination can be:
-
-- A geofence, by tag and external ID or by Radar geofence ID.
-- A street address.
-- Coordinates.
-
-For address and coordinate destinations, set `arrivalRadius`, in meters, to define the arrival area. Set `stopDuration`, in minutes, on intermediate stops so that the ETAs of later legs account for time spent at each stop. The first leg is `started` when the trip begins and the others are `pending`.
+A multi-leg trip is one trip with an ordered list of stops. Each leg has its own destination (a geofence, an address, or coordinates), status, ETA, and metadata, and the trip has a `currentLegId`. For address and coordinate destinations, set `arrivalRadius`, in meters. Set `stopDuration`, in minutes, so that the ETAs of later legs account for time spent at each stop. This example starts a three-stop route with the native SDKs:
 
 <CodeGroup>
 
@@ -1293,163 +759,18 @@ Radar.startTrip(tripOptions, RadarTrackingOptions.CONTINUOUS) { status, trip, ev
 
 </CodeGroup>
 
-#### Completing a trip leg
-
-When the driver finishes a stop, mark the current leg `completed`. Radar starts the next leg. Three methods are available, depending on how much you want the SDK to resolve for you:
-
-- `updateCurrentTripLeg(status)` uses the stored trip and its current leg.
-- `updateTripLeg(legId, status)` targets a specific leg of the stored trip.
-- `updateTripLeg(tripId, legId, status)` names both the trip and the leg.
-
-<CodeGroup>
-
-```swift Swift
-Radar.updateCurrentTripLeg(status: .completed) { status, trip, leg, events in
-    guard status == .success else {
-        // Not recorded. Keep the stop open in the UI and retry.
-        return
-    }
-    if trip?.status == .completed {
-        // That was the last stop. The SDK has cleared the stored trip and
-        // restored or stopped tracking.
-    } else if let nextLegId = trip?.currentLegId {
-        print("Next leg: \(nextLegId)")
-    }
-}
-```
-
-```kotlin Kotlin
-import io.radar.sdk.model.RadarEvent
-import io.radar.sdk.model.RadarTrip
-import io.radar.sdk.model.RadarTripLeg
-
-Radar.updateCurrentTripLeg(
-    RadarTripLeg.RadarTripLegStatus.COMPLETED,
-    object : Radar.RadarTripLegCallback {
-        override fun onComplete(
-            status: Radar.RadarStatus,
-            trip: RadarTrip?,
-            leg: RadarTripLeg?,
-            events: Array<RadarEvent>?
-        ) {
-            if (status != Radar.RadarStatus.SUCCESS) {
-                // Not recorded. Keep the stop open in the UI and retry.
-                return
-            }
-            if (trip?.status == RadarTrip.RadarTripStatus.COMPLETED) {
-                // That was the last stop. The SDK has cleared the stored trip
-                // and restored or stopped tracking.
-            } else {
-                Log.d("Trips", "Next leg: ${trip?.currentLegId}")
-            }
-        }
-    }
-)
-```
-
-</CodeGroup>
-
-Completing the final leg completes the trip. You can also end a multi-leg trip at any point with `completeTrip()` or `cancelTrip()`, as in [Stopping trips](#stopping-trips).
-
-#### Reordering trip legs
-
-Radar follows the order of the legs you give it. It doesn't choose the order for you. If your dispatch system changes the stop order during the route, send the leg IDs in the new order, then request a location update so that ETAs refresh immediately instead of on the next scheduled update.
-
-<CodeGroup>
-
-```swift Swift
-let newOrder = ["64f0a1b2c3d4e5f6a7b8cb02", "64f0a1b2c3d4e5f6a7b8cb01"]
-
-Radar.reorderTripLegs(legIds: newOrder) { status, trip, events in
-    if status == .success {
-        Radar.trackOnce(completionHandler: nil)
-    }
-}
-```
-
-```kotlin Kotlin
-val newOrder = arrayOf("64f0a1b2c3d4e5f6a7b8cb02", "64f0a1b2c3d4e5f6a7b8cb01")
-
-Radar.reorderTripLegs(newOrder, object : Radar.RadarTripCallback {
-    override fun onComplete(
-        status: Radar.RadarStatus,
-        trip: RadarTrip?,
-        events: Array<RadarEvent>?
-    ) {
-        if (status == Radar.RadarStatus.SUCCESS) {
-            Radar.trackOnce()
-        }
-    }
-})
-```
-
-</CodeGroup>
-
-If a leg that was already completed is placed after the current leg, its status returns to `started` when it becomes the current leg.
-
-To compute a good stop order before you start the trip, use route optimization in the [Routing API](/api/routing) from your backend, then create the legs in that order.
-
-#### Accessing trip state
-
-The SDK stores the active trip, so the driver app can render the route without a network call.
-
-<CodeGroup>
-
-```swift Swift
-if let trip = Radar.getTrip() {
-    for leg in trip.legs ?? [] {
-        let isCurrent = leg._id == trip.currentLegId
-        print("\(leg._id ?? "") \(RadarTripLeg.string(for: leg.status)) current=\(isCurrent) eta=\(leg.etaDuration)")
-    }
-}
-```
-
-```kotlin Kotlin
-val trip = Radar.getTrip()
-for (leg in trip?.legs ?: emptyArray()) {
-    val isCurrent = leg._id == trip?.currentLegId
-    Log.d("Trips", "${leg._id} ${RadarTripLeg.stringForStatus(leg.status)} current=$isCurrent eta=${leg.etaDuration}")
-}
-```
-
-</CodeGroup>
-
-For multi-leg trips, Radar also generates `user.stopped_trip_leg` on the server when a leg ends. iOS SDK 3.46.0 and Android SDK 4.3.0 have no enum case for this type, so handle it on your backend.
-
-### Change the destination or the travel mode
-
-- **Destination changed**: For a single-destination trip, update the trip options with the new destination geofence and call `updateTrip()`. For a multi-leg trip, manage the legs through the [Trips API](/api/trips).
-- **Travel mode changed**: A journey can change mode partway, for example driving to a venue and then walking inside it. Model this as consecutive trips: complete the driving trip on arrival, then start a second trip with `mode` set to `foot` and the next destination. Each trip then has an ETA calculated for the right mode. The sequence of destinations and what each arrival means are your application's logic. Radar provides the trips, ETAs, and events.
-
-### Publish status and ETA downstream
-
-| To show | Use |
-| --- | --- |
-| A live ETA on a customer tracking page | `user.updated_trip` webhooks. Store the latest `trip.eta` and `updatedAt` per `trip.externalId` and serve them from your backend. |
-| "Arriving soon" and "Arrived" messages | `user.approaching_trip_destination` and `user.arrived_at_trip_destination`. |
-| A dispatcher view of all active trips to a destination | Poll the list operation in the [Trips API](/api/trips) from your backend with a secret key, or build the view from webhooks. |
-
-Never call the Trips API list operation from a customer's browser or app. It needs a secret key.
-
-### Test deliveries
-
-| Test | Expected result |
-| --- | --- |
-| Single delivery, simulate a route to the delivery geofence | Trip events in order, and the customer page shows a falling ETA. |
-| Driver confirms drop-off | Trip `completed`, tracking restored or stopped. |
-| Job reassigned mid-route | Trip `canceled`, and the first driver's app clears the route on its next update. |
-| Three-leg route, complete each stop | `currentLegId` advances twice, and completing the third leg completes the trip. |
-| Reorder legs mid-route | Leg ETAs change after the next location update. |
-| Driver signs out mid-route | The trip is canceled or handed to your backend to end, tracking stops, and the user ID is cleared. |
-| Driver app force-quit mid-route | Updates stop. Reopening the app restores the route from `user.trip` and restarts tracking. |
+When the driver finishes a stop, call `Radar.updateCurrentTripLeg()` with the status `completed`. Radar starts the next leg, and completing the final leg completes the trip. Radar follows the leg order you give it. To change the order during the route, call `Radar.reorderTripLegs()`. See [Trip legs](/api/trips#trip-legs).
 
 ## Track workers
 
-Use this section when you track people for the length of a work period instead of for one journey: field service, home health, security patrols, or shift work at changing sites. The core requirement is that location is collected while a worker is on the clock and not, or much less, while they are off it.
+Here you track people for a work period instead of for one journey: field service, home health, or shift work at changing sites. A trip still covers the journey to a job site. Around it, your app switches tracking on at clock-in and off at clock-out.
 
-A trip is still the right tool for one part of this: the journey to a job site. The on-clock and off-clock modes around it are tracking states that your app manages.
+- **Clock in**: Start tracking with the responsive preset, which needs background location permission.
+- **Journey to a site**: Start a trip to the site geofence, as in a pickup. When you complete it, the SDK restores on-clock tracking, so don't call `stopTracking()`.
+- **Arrival and departure**: On your backend, use `user.entered_geofence` and `user.exited_geofence` for the site geofence. The exit event's `duration` is the time on site in minutes.
+- **Clock out**: End any active trip first, then stop tracking, because ending a trip restores the tracking that was running before it.
 
-This block is a shift from end to end: start on-clock tracking at clock-in, run a trip for the journey to a job site, and stop tracking at clock-out. It assumes the setup in the [complete example](#complete-example), and background location permission for on-clock tracking with the responsive preset.
+This example shows clock-in and clock-out:
 
 <CodeGroup>
 
@@ -1459,35 +780,6 @@ import RadarSDK
 // The worker clocks in.
 func clockIn() {
     Radar.startTracking(trackingOptions: .presetResponsive)
-}
-
-// The worker taps "Start route".
-func startRoute(visitId: String, siteId: String) {
-    let tripOptions = RadarTripOptions(
-        externalId: visitId,
-        destinationGeofenceTag: "site",
-        destinationGeofenceExternalId: siteId
-    )
-    tripOptions.mode = .car
-
-    Radar.startTrip(
-        options: tripOptions,
-        trackingOptions: .presetContinuous
-    ) { status, trip, events in
-        if status != .success {
-            print("startTrip failed: \(Radar.stringForStatus(status))")
-        }
-    }
-}
-
-// The worker arrives. The SDK restores the on-clock tracking options, so
-// don't call stopTracking() here.
-func arrivedAtSite() {
-    Radar.completeTrip { status, trip, events in
-        if status != .success && status != .errorNotFound {
-            print("completeTrip failed: \(Radar.stringForStatus(status))")
-        }
-    }
 }
 
 // The worker clocks out. End any trip first, because ending a trip restores
@@ -1504,40 +796,12 @@ func clockOut() {
 ```
 
 ```kotlin Kotlin
-import android.util.Log
 import io.radar.sdk.Radar
 import io.radar.sdk.RadarTrackingOptions
-import io.radar.sdk.RadarTripOptions
 
 // The worker clocks in.
 fun clockIn() {
     Radar.startTracking(RadarTrackingOptions.RESPONSIVE)
-}
-
-// The worker taps "Start route".
-fun startRoute(visitId: String, siteId: String) {
-    val tripOptions = RadarTripOptions(
-        externalId = visitId,
-        destinationGeofenceTag = "site",
-        destinationGeofenceExternalId = siteId,
-        mode = Radar.RadarRouteMode.CAR
-    )
-
-    Radar.startTrip(tripOptions, RadarTrackingOptions.CONTINUOUS) { status, trip, events ->
-        if (status != Radar.RadarStatus.SUCCESS) {
-            Log.w("Trips", "startTrip failed: $status")
-        }
-    }
-}
-
-// The worker arrives. The SDK restores the on-clock tracking options, so
-// don't call stopTracking() here.
-fun arrivedAtSite() {
-    Radar.completeTrip { status, trip, events ->
-        if (status != Radar.RadarStatus.SUCCESS && status != Radar.RadarStatus.ERROR_NOT_FOUND) {
-            Log.w("Trips", "completeTrip failed: $status")
-        }
-    }
 }
 
 // The worker clocks out. End any trip first, because ending a trip restores
@@ -1554,38 +818,11 @@ fun clockOut() {
 ```
 
 ```javascript React Native
-import Radar, { presetContinuous } from 'react-native-radar';
+import Radar from 'react-native-radar';
 
 // The worker clocks in.
 export function clockIn() {
   Radar.startTrackingResponsive();
-}
-
-// The worker taps "Start route".
-export async function startRoute(visitId, siteId) {
-  try {
-    await Radar.startTrip({
-      tripOptions: {
-        externalId: visitId,
-        destinationGeofenceTag: 'site',
-        destinationGeofenceExternalId: siteId,
-        mode: 'car',
-      },
-      trackingOptions: presetContinuous,
-    });
-  } catch (err) {
-    console.warn('startTrip failed', err.code);
-  }
-}
-
-// The worker arrives. The SDK restores the on-clock tracking options, so
-// don't call stopTracking() here.
-export async function arrivedAtSite() {
-  try {
-    await Radar.completeTrip();
-  } catch (err) {
-    console.warn('completeTrip failed', err.code);
-  }
 }
 
 // The worker clocks out. End any trip first, because ending a trip restores
@@ -1604,335 +841,68 @@ export async function clockOut() {
 
 </CodeGroup>
 
-To change modes from a shift schedule instead of a button, see [Switch modes on each location update](#switch-modes-on-each-location-update).
+The SDK doesn't run your code at a wall-clock time. Your code runs when the app is opened and when a location update is delivered. With tracking off and the app not running, tracking can't start at the exact moment a shift begins. It resumes when the worker opens the app or clocks in.
 
-### Worker states
+To switch at shift boundaries without a tap, keep a low-frequency mode such as the efficient preset running off the clock, and compare the intended mode with the active one on each location update. That collects location outside working hours, which you must disclose. If payroll depends on exact times, take them from the worker's clock-in action or from geofence events, not from the moment tracking changed.
 
-| Worker state | Trip | Tracking mode | Typical trigger | Signals your backend uses |
-| --- | --- | --- | --- | --- |
-| Off the clock | None | Off, or a low-frequency mode you have disclosed | Shift end, manual clock-out, sign-out | None |
-| On the clock, between sites | None | On-clock mode | Shift start, manual clock-in | Location updates |
-| Traveling to a job site | `started`, then `approaching` | Continuous, or your on-trip options | Worker taps "Start route" | `user.updated_trip` ETA, and delay if `scheduledArrivalAt` is set |
-| At the job site | `arrived`, then `completed` | On-clock mode, or in-geofence options | Entry into the site geofence | `user.entered_geofence` as the arrival time |
-| Left the job site | None | On-clock mode | Exit from the site geofence | `user.exited_geofence`, whose `duration` is the time on site in minutes |
+## Update a Live Activity from trip state
 
-### Decide what off the clock means
-
-Make this decision before you write code, because it determines what the app can do on its own.
-
-| Off-clock choice | Data collected off the clock | Consequence |
-| --- | --- | --- |
-| Stop tracking | None | The app receives no location updates, so it has no opportunity to notice that the next shift has started. On-clock tracking resumes when the worker opens the app or clocks in. |
-| A low-frequency mode, such as the efficient preset | Occasional locations | The app keeps receiving occasional updates and can switch itself to on-clock mode at one of them. You are collecting location outside working hours and must say so. |
-
-State the choice in your privacy disclosures and in the app, and give the worker a visible control to clock out, which must stop on-clock tracking immediately. Don't collect off-clock location unless your use case needs it and your policies allow it.
-
-### Switch modes on each location update
-
-The SDK doesn't run your code at a wall-clock time. Your code runs when the app is opened and when a location update is delivered. Use both moments to compare the intended mode with the active mode, and change tracking only when they differ.
-
-<CodeGroup>
-
-```swift Swift
-import CoreLocation
-import RadarSDK
-
-enum WorkMode: String {
-    case onClock
-    case offClock
-}
-
-// ShiftSchedule is your own type. Store shift start and end as absolute
-// times so that they do not depend on the device's time zone.
-final class ShiftTracking: NSObject, RadarDelegate {
-    private let defaults = UserDefaults.standard
-    private let appliedModeKey = "shiftTracking.appliedMode"
-
-    private var appliedMode: WorkMode? {
-        get { defaults.string(forKey: appliedModeKey).flatMap(WorkMode.init(rawValue:)) }
-        set { defaults.set(newValue?.rawValue, forKey: appliedModeKey) }
-    }
-
-    func desiredMode(at date: Date) -> WorkMode {
-        if ShiftSchedule.shared.manualOverride == .clockedOut { return .offClock }
-        if ShiftSchedule.shared.manualOverride == .clockedIn { return .onClock }
-        return ShiftSchedule.shared.isWithinShift(date) ? .onClock : .offClock
-    }
-
-    // Call on app open, on resume, after clock-in or clock-out, and from
-    // didUpdateLocation.
-    func reconcile() {
-        let desired = desiredMode(at: Date())
-        // Re-apply if the SDK is not tracking when it should be.
-        let drifted = desired == .onClock && !Radar.isTracking()
-        guard desired != appliedMode || drifted else { return }
-
-        // Do not change tracking options in the middle of a trip. The SDK
-        // restores the pre-trip options when the trip ends.
-        guard Radar.getTrip() == nil else { return }
-
-        switch desired {
-        case .onClock:
-            Radar.startTracking(trackingOptions: RadarTrackingOptions.presetResponsive)
-        case .offClock:
-            Radar.stopTracking()
-        }
-        appliedMode = desired
-    }
-
-    func didUpdateLocation(_ location: CLLocation, user: RadarUser) {
-        reconcile()
-    }
-}
-```
-
-```kotlin Kotlin
-import android.content.Context
-import io.radar.sdk.Radar
-import io.radar.sdk.RadarTrackingOptions
-
-enum class WorkMode { ON_CLOCK, OFF_CLOCK }
-
-// ShiftSchedule is your own type. Store shift start and end as absolute
-// times so that they do not depend on the device's time zone.
-class ShiftTracking(context: Context, private val schedule: ShiftSchedule) {
-    private val prefs = context.getSharedPreferences("shift_tracking", Context.MODE_PRIVATE)
-
-    private var appliedMode: WorkMode?
-        get() = prefs.getString("appliedMode", null)?.let { WorkMode.valueOf(it) }
-        set(value) = prefs.edit().putString("appliedMode", value?.name).apply()
-
-    fun desiredMode(nowMillis: Long): WorkMode = when {
-        schedule.manuallyClockedOut -> WorkMode.OFF_CLOCK
-        schedule.manuallyClockedIn -> WorkMode.ON_CLOCK
-        schedule.isWithinShift(nowMillis) -> WorkMode.ON_CLOCK
-        else -> WorkMode.OFF_CLOCK
-    }
-
-    // Call on app open, on resume, after clock-in or clock-out, and from
-    // RadarReceiver.onLocationUpdated.
-    fun reconcile() {
-        val desired = desiredMode(System.currentTimeMillis())
-        // Re-apply if the SDK is not tracking when it should be.
-        val drifted = desired == WorkMode.ON_CLOCK && !Radar.isTracking()
-        if (desired == appliedMode && !drifted) return
-
-        // Do not change tracking options in the middle of a trip. The SDK
-        // restores the pre-trip options when the trip ends.
-        if (Radar.getTrip() != null) return
-
-        when (desired) {
-            WorkMode.ON_CLOCK -> Radar.startTracking(RadarTrackingOptions.RESPONSIVE)
-            WorkMode.OFF_CLOCK -> Radar.stopTracking()
-        }
-        appliedMode = desired
-    }
-}
-```
-
-</CodeGroup>
-
-Notes on the pattern:
-
-- **Persist the applied mode**: The process can be killed and relaunched at any time. Keeping the last applied mode in durable storage lets the next launch see whether a change is needed without restarting tracking on every update.
-- **Change only on a difference**: Calling `startTracking()` on every location update restarts tracking needlessly.
-- **Background permission**: On-clock tracking with the responsive preset needs background location permission. With the continuous preset, foreground permission is enough while the system indicator or foreground service is active, at a higher battery cost over a full shift.
-- **Schedules and time zones**: Evaluate "is the worker on shift" against absolute start and end times supplied by your backend. A worker who travels across a time zone boundary, or a device with a changed clock setting, must not shift the schedule.
-- **Manual changes**: A manual clock-in or clock-out overrides the schedule until the next scheduled boundary. Call `reconcile()` right after the worker taps the control.
-- **A backstop for shift end**: Tracking options have a `stopTrackingAfter` date. Setting it to the end of the shift when you start on-clock tracking gives the SDK a time after which it stops tracking, in addition to your own switch. Test how it behaves on the OS versions you support before you rely on it.
-
-What this pattern can't do:
-
-- It can't start tracking at the exact moment a shift begins if the app isn't running and tracking is off. The switch happens at the next app open, or at the next delivered location update if you chose a low-frequency off-clock mode.
-- It can't recover after a force-quit until the worker opens the app.
-- It can't guarantee that a mode change happens within a fixed time of the shift boundary. If payroll depends on exact times, take them from the worker's clock-in action or from geofence events, not from the moment tracking changed.
-
-### Track the journey to a job site
-
-When the worker taps "Start route", start a trip to the site geofence with the shift or visit ID as `externalId`, as in [Starting trips](#starting-trips). Set `scheduledArrivalAt` to the shift start so that [delay detection](#delay-detection) can flag a late arrival. Complete the trip on arrival. The SDK then restores the on-clock mode that was running before the trip.
-
-If job sites are created as shifts are scheduled, create each site geofence from your backend with the [Geofences API](/api/geofences), using the shift ID as the `externalId` and `deleteAfter` to remove it after the shift.
-
-### Record arrival and departure
-
-Use `user.entered_geofence` and `user.exited_geofence` for the site geofence, delivered to your backend by [webhook](/integrations/webhooks), as the arrival and departure signals. Use the event's `createdAt` as the time, and the exit event's `duration` as time on site. Whether these become automatic clock-in and clock-out or a suggestion the worker confirms is your decision. Location accuracy indoors and at site boundaries varies, so most workforce apps let a supervisor correct the record.
-
-For mileage between sites, your backend can compute route distance with the [Routing API](/api/routing).
-
-### Test worker tracking
-
-| Test | Expected result |
-| --- | --- |
-| Clock in manually | On-clock tracking starts. `Radar.isTracking()` is `true`. |
-| Clock out manually | Tracking stops at once, or changes to the disclosed off-clock mode. |
-| Scheduled shift start with the app closed and off-clock tracking stopped | Nothing happens until the app is opened. On open, on-clock tracking starts. |
-| Scheduled shift end while tracking | Tracking changes at the next delivered location update after the end time, not at the exact minute. |
-| Device restart during a shift | After the worker opens the app, on-clock tracking is active again. |
-| Force-quit during a shift | No updates until the app is opened. On open, the correct mode is applied. |
-| Start a route to a site, arrive, complete | Trip events are delivered, and after completion tracking is back in on-clock mode, not stopped. |
-| Enter and leave the site geofence | `user.entered_geofence` and `user.exited_geofence` reach your backend, with a plausible `duration`. |
-| Sign out while on the clock | Tracking stops and the user ID is cleared. |
-
-## Optional examples
-
-### Update a Live Activity from trip state
-
-On iOS, a Live Activity can show trip progress on the Lock Screen. Radar doesn't create or update Live Activities. Your app does, with ActivityKit, using the trip that the SDK delivers. This example needs iOS 16.2 or later and assumes you have already added a widget extension with a Live Activity and the `NSSupportsLiveActivities` key as described in Apple's ActivityKit documentation.
-
-```swift
-import ActivityKit
-import CoreLocation
-import RadarSDK
-
-struct PickupTripAttributes: ActivityAttributes {
-    struct ContentState: Codable, Hashable {
-        var status: String
-        var minutesAway: Int
-    }
-    var tripExternalId: String
-}
-
-@available(iOS 16.2, *)
-final class TripActivityController: NSObject, RadarDelegate {
-    // After a relaunch, pick up an activity that is still running.
-    private var activity: Activity<PickupTripAttributes>? = Activity<PickupTripAttributes>.activities.first
-
-    func didUpdateLocation(_ location: CLLocation, user: RadarUser) {
-        guard let trip = user.trip else {
-            end()
-            return
-        }
-
-        let state = PickupTripAttributes.ContentState(
-            status: Radar.stringForTripStatus(trip.status),
-            minutesAway: Int(trip.etaDuration.rounded())
-        )
-        let content = ActivityContent(state: state, staleDate: Date().addingTimeInterval(120))
-
-        if let activity = activity {
-            Task { await activity.update(content) }
-        } else {
-            let attributes = PickupTripAttributes(tripExternalId: trip.externalId ?? "")
-            activity = try? Activity.request(attributes: attributes, content: content, pushType: nil)
-        }
-    }
-
-    func didReceiveEvents(_ events: [RadarEvent], user: RadarUser?) {
-        if events.contains(where: { $0.type == .userStoppedTrip }) {
-            end()
-        }
-    }
-
-    private func end() {
-        guard let activity = activity else { return }
-        self.activity = nil
-        Task { await activity.end(nil, dismissalPolicy: .immediate) }
-    }
-}
-```
-
-Points to get right:
-
-- Update from `didUpdateLocation(_:user:)`, which carries the current trip on every synced update, and end the activity when `user.trip` is absent or a `user.stopped_trip` event arrives.
-- Updates happen only when the app receives a location update. If the app is suspended or force-quit, the activity goes stale. Set a `staleDate` so that the system marks it as out of date, and consider ending it from your backend with ActivityKit push notifications.
-- Hold one activity per trip, and look for an existing one at launch before you request another.
-
-### Send approaching and arrival notifications
-
-To notify someone other than the traveler, for example the customer waiting for a delivery, send the message from your backend when the webhook delivers `user.approaching_trip_destination` or `user.arrived_at_trip_destination`, through your push provider or a [messaging integration](/integrations/integrations). To notify the traveler on their own device, post a local notification from the event delegate or receiver. Send each message once per trip: key it on `trip.externalId` and the event type.
-
-### Measure time spent in an area
-
-Trip analytics cover the journey. To measure time spent somewhere, for example in a waiting area before a handoff, create a geofence for the area and use the geofence events: the exit event's `duration` is the minutes between entry and exit. To measure the time between two different areas, subtract the earlier event's `createdAt` from the later one's on your backend. See [Dwell events](/geofencing/geofences-and-places#dwell-events) to be told when a stay passes a threshold while it is still in progress.
-
-## Anomaly detection
-
-### Wrong destination arrival detection
-
-Radar can tell you when a user on a trip enters a geofence that has the same `tag` as the destination but a different `externalId`, for example the wrong store of the same brand. Enable `user.arrived_at_wrong_trip_destination` under **Event types** in the **Trips** section of the [Settings](https://dashboard.radar.com/settings) page.
-
-### Delay detection
-
-Set a delay threshold in the **Trips** section of the [Settings](https://dashboard.radar.com/settings) page. For a trip with `scheduledArrivalAt`, the trip's `delay` object then reports `scheduledArrivalTimeDelay`, the predicted number of minutes late, and `delayed`, which is `true` when that number exceeds the threshold.
-
-## Display live trips and ETAs
-
-### In the Radar trip tracking dashboard
-
-Radar offers a trip tracking dashboard that lists active trips for a destination geofence with their ID, metadata, and ETA, intended for staff at the destination. The trip tracking dashboard must be enabled for your project. Contact your Radar account team.
-
-### In your own UI
-
-From your backend, poll the list operation in the [Trips API](/api/trips) for active trips to a destination, or build the view from [trip events](#trip-events) delivered by webhook, and forward what your staff tools need, such as the ETA to an order management or kitchen display system.
-
-## Analytics
-
-The [trip analytics](https://dashboard.radar.com/geofencing/trips/analytics) page in the Radar dashboard summarizes completed trips for the environment you are viewing. It is updated nightly, so today's trips appear tomorrow.
-
-| Metric | Definition |
-| --- | --- |
-| Median wait time | The median time between arrival at the destination and completion of the trip. |
-| Number of trips | The count of trips with status `completed`. |
-| Median trip time | The median time between the start of the trip and arrival at the destination. |
-| Repeat customers | The number of users who completed more than one trip. |
-
-Wait time and trip time are calculated only for completed trips that have start, arrival, and completion times. A trip that was completed without ever reaching `arrived` is left out of both. This is one more reason to complete trips at handoff, not at arrival.
-
-Filter by date range, destination geofence tag, destination geofence external ID, and travel mode. The **By Destination** table groups the same metrics by destination geofence, so you can compare locations by wait time and by number of trips. Project data retention settings apply to analytics as well.
-
-## Keep-alive
-
-With silent push set up, Radar tries to revive tracking for an active trip that has stopped sending updates. If a trip is active and has had no update for 3 minutes, Radar sends a silent push to the device, which attempts to restart tracking, and repeats every 3 minutes while the trip stays silent. On iOS devices with the location push extension enabled, Radar also attempts a location push after 5 minutes without updates. That can produce a location in some cases where a silent push can't, but it can't restart tracking for the app.
-
-Configure push credentials in the push notification settings on the [Settings](https://dashboard.radar.com/settings) page, then follow [Silent push](/sdk/silent-push) for your platform. Silent push is best effort. The operating system can delay or drop it, and iOS doesn't deliver it to a force-quit app. Keep the time-based fallback.
+On iOS, a Live Activity can show trip progress on the Lock Screen. Radar doesn't create or update Live Activities. Your app does, with ActivityKit. Update the activity from `didUpdateLocation(_:user:)`, which carries the current trip on every update, and end it when `user.trip` is absent or a `user.stopped_trip` event arrives. Set a `staleDate`, because updates stop when the app is suspended or force-quit.
 
 ## Handle results and errors
 
-| Situation | What you see | What to do |
+| Result | Meaning | What to do |
 | --- | --- | --- |
-| Destination geofence missing | `startTrip()` returns a not-found status. | Check the tag, the external ID, and that the geofence exists in the environment of your key. Keep the order on the time-based path. |
-| No network at start | `startTrip()` returns a network status. No trip exists. | Retry when connectivity returns. Don't show a trip UI until the call succeeds. |
-| No network at the end | `completeTrip()` or `cancelTrip()` returns a network status. Tracking has already returned to its earlier state, and the trip is still active on the server. | Retry the call, or end the trip from your backend. Otherwise it ends at expiration. |
-| Location permission denied or revoked mid-trip | Track calls fail with a permissions status, and updates stop. | Cancel the trip, tell the user, and use the fallback. |
-| Updates stop mid-trip | The trip stays active with an old `updatedAt`. | Show the age of the ETA. Use the fallback and [keep-alive](#keep-alive). |
-| App force-quit | No updates until the app is opened. | Reconcile on open, as in [Recover on app open and resume](#recover-on-app-open-and-resume). |
-| Trip ended on the server while the app was closed | On the next update, `user.trip` is absent. | The SDK clears its stored trip and restores or stops tracking. Clear your trip UI. |
-| Trip expired | `user.stopped_trip` with `trip.status` of `expired`. | Close the journey in your system. Review why it was never completed. |
-| Tracking still on after a trip | The iOS location indicator or the Android notification is still visible. | Look for a code path that started tracking separately from the trip and never stopped it, or for a trip that was never ended. |
-| Arrival never detected | The trip stays `approaching` at the destination. | Check the destination geofence's position and size against where users actually stop. Let staff or the user mark arrival, which you send with `updateTrip()`. |
-| Same event delivered twice | Two webhook requests with one `event._id`. | Deduplicate on `_id`. |
+| `startTrip()` returns a not-found status (`.errorNotFound`, `ERROR_NOT_FOUND`) | The destination geofence is missing. | Check the tag, the external ID, and the environment of your key. |
+| `startTrip()` returns a network status | No trip exists. Trip calls aren't queued. | Retry when connectivity returns. Don't show a trip UI until the call succeeds. |
+| `completeTrip()` or `cancelTrip()` returns a network status | Tracking has returned to its earlier state, and the trip is still active on the server. | Retry the call, or end the trip from your backend. |
+| Track calls fail with a permissions status | Location permission was denied or revoked. | Cancel the trip, tell the user, and use the fallback. |
+| The trip stays active with an old `updatedAt` | Updates stopped, for example after a force-quit. | Show the age of the ETA, and use the fallback. |
+| `user.trip` is absent on app open | The trip ended on the server. | Clear your trip UI. The SDK has restored or stopped tracking. |
+| `user.stopped_trip` with `trip.status` of `expired` | Nobody ended the trip. | Close the journey in your system. |
+| The trip stays `approaching` at the destination | The destination geofence doesn't cover where users stop. | Fix the geofence, and let staff or the user mark arrival with `updateTrip()`. |
 
 ## Test the integration
 
-Run the scenario tests in the [pickup](#test-pickups), [delivery](#test-deliveries), and [worker](#test-worker-tracking) sections in the Test environment. Two tools make this practical without driving:
+- **Passing case**: In the Test environment, start a trip, then call `Radar.mockTracking()` on iOS or Android toward the destination geofence. The [Events](https://dashboard.radar.com/geofencing/events) page shows `user.started_trip`, `user.updated_trip` with a falling ETA, `user.approaching_trip_destination`, and `user.arrived_at_trip_destination`. Complete the trip, and tracking returns to its earlier state.
+- **Failing case**: Start a trip, then force-quit the app. No further updates arrive, preparation starts at the fallback time, and reopening the app restores the trip UI and tracking.
 
-- **Mock tracking**: `Radar.mockTracking()` on iOS and Android simulates a sequence of location updates along a route from an origin to a destination for a travel mode, with a number of steps and an interval you choose. Start a trip, then start mock tracking toward the destination geofence to see the full event sequence.
-- **The dashboard**: The trip's page shows its status and ETA, and the [Events](https://dashboard.radar.com/geofencing/events) page shows each trip event as it is generated.
-
-For more tools, see [Test, troubleshoot, and go live](/fundamentals/testing-and-launch). Before launch, also run at least one real journey on a physical device for each platform, with the app in the background and the screen locked, because simulators don't reproduce background delivery limits.
+Before launch, run one real journey on a physical device with the screen locked. See [Test, troubleshoot, and go live](/fundamentals/testing-and-launch).
 
 ## Production checklist
 
-- [ ] Destination geofences exist in Live and are kept current.
-- [ ] Trip `externalId` is your own order, delivery, or shift ID, and your backend looks journeys up by it.
+- [ ] Destination geofences, the approaching threshold, and expiration are set in Live.
 - [ ] Every way out of a journey ends the trip: handoff, cancellation, reassignment, sign-out.
-- [ ] Continuous tracking runs only during a trip, and nothing leaves tracking on after the trip ends.
+- [ ] Continuous tracking runs only during a trip.
 - [ ] The app reconciles trip and tracking state on open and on resume.
-- [ ] A time-based fallback exists for journeys that never report a location, and for force-quit apps.
-- [ ] Webhook handlers deduplicate on `event._id` and are safe to run twice.
-- [ ] iOS background modes and the Android foreground service declaration and notification text are in place, and the store listings explain location use.
-- [ ] Approaching threshold and expiration are set in Live.
-- [ ] For workers: off-clock data collection is decided, disclosed, and controllable by the worker.
-- [ ] Staff-facing screens show when the ETA was last updated.
+- [ ] A time-based fallback covers journeys that never report a location.
+- [ ] iOS background modes and the Android foreground service declaration are in place.
+
+## Build with an agent
+
+Copy this prompt into a coding agent that has access to your repository.
+
+```text
+Implement Radar trip tracking for [order pickup | delivery | worker shifts] in
+this repository.
+Read https://docs.radar.com/geofencing/trips.md, https://docs.radar.com/api/trips.md,
+and the SDK reference for this app's platform (https://docs.radar.com/sdk/ios.md
+or https://docs.radar.com/sdk/android.md).
+Constraints: use the continuous preset only for the length of a trip. Complete
+or cancel the trip at every exit from the journey, and do not call
+stopTracking() after a trip on iOS or Android unless all tracking should stop.
+On app open and resume, reconcile with Radar.trackOnce() and user.trip. Do not
+invent methods, fields, trip statuses, or event names.
+Add tests for: a trip that starts, approaches, arrives, and completes; a trip
+canceled before arrival; startTrip failing; and relaunch during an active trip.
+Report changed files, test results, and the dashboard setup I still need to do.
+```
 
 ## See also
 
-- [Trips API](/api/trips), [Geofences API](/api/geofences), [Events API](/api/events), [Routing API](/api/routing)
-- [Tracking options](/sdk/tracking), [remote configuration](/sdk/remote-configuration), and [silent push](/sdk/silent-push)
-- SDK references: [iOS](/sdk/ios), [Android](/sdk/android), [web](/sdk/web), [React Native](/sdk/react-native), [Flutter](/sdk/flutter)
-- [Olo pickup and order firing](/integrations/olo) and [webhooks](/integrations/webhooks)
-- [Understand foreground and background location permissions](/fundamentals/location-permissions)
-- [Test, troubleshoot, and go live](/fundamentals/testing-and-launch)
-- [Understand geofences, places, regions, beacons, and fraud context](/fundamentals/context-types)
-
-To have a coding agent implement this guide, use the prompt in [Build with an agent](#build-with-an-agent).
+- [Trips API](/api/trips), including the trip `delay` object for trips with `scheduledArrivalAt`
+- [Tracking options](/sdk/tracking) and [remote configuration](/sdk/remote-configuration)
+- [Silent push](/sdk/silent-push), to revive tracking for an active trip that stops sending updates
+- [Trip analytics](https://dashboard.radar.com/geofencing/trips/analytics), for wait time and trip time on completed trips
+- [Olo pickup and order firing](/integrations/olo)
+- [Webhooks](/integrations/webhooks)

@@ -26,6 +26,34 @@ Places settings are your project's current settings for Places. For how Places g
 
 A field is omitted from responses when it has never been set.
 
+The same settings are in the **Places** section of the [Settings](https://dashboard.radar.com/settings) page of the Radar dashboard, where `chainMappings` is **Chain mappings**, `chainMetadata` is **Chain metadata**, and both are entered as JSON objects keyed by chain slug. This `chainMappings` value attaches your own IDs to two chains:
+
+```json
+{
+  "burger-king": "123",
+  "mcdonalds": "456"
+}
+```
+
+This `chainMetadata` value attaches custom fields to the same chains. Each chain takes 1 to 16 keys with string, boolean, or number values:
+
+```json
+{
+  "burger-king": {
+    "segment": "competitor",
+    "offers": true
+  },
+  "mcdonalds": {
+    "segment": "competitor",
+    "offers": false
+  }
+}
+```
+
+Limit `placeFilters` to the chains and categories you act on. For example, to monitor only fast food restaurants, set the `category` filter to `fast-food-restaurant`, or list specific chain slugs in the `chain` filter.
+
+The Places section of the Settings page also has a category and state blocklist, which stops Radar from detecting visits to a category in specific US states. It appears only when Regions is enabled for the project, and it isn't available through this API.
+
 ## Get Places settings
 
 Gets your current Places settings.

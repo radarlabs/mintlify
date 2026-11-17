@@ -248,6 +248,15 @@ When you set `syncLocations` to `.events` on iOS or `sync` to `EVENTS` on Androi
 | Places | `user.entered_place`, `user.exited_place` |
 | Beacons | `user.entered_beacon`, `user.exited_beacon` |
 
+## Trip keep-alive
+
+With [silent push](/sdk/silent-push) set up, Radar tries to revive tracking for an active [trip](/geofencing/trips) that has stopped sending location updates:
+
+- **Silent push**: When an active trip has had no update for 3 minutes, Radar sends a silent push to the device, which attempts to restart tracking. Radar repeats the push every 3 minutes while the trip stays silent.
+- **Location push**: On iOS devices with the location push extension set up, Radar also attempts a location push after 5 minutes without updates. It can produce a location in some cases where a silent push can't, but it can't restart tracking for the app.
+
+Keep-alive needs push credentials. See [Radar dashboard setup](/sdk/silent-push#radar-dashboard-setup). Silent push is best effort: the operating system can delay or drop it, and iOS doesn't deliver it to a force-quit app.
+
 ## Operating system differences
 
 | Behavior | iOS | Android |

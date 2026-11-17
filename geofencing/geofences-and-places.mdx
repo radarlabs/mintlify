@@ -4,16 +4,11 @@ sidebarTitle: "Geofence events and place visits"
 description: "Import your locations as geofences, turn on Places, read the user's current location context, receive entry, exit, and dwell events, send them to other systems, and log conversions."
 ---
 
-import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
-import IdentifyUser from '/snippets/identify-user.mdx';
-import LocationPermissions from '/snippets/location-permissions.mdx';
-import GeofenceImport from '/snippets/geofence-import.mdx';
-
-At the end of this guide, your app knows when a user is at one of your locations or at a place you care about. It shows the right in-app experience when it opens, Radar generates events as the user arrives and leaves, your backend or messaging platform receives those events, and you can tie purchases and other actions back to where they happened.
+At the end of this guide, your app shows the right experience when it opens at one of your locations, Radar generates events as the user arrives and leaves, and your backend or messaging platform receives them.
 
 ## Complete example
 
-This is the client side of this guide in one block: initialize, identify the user, request permission, start background tracking, receive entry, exit, and place events, and read current state each time the app becomes active. The sections below explain each part.
+This is the client side: initialize, identify the user, request permission, start background tracking, receive events, and read current state each time the app becomes active.
 
 <CodeGroup>
 
@@ -379,9 +374,7 @@ class _ResumeObserver with WidgetsBindingObserver {
 
 </CodeGroup>
 
-The Web SDK reads current state in the foreground only. See [Show an on-premise experience](#show-an-on-premise-experience).
-
-A geofence entry event delivered to your backend looks like this:
+The web SDK has no background tracking. On the web, read current state as in [Show an on-premise experience](#show-an-on-premise-experience). Your backend receives each event in this shape:
 
 ```json
 {
@@ -415,630 +408,112 @@ A geofence entry event delivered to your backend looks like this:
 }
 ```
 
-## Build with an agent
-
-Copy this prompt into a coding agent that has access to your repository.
-
-```text
-Implement Radar geofence and place detection in this repository using the
-current Radar documentation.
-
-First inspect the application framework, platform versions, existing Radar code,
-authentication flow, location permission prompts, and tests. Preserve existing
-behavior outside this task.
-
-Read:
-- https://docs.radar.com/geofencing/geofences-and-places.md
-- https://docs.radar.com/sdk/ios.md or https://docs.radar.com/sdk/android.md
-  (the SDK reference for this app's platform)
-- https://docs.radar.com/fundamentals/location-permissions.md
-- https://docs.radar.com/api/geofences.md and https://docs.radar.com/api/events.md
-- https://docs.radar.com/integrations/webhooks.md
-
-Implement, in this order:
-1. SDK initialization in the native application lifecycle, with the publishable
-   key read from build configuration (Test key for debug, Live key for release).
-2. Radar.setUserId() with the app's stable internal user ID after login, and the
-   documented behavior at logout.
-3. A foreground check with Radar.trackOnce() on app open and on resume that
-   reads user.geofences and user.place and switches the UI. Do not depend on a
-   new entry event to detect a user who is already inside.
-4. The two-step permission flow, and Radar.startTracking() with the responsive
-   preset only after background access is confirmed.
-5. A RadarDelegate (iOS) or RadarReceiver (Android) that handles the geofence
-   and place event types this app needs.
-6. Radar.logConversion() at the business actions I name.
-7. If this repository contains the backend: a webhook handler that verifies the
-   request as documented, deduplicates on event._id, and returns 2xx quickly.
-
-Do not invent methods, fields, event names, supported platforms, or defaults.
-Event type strings are lowercase with a "user." prefix, for example
-user.entered_geofence. Do not put a secret key in client code. Do not use the
-continuous tracking preset for geofence detection.
-
-Add tests for: the app opening while already inside a geofence, opening outside
-any geofence, trackOnce returning a permissions error, entry and exit events
-reaching the handler, a duplicate webhook delivery, and a conversion logged with
-and without revenue. Run the repository's relevant checks. Report changed files,
-test results, the dashboard setup I still need to do (geofence import, Places
-settings, webhook), and anything that needs confirmation. Do not change
-production settings or deploy without approval.
-```
-
 ## Prerequisites
 
-- A Radar account and a project. Use the Test environment while you build.
-- The Radar SDK for your platform. The examples use iOS SDK 3.46.0, Android SDK 4.3.0, Web SDK 5.3.0, React Native SDK 4.39.0, and Flutter SDK 3.12.4.
-- A list of your locations with coordinates or addresses and a stable ID for each one.
-- Foreground location permission for in-app experiences. Background location permission for events while the app is closed.
-- Places, Regions, conversions reporting, and place matching depend on your plan. If a setting described here is missing from the Radar dashboard, contact your Radar account team.
-- For server-side delivery: an HTTPS endpoint you control, or an account with a supported [messaging or analytics integration](/integrations/integrations).
-
-## How it works
-
-| Part | Responsibility |
-| --- | --- |
-| Your app | Initializes the SDK, identifies the user, requests permission, and calls `Radar.trackOnce()` or `Radar.startTracking()`. Reads the returned user context to change what is on screen. |
-| Radar | Compares each location update with your geofences and enabled places, keeps the user's current state, and generates an event at each transition. |
-| Your backend | Keeps Radar's geofences in step with your location data. Receives events by webhook, deduplicates them, and applies business rules. |
-| Downstream systems | Messaging and analytics platforms that receive Radar events and user attributes through an integration, a webhook relay, or your app. |
-
-All event generation happens on Radar's servers. The SDK collects locations and sends them. This is why the number and shape of your geofences aren't limited by the operating system's own geofencing limits, and why the same rules apply on iOS, Android, and the web.
-
-Radar generates a geofence entry event when a user enters a geofence with sufficient [confidence](#confidence-and-accuracy), or when they stop in it if [stop detection](#stop-detection) is on. It generates an exit event when they leave with sufficient confidence. A user must exit a geofence before Radar generates another entry event for the same geofence.
-
-Configuration and code are separate jobs in this guide. Geofences, Places, event types, and integrations are configured in the dashboard or through the API, and can change without an app release. Initialization, permissions, tracking calls, UI changes, and conversions are application code.
-
-## Initialize the SDK and identify the user
-
-### Choose Test or Live keys
-
-<EnvironmentAndKeys />
-
-Initialize the SDK once, at app startup, in the native application lifecycle: `application(_:didFinishLaunchingWithOptions:)` on iOS and `Application.onCreate()` on Android. The operating system can launch your app in the background to deliver a location update, and the SDK must be initialized before that update arrives. Initializing in a view controller, an activity, or a JavaScript screen is too late for those launches.
-
-<CodeGroup>
-
-```swift Swift
-import UIKit
-import RadarSDK
-
-@main
-class AppDelegate: UIResponder, UIApplicationDelegate {
-    func application(
-        _ application: UIApplication,
-        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-    ) -> Bool {
-        // Use prj_live_pk_... in release builds.
-        Radar.initialize(publishableKey: "prj_test_pk_...")
-        return true
-    }
-}
-```
-
-```kotlin Kotlin
-import android.app.Application
-import io.radar.sdk.Radar
-
-class MyApplication : Application() {
-    override fun onCreate() {
-        super.onCreate()
-        // Use prj_live_pk_... in release builds.
-        Radar.initialize(this, "prj_test_pk_...")
-    }
-}
-```
-
-</CodeGroup>
-
-For install steps and the remaining platform setup, see the [iOS](/sdk/ios), [Android](/sdk/android), [web](/sdk/web), [React Native](/sdk/react-native), and [Flutter](/sdk/flutter) SDK references.
-
-### Identify the user
-
-<IdentifyUser />
-
-To attach attributes that downstream systems need, such as a loyalty tier or the ID your messaging platform uses for this person, call `Radar.setMetadata()`. Radar returns user metadata on user context and sends it with events.
+- A Radar project and its Test publishable key. See [Choose the right API key](/fundamentals/authentication-and-access#choose-the-right-api-key).
+- The Radar SDK for [iOS](/sdk/ios), [Android](/sdk/android), [web](/sdk/web), [React Native](/sdk/react-native), or [Flutter](/sdk/flutter). On iOS and Android, initialize it in `AppDelegate` or `Application.onCreate()`, because the operating system can launch your app in the background.
+- A stable user ID for `Radar.setUserId()`. See [Handle login, logout, and user switching](/fundamentals/authentication-and-access#handle-login-logout-and-user-switching).
 
 ## Create geofences
 
-<GeofenceImport />
+A geofence is identified by its `tag` (a group you choose, such as `store`) and its `externalId` (your ID for the location, such as `store-42`). Every import path upserts on that pair, so to change a location, send it again. Geofences live in one environment: import into Test while you build, then into Live.
 
-### Store geofences and nearby geofences
+To create a few geofences by hand, open the [Geofences](https://dashboard.radar.com/geofencing/geofences) page and click **Create**. For "near the store" messages, add a second, larger geofence with the same `externalId` and a different tag, such as `nearby`. Put per-location flags, such as `"curbside": true`, in `metadata`, which Radar returns with every event.
 
-One location often needs more than one geofence, because "at the store" and "near the store" drive different experiences.
+### CSV import
 
-| Geofence | Example tag | Typical use |
-| --- | --- | --- |
-| The location itself | `store` | In-store mode, arrival detection, visit analytics, trip destinations. |
-| A larger area around it | `nearby` | "You're close" offers, and reminders before arrival. |
+On the Geofences page, click **Import** and select a CSV file with a header row. The [import history](https://dashboard.radar.com/geofencing/geofences/imports) page shows the error for each row that failed.
 
-Give both geofences the same `externalId` and different tags. Your code can then tell them apart by tag and still map both to the same location record.
-
-There is no universal radius. Size the location geofence to the building and its parking area, and use a polygon when a circle would cover a neighbor or a road. Size the nearby geofence to how far away the message is still useful: walking distance in a city center is very different from a highway exit. Start with a value, measure how many events it produces in the Test environment, and adjust.
-
-Put what your campaigns and app logic need into `metadata` rather than into the tag. For example, set `"curbside": true` only on locations that offer curbside pickup. Every geofence event and every user context that includes the geofence carries its metadata, so the app or the downstream system can decide what to show without a lookup.
-
-### Confidence and accuracy
-
-Every geofence event has a `confidence` from `1` (low) to `3` (high). Confidence depends on the accuracy of the location the device reported and on the shape of the geofence.
-
-| Confidence | Meaning |
+| Column | Description |
 | --- | --- |
-| `3` (high) | The reported location, including its accuracy radius, is completely inside the geofence. |
-| `2` (medium) | The location is mostly inside. |
-| `1` (low) | The location is only partly inside. |
+| `description` | A display name, such as `Store 42`. |
+| `tag` | A group, such as `store`. |
+| `externalId` | Your ID for the location. Unique within the tag. |
+| `type` | `circle`, `polygon`, or `isochrone`. |
+| `coordinates` | The center as `[longitude,latitude]`, or a closed ring of points for a `polygon`. Required unless `address` is set. |
+| `address` | An address for Radar to geocode as the center. Required unless `coordinates` is set. |
+| `radius` | For `circle`, the radius in meters, from `10` to `10000`. |
 
-Small geofences and inaccurate locations produce lower confidence. If a low-confidence entry would cause a wrong decision, ignore events below the level you need.
+Optional columns, such as `enabled`, `metadata`, `operatingHours`, `stopDetection`, and `dwellThreshold`, match the body parameters of [Upsert a geofence](/api/geofences#upsert-a-geofence). In a CSV, `metadata` is a JSON string.
 
-### Stop detection
+<Note>
+  Longitude comes before latitude in `coordinates`. A swapped pair imports without errors but puts the geofence in the wrong place.
+</Note>
 
-With **Geofence stop detection** on, Radar generates an entry event only when the user stops in the geofence, not when they pass through it. A user counts as stopped when the update has `stopped` set to `true` according to your [tracking options](/sdk/tracking), or when the update was made in the foreground.
+This example imports two circles, a polygon, and a store located by address:
 
-Turn it on for the whole project in the **Geofences** section of the [Settings](https://dashboard.radar.com/settings) page, or per geofence with the `stopDetection` field.
+```text
+description,tag,externalId,type,radius,coordinates,address,enabled,metadata
+"Store 42",store,store-42,circle,100,"[-73.975363,40.783826]",,true,"{""curbside"":true}"
+"Near Store 42",nearby,store-42,circle,1000,"[-73.975363,40.783826]",,true,"{""curbside"":true}"
+"Example neighborhood",neighborhood,example-1,polygon,,"[[-73.996973,40.725660],[-74.001072,40.727660],[-74.004998,40.723530],[-73.999827,40.718016],[-73.996973,40.725660]]",,true,
+"Store 43",store,store-43,circle,100,,"20 Jay St, Brooklyn, NY 11201",true,
+```
 
-### Buffer entries and exits
+### API
 
-These two project settings trade missed events against early ones. Both are in the **Geofences** section of the [Settings](https://dashboard.radar.com/settings) page.
+Call the upsert endpoint from your backend, with a secret key, when a location is created, changed, or closed.
 
-| Setting | Off | On |
-| --- | --- | --- |
-| **Buffer entries** | An entry requires the reported location to be inside the boundary. | An entry is generated when the device is within its reported accuracy of the boundary. With 50 meter accuracy, that is up to 50 meters outside. Fewer missed entries. |
-| **Buffer exits** | An exit is generated as soon as the reported location is outside the boundary. | An exit requires the device to be farther outside than its reported accuracy. Fewer false exits when the location jumps. |
+```bash
+curl "https://api.radar.io/v1/geofences/store/store-42" \
+  -X PUT \
+  -H "Authorization: prj_test_sk_..." \
+  -d "description=Store 42" \
+  -d "type=circle" \
+  -d "coordinates=[-73.975363,40.783826]" \
+  -d "radius=100"
+```
 
-### Operating hours
+To stop a closed location from generating events without deleting it, send `enabled=false`. For every field, see the [Geofences API](/api/geofences).
 
-Set `operatingHours` on a geofence to tell Radar when the location is open. Radar then adds a boolean `currentlyOperating` to every event for that geofence. You can also restrict event generation to operating hours for the whole project in the **Geofences** section of the [Settings](https://dashboard.radar.com/settings) page.
+### Geofence sync
 
-Set operating hours in a CSV import, with the [Geofences API](/api/geofences), or in the **Advanced** section when you create or edit a geofence in the dashboard.
+Geofence sync reads a CSV with the same columns from a location you control and upserts its rows once a night.
 
-### Dwell events
+1. On the [Integrations](https://dashboard.radar.com/integrations) page, find **Geofence Sync** and set **Enabled** to **Yes**.
+2. Enter a **Notification Email** for the result of each sync.
+3. Select a **Protocol**: **HTTP** for a CSV at a public URL, or **AWS S3** for a private bucket, with the access key of an IAM user that has `GetObject` permission.
+4. Enter a file for Test, for Live, or for both, and click **Save and Sync**. Radar syncs once immediately, then nightly.
 
-To act on a user who stays, not only on one who arrives, enable `user.dwelled_in_geofence` in the **Geofences** section of the [Settings](https://dashboard.radar.com/settings) page and set `dwellThreshold`, in minutes, on the geofences that should produce it. Radar generates the dwell event on the first location update after the user has been inside for longer than the threshold.
+<Note>
+  Sync and import both upsert. Rows missing from the file aren't deleted.
+</Note>
+
+To retire a location, keep its row and set `enabled` to `false`, or delete the geofence.
 
 ## Enable Places
 
-Places is separate from your own geofences. Instead of importing shapes, you choose chains and categories from Radar's place dataset, and Radar detects visits to matching places. You don't create a geofence for each one.
+Places detects visits to places in Radar's dataset by chain (such as `starbucks`) and category (such as `airport`), with no geofence for each one. In the **Places** section of the [Settings](https://dashboard.radar.com/settings) page, turn on `user.entered_place` and `user.exited_place` under **Event types**, add [chain](/places/chains) slugs under **Chains** and [categories](/places/categories) under **Categories**, and save.
 
-<Steps>
-  <Step title="Open the Places settings">
-    Open the [Settings](https://dashboard.radar.com/settings) page and find the **Places** section.
-  </Step>
-  <Step title="Enable place events">
-    Under **Event types**, enable `user.entered_place` and `user.exited_place`.
-  </Step>
-  <Step title="Add chains and categories">
-    Under **Chains**, add the chain slugs to monitor, such as `starbucks`. Under **Categories**, add categories, such as `airport`.
-  </Step>
-  <Step title="Save and repeat in Live">
-    Save your changes. Do this in Test first, then repeat in Live.
-  </Step>
-</Steps>
-
-To verify, call `Radar.trackOnce()` from a device that is at a matching place and check that `user.place` is populated and that a `user.entered_place` event appears on the [Events](https://dashboard.radar.com/geofencing/events) page.
-
-Radar generates a place entry event when a user stops at a place that matches your filters with sufficient confidence. As with stop detection, a user counts as stopped when `stopped` is `true` or the update was made in the foreground. Radar generates an exit event when the user leaves.
-
-### Categories
-
-A place has one or more categories, organized in a hierarchy. See the [full list of categories](/places/categories).
-
-### Chains
-
-A place can belong to a chain. See the [full list of chains](/places/chains).
-
-#### Mappings
-
-To attach your own ID to a chain, set **Chain mappings** in the **Places** section of the [Settings](https://dashboard.radar.com/settings) page. The value is a JSON object that maps chain slugs to strings:
-
-```json
-{ "burger-king": "123", "mcdonalds": "456" }
-```
-
-Radar returns your ID as `place.chain.externalId` on user context and events.
-
-#### Metadata
-
-To attach custom fields to a chain, set **Chain metadata** in the same section. The value is a JSON object that maps chain slugs to objects with 1 to 16 keys and string, boolean, or number values:
-
-```json
-{
-  "burger-king": { "segment": "competitor", "offers": true },
-  "mcdonalds": { "segment": "competitor", "offers": false }
-}
-```
-
-Radar returns these as `place.chain.metadata`.
-
-### Place filters
-
-Limit Places to the chains and categories you act on. A project that monitors every category generates many events you discard. For example, to monitor only fast food restaurants, add `fast-food-restaurant` to the category filter, or list specific chain slugs in the chain filter.
-
-### State blocklist
-
-To stop Radar from detecting visits to a category in specific US states, set the category and state blocklist in the **Places** section of the [Settings](https://dashboard.radar.com/settings) page. Regions must be enabled for the project for this setting to appear.
-
-### Verify events
-
-If your app has its own confirmation that a visit was real, such as a check-in or a purchase, tell Radar. Accepted and rejected events improve the confidence of later events.
-
-<CodeGroup>
-
-```swift Swift
-// Accept the event, optionally naming the correct place.
-Radar.acceptEventId(event._id, verifiedPlaceId: event.place?._id)
-
-// Reject the event.
-Radar.rejectEventId(event._id)
-```
-
-```kotlin Kotlin
-// Accept the event, optionally naming the correct place.
-Radar.acceptEvent(event._id, event.place?._id)
-
-// Reject the event.
-Radar.rejectEvent(event._id)
-```
-
-</CodeGroup>
-
-### Place matching
-
-Place matching links a geofence you import to the corresponding place in Radar's dataset, so that the geofence can use the place's location and shape instead of a hand-entered point and radius. Place matching must be enabled for your project and requires Places. Contact your Radar account team.
-
-There are two ways to match:
-
-- **During CSV import**: In the import dialog on the [Geofences](https://dashboard.radar.com/geofencing/geofences) page, turn on **Enable place matching** and select the chains to match your rows against. After the import, the [import history](https://dashboard.radar.com/geofencing/geofences/imports) page shows the outcome for each row.
-- **Per geofence**: Set `placeId` to the `_id` of a Radar place in a CSV row or an API request.
-
-What a match changes depends on the geofence type:
-
-| Geofence type | Result of a match |
-| --- | --- |
-| `circle` | Takes the center and shape of the Radar place. |
-| `polygon` | Is linked to the Radar place but keeps its own shape. |
-| `isochrone` | Takes the center of the Radar place, and Radar regenerates the travel-time shape from that center. |
-
-Review the results before you rely on them. A row that didn't match keeps the coordinates you supplied.
+`user.place` is a single place, so branch on `place.chain.slug` or a category. Place matching, which must be enabled for your project, links a geofence to a Radar place through `placeId`, so that a circle takes the place's center and shape.
 
 ## Request permissions and start tracking
 
-<LocationPermissions />
+Foreground permission is enough for `Radar.trackOnce()` on open and resume. Events while the app is closed need background permission and `Radar.startTracking()` with the responsive preset, called only after background access is granted. See [Understand foreground and background location permissions](/fundamentals/location-permissions) and [Tracking options](/sdk/tracking).
 
-### Choose a tracking mode
-
-| What you want | What to call | Permission |
-| --- | --- | --- |
-| The right experience when the app is open | `Radar.trackOnce()` on app open and resume | Foreground |
-| Events while the app is closed | `Radar.startTracking()` with the responsive preset | Background |
-| The lowest battery use, with fewer and later events | `Radar.startTracking()` with the efficient preset | Background |
-
-Start background tracking only after the system reports that background access was granted:
-
-<CodeGroup>
-
-```swift Swift
-Radar.startTracking(trackingOptions: RadarTrackingOptions.presetResponsive)
-```
-
-```kotlin Kotlin
-import io.radar.sdk.RadarTrackingOptions
-
-Radar.startTracking(RadarTrackingOptions.RESPONSIVE)
-```
-
-```javascript React Native
-Radar.startTrackingResponsive();
-```
-
-```dart Flutter
-Radar.startTracking('responsive');
-```
-
-</CodeGroup>
-
-The responsive preset updates about every 2.5 minutes while the device is moving and pauses when it stops. On iOS it needs the **Location updates** and **Background fetch** background modes. Don't use the continuous preset for geofence detection. It is meant for [trips](/geofencing/trips), it shows a system indicator, and on Android it runs a foreground service, which Google Play doesn't accept for geofencing alone. For preset values and custom options, see [Tracking options](/sdk/tracking).
-
-### Configure tracking from the dashboard
-
-Instead of calling these methods in code, you can turn them on for a platform and environment in the **SDK configuration** section of the [Settings](https://dashboard.radar.com/settings) page:
-
-- **Track once on app open** makes the SDK call `trackOnce()` when the app launches or returns to the foreground.
-- **Start tracking on initialize** makes the SDK start tracking when the app launches.
-- **Remotely set tracking options** chooses the preset or custom options, and overrides options set in code.
-
-Remote settings reach a device the next time the SDK syncs, which happens when the app runs. They can't wake an app that isn't running, and they don't grant permission. Your app still has to request it. See [Remote configuration](/sdk/remote-configuration).
-
-### Handle denial
-
-| The user grants | What still works |
-| --- | --- |
-| Background access | Everything in this guide. |
-| Foreground access only | `trackOnce()` on open and resume, on-premise experiences, and conversions with location context. No events while the app is closed. |
-| Nothing | `trackOnce()` fails with a permissions status. Show the default experience and a way to choose a location manually. Don't prompt again on every launch. |
+On iOS, the responsive preset needs the **Location updates** and **Background fetch** background modes. Don't use the continuous preset for geofence detection. It is meant for [trips](/geofencing/trips), and on Android it runs a foreground service, which Google Play doesn't accept for geofencing alone.
 
 ## Receive events in the app
 
-`trackOnce()` returns the events generated by that one update. To receive every event, including those generated while the app is in the background, register a delegate on iOS or a receiver on Android at app startup. In Flutter, the listener is called while the Flutter engine is running. For events when it isn't, use the native delegate or receiver, or a [webhook](/integrations/webhooks).
+`trackOnce()` returns the events generated by that one update. To receive every event, including those generated in the background, register a delegate on iOS or a receiver on Android at app startup. In Flutter, the listener runs only while the Flutter engine is running.
 
-<CodeGroup>
+| Event | When it fires |
+| --- | --- |
+| `user.entered_geofence` | The first location update inside a geofence the user wasn't already in. The user must exit before Radar generates another entry for the same geofence. |
+| `user.exited_geofence` | The first update outside a geofence the user was in. `duration` is the minutes between entry and exit. |
+| `user.dwelled_in_geofence` | The first update after the user has stayed longer than the geofence's `dwellThreshold`, in minutes. |
+| `user.entered_place` | The user stops at a place that matches your chain and category filters. Passing by doesn't count. |
+| `user.exited_place` | The user leaves that place. |
 
-```swift Swift
-import CoreLocation
-import RadarSDK
+Turn geofence event types on or off in the **Geofences** section of the Settings page. To drop entries from users who pass by, turn on **Geofence stop detection** in the same section, so that only a stop in the geofence generates an entry, or ignore events whose `confidence` is below `3` (high).
 
-final class RadarEventHandler: NSObject, RadarDelegate {
-    func didReceiveEvents(_ events: [RadarEvent], user: RadarUser?) {
-        for event in events {
-            switch event.type {
-            case .userEnteredGeofence:
-                if let geofence = event.geofence, geofence.tag == "store" {
-                    print("Entered store \(geofence.externalId ?? "")")
-                }
-            case .userExitedGeofence:
-                if let geofence = event.geofence, geofence.tag == "store" {
-                    print("Left store after \(event.duration) minutes")
-                }
-            case .userDwelledInGeofence:
-                print("Dwelled in \(event.geofence?.externalId ?? "")")
-            case .userEnteredPlace:
-                if event.place?.isChain("starbucks") == true {
-                    print("Entered a Starbucks")
-                }
-            default:
-                break
-            }
-        }
-    }
-
-    func didFail(status: RadarStatus) {
-        print("Radar request failed: \(Radar.stringForStatus(status))")
-    }
-}
-
-// In AppDelegate, keep a strong reference and register it after initialize:
-// let radarEventHandler = RadarEventHandler()
-// Radar.setDelegate(radarEventHandler)
-```
-
-```kotlin Kotlin
-import android.content.Context
-import android.location.Location
-import android.util.Log
-import io.radar.sdk.Radar
-import io.radar.sdk.RadarReceiver
-import io.radar.sdk.model.RadarEvent
-import io.radar.sdk.model.RadarUser
-
-class AppRadarReceiver : RadarReceiver() {
-    override fun onEventsReceived(context: Context, events: Array<RadarEvent>, user: RadarUser?) {
-        for (event in events) {
-            when (event.type) {
-                RadarEvent.RadarEventType.USER_ENTERED_GEOFENCE ->
-                    if (event.geofence?.tag == "store") {
-                        Log.d("Radar", "Entered store ${event.geofence?.externalId}")
-                    }
-                RadarEvent.RadarEventType.USER_EXITED_GEOFENCE ->
-                    if (event.geofence?.tag == "store") {
-                        Log.d("Radar", "Left store after ${event.duration} minutes")
-                    }
-                RadarEvent.RadarEventType.USER_DWELLED_IN_GEOFENCE ->
-                    Log.d("Radar", "Dwelled in ${event.geofence?.externalId}")
-                RadarEvent.RadarEventType.USER_ENTERED_PLACE ->
-                    if (event.place?.isChain("starbucks") == true) {
-                        Log.d("Radar", "Entered a Starbucks")
-                    }
-                else -> Unit
-            }
-        }
-    }
-
-    override fun onLocationUpdated(context: Context, location: Location, user: RadarUser) {}
-
-    override fun onClientLocationUpdated(
-        context: Context,
-        location: Location,
-        stopped: Boolean,
-        source: Radar.RadarLocationSource
-    ) {}
-
-    override fun onError(context: Context, status: Radar.RadarStatus) {
-        Log.w("Radar", "Radar request failed: $status")
-    }
-
-    override fun onLog(context: Context, message: String) {}
-}
-
-// In Application.onCreate(), after Radar.initialize():
-// Radar.setReceiver(AppRadarReceiver())
-```
-
-```javascript React Native
-import Radar from 'react-native-radar';
-
-Radar.onEventsReceived(({ events, user }) => {
-  for (const event of events) {
-    if (event.type === 'user.entered_geofence' && event.geofence?.tag === 'store') {
-      console.log(`Entered store ${event.geofence.externalId}`);
-    }
-  }
-});
-```
-
-```dart Flutter
-import 'package:flutter/widgets.dart';
-import 'package:flutter_radar/flutter_radar.dart';
-
-void onEvents(Map res) {
-  for (final event in (res['events'] as List?) ?? []) {
-    if (event['type'] == 'user.entered_geofence' && event['geofence']?['tag'] == 'store') {
-      debugPrint('Entered store ${event['geofence']['externalId']}');
-    }
-  }
-}
-
-// After Radar.initialize():
-// Radar.onEvents(onEvents);
-```
-
-</CodeGroup>
-
-Event type strings are lowercase and start with `user.`, for example `user.entered_geofence`. The native SDKs expose them as enum cases (`.userEnteredGeofence` in Swift, `USER_ENTERED_GEOFENCE` in Kotlin). Webhooks, integrations, and the JavaScript-based SDKs use the string.
-
-## Geofence entries, exits, and dwell
-
-| Event | Generated when | Useful fields |
-| --- | --- | --- |
-| `user.entered_geofence` | The first qualifying location update inside a geofence the user wasn't already in. | `geofence`, `confidence`, `location` |
-| `user.exited_geofence` | The first qualifying update outside a geofence the user was in. | `geofence`, `confidence`, `duration` (minutes between entry and exit) |
-| `user.dwelled_in_geofence` | The first update after the user has stayed longer than the geofence's `dwellThreshold`. Must be enabled for the project. | `geofence` |
-
-Each event type is turned on or off for the project under **Event types** in the **Geofences** section of the [Settings](https://dashboard.radar.com/settings) page.
-
-### Timing
-
-Radar generates an event when the location update that crosses the boundary reaches its servers. How soon that happens after the user physically crosses depends on the tracking mode: immediately for a foreground `trackOnce()`, and within the update interval of the preset for background tracking. The operating system can delay background updates further, for example in Low Power Mode on iOS or Doze on Android. Don't build a flow that needs an entry event within a fixed number of seconds.
-
-Two timestamps tell you about delay:
-
-- `createdAt` is when the location was recorded on the device.
-- `actualCreatedAt` is when Radar created the event on the server.
-
-A large gap means the update was delivered late. If your action is time-sensitive, compare `createdAt` with the current time and skip actions that are no longer relevant.
-
-### Duplicate and replayed events
-
-- **Deduplicate on `_id`**: Every event has a unique `_id`. Store the IDs you have processed and ignore repeats, so that a webhook request delivered more than once doesn't trigger the action twice.
-- **Replayed locations**: Some tracking options store locations while the device is offline and send them later. Events from those updates have `replayed` set to `true` in the native SDKs, and a `createdAt` in the past. Treat them as history, not as a current arrival.
-- **Don't infer state from events alone**: If you miss an exit event, a stored "inside" flag stays wrong. Use `user.geofences` from the latest update or webhook `user` object as the current state.
-
-## Place visits
-
-| Event | Generated when | Useful fields |
-| --- | --- | --- |
-| `user.entered_place` | The user stops at a place that matches your chain and category filters. | `place.name`, `place.chain.slug`, `place.categories`, `confidence` |
-| `user.exited_place` | The user leaves that place. | `place`, `duration` |
-| `user.nearby_place_chain` | The user is near a location of a monitored chain. Generated only when nearby place chains are enabled for your project by Radar. | `place.chain` |
-
-Place user context has this shape:
-
-```json
-{
-  "place": {
-    "name": "Starbucks",
-    "chain": {
-      "name": "Starbucks",
-      "slug": "starbucks",
-      "externalId": "123",
-      "metadata": {
-        "segment": "partner"
-      }
-    },
-    "categories": ["food-beverage", "coffee-shop"],
-    "location": {
-      "type": "Point",
-      "coordinates": [-73.977797, 40.783826]
-    }
-  }
-}
-```
-
-How place events differ from geofence events:
-
-- **You don't own the identifiers**: A place has no `tag` or `externalId` of yours. Branch on `place.chain.slug`, on a category, or on the chain ID or metadata you [mapped](#mappings).
-- **One place at a time**: `user.place` is a single place, and `user.geofences` is a list.
-- **Confidence depends on more signals**: Place confidence uses location accuracy, the footprint of the place, how dense the area is, and other signals. In a mall or a dense street, expect more medium and low confidence events than for your own geofences, and filter on `confidence` when a wrong match matters. Entry events can include `alternatePlaces`, the other candidates Radar considered.
-- **Entry requires a stop**: Passing a place doesn't generate an entry.
-
-In the native SDKs, check a place with `isChain()` and `hasCategory()`:
-
-<CodeGroup>
-
-```swift Swift
-Radar.trackOnce { status, location, events, user in
-    if let place = user?.place, place.hasCategory("airport") {
-        // The user is at an airport.
-    }
-}
-```
-
-```kotlin Kotlin
-Radar.trackOnce { status, location, events, user ->
-    val place = user?.place
-    if (place != null && place.hasCategory("airport")) {
-        // The user is at an airport.
-    }
-}
-```
-
-</CodeGroup>
+Radar generates an event when the location update that crosses the boundary arrives: immediately in the foreground, and within the preset's update interval in the background, or later when the operating system delays updates. Check `createdAt`, the time the location was recorded on the device, before a time-sensitive action.
 
 ## Show an on-premise experience
 
-An on-premise experience is anything the app shows only while the user is at a location: a store mode, a scan-and-pay button, a venue map, or an offer. Drive it from current state, checked every time the app opens or returns to the foreground. This handles the most common case, a user who opens the app when they are already inside, where no new entry event is generated.
+Drive anything the app shows only while the user is at a location, such as a store mode, from current state. Call `Radar.trackOnce()` each time the app opens or returns to the foreground and read `user.geofences` and `user.place`. This covers a user who is already inside when the app opens, when Radar generates no new entry event.
 
-<CodeGroup>
-
-```swift Swift
-import RadarSDK
-
-enum StoreMode {
-    case inStore(storeId: String, curbside: Bool)
-    case atPlace(chainSlug: String)
-    case none
-}
-
-// Call from applicationDidBecomeActive or the scene equivalent.
-func refreshStoreMode(completion: @escaping (StoreMode) -> Void) {
-    Radar.trackOnce { status, location, events, user in
-        guard status == .success, let user = user else {
-            completion(.none)
-            return
-        }
-
-        if let store = user.geofences?.first(where: { $0.tag == "store" }),
-           let storeId = store.externalId {
-            let curbside = store.metadata?["curbside"] as? Bool ?? false
-            completion(.inStore(storeId: storeId, curbside: curbside))
-        } else if let slug = user.place?.chain?.slug {
-            completion(.atPlace(chainSlug: slug))
-        } else {
-            completion(.none)
-        }
-    }
-}
-```
-
-```kotlin Kotlin
-import io.radar.sdk.Radar
-
-sealed class StoreMode {
-    data class InStore(val storeId: String, val curbside: Boolean) : StoreMode()
-    data class AtPlace(val chainSlug: String) : StoreMode()
-    object None : StoreMode()
-}
-
-// Call from onStart or a ProcessLifecycleOwner observer.
-fun refreshStoreMode(onResult: (StoreMode) -> Unit) {
-    Radar.trackOnce { status, location, events, user ->
-        if (status != Radar.RadarStatus.SUCCESS || user == null) {
-            onResult(StoreMode.None)
-            return@trackOnce
-        }
-
-        val store = user.geofences?.firstOrNull { it.tag == "store" }
-        val storeId = store?.externalId
-        val chainSlug = user.place?.chain?.slug
-        when {
-            store != null && storeId != null -> {
-                val curbside = store.metadata?.optBoolean("curbside", false) ?: false
-                onResult(StoreMode.InStore(storeId, curbside))
-            }
-            chainSlug != null -> onResult(StoreMode.AtPlace(chainSlug))
-            else -> onResult(StoreMode.None)
-        }
-    }
-}
-```
+When a later check returns no matching geofence, or the call fails, return to the default experience. Don't wait for an exit event. On the web, the same check reads a per-location flag from geofence metadata:
 
 ```javascript JavaScript
 import Radar from 'radar-sdk-js';
@@ -1061,201 +536,17 @@ async function refreshStoreMode() {
 }
 ```
 
-</CodeGroup>
-
-Guidelines:
-
-- **Check on open and on resume**: A user can walk in with the app in the background. Refresh when the app becomes active, not only at cold start.
-- **Leave the mode the same way**: When a later check returns no matching geofence, return to the default experience. Don't wait for an exit event.
-- **Fail closed to the default**: If `trackOnce()` fails or permission is denied, show the standard app and let the user pick a location manually.
-- **Use metadata for per-location features**: Read flags such as `curbside` from the geofence instead of keeping a second list in the app.
-- **Don't call it in a loop**: One check per foreground transition is enough. For continuous updates while the app is open, start tracking and use the location-update callback.
-
 ## Send location-triggered messages
 
-To send a push notification, an email, or an in-app message from a location event, the system that sends the message needs three things from Radar: who the user is, what happened, and where. Decide the mapping before you configure anything.
-
-| The downstream system needs | Radar field | Set by |
-| --- | --- | --- |
-| The person | `user.userId`, or an ID in `user.metadata` if that system uses a different identifier | `Radar.setUserId()`, `Radar.setMetadata()` |
-| The trigger | `event.type` | Event types enabled for the project |
-| The location | `event.geofence.tag`, `event.geofence.externalId`, `event.geofence.metadata`, or `event.place.chain.slug` | Your geofence import and Places settings |
-
-There are four ways to deliver the message. Pick one for each use case.
-
-### Use a native integration
-
-Radar sends events and user attributes server-to-server to supported messaging and analytics platforms, including [Braze](/integrations/braze), [Iterable](/integrations/iterable), [Airship](/integrations/airship), and [Salesforce Marketing Cloud](/integrations/salesforce). Taking Braze as the example:
-
-<Steps>
-  <Step title="Enable the integration">
-    In the dashboard, open the [Integrations](https://dashboard.radar.com/integrations) page, enable the integration, and enter the credentials the integration page asks for, once for Test and once for Live.
-  </Step>
-  <Step title="Match user identifiers">
-    Make sure the identifier Radar sends matches the identifier that platform has for the same person. If your Braze external ID is the same value you pass to `Radar.setUserId()`, nothing else is needed. If it is different, follow the identity section of the Braze integration page.
-  </Step>
-  <Step title="Generate a test event">
-    Enter a Test geofence with a device, or use the [Simulator](https://dashboard.radar.com/geofencing/simulate) page in the dashboard.
-  </Step>
-  <Step title="Confirm delivery and build the campaign">
-    In the messaging platform, confirm that the event arrived on the right user profile with the geofence tag, external ID, and metadata as properties. Then build the campaign on that event and filter on those properties.
-  </Step>
-</Steps>
-
-Each integration page lists the exact event names and properties that platform receives. Use those, not the Radar field names, when you build a campaign.
-
-### Send events to a webhook
-
-Use a webhook when your own backend decides what to send, or when the destination has no native integration.
-
-<Steps>
-  <Step title="Create a webhook">
-    Create a webhook on the [Integrations](https://dashboard.radar.com/integrations) page for the Test environment, and point it at an HTTPS endpoint you control.
-  </Step>
-  <Step title="Verify the request and respond">
-    In the handler, verify the request as described in [Webhooks](/integrations/webhooks), then return a `2xx` status. Do slow work after you respond.
-  </Step>
-  <Step title="Deduplicate events">
-    Deduplicate on `event._id`.
-  </Step>
-  <Step title="Map the event to the downstream call">
-    For example, on `user.entered_geofence` where `event.geofence.tag` is `nearby` and `event.geofence.metadata.curbside` is `true`, call your messaging provider's API for `user.userId`.
-  </Step>
-</Steps>
-
-The request body has the shape shown at the top of this guide: one `event` and the `user`, or an `events` array if you chose multiple-event delivery.
-
-### Forward current state from the app
-
-Some in-app messaging tools decide what to show from events the app sends, not from a server-side feed. In that case, forward the foreground context yourself when the app opens. This is pseudocode: `analytics.track` stands for your own analytics or messaging SDK.
-
-```text
-// Pseudocode. Replace analytics.track with your analytics or messaging SDK.
-func didUpdateLocation(_ location: CLLocation, user: RadarUser) {
-    guard user.foreground else { return }
-
-    let tags = (user.geofences ?? []).compactMap { $0.tag }
-    let externalIds = (user.geofences ?? []).compactMap { $0.externalId }
-    if !tags.isEmpty {
-        analytics.track("location_context_geofences", [
-            "geofence_tags": tags.joined(separator: ","),
-            "geofence_external_ids": externalIds.joined(separator: ",")
-        ])
-    }
-
-    if let place = user.place {
-        analytics.track("location_context_place", [
-            "place_name": place.name,
-            "place_chain_slug": place.chain?.slug ?? "",
-            "place_categories": place.categories.joined(separator: ",")
-        ])
-    }
-}
-```
-
-This reports state, so it fires on every foreground update while the user is inside. Name the downstream event accordingly, and apply frequency limits in the messaging tool.
+Radar sends events and user attributes server-to-server, so the system that sends the message knows who (`user.userId`), what (`event.type`), and where (the geofence `tag`, `externalId`, and `metadata`, or `place.chain.slug`). Turn on a native integration, such as [Braze](/integrations/braze), or create a webhook to an HTTPS endpoint you control when your backend decides what to send. A webhook handler verifies the request, returns `2xx` quickly, and deduplicates on `event._id`. See [Integrations](/integrations/integrations) and [Webhooks](/integrations/webhooks). The ID you pass to `Radar.setUserId()` must match the messaging platform's ID for the same person.
 
 ### Use Radar campaigns
 
-Radar can send the notification or in-app message itself. You create campaigns on the [Campaigns](https://dashboard.radar.com/geofencing/campaigns) page in the dashboard. A campaign delivers only while it is set to **Enabled**.
-
-| Campaign type | Trigger | Permission | Platforms |
-| --- | --- | --- | --- |
-| Client-side geofence notification | The device enters a geofence or place that the SDK registered with the operating system as a location notification trigger. No location is collected in the background. | Foreground | iOS |
-| Client-side beacon notification | The device enters a beacon region. | Foreground | iOS |
-| Event-based notification | A Radar event: entered or exited geofence, entered or exited place, entered beacon, or dwelled in geofence. | Background | iOS and Android |
-| In-app message | The SDK detects that the user is in a targeted geofence while the app is open. | Foreground | iOS and Android |
-
-Radar delivers an event-based notification in the response to the location update that generated the event, and the SDK shows it as a local notification. It needs notification permission on the device. It doesn't go through APNs or Firebase Cloud Messaging, so it needs no push credentials. Push credentials are needed only for silent push, which campaigns use for scheduling. To add them, see [Radar dashboard setup](/sdk/silent-push#radar-dashboard-setup).
-
-How client-side geofence notifications behave:
-
-- Each `trackOnce()` call or tracking update returns nearby geofences that have notifications, and the SDK registers them on the device. Radar syncs the closest geofences first.
-- Radar controls registration only. Whether and when iOS shows the notification is subject to iOS limits.
-- If the device is already inside a geofence when its notification is registered, the notification fires on the next entry, not immediately.
-- Client-side notifications for places need nearby places. Nearby places must be enabled for your project. Contact your Radar account team.
-
-Campaign options:
-
-- **Targeting**: A campaign delivers only when all of its targeting conditions are true. You can target by geofence tag or external ID, place chain or category, beacon tag or ID, device type, user tags, user ID, and location authorization status. Not every option is available for client-side notifications.
-- **Personalization**: Titles, bodies, and button text accept template variables, for example `Hello {{ user.userId }}`. `user` (with `userId`, `description`, and `metadata`) is available in every campaign, `geofence` (with `description`, `tag`, and `externalId`) in geofence campaigns, and `place` (with `name`, `chain`, `categories`, and address fields) in place campaigns. Supply a fallback with `{{ default user.userId "there" }}`.
-- **Scheduling**: Optional start and end times, active days of the week, and a restriction to the geofence's operating hours are evaluated on the device in the user's local time zone each time the SDK receives a tracking response. A client-side notification that was registered before a campaign's window closed stays registered until the next tracking response removes it. To shorten that gap, set up [silent push](/sdk/silent-push), which lets Radar ask the SDK to re-evaluate when a window closes. Silent push is best effort and isn't delivered to a force-quit app. Active days need iOS SDK 3.37.0 or later, and the operating-hours restriction needs iOS SDK 3.36.0 or later.
-- **Frequency capping**: In the **Campaigns** section of the [Settings](https://dashboard.radar.com/settings) page, set the maximum number of notifications per user in a rolling time window, across all campaigns. A campaign can ignore the global cap or add its own. Requires iOS SDK 3.19.6 or later.
-
-To attribute app opens to a campaign notification and to open the notification's link on iOS, set these options when you initialize:
-
-```swift
-import RadarSDK
-
-let options = RadarInitializeOptions()
-options.autoLogNotificationConversions = true
-options.autoHandleNotificationDeepLinks = true
-Radar.initialize(publishableKey: "prj_test_pk_...", options: options)
-```
-
-If your app manages its own `UNUserNotificationCenterDelegate`, call `Radar.logConversion(response:)` and `Radar.openURLFromNotification(_:)` from `userNotificationCenter(_:didReceive:)` instead. Radar campaigns use local notifications, and iOS can open a universal link from a local notification in Safari, so use a custom URL scheme for campaign links. On Android, configure deep links as you would for any app. Custom data set on a campaign is available on iOS in the notification's `userInfo` under `campaignMetadata`.
-
-In a React Native or Expo app, these options must be set in native code so that they apply before the JavaScript bundle loads. See [Set up campaign notifications](/sdk/react-native#set-up-campaign-notifications).
-
-A conversion logged from a notification tap is named `opened_app`. Its `metadata.conversionSource` is `radar_notification` when a Radar campaign notification opened the app. On iOS, it is `notification` when any other notification did.
-
-In-app messages display without extra code. To decide per message whether to show it, or to react to taps, provide a delegate on iOS or a receiver on Android:
-
-<CodeGroup>
-
-```swift Swift
-import RadarSDK
-
-final class StoreMessageDelegate: RadarInAppMessageDelegate {
-    override func onNewInAppMessage(_ message: RadarInAppMessage) {
-        // Show the message now, hold it for later, or return without showing it.
-        Radar.showInAppMessage(message)
-    }
-
-    override func onInAppMessageButtonClicked(_ message: RadarInAppMessage) {
-        // The user tapped the call to action.
-    }
-
-    override func onInAppMessageDismissed(_ message: RadarInAppMessage) {
-        // The user dismissed the message.
-    }
-}
-
-// Keep a strong reference, then register after initialize:
-// Radar.setInAppMessageDelegate(storeMessageDelegate)
-```
-
-```kotlin Kotlin
-import io.radar.sdk.Radar
-import io.radar.sdk.RadarInAppMessageReceiver
-import io.radar.sdk.model.RadarInAppMessage
-
-class StoreMessageReceiver : RadarInAppMessageReceiver {
-    override fun onNewInAppMessage(inAppMessage: RadarInAppMessage) {
-        // Show the message now, hold it for later, or return without showing it.
-        Radar.showInAppMessage(inAppMessage)
-    }
-
-    override fun onInAppMessageButtonClicked(inAppMessage: RadarInAppMessage) {
-        // The user tapped the call to action.
-    }
-
-    override fun onInAppMessageDismissed(inAppMessage: RadarInAppMessage) {
-        // The user dismissed the message.
-    }
-}
-
-// After Radar.initialize():
-// Radar.setInAppMessageReceiver(StoreMessageReceiver())
-```
-
-</CodeGroup>
-
-Both types also let you supply your own message view by overriding `createInAppMessageView()`. Radar records delivery, click, and dismissal analytics for in-app messages, and delivery for notifications, without extra setup.
+Radar can also send the notification or in-app message itself, from campaigns you create on the [Campaigns](https://dashboard.radar.com/geofencing/campaigns) page. The SDK shows an event-based notification as a local notification, so it needs notification permission and no push credentials. To attribute app opens to a campaign on iOS, set `autoLogNotificationConversions` in the [initialization options](/sdk/ios#initialization-options). For React Native or Expo, see [Set up campaign notifications](/sdk/react-native#set-up-campaign-notifications). For campaign types, targeting, scheduling, and frequency capping, see [Campaigns](/geofencing/campaigns).
 
 ## Log conversions
 
-A conversion records that a user did something that matters to your business, together with where they were. Log one at each action you want to attribute to location: an order, a loyalty sign-up, a redeemed offer, a product search.
+A conversion records a business action, such as an order, together with where the user was.
 
 <CodeGroup>
 
@@ -1319,142 +610,53 @@ await Radar.logConversion({
 
 </CodeGroup>
 
-- **Name**: Use a short, stable name. It is how the conversion appears in the dashboard and in exports.
-- **Revenue**: Optional. Send the order value as a number in one currency, consistently.
-- **Metadata**: Optional key-value pairs. Don't send personal data or payment details.
-- **Location context**: Radar attaches the geofences, place, and regions from the user's latest location update. On iOS and Android, if the user has granted location permission and the SDK hasn't sent an update in the last 60 seconds, the SDK sends one before it logs the conversion. If the user hasn't granted location permission, the conversion is still logged, without a fresh location.
-
-The callback returns the conversion as an event with `type` set to conversion and `conversionName` set to your name. To see conversions:
-
-1. Open the [Events](https://dashboard.radar.com/geofencing/events) page. Each conversion appears as it is logged. Open one to see its metadata and the geofence or place it was attributed to.
-2. Use the analysis view on the Events page to group conversions by geofence tag, place chain, or other dimensions.
-3. Open the conversions report in the dashboard's analytics section for totals and revenue over time.
-
-Conversions reporting depends on your plan. To log a conversion from somewhere other than the SDK, see the [Events API](/api/events).
-
-## Add region context and user insights
-
-Two optional features add context to the same user object and event stream, without geofences.
-
-### Regions
-
-With Regions enabled, Radar returns the user's country, state, DMA (US media market), and postal code on user context:
-
-```json
-{
-  "country": {
-    "code": "US",
-    "name": "United States"
-  },
-  "state": {
-    "code": "MD",
-    "name": "Maryland"
-  },
-  "dma": {
-    "code": "26",
-    "name": "Baltimore"
-  },
-  "postalCode": {
-    "code": "21014"
-  }
-}
-```
-
-Enable the region event types you need in the **Regions** section of the [Settings](https://dashboard.radar.com/settings) page:
-
-| Region | Coverage | Events |
-| --- | --- | --- |
-| Country | Global | `user.entered_region_country`, `user.exited_region_country` |
-| State | United States and Canada | `user.entered_region_state`, `user.exited_region_state` |
-| DMA | United States | `user.entered_region_dma`, `user.exited_region_dma` |
-| Postal code | United States | `user.entered_region_postal_code`, `user.exited_region_postal_code` |
-
-Codes are listed in the [countries](/regions/countries), [states](/regions/states), and [DMAs](/regions/dmas) catalogs. Use region context to choose which offers, languages, or legal notices apply where the user is. Radar can also detect a user's home regions from location updates in the last 30 days and flag when they are traveling outside them. The user object then includes `homeRegions`, with `country`, `state`, `dma`, and `postalCode` objects that each have a `code` and `name`, and events include a `traveling` object with a `true` value for each of those region types the user is outside of. Home region detection must be enabled for your project. Contact your Radar account team.
-
-Radar can also reject location updates from countries on a country allowlist or blocklist that is set for your project, for privacy or compliance. A rejected update returns `451`. Country allowlists and blocklists must be enabled for your project. Contact your Radar account team.
-
-If you need a coarse region before the user has granted location permission, for example to choose a consent notice, use IP geocoding (`Radar.ipGeocode()`), described in the [Geocoding API](/api/geocoding). It returns a country and state from the device's IP address and a flag for proxies. It is much less precise than device location.
-
-### User insights
-
-User insights use a user's recurring stopped locations to infer likely home and work areas, then report whether the user is currently at home, at work, traveling, or commuting. User insights must be enabled for your project. Contact your Radar account team. A new user has no insights until Radar has enough history. Home and work are mutually exclusive: when the user's location matches both inferred areas, Radar selects the closer one.
-
-When insights are available, the track response includes:
-
-```json
-{
-  "user": {
-    "locationInsights": {
-      "atHome": true,
-      "atWork": false,
-      "traveling": false,
-      "commuting": false
-    }
-  }
-}
-```
-
-Radar generates `user.entered_home`, `user.exited_home`, `user.entered_work`, `user.exited_work`, `user.started_traveling`, `user.stopped_traveling`, `user.started_commuting`, and `user.stopped_commuting` when the state changes. The object is omitted when Radar can't infer a usable home or work location, and `commuting` can be omitted on its own. Inferred home and work coordinates are never returned to the SDK. Insights are probabilistic and are calculated separately for Test and Live. The iOS SDK exposes the object as `user.locationInsights`.
+`revenue` and `metadata` are optional. Radar attaches the geofences, place, and regions from the user's latest location update, and the conversion appears on the [Events](https://dashboard.radar.com/geofencing/events) page. To log one from your backend, see [Log a conversion](/api/events#log-a-conversion).
 
 ## Handle results and errors
 
-| Situation | What you see | What to do |
+| Result | Meaning | What to do |
 | --- | --- | --- |
-| Location permission denied | `trackOnce()` returns a permissions status (`.errorPermissions`, `ERROR_PERMISSIONS`). | Show the default experience and a manual location choice. Offer a path to Settings only when the user asks for a location feature. |
-| No location fix | A location status (`.errorLocation`, `ERROR_LOCATION`). Common indoors, or right after launch. | Keep the last known mode for a short time, then fall back to the default. Retry on the next foreground. |
-| No network | A network status (`.errorNetwork`, `ERROR_NETWORK`). | Retry on the next foreground. Don't block the app on the call. |
-| Wrong or missing key | A publishable key or unauthorized status. | Check that the build uses the key for the intended environment. |
-| Rate limited | A rate limit status. | You are calling `trackOnce()` too often. Call it on foreground transitions, not on a timer. |
-| Empty `geofences` when the user is on site | A successful call with no matching geofence. | Check the environment, that the geofence is enabled, the user or IP restrictions on the geofence, and the reported location accuracy against the geofence size. |
-| No events while the app is closed | Foreground checks work, and background events don't arrive. | Confirm background permission, that `Radar.isTracking()` is `true`, the iOS background modes, and that the device isn't in a battery-saving mode. After a force-quit, don't count on background updates until the user opens the app again. |
-| Events arrive late | `actualCreatedAt` is much later than `createdAt`. | Expected with background delivery limits. Check `createdAt` before sending a time-sensitive message. |
-| The same event twice at your backend | Two webhook requests with the same `event._id`. | Deduplicate on `_id`. |
-| Entry events for users passing by | Entries from a road next to the location. | Turn on stop detection, reshape the geofence, or require `confidence` of `3`. |
-| User switched accounts on a shared device | Events attributed to the previous user. | `userId` is nullable. Clear it or set the new user's ID as described in [Handle login, logout, and user switching](/fundamentals/authentication-and-access#handle-login-logout-and-user-switching). |
+| `ERROR_PERMISSIONS` | Location permission is denied. | Show the default experience and a manual location choice. Don't prompt again on every launch. |
+| `ERROR_LOCATION` or `ERROR_NETWORK` | No location fix, or no network. | Show the default experience and retry on the next foreground. |
+| A publishable key or unauthorized status | The key is wrong or missing. | Check that the build uses the key for the intended environment. |
+| Success with empty `geofences` on site | No geofence matched. | Check the environment, that the geofence is enabled, and the location accuracy against the geofence size. |
+| No events while the app is closed | Background tracking isn't running. | Confirm background permission, `Radar.isTracking()`, and the iOS background modes. After a force-quit, updates resume when the user opens the app. |
 
 ## Test the integration
 
-Use the Test environment and Test keys for all of these. For general tools, including the dashboard simulator and mock tracking, see [Test, troubleshoot, and go live](/fundamentals/testing-and-launch).
+- **Passing case**: Stand inside a Test geofence, or simulate a location inside it on the [Simulator](https://dashboard.radar.com/geofencing/simulate) page, and cold-start the app. The on-premise experience appears, and `user.entered_geofence` reaches your webhook.
+- **Failing case**: Deny location permission and open the app. The default experience appears, with no repeated prompt.
 
-| Test | Steps | Expected result |
-| --- | --- | --- |
-| Import | Import a CSV with one valid row and one row with latitude and longitude swapped. | The import history shows one success. The swapped row either fails or creates a geofence in the wrong place, which you can see on the map. |
-| Already inside | Stand inside a Test geofence, or simulate a location inside it, and cold-start the app. | The on-premise experience appears without any change of location. |
-| Resume inside | Background the app outside, move inside, and bring the app forward. | The mode changes on resume. |
-| Leave | Move or simulate a location outside, then foreground the app. | The app returns to the default experience. An exit event with a `duration` appears on the Events page. |
-| Background entry | With background permission and tracking started, close the app and enter the geofence. | `user.entered_geofence` appears on the Events page and reaches your webhook. The app's delegate or receiver is called. |
-| Place visit | With a chain enabled, call `trackOnce()` at a location of that chain. | `user.place` is populated and `user.entered_place` is generated. |
-| Permission denied | Deny location permission and open the app. | The default experience appears, with no crash and no repeated prompt. |
-| Foreground only | Grant "While Using" only. | Foreground checks work. `startTracking()` isn't called. |
-| Wrong environment | Use the Live key against Test geofences. | `geofences` is empty. This confirms that your build configuration selects the key you expect. |
-| Duplicate delivery | Send the same webhook body to your handler twice. | The downstream action runs once. |
-| Downstream delivery | Trigger an entry event with a known `userId`. | The event appears on the matching profile in the messaging platform with the geofence properties. |
-| Conversion | Log a conversion inside and outside a geofence. | Both appear on the Events page. The first is attributed to the geofence. |
+See [Test, troubleshoot, and go live](/fundamentals/testing-and-launch).
 
 ## Production checklist
 
-- [ ] Release builds use the Live publishable key, and the Live secret key exists only on your backend.
-- [ ] Geofences are imported into Live, and a sync or API update keeps them current when locations open, move, or close.
-- [ ] Places chains and categories, event types, and integrations are configured in Live, not only in Test.
-- [ ] `Radar.setUserId()` uses a stable, opaque internal ID, and logout behavior is a deliberate choice.
-- [ ] The SDK is initialized in the native application lifecycle.
-- [ ] On-premise UI is driven by current state on open and resume.
-- [ ] Background permission is requested only after an in-app explanation, and tracking starts only after it is granted.
-- [ ] Geofence detection uses the responsive or efficient preset, not the continuous preset.
-- [ ] The webhook handler verifies requests, deduplicates on `event._id`, and responds quickly.
-- [ ] Time-sensitive actions check `createdAt`.
-- [ ] Your privacy disclosures and app store declarations describe background location use.
-- [ ] Data retention and dashboard access are reviewed. See [Set up organizations, projects, accounts, and authentication](/fundamentals/authentication-and-access).
+- [ ] Release builds use the Live publishable key, and the secret key exists only on your backend.
+- [ ] Geofences, Places, event types, and integrations are set up in Live, and a sync or API update keeps geofences current.
+- [ ] Tracking starts only after background permission is granted, with the responsive or efficient preset.
+- [ ] The webhook handler verifies requests and deduplicates on `event._id`.
+
+## Build with an agent
+
+Copy this prompt into a coding agent that has access to your repository.
+
+```text
+Implement Radar geofence and place detection in this repository.
+Read https://docs.radar.com/geofencing/geofences-and-places.md, the SDK
+reference for this app's platform (https://docs.radar.com/sdk/ios.md or
+https://docs.radar.com/sdk/android.md), and
+https://docs.radar.com/fundamentals/location-permissions.md.
+Constraints: read user.geofences and user.place from Radar.trackOnce() on app
+open and resume instead of waiting for an entry event. Start tracking with the
+responsive preset only after background permission is granted. Never put a
+secret key in client code. Do not invent methods, fields, or event names.
+Add tests for: opening inside a geofence, opening outside any geofence, a
+permissions error from trackOnce, and entry and exit events reaching the handler.
+Report changed files, test results, and the dashboard setup I still need to do.
+```
 
 ## See also
 
-- [Tracking options](/sdk/tracking) and [remote configuration](/sdk/remote-configuration)
-- SDK references: [iOS](/sdk/ios), [Android](/sdk/android), [web](/sdk/web), [React Native](/sdk/react-native), [Flutter](/sdk/flutter)
 - [Geofences API](/api/geofences) and [Events API](/api/events)
-- [Webhooks](/integrations/webhooks) and [integrations](/integrations/integrations)
-- [Understand foreground and background location permissions](/fundamentals/location-permissions)
-- [Test, troubleshoot, and go live](/fundamentals/testing-and-launch)
-- Catalogs: [place chains](/places/chains), [place categories](/places/categories), [countries](/regions/countries), [states](/regions/states), [DMAs](/regions/dmas)
-- [Understand geofences, places, regions, beacons, and fraud context](/fundamentals/context-types)
-
-To have a coding agent implement this guide, use the prompt in [Build with an agent](#build-with-an-agent).
+- [Understand geofences, places, regions, beacons, and fraud context](/fundamentals/context-types), for regions and user insights
+- [Track pickups, deliveries, and workers](/geofencing/trips)

@@ -1,0 +1,168 @@
+---
+title: "Campaigns"
+description: "Reference for Radar campaigns: campaign types, targeting, personalization, scheduling, frequency capping, and in-app message callbacks."
+---
+
+A campaign sends a location-triggered notification or in-app message from Radar, with no messaging platform in between. You create campaigns on the [Campaigns](https://dashboard.radar.com/geofencing/campaigns) page of the Radar dashboard. A campaign delivers only while it is set to **Enabled**.
+
+## Campaign types
+
+| Campaign type | Trigger | Location permission | Platforms |
+| --- | --- | --- | --- |
+| Client-side geofence notification | The device enters a geofence or place that the SDK registered with the operating system as a location notification trigger. No location is collected in the background. | Foreground | iOS |
+| Client-side beacon notification | The device enters a beacon region. | Foreground | iOS |
+| Event-based notification | A Radar event: entered or exited geofence, entered or exited place, entered beacon, or dwelled in geofence. | Background | iOS and Android |
+| In-app message | The SDK detects that the user is in a targeted geofence while the app is open. | Foreground | iOS and Android |
+
+### Event-based notifications
+
+Radar delivers an event-based notification in the response to the location update that generated the event, and the SDK shows it as a local notification. It needs notification permission on the device. It doesn't go through APNs or Firebase Cloud Messaging, so it needs no push credentials.
+
+Push credentials are needed only for silent push, which campaigns use for [scheduling](#scheduling). To add them, see [Radar dashboard setup](/sdk/silent-push#radar-dashboard-setup).
+
+### Client-side notifications
+
+Client-side geofence notifications use location notification triggers on iOS, and behave as follows:
+
+- Each `Radar.trackOnce()` call or tracking update returns nearby geofences that have notifications, and the SDK registers them on the device. Radar syncs the closest geofences first.
+- Radar controls registration only. Whether and when iOS shows the notification is subject to [iOS limits](https://developer.apple.com/documentation/usernotifications/unlocationnotificationtrigger#overview).
+- If the device is already inside a geofence when its notification is registered, the notification fires on the next entry, not immediately.
+- Client-side notifications for places need nearby places.
+
+<Info>
+  Nearby places must be enabled for your project. Contact your Radar account team.
+</Info>
+
+## Targeting
+
+A campaign delivers only when all of its targeting conditions are true. Not every option is available for client-side notifications.
+
+| Option | Targets |
+| --- | --- |
+| Geofence tags | Groups of geofences that share a tag. |
+| Geofence external IDs | Individual geofences, by your ID. |
+| Place chains | Places of specific [chains](/places/chains). |
+| Place categories | Places in specific [categories](/places/categories), such as `shopping-mall` or `restaurant`. |
+| Beacon tags or beacon IDs | Beacons. Radar converts the selection to an iBeacon region, and the notification fires when the user enters it. |
+| Device types | iOS, Android, or both. |
+| User tags | Users who have at least one of the targeted tags. Set tags with the SDK. See User tags in the [iOS SDK](/sdk/ios#user-tags) and [Android SDK](/sdk/android#user-tags) references. |
+| User ID | Individual users, by the `userId` you set. |
+| Location authorization | Users by their device's location authorization status, for example only users who granted foreground permission. |
+
+## Personalization
+
+Titles, bodies, and button text accept template variables. For example, a title of `Hello {{ user.userId }}` is sent as "Hello user-123" to `user-123`.
+
+| Variable | Available in | Fields |
+| --- | --- | --- |
+| `user` | Every campaign | `userId`, `description`, and `metadata`, the metadata you set with `Radar.setMetadata()`. |
+| `geofence` | Geofence campaigns | `description`, `tag`, and `externalId`. |
+| `place` | Place campaigns | `name`, `categories`, `chain` (with `name`, `slug`, and `domain`), and the address fields `address`, `street`, `city`, `state`, `zip`, and `country`. |
+
+A variable can be missing for some users. Supply a fallback with the `default` helper: `{{ default user.userId "there" }}`. Templates use [Handlebars](https://handlebarsjs.com/) syntax, which also covers nested fields and arrays.
+
+## Scheduling
+
+Scheduling options are evaluated on the device, in the user's local time zone, each time the SDK receives a tracking response. A window that ends at 5 PM ends at 5 PM local time for every user. On each response, the SDK registers a notification only if its campaign is inside its window, and removes a registered notification whose campaign has moved outside it.
+
+| Option | Behavior |
+| --- | --- |
+| Start and end times | Both are optional and independent. With only a start, the campaign runs from that time on. With only an end, it runs until that time. With neither, it runs whenever it is enabled. |
+| Active days | Restricts delivery to selected days of the week, inside the start and end window. Needs a start or end time. With no days selected, the campaign runs every day. For client-side geofence campaigns, needs iOS SDK 3.37.0 or later. |
+| Operating hours | For client-side geofence campaigns, **Restrict notifications to operating hours** delivers a geofence's notification only inside that geofence's [operating hours](/api/geofences#operating-hours), with a short buffer before closing time. Geofences without operating hours aren't affected. Needs iOS SDK 3.36.0 or later. |
+
+A client-side notification that was registered before a campaign's window closed stays registered until the next tracking response removes it, and can be shown in the meantime. To shorten that gap, set up [silent push](/sdk/silent-push). When a window closes, Radar sends a silent push that asks the SDK to re-evaluate its registered notifications without a new location update.
+
+<Note>
+  Silent push is best effort and isn't delivered to a force-quit app on iOS. When it doesn't arrive, the next tracking response removes the notification.
+</Note>
+
+## Frequency capping
+
+In the **Campaigns** section of the [Settings](https://dashboard.radar.com/settings) page, set the maximum number of notifications per user in a time window. The cap counts notifications from all campaigns. The window is rolling: with a cap of 2 in 48 hours, a user can get notifications at hour 1 and hour 24, and a third at hour 49.
+
+A campaign can ignore the global cap or add its own cap, which applies together with the global one. Frequency capping needs iOS SDK 3.19.6 or later.
+
+## Conversions and deep links
+
+To attribute app opens to a campaign notification and to open the notification's link on iOS, set these [initialization options](/sdk/ios#initialization-options):
+
+```swift
+import RadarSDK
+
+let options = RadarInitializeOptions()
+options.autoLogNotificationConversions = true
+options.autoHandleNotificationDeepLinks = true
+Radar.initialize(publishableKey: "prj_test_pk_...", options: options)
+```
+
+If your app manages its own `UNUserNotificationCenterDelegate`, call `Radar.logConversion(response:)` and `Radar.openURLFromNotification(_:)` from `userNotificationCenter(_:didReceive:)` instead. In a React Native or Expo app, these options must be set in native code so that they apply before the JavaScript bundle loads. See [Set up campaign notifications](/sdk/react-native#set-up-campaign-notifications).
+
+- **Conversion**: A conversion logged from a notification tap is named `opened_app`. Its `metadata.conversionSource` is `radar_notification` when a Radar campaign notification opened the app. On iOS only, it is `notification` when any other notification did.
+- **Links**: Campaigns use local notifications, and iOS can open a universal link from a local notification in Safari, so use a custom URL scheme for campaign links. On Android, configure deep links as you would for any app.
+- **Custom data**: Custom data set on a campaign is available on iOS in the notification's `userInfo` under `campaignMetadata`.
+
+Radar records delivery for notifications without extra setup.
+
+## In-app messages
+
+In-app messages display without extra code, and Radar records their delivery, click, and dismissal analytics without extra setup. To decide per message whether to show it, or to react to taps, provide a delegate on iOS or a receiver on Android:
+
+<CodeGroup>
+
+```swift Swift
+import RadarSDK
+
+final class StoreMessageDelegate: RadarInAppMessageDelegate {
+    override func onNewInAppMessage(_ message: RadarInAppMessage) {
+        // Show the message now, hold it for later, or return without showing it.
+        Radar.showInAppMessage(message)
+    }
+
+    override func onInAppMessageButtonClicked(_ message: RadarInAppMessage) {
+        // The user tapped the call to action.
+    }
+
+    override func onInAppMessageDismissed(_ message: RadarInAppMessage) {
+        // The user dismissed the message.
+    }
+}
+
+// Keep a strong reference, then register after initialize:
+// Radar.setInAppMessageDelegate(storeMessageDelegate)
+```
+
+```kotlin Kotlin
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarInAppMessageReceiver
+import io.radar.sdk.model.RadarInAppMessage
+
+class StoreMessageReceiver : RadarInAppMessageReceiver {
+    override fun onNewInAppMessage(inAppMessage: RadarInAppMessage) {
+        // Show the message now, hold it for later, or return without showing it.
+        Radar.showInAppMessage(inAppMessage)
+    }
+
+    override fun onInAppMessageButtonClicked(inAppMessage: RadarInAppMessage) {
+        // The user tapped the call to action.
+    }
+
+    override fun onInAppMessageDismissed(inAppMessage: RadarInAppMessage) {
+        // The user dismissed the message.
+    }
+}
+
+// After Radar.initialize():
+// Radar.setInAppMessageReceiver(StoreMessageReceiver())
+```
+
+</CodeGroup>
+
+Both types also let you supply your own message view by overriding `createInAppMessageView()`. For the method signatures, see In-app messages in the [iOS SDK](/sdk/ios#in-app-messages) and [Android SDK](/sdk/android#in-app-messages) references. In React Native, use the [in-app message listeners](/sdk/react-native#listen-for-events).
+
+## See also
+
+- [Detect geofence events and place visits](/geofencing/geofences-and-places#send-location-triggered-messages), for the other ways to send location-triggered messages
+- [Track indoor location with beacons](/geofencing/beacons)
+- [Silent push](/sdk/silent-push)
+- [Events API](/api/events#log-a-conversion), for conversions
