@@ -98,7 +98,7 @@ Many native integrations require the [Enterprise plan](https://radar.com/pricing
 
 ### What triggers a delivery
 
-Radar generates events when it processes a location update, a trip change, or another server-side state change. Each delivery carries the events from one update together with the user's state after that update. An integration that is enabled receives nothing until an event is generated, so a location update that produces no event produces no delivery.
+Radar generates events when it processes a location update, a trip change, or another server-side state change. Each delivery carries the events from one update together with the user's state after that update, including the [context types](/fundamentals/context-types) that are turned on for your project. An integration that is enabled receives nothing until an event is generated, so a location update that produces no event produces no delivery.
 
 Geofence geometry is removed from payloads before delivery.
 

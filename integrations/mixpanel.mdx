@@ -7,7 +7,7 @@ description: "Send Radar events and user profile properties to Mixpanel, map Rad
   The Mixpanel integration is available on the [Enterprise plan](https://radar.com/pricing).
 </Info>
 
-By the end of this page, each Radar event for an identified user appears in Mixpanel as a `Radar` event on that user's profile, with Radar's location context as profile properties.
+By the end of this page, each Radar event for an identified user appears in Mixpanel as a `Radar` event on that user's profile, with Radar's [location context](/fundamentals/context-types) as profile properties.
 
 Use the integration to add location context to behavioral analytics, measure location-based features, and build location-based cohorts. It is a server-side integration: Radar's servers call Mixpanel.
 
@@ -90,27 +90,27 @@ On each delivery, Radar updates the user's Mixpanel profile with these propertie
 | `segments[*].externalId` | `Radar Segment External IDs` | array[string] | `["loyalty-members"]` | |
 | `topChains[*].slug` | `Radar Top Chain Slugs` | array[string] | `["example-coffee", "example-grocery"]` | |
 | `topChains[*].externalId` | `Radar Top Chain External IDs` | array[string] | `["chain-7", "chain-9"]` | |
-| `geofences[*]._id` | `Radar Geofence IDs` | array[string] | `["5b2c0906f5874b001aecfd8e"]` | Geofences |
+| `geofences[*]._id` | `Radar Geofence IDs` | array[string] | `["5b2c0906f5874b001aecfd8e"]` | [Geofences](/fundamentals/context-types#geofences) |
 | `geofences[*].description` | `Radar Geofence Descriptions` | array[string] | `["Store #42"]` | Geofences |
 | `geofences[*].tag` | `Radar Geofence Tags` | array[string] | `["store"]` | Geofences |
 | `geofences[*].externalId` | `Radar Geofence External IDs` | array[string] | `["store-42"]` | Geofences |
-| `place._id` | `Radar Place ID` | string | `"59302bcf8f27e8a156bd4f91"` | Places |
+| `place._id` | `Radar Place ID` | string | `"59302bcf8f27e8a156bd4f91"` | [Places](/fundamentals/context-types#places) |
 | `place.name` | `Radar Place Name` | string | `"Example Coffee"` | Places |
 | `place.categories` | `Radar Place Categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | Places |
 | `place.chain.slug` | `Radar Place Chain Slug` | string | `"example-coffee"` | Places |
 | `place.chain.name` | `Radar Place Chain Name` | string | `"Example Coffee"` | Places |
 | `place.chain.externalId` | `Radar Place Chain External ID` | string | `"chain-7"` | Places |
-| `country.code` | `Radar Region Country Code` | string | `"US"` | Regions |
+| `country.code` | `Radar Region Country Code` | string | `"US"` | [Regions](/fundamentals/context-types#regions) |
 | `country.name` | `Radar Region Country Name` | string | `"United States"` | Regions |
 | `state.code` | `Radar Region State Code` | string | `"MD"` | Regions |
 | `state.name` | `Radar Region State Name` | string | `"Maryland"` | Regions |
 | `dma.code` | `Radar Region DMA Code` | string | `"26"` | Regions |
 | `dma.name` | `Radar Region DMA Name` | string | `"Baltimore"` | Regions |
 | `postalCode.code` | `Radar Region Postal Code` | string | `"21014"` | Regions |
-| `trip.externalId` | `Radar Trip External ID` | string | `"order-299"` | Trips |
+| `trip.externalId` | `Radar Trip External ID` | string | `"order-299"` | [Trips](/fundamentals/context-types#trips) |
 | `trip.destinationGeofenceTag` | `Radar Trip Destination Geofence Tag` | string | `"store"` | Trips |
 | `trip.destinationGeofenceExternalId` | `Radar Trip Destination Geofence External ID` | string | `"store-42"` | Trips |
-| `beacons[*]._id` | `Radar Beacon IDs` | array[string] | `["5b2c0906f5874b001aecfd8f"]` | Beacons |
+| `beacons[*]._id` | `Radar Beacon IDs` | array[string] | `["5b2c0906f5874b001aecfd8f"]` | [Beacons](/fundamentals/context-types#beacons) |
 | `beacons[*].description` | `Radar Beacon Descriptions` | array[string] | `["Store #42 drive-thru"]` | Beacons |
 | `beacons[*].tag` | `Radar Beacon Tags` | array[string] | `["drive-thru"]` | Beacons |
 | `beacons[*].externalId` | `Radar Beacon External IDs` | array[string] | `["store-42-drive-thru"]` | Beacons |

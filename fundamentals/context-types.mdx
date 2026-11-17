@@ -1,0 +1,302 @@
+---
+title: "Understand geofences, places, regions, beacons, and fraud context"
+sidebarTitle: "Context types"
+description: "Learn what each Radar context type represents, the fields it adds to the user, the events it generates, and where to read it."
+---
+
+Each time Radar processes a location update, it works out where the user is in several different terms and writes the answer to the user: the geofences they are in, the place they are at, the regions that contain them, the beacons in range, their active trip, and the result of fraud checks. Each of those is a context type. When a context type's value changes from one update to the next, Radar generates an event, such as `user.entered_geofence`.
+
+Context is the user's current state. Events are the transitions between states. Read context to decide what to show now, and use events to trigger something once.
+
+| Context type | What it represents | Defined by | How you turn it on | User fields | Events |
+| --- | --- | --- | --- | --- | --- |
+| [Geofences](#geofences) | Locations you define, such as stores, venues, or delivery zones. | You | Create geofences. | `geofences` | `user.entered_geofence`, `user.exited_geofence`, `user.dwelled_in_geofence` |
+| [Places](#places) | Points of interest from Radar's place dataset, grouped by chain and category. | Radar | Turn on Places and choose chains and categories. | `place` | `user.entered_place`, `user.exited_place` |
+| [Regions](#regions) | The country, state, DMA, and postal code that contain the user. | Radar | Turn on Regions and the region event types you need. | `country`, `state`, `dma`, `postalCode` | `user.entered_region_country`, `user.exited_region_country`, and the same pair for `state`, `dma`, and `postal_code` |
+| [Beacons](#beacons) | Bluetooth beacons you registered that the device can hear. | You | Register beacons and turn on beacon ranging in a tracking call. | `beacons` | `user.entered_beacon`, `user.exited_beacon` |
+| [Fraud](#fraud) | Whether the location and device can be trusted: spoofing, proxies, screen sharing, and compromised devices. | Radar | Turn on Fraud and request a verified location check. | `fraud` | None for entry and exit. Read the flags on the user. |
+| [Trips](#trips) | One journey to a destination, with a status and a live ETA. | You | Start a trip. | `trip` | `user.started_trip`, `user.updated_trip`, `user.approaching_trip_destination`, `user.arrived_at_trip_destination`, `user.stopped_trip` |
+| [User insights](#user-insights) | Whether the user is at home, at work, traveling, or commuting, inferred from location history. | Radar | Enabled for your project by Radar. | `locationInsights` | `user.entered_home`, `user.exited_home`, `user.entered_work`, `user.exited_work`, and started and stopped events for traveling and commuting |
+
+A field appears on the user only when its context type is turned on for the project and has a value for that location. For where each field is returned, see [How context reaches you](#how-context-reaches-you).
+
+## Geofences
+
+A geofence is a location you define: a store, a venue, a neighborhood, a delivery zone, or a job site. It is a circle, a polygon, or an isochrone, which is the area within a given travel time of a point. You identify each geofence with a `tag` (a group, such as `store`) and an `externalId` (your own ID for the location, such as `store-42`), and you can attach `metadata`.
+
+You create geofences on the [Geofences](https://dashboard.radar.com/geofencing/geofences) page of the Radar dashboard, by CSV import, with the Geofences API, or with a nightly geofence sync. Geofences are created separately in the Test and Live environments.
+
+The user's `geofences` field lists every geofence that contains the user's current location:
+
+```json
+{
+  "geofences": [
+    {
+      "_id": "56db1f4613012711002229f5",
+      "tag": "store",
+      "externalId": "store-42",
+      "description": "Store 42",
+      "metadata": {
+        "curbside": true
+      }
+    }
+  ]
+}
+```
+
+Geofences generate these events:
+
+- `user.entered_geofence`
+- `user.exited_geofence`
+- `user.dwelled_in_geofence`, when you turn it on for the project and set a `dwellThreshold` on the geofence
+
+You turn each event type on or off under **Event types** in the **Geofences** section of the [Settings](https://dashboard.radar.com/settings) page.
+
+See [Create geofences](/geofencing/geofences-and-places#create-geofences) to set them up and [Geofence entries, exits, and dwell](/geofencing/geofences-and-places#geofence-entries-exits-and-dwell) for when each event is generated. For every field, see [Geofence object](/api/geofences#geofence-object).
+
+## Places
+
+A place is a point of interest from Radar's place dataset, such as a coffee shop, an airport, or a stadium. With Places, Radar detects a visit to a place without a geofence from you. A place has one or more categories, and it can belong to a chain.
+
+Use geofences for locations you operate, and Places for locations you don't.
+
+To turn on Places, open the [Settings](https://dashboard.radar.com/settings) page and find the **Places** section. Turn on the place event types under **Event types**, then add the chains and categories to monitor under **Chains** and **Categories**. Places depends on your plan.
+
+The user's `place` field is the one place the user is at, or is absent when there is none:
+
+```json
+{
+  "place": {
+    "name": "Example Coffee",
+    "chain": {
+      "name": "Example Coffee",
+      "slug": "example-coffee",
+      "externalId": "123",
+      "metadata": {
+        "segment": "partner"
+      }
+    },
+    "categories": ["food-beverage", "coffee-shop"],
+    "location": {
+      "type": "Point",
+      "coordinates": [-73.977797, 40.783826]
+    }
+  }
+}
+```
+
+`chain.externalId` and `chain.metadata` are values you map to a chain in settings. See [Chains](/geofencing/geofences-and-places#chains).
+
+Places generates these events:
+
+- `user.entered_place`, when the user stops at a place that matches your chains and categories
+- `user.exited_place`
+- `user.nearby_place_chain`, only when nearby place chains are enabled for your project by Radar
+
+For the supported values, see the lists of [place chains](/places/chains) and [place categories](/places/categories). See [Enable Places](/geofencing/geofences-and-places#enable-places) to set Places up and [Place visits](/geofencing/geofences-and-places#place-visits) for the events. The `place` object on an event is described in [Event object](/api/events#event-object).
+
+## Regions
+
+A region is an administrative area from Radar's boundary dataset. With Regions, Radar adds the user's country, state, DMA (US media market), and postal code to the user. You don't create anything.
+
+| Region | Coverage | User field | Supported values |
+| --- | --- | --- | --- |
+| Country | Global | `country` | [Countries](/regions/countries) |
+| State | United States and Canada | `state` | [States](/regions/states) |
+| DMA | United States | `dma` | [DMAs](/regions/dmas) |
+| Postal code | United States | `postalCode` | US ZIP codes |
+
+Regions depends on your plan. You turn on the region event types you need in the **Regions** section of the [Settings](https://dashboard.radar.com/settings) page.
+
+Each region field has a `code` and a `name`:
+
+```json
+{
+  "country": {
+    "code": "US",
+    "name": "United States"
+  },
+  "state": {
+    "code": "MD",
+    "name": "Maryland"
+  },
+  "dma": {
+    "code": "26",
+    "name": "Baltimore"
+  },
+  "postalCode": {
+    "code": "21014",
+    "name": "21014"
+  }
+}
+```
+
+Regions generates these events:
+
+- `user.entered_region_country` and `user.exited_region_country`
+- `user.entered_region_state` and `user.exited_region_state`
+- `user.entered_region_dma` and `user.exited_region_dma`
+- `user.entered_region_postal_code` and `user.exited_region_postal_code`
+
+On a verified location check, `country` and `state` also carry the jurisdiction result for that check. See [Country and state fields](/api/geolocation-tokens#country-and-state-fields).
+
+See [Regions](/geofencing/geofences-and-places#regions) in the geofencing guide for home regions and country allowlists. The region fields are listed in [User object](/api/users#user-object).
+
+## Beacons
+
+A beacon is a Bluetooth device you install and register with Radar. Beacons work like small geofences for areas that GPS can't resolve: a floor, a counter, a drive-thru lane, or a parking space. Like a geofence, a beacon has a `tag`, an `externalId`, and optional `metadata`.
+
+Beacon context needs two things. You register each beacon on the [Beacons](https://dashboard.radar.com/geofencing/beacons) page, by CSV import, or with the Beacons API. Then your app turns on beacon ranging in a tracking call on iOS or Android. The web SDK doesn't range beacons. Beacons depends on your plan.
+
+The user's `beacons` field lists the registered beacons the device heard during the most recent update:
+
+```json
+{
+  "beacons": [
+    {
+      "_id": "64f0a1b2c3d4e5f6a7b8cc01",
+      "type": "ibeacon",
+      "uuid": "b9407f30-f5f8-466e-aff9-25556b57fe6d",
+      "major": "100",
+      "minor": "1",
+      "description": "Store 42 - Register 1",
+      "tag": "store-register",
+      "externalId": "store-42-register-1",
+      "enabled": true
+    }
+  ]
+}
+```
+
+Beacons generate these events:
+
+- `user.entered_beacon`
+- `user.exited_beacon`
+
+You turn them on under **Event types** in the **Beacons** section of the [Settings](https://dashboard.radar.com/settings) page.
+
+See [Track indoor location with beacons](/geofencing/beacons) to register and range beacons. For every field, see [Beacon object](/api/beacons#beacon-object).
+
+## Fraud
+
+Fraud context reports whether Radar can trust the location and the device behind it. Radar checks for a mocked or spoofed location, movement that is too far too fast, a known proxy or VPN, screen sharing or remote control, a compromised device or app, and a location that is too inaccurate to rely on.
+
+<Info>
+  Fraud is available on the [Enterprise plan](https://radar.com/pricing).
+</Info>
+
+Fraud is turned on for your project under **Fraud** on the [Settings](https://dashboard.radar.com/settings#fraud-settings) page. Your app then requests a verified location check with `Radar.trackVerified()`. Radar runs the fraud checks and returns the result on the user and in a signed geolocation token for your backend.
+
+The user's `fraud` field has one boolean flag for each check, the overall result in `passed`, and the last time each flag was raised:
+
+```json
+{
+  "fraud": {
+    "verified": true,
+    "passed": false,
+    "bypassed": false,
+    "blocked": false,
+    "mocked": true,
+    "jumped": false,
+    "compromised": false,
+    "inaccurate": false,
+    "proxy": false,
+    "sharing": false,
+    "lastMockedAt": "2026-07-27T17:18:28.536Z",
+    "lastJumpedAt": null,
+    "lastCompromisedAt": null,
+    "lastInaccurateAt": null,
+    "lastProxyAt": null,
+    "lastSharingAt": null
+  }
+}
+```
+
+`verified` is `true` when the update came from a verified location check. `passed` is `true` when all fraud checks passed. `blocked` and `bypassed` report that a block or bypass rule matched, and they override the other flags.
+
+Fraud has no entry and exit events. Read the flags on the user, or `passed` and `failureReasons` in the token. Make eligibility decisions on your backend from a validated token, not from flags read in the app.
+
+See [Fraud overview and quickstart](/fraud/overview) for the signals behind each flag, and [Geo-compliance overview and quickstart](/geo-compliance/overview) to run a verified location check. For every field, see [Fraud object](/api/fraud#fraud-object) and [Fraud fields](/api/geolocation-tokens#fraud-fields) in the geolocation token schema.
+
+## Trips
+
+A trip is one journey by a user to a destination, such as a customer driving to pick up an order. While a trip is active, Radar calculates an ETA from each location update and moves the trip through its statuses.
+
+Your app starts a trip with `Radar.startTrip()`, or your backend creates one with the Trips API. The destination is usually one of your geofences.
+
+The user's `trip` field is the active trip. It is present while the trip's `status` is `started`, `approaching`, or `arrived`:
+
+```json
+{
+  "trip": {
+    "_id": "5f3e50491c2b7d005c81f5d9",
+    "status": "approaching",
+    "externalId": "order-789",
+    "mode": "car",
+    "destinationGeofenceTag": "store",
+    "destinationGeofenceExternalId": "store-42",
+    "eta": {
+      "duration": 2.9,
+      "distance": 840
+    }
+  }
+}
+```
+
+`eta.duration` is in minutes and `eta.distance` is in meters.
+
+Trips generate these events:
+
+- `user.started_trip`
+- `user.updated_trip`
+- `user.approaching_trip_destination`
+- `user.arrived_at_trip_destination`
+- `user.stopped_trip`
+- `user.arrived_at_wrong_trip_destination`, when you turn it on for the project
+
+See [Track pickups, deliveries, and workers](/geofencing/trips) to implement trips and [Trip events](/geofencing/trips#trip-events) for when each event is generated. For every field, see [Trip object](/api/trips#trip-object).
+
+## User insights
+
+User insights use a user's recurring stopped locations to infer likely home and work areas, then report whether the user is at home, at work, traveling, or commuting.
+
+<Info>
+  User insights must be enabled for your project. Contact your Radar account team.
+</Info>
+
+The user's `locationInsights` field has one boolean for each state. Radar omits the field until it has enough location history to infer a home or work area:
+
+```json
+{
+  "locationInsights": {
+    "atHome": true,
+    "atWork": false,
+    "traveling": false,
+    "commuting": false
+  }
+}
+```
+
+User insights generate these events when a state changes:
+
+- `user.entered_home` and `user.exited_home`
+- `user.entered_work` and `user.exited_work`
+- `user.started_traveling` and `user.stopped_traveling`
+- `user.started_commuting` and `user.stopped_commuting`
+
+See [User insights](/geofencing/geofences-and-places#user-insights) in the geofencing guide. For every field, see [Location insights](/api/users#location-insights).
+
+## How context reaches you
+
+Every context type is written to the same user object, and every event has the same shape, so you read all of them in the same places.
+
+| Where | What you get | Context types |
+| --- | --- | --- |
+| SDK tracking calls | `Radar.trackOnce()` returns the updated user and the events from that update. Background tracking with `Radar.startTracking()` delivers the same to a delegate or receiver. See [Receive events in the app](/geofencing/geofences-and-places#receive-events-in-the-app). | Every type turned on for your project. Beacons need beacon ranging turned on in the call. |
+| Verified location checks | `Radar.trackVerified()` returns the user with `fraud`, and a signed token that your backend validates. See [Geolocation token schema](/api/geolocation-tokens). | Fraud, regions, and geofences. Beacons when you pass `beacons: true`. |
+| `Radar.getContext()` and `GET /v1/context` | Context for a coordinate, without creating or updating a user and without generating events. See [Get context](/api/tracking#get-context). | Geofences, places, and regions. |
+| `POST /v1/track` | The updated user and the events generated, for a location you send. See [Track](/api/tracking#track). | Every type turned on for your project. |
+| `GET /v1/users/:id` | The user's most recent context, read from your backend. See [Get a user](/api/users#get-a-user). | Every type turned on for your project. |
+| Webhooks and event integrations | Each delivery carries the events from one update and the user's state after that update. See [Webhooks](/integrations/webhooks) and [Integrations overview](/integrations/integrations). | The event types you turned on. Each integration page lists the user fields and events it maps. |
+
+The fields on the user are defined in [User object](/api/users#user-object), and the fields on an event in [Event object](/api/events#event-object).

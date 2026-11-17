@@ -37,7 +37,7 @@ An event represents a change in user state. You can reference an event by its Ra
 | `duration` | number | On exit events, the duration between the entry and exit events, in minutes. |
 | `metadata` | object | For conversions, the metadata you logged. |
 
-An entry or exit event describes a transition. To read a user's current state, such as the geofences they are in now, use the `user` object instead of replaying events. Events can arrive late or be replayed after a device was offline, so use `createdAt` to order them.
+An entry or exit event describes a transition. To read a user's current state, such as the geofences they are in now, use the `user` object instead of replaying events. Events can arrive late or be replayed after a device was offline, so use `createdAt` to order them. For the event types that each context type generates, see [context types](/fundamentals/context-types).
 
 ### Example event
 

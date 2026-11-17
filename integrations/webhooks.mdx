@@ -221,7 +221,7 @@ A **Multiple events** request body has the same `user` object and an `events` ar
 }
 ```
 
-The `user` object carries more state when the matching features are enabled for your project, for example `place`, `country`, `state`, `dma`, `postalCode`, `segments`, `topChains`, `trip`, `beacons`, and `fraud`. Treat unknown fields as optional and ignore the ones you don't use, so that new fields don't break your parser.
+The `user` object carries more state when the matching features are enabled for your project, for example `place`, `country`, `state`, `dma`, `postalCode`, `segments`, `topChains`, `trip`, `beacons`, and `fraud`. For what the geofence, place, region, trip, beacon, and fraud fields represent, see [context types](/fundamentals/context-types). Treat unknown fields as optional and ignore the ones you don't use, so that new fields don't break your parser.
 
 Two details to rely on:
 

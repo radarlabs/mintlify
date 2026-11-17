@@ -17,7 +17,7 @@ By the end of this page you can reproduce a passing and a failing result on a te
 | Events fire in the foreground but not in the background | Background permission and background modes. See [Events don't fire](#events-dont-fire). | [Location permissions](/fundamentals/location-permissions) |
 | A trip doesn't start, update, or end | The trip status and the last location update on the user. | [Track pickups, deliveries, and workers](/geofencing/trips) |
 | A location check fails when you expect a pass, or passes when you expect a fail | The failure reasons on the check on the Locations page. See [Inspect a location check](#inspect-a-location-check). | [Geo-compliance overview and quickstart](/geo-compliance/overview) |
-| You can't produce a failed check to test your blocked screen | A scoped block rule for your test user. See [Force a pass or a fail](#force-a-pass-or-a-fail). | [Verify location eligibility for sportsbooks and casinos](/geo-compliance/sportsbooks-and-casinos) |
+| You can't produce a failed check to test your blocked screen | A scoped block rule for your test user. See [Force a pass or a fail](#force-a-pass-or-a-fail). | [Verify location eligibility for sportsbooks and casinos](/geo-compliance/gaming) |
 | A fraud rule or case doesn't trigger | The rule conditions against the check you expected to match. | [Fraud overview and quickstart](/fraud/overview) |
 | The SDK returns an error status | The status name. See [Tell technical errors from application decisions](#tell-technical-errors-from-application-decisions). | [Authentication, errors, and rate limits](/api/fundamentals) |
 | Your listener or receiver is never called | Whether events are generated at all, then where the listener is registered. See [Listeners don't deliver](#listeners-dont-deliver). | [iOS SDK](/sdk/ios), [Android SDK](/sdk/android) |
@@ -198,7 +198,7 @@ A device appears after its first successful track request.
 ### Events don't fire
 
 1. Confirm that a location update arrived. Open the user in the dashboard and check the time of their last location.
-2. Confirm that events are turned on for the context type you're testing on the [Settings](https://dashboard.radar.com/settings) page.
+2. Confirm that events are turned on for the [context type](/fundamentals/context-types) you're testing on the [Settings](https://dashboard.radar.com/settings) page.
 3. Confirm that you called `Radar.startTracking()` if you expect events while the app is in the background.
 4. Confirm that background permission is granted and, on iOS, that the Location updates background mode is on when you use the responsive or continuous preset.
 5. Confirm that the device moved enough to trigger an update under your [tracking options](/sdk/tracking), and that it was seen outside the geofence before the entry you expected.

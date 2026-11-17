@@ -90,7 +90,7 @@ Radar.setMetadata(JSONObject().put("brazeExternalId", brazeExternalId))
 
 ## User mapping
 
-Radar sends these attributes with every request. Attributes for a context type are sent only when that feature is enabled for your project. An attribute with no current value is sent as `null`, and array attributes are sent as empty arrays.
+Radar sends these attributes with every request. Attributes for a [context type](/fundamentals/context-types) are sent only when that feature is enabled for your project. An attribute with no current value is sent as `null`, and array attributes are sent as empty arrays.
 
 | Radar user field | Braze user attribute | Type | Example value | Context |
 | --- | --- | --- | --- | --- |
@@ -104,27 +104,27 @@ Radar sends these attributes with every request. Attributes for a context type a
 | `segments[*].externalId` | `radar_segment_external_ids` | array[string] | `["coffee-visitors"]` | |
 | `topChains[*].slug` | `radar_top_chain_slugs` | array[string] | `["example-coffee", "example-grocery"]` | |
 | `topChains[*].externalId` | `radar_top_chain_external_ids` | array[string] | `["123", "456"]` | |
-| `geofences[*]._id` | `radar_geofence_ids` | array[string] | `["5b2c0906f5874b001aecfd8e"]` | Geofences |
+| `geofences[*]._id` | `radar_geofence_ids` | array[string] | `["5b2c0906f5874b001aecfd8e"]` | [Geofences](/fundamentals/context-types#geofences) |
 | `geofences[*].description` | `radar_geofence_descriptions` | array[string] | `["Store #42"]` | Geofences |
 | `geofences[*].tag` | `radar_geofence_tags` | array[string] | `["store"]` | Geofences |
 | `geofences[*].externalId` | `radar_geofence_external_ids` | array[string] | `["store-42"]` | Geofences |
-| `place._id` | `radar_place_id` | string | `"59302bcf8f27e8a156bd4f91"` | Places |
+| `place._id` | `radar_place_id` | string | `"59302bcf8f27e8a156bd4f91"` | [Places](/fundamentals/context-types#places) |
 | `place.name` | `radar_place_name` | string | `"Example Coffee"` | Places |
 | `place.categories` | `radar_place_categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | Places |
 | `place.chain.slug` | `radar_place_chain_id` | string | `"example-coffee"` | Places |
 | `place.chain.name` | `radar_place_chain_name` | string | `"Example Coffee"` | Places |
 | `place.chain.externalId` | `radar_place_chain_external_id` | string | `"123"` | Places |
-| `country.code` | `radar_region_country_code` | string | `"US"` | Regions |
+| `country.code` | `radar_region_country_code` | string | `"US"` | [Regions](/fundamentals/context-types#regions) |
 | `country.name` | `radar_region_country_name` | string | `"United States"` | Regions |
 | `state.code` | `radar_region_state_code` | string | `"MD"` | Regions |
 | `state.name` | `radar_region_state_name` | string | `"Maryland"` | Regions |
 | `dma.code` | `radar_region_dma_code` | string | `"26"` | Regions |
 | `dma.name` | `radar_region_dma_name` | string | `"Baltimore"` | Regions |
 | `postalCode.code` | `radar_region_postal_code` | string | `"21014"` | Regions |
-| `trip.externalId` | `radar_trip_external_id` | string | `"order-299"` | Trips |
+| `trip.externalId` | `radar_trip_external_id` | string | `"order-299"` | [Trips](/fundamentals/context-types#trips) |
 | `trip.destinationGeofenceTag` | `radar_trip_destination_geofence_tag` | string | `"store"` | Trips |
 | `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string | `"store-42"` | Trips |
-| `beacons[*]._id` | `radar_beacon_ids` | array[string] | `["5b2c0906f5874b001aecfd8f"]` | Beacons |
+| `beacons[*]._id` | `radar_beacon_ids` | array[string] | `["5b2c0906f5874b001aecfd8f"]` | [Beacons](/fundamentals/context-types#beacons) |
 | `beacons[*].description` | `radar_beacon_descriptions` | array[string] | `["Store #42 - Drive-Thru"]` | Beacons |
 | `beacons[*].tag` | `radar_beacon_tags` | array[string] | `["drive-thru"]` | Beacons |
 | `beacons[*].externalId` | `radar_beacon_external_ids` | array[string] | `["123"]` | Beacons |
