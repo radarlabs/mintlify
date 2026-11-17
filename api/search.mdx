@@ -1,0 +1,397 @@
+---
+title: "Search API"
+description: "Reference for Radar's autocomplete, geofence search, and place search endpoints, with filters and result schemas."
+---
+
+Use the Search API to autocomplete addresses and place names as a user types, and to find your geofences or public places near a location.
+
+| Operation | Endpoint | Authentication |
+| --- | --- | --- |
+| [Autocomplete](#autocomplete) | `GET /v1/search/autocomplete` | Publishable key |
+| [Autocomplete select](#autocomplete-select) | `POST /v1/search/autocomplete/select` | Publishable key |
+| [Search geofences](#search-geofences) | `GET /v1/search/geofences` | Publishable key |
+| [Search places](#search-places) | `GET /v1/search/places` | Publishable key |
+
+The base URL is `https://api.radar.io`. Send your API key in the `Authorization` header. All four operations accept a publishable key, so you can call them from a client. For key types, the error format, and rate limits, see [Authentication, errors, and rate limits](/api/fundamentals).
+
+Search operations return one page of results, capped by `limit`. They don't return a cursor. To see more results, raise `limit` up to the documented maximum or narrow the search with filters.
+
+For address validation, see [Validate an address](/api/geocoding#validate-an-address).
+
+## Autocomplete
+
+Autocompletes partial addresses and place names, sorted by relevance and proximity.
+
+- **Endpoint**: `GET /v1/search/autocomplete`
+- **Authentication**: Publishable key
+- **Rate limit**: 100 requests per second
+- **Used by**: [Autocomplete, geocode, and validate addresses](/maps/addresses), [Build store locators](/maps/store-locators)
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `query` | string | Yes | The partial address or place name to autocomplete. |
+| `near` | string | No | The location to prefer results near, in the format `latitude,longitude`. If you omit `near`, Radar uses the IP geolocation of the request to anchor the search. |
+| `layers` | string | No | Layer filters. A comma-separated string with one or more of `place`, `address`, `postalCode`, `locality`, `county`, `state`, `country`, `coarse`, and `fine`. `coarse` includes `postalCode`, `locality`, `county`, `state`, and `country`. `fine` includes `address` and `place`. If you omit `layers`, Radar returns results from the `address` and `coarse` layers. |
+| `limit` | number | No | The maximum number of addresses to return. A number between 1 and 100. Defaults to 10. |
+| `countryCode` | string | No | Country filter. A comma-separated string of 2-letter [country codes](/regions/countries). |
+| `postalCode` | string | No | Postal code filter. At least 3 characters. |
+| `mailable` | boolean | No | If `true`, returns only mailable addresses. |
+| `lang` | string | No | The language for the results. One of `ar`, `de`, `en`, `es`, `fr`, `ja`, `ko`, `pt`, `ru`, `zh`. Defaults to `en`. |
+| `sessionToken` | string | No | A UUID that groups the requests from one address field. When you send it, each result carries a `resultId` that you can report to [Autocomplete select](#autocomplete-select). |
+
+For full address completion in the United States and Canada, such as a checkout form, send `layers=address` and `countryCode=US,CA`.
+
+Generate one `sessionToken` when the user focuses the address field, and reuse it for every keystroke request from that field until the user selects a result. Wait for a short pause in typing before you send each request so you don't issue one request per keystroke.
+
+### Response
+
+A `200` response contains `meta` and `addresses`, an array of [address objects](/api/geocoding#address-object). Autocomplete results also include:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `distance` | number | The distance in meters from the `near` location. |
+| `placeLabel` | string | The place name, for results in the `place` layer. |
+| `resultId` | string | An identifier for this result. Present only when the request included `sessionToken`. |
+
+### Example
+
+This request autocompletes a place name near a location, with a session token.
+
+```bash
+curl "https://api.radar.io/v1/search/autocomplete?query=brooklyn+roasting&layers=place&near=40.70390,-73.98670&sessionToken=5b2f8a52-7c1e-4f0a-9d3b-2a6c1e8f4d10" \
+  -H "Authorization: prj_live_pk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "addresses": [
+    {
+      "latitude": 40.695779,
+      "longitude": -73.991489,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-73.991489, 40.695779]
+      },
+      "country": "United States",
+      "countryCode": "US",
+      "countryFlag": "🇺🇸",
+      "county": "Kings County",
+      "distance": 990,
+      "borough": "Brooklyn",
+      "city": "Brooklyn",
+      "number": "1",
+      "neighborhood": "Brooklyn Heights",
+      "postalCode": "11201",
+      "stateCode": "NY",
+      "state": "New York",
+      "street": "Clinton St",
+      "layer": "place",
+      "formattedAddress": "1 Clinton St, Brooklyn, New York, NY 11201 USA",
+      "placeLabel": "Brooklyn Roasting Company",
+      "resultId": "v2_EXAMPLEexampleEXAMPLEexampleAAA"
+    }
+  ]
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `query` is missing, `near` isn't in `latitude,longitude` format, `layers` contains an unsupported value, `postalCode` is shorter than 3 characters, or `sessionToken` isn't a UUID. | Fix the request before you retry. |
+
+A `400` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 400,
+    "param": "sessionToken",
+    "message": "sessionToken: must be a UUID."
+  }
+}
+```
+
+## Autocomplete select
+
+Reports which autocomplete result the user chose. Radar uses selections to measure and improve autocomplete quality.
+
+- **Endpoint**: `POST /v1/search/autocomplete/select`
+- **Authentication**: Publishable key
+- **Rate limit**: Subject to your project's overall API rate limit
+- **Used by**: [Autocomplete, geocode, and validate addresses](/maps/addresses)
+
+If your project has address enrichment enabled, this operation also returns the enriched address.
+
+### Body parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `resultId` | string | Yes | The `resultId` of the chosen result, as returned by [Autocomplete](#autocomplete). Results carry a `resultId` only when the originating search included a `sessionToken`. |
+
+### Response
+
+| Case | Response |
+| --- | --- |
+| Project without address enrichment | `204` with no body. |
+| Address enrichment enabled, chosen result is in the `address` layer | `200` with an `address` object that contains `formattedAddress` and `locationDetails`. |
+| Address enrichment enabled, chosen result is in any other layer | `200` with no `address`. The selection is still recorded. |
+
+Treat both `200` and `204` as success. Don't block the user's form on this call.
+
+### Example
+
+This request reports the result the user chose.
+
+```bash
+curl "https://api.radar.io/v1/search/autocomplete/select" \
+  -H "Authorization: prj_live_pk_..." \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"resultId": "v2_EXAMPLEexampleEXAMPLEexampleAAA"}'
+```
+
+For a project with address enrichment enabled, Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "address": {
+    "formattedAddress": "1 Clinton St, Brooklyn, New York, NY 11201 USA",
+    "locationDetails": {
+      "usage": "nonResidential",
+      "dwelling": "n/a",
+      "grounds": [],
+      "places": [
+        {
+          "name": "Brooklyn Roasting Company",
+          "categories": ["food-beverage", "cafe"]
+        }
+      ]
+    }
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `resultId` is missing, isn't a value returned by Autocomplete, or belongs to a session that has expired. | Run the search again and select from its results. |
+| `429` | The autocomplete session exceeded its selection cap. | Continue without recording the selection. |
+
+A `400` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 400,
+    "param": "resultId",
+    "message": "resultId: must be a resultId returned on a /v1/search/autocomplete result."
+  }
+}
+```
+
+## Search geofences
+
+Searches for geofences in your project near a location, sorted by distance.
+
+- **Endpoint**: `GET /v1/search/geofences`
+- **Authentication**: Publishable key
+- **Rate limit**: 50 requests per second
+- **Used by**: [Build store locators](/maps/store-locators)
+
+Distances in this search are straight-line distances from `near`. To rank or label results by travel distance or ETA, pass the results to [Matrix](/api/routing#matrix).
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `near` | string | Yes | The location to search near, in the format `latitude,longitude`. |
+| `limit` | number | No | The maximum number of geofences to return. A number between 1 and 1000. Defaults to 100. |
+| `radius` | number | No | The radius to search, in meters. A number between 1 and 10000. Values below 100 are raised to 100. |
+| `tags` | string | No | Tag filters. A comma-separated string. |
+| `metadata[key]` | string | No | Metadata filters. Radar infers the value type. For example, to match `offers == true`, send `metadata[offers]=true`. |
+| `includeGeometry` | boolean | No | Whether to include geofence geometries in the response. Defaults to `true`. |
+
+To retrieve more than 100 results, set `includeGeometry=false`. With geometries included, Radar caps `limit` at 100.
+
+### Response
+
+A `200` response contains `meta` and `geofences`, an array of geofence objects. Search results carry the fields you need to list and display a location. The full geofence object is defined in the [Geofences API](/api/geofences).
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `_id` | string | The unique ID for the geofence, provided by Radar. |
+| `live` | boolean | `true` if the geofence was created with a live API key, `false` for a test API key. |
+| `type` | string | The type of geofence geometry: `circle`, `polygon`, or `isochrone`. |
+| `tag` | string | A group for the geofence. |
+| `externalId` | string | An external ID for the geofence that maps to your internal database. |
+| `description` | string | A description for the geofence. |
+| `metadata` | object | The custom key-value pairs for the geofence. |
+| `geometryCenter` | object | The center of the geofence as a GeoJSON `Point`. Coordinates are in `[longitude, latitude]` order. |
+| `geometryRadius` | number | The radius in meters for type `circle`, or the approximate radius for type `polygon`. |
+| `operatingHours` | object | The operating hours of the geofence, if set. |
+| `geometry` | object | The geofence geometry as a GeoJSON `Polygon`. Omitted when `includeGeometry` is `false`. |
+
+If Radar adjusts your request, for example by capping `limit` or raising `radius`, the response is still `200`, and `meta.message` can describe the adjustment with `meta.level` set to `warning`.
+
+### Example
+
+This request searches within 1000 meters of a location for up to 10 geofences that have the tag `store` and `offers` set to `true`, without geometries.
+
+```bash
+curl "https://api.radar.io/v1/search/geofences?tags=store&metadata%5Boffers%5D=true&near=40.783826,-73.975363&radius=1000&limit=10&includeGeometry=false" \
+  -H "Authorization: prj_live_pk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "geofences": [
+    {
+      "_id": "56db1f4613012711002229f5",
+      "live": true,
+      "type": "circle",
+      "tag": "store",
+      "externalId": "store-42",
+      "description": "Store 42",
+      "metadata": {
+        "offers": true,
+        "rating": "4.5"
+      },
+      "geometryCenter": {
+        "type": "Point",
+        "coordinates": [-73.97536, 40.78382]
+      },
+      "geometryRadius": 50
+    }
+  ]
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `near` is missing or malformed, or `limit` or `radius` is out of range. | Fix the request before you retry. |
+
+A `400` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 400,
+    "param": "near",
+    "message": "near: Invalid coordinates: 40.783826. Valid format: \"latitude,longitude\"."
+  }
+}
+```
+
+## Search places
+
+Searches for places near a location, sorted by distance. Places are public points of interest such as chain stores, restaurants, and airports.
+
+- **Endpoint**: `GET /v1/search/places`
+- **Authentication**: Publishable key
+- **Rate limit**: 50 requests per second
+- **Used by**: [Build store locators](/maps/store-locators), [Detect geofence events and place visits](/geofencing/geofences-and-places)
+
+### Query parameters
+
+Send at least one of `chains`, `categories`, or `iataCode`. If you send none of them, Radar uses the place filters configured for your project, and returns `400` if the project has none.
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `near` | string | Conditional | The location to search near, in the format `latitude,longitude`. Required unless you send `iataCode`. |
+| `chains` | string | Conditional | [Chain slug](/places/chains) filters. A comma-separated string. If your project has a chain mapping, you can send the mapped ID in place of the chain slug. |
+| `categories` | string | Conditional | [Category](/places/categories) filters. A comma-separated string. |
+| `iataCode` | string | Conditional | The 3-letter IATA code of an airport to search for. If you send `iataCode`, no other parameter is required. |
+| `chainMetadata[key]` | string | No | Chain metadata filters. Values can be strings, booleans, or numbers, and Radar infers the type. For example, to match `offers == true`, send `chainMetadata[offers]=true`. Requires `chains`. |
+| `radius` | number | No | The radius to search, in meters. A number between 1 and 10000. Defaults to 1000. |
+| `limit` | number | No | The maximum number of places to return. A number between 1 and 100. Send `limit` explicitly to control the response size. |
+
+### Response
+
+A `200` response contains `meta` and `places`, an array of place objects:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `name` | string | The name of the place. |
+| `chain` | object | The chain the place belongs to, if any. |
+| `chain.name` | string | The name of the chain. |
+| `chain.slug` | string | The unique slug of the chain. |
+| `chain.externalId` | string | The mapped ID for the chain, if your project has a chain mapping. |
+| `chain.metadata` | object | The chain metadata configured for your project, if any. |
+| `categories` | array of strings | The categories of the place. |
+| `location` | object | The location of the place as a GeoJSON `Point`. Coordinates are in `[longitude, latitude]` order. |
+
+### Example
+
+This request searches within 1000 meters of a location for up to 10 places in one chain.
+
+```bash
+curl "https://api.radar.io/v1/search/places?chains=starbucks&near=40.78382,-73.97779&radius=1000&limit=10" \
+  -H "Authorization: prj_live_pk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "places": [
+    {
+      "name": "Starbucks",
+      "chain": {
+        "name": "Starbucks",
+        "slug": "starbucks",
+        "externalId": "123",
+        "metadata": {
+          "customFlag": true
+        }
+      },
+      "categories": [
+        "food-beverage",
+        "coffee-shop"
+      ],
+      "location": {
+        "type": "Point",
+        "coordinates": [-73.97779, 40.78382]
+      }
+    }
+  ]
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `near` is missing or malformed and no `iataCode` was sent, `radius` or `limit` is out of range, no filter is available from the request or the project, or `chainMetadata` was sent without `chains`. | Fix the request before you retry. |
+
+A `400` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 400,
+    "message": "`chains` param must be specified when `chainMetadata` is specified."
+  }
+}
+```

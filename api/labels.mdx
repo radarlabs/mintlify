@@ -1,0 +1,99 @@
+---
+title: "Labels API"
+description: "Reference for the Radar endpoint that records a confirmed fraud or not-fraud outcome for a user."
+---
+
+Use the Labels API to tell Radar the confirmed outcome for a user, for example after a chargeback, a manual review, or a cleared investigation. A label records whether the user was fraudulent or not.
+
+| Operation | Endpoint | Authentication |
+| --- | --- | --- |
+| [Create a fraud label](#create-a-fraud-label) | `POST /v1/fraud/labels` | Secret key |
+
+The base URL is `https://api.radar.io`. Send your API key in the `Authorization` header. For key types, the error format, and rate limits, see [Authentication, errors, and rate limits](/api/fundamentals).
+
+<Info>
+  Fraud labels must be enabled for your project. Contact your Radar account team.
+</Info>
+
+## Before you start
+
+- Labels apply to users, identified by the same `userId` your app sets in the SDK or sends to [Track](/api/tracking#track). You can't label a device.
+- A label has one of two outcomes: `fraud` or `not_fraud`.
+- Send labels from your backend with a secret key. Never send them from client code.
+- To label a user in the same request that blocks or unblocks them, set `label` on the item in [Block users and devices](/api/fraud#block-users-and-devices) or [Unblock users and devices](/api/fraud#unblock-users-and-devices) instead.
+
+## Create a fraud label
+
+Records a `fraud` or `not_fraud` label for a user.
+
+- **Endpoint**: `POST /v1/fraud/labels`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+- **Used by**: [Prevent account takeover and account sharing](/fraud/account-takeover-and-sharing), [Prevent new account fraud, multi-accounting, and promo abuse](/fraud/new-account-fraud)
+
+### Body parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `userId` | string | Yes | The `userId` of the user the label applies to. A non-empty string. |
+| `label` | string | Yes | The outcome. One of `fraud` or `not_fraud`. |
+| `fraudType` | string | No | A fraud category that you define, such as `promo_abuse`. Up to 100 characters. Accepts alphanumeric characters, dashes, underscores, spaces, periods, and commas. |
+| `incidentTime` | ISO 8601 string | No | The time of the incident. A date or valid ISO date string, for example `2026-10-21T12:00:00Z`. If omitted, Radar uses the time it received the label. |
+
+### Response
+
+A `202` response means the label was accepted. Labels are processed asynchronously, so the response contains only `meta` and doesn't return the stored label.
+
+Each request records one label. The request is validated, but the response doesn't confirm that a user with that `userId` exists in the project, so check the `userId` before you send it. Labels are recorded for the environment of the key you use: a test key records a test label and a live key records a live label.
+
+### Example
+
+This request labels `user-123` as fraudulent.
+
+```bash
+curl "https://api.radar.io/v1/fraud/labels" \
+  -H "Authorization: prj_live_sk_..." \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"userId": "user-123", "label": "fraud", "fraudType": "promo_abuse", "incidentTime": "2026-10-21T12:00:00Z"}'
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 202
+  }
+}
+```
+
+This request records a label that clears a user:
+
+```bash
+curl "https://api.radar.io/v1/fraud/labels" \
+  -H "Authorization: prj_live_sk_..." \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"userId": "user-124", "label": "not_fraud"}'
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `userId` is missing or empty, `label` isn't `fraud` or `not_fraud`, `fraudType` is longer than 100 characters or contains unsupported characters, or `incidentTime` isn't a valid date. `meta.param` names the parameter. | Fix the parameter named in `meta.param`. |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `404` | Fraud labels aren't enabled for your project. | Contact your Radar account team. |
+| `429` | The rate limit was exceeded. | Retry with backoff. See [Rate limits](/api/fundamentals#rate-limits). |
+
+A `404` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 404,
+    "message": "Not found"
+  }
+}
+```

@@ -1,0 +1,185 @@
+---
+title: "Authentication, errors, and rate limits"
+sidebarTitle: "Authentication and errors"
+description: "How to authenticate Radar REST API requests, read error responses, page through lists, and handle rate limits."
+---
+
+Every Radar REST API request uses the same base URL, the same `Authorization` header, and the same response envelope. With these conventions, you can authenticate a request, tell a test request from a live one, read any error, page through a list, and retry safely.
+
+## Base URL and request format
+
+All endpoints are served over HTTPS from this base URL:
+
+```text
+https://api.radar.io/v1
+```
+
+- `GET` and `DELETE` requests take parameters in the path and query string.
+- `POST`, `PUT`, and `PATCH` requests take body parameters as `application/json` or `application/x-www-form-urlencoded`. Send JSON when a parameter is an object or an array.
+- Request bodies are limited to 500 KB.
+- All responses, including errors, are JSON.
+- Datetimes are ISO 8601 strings, for example `2026-10-21T12:00:00Z`.
+- Coordinates in GeoJSON objects and in `coordinates` body parameters are in `[longitude, latitude]` order. Query parameters that take a single point, such as `coordinates` on [Get context](/api/tracking#get-context), use `latitude,longitude`.
+
+## Authentication
+
+All requests must be authenticated. Send your API key in the `Authorization` header, with no prefix:
+
+```bash
+curl "https://api.radar.io/v1/users" \
+  -H "Authorization: prj_live_sk_..."
+```
+
+Find your API keys on the [Settings](https://dashboard.radar.com/settings) page of the Radar dashboard. To set up projects, keys, and team access, see [Set up organizations, projects, accounts, and authentication](/fundamentals/authentication-and-access).
+
+### Key types
+
+Each project has four keys. The key type decides where you can use the key. The key environment decides which data the request reads and writes.
+
+| Key | Prefix | Use it | Data |
+| --- | --- | --- | --- |
+| Test publishable | `prj_test_pk_` | In client code (SDKs, browsers) during development | Test |
+| Live publishable | `prj_live_pk_` | In client code in production | Live |
+| Test secret | `prj_test_sk_` | On your backend during development | Test |
+| Live secret | `prj_live_sk_` | On your backend in production | Live |
+
+Each operation in this reference lists the key type it needs:
+
+- **Publishable key**: The operation is safe to call from a client.
+- **Secret key**: The operation reads or changes your project's data. Call it only from your backend.
+
+<Warning>
+  Use publishable keys in client code. Never put a secret key in an app or web page.
+</Warning>
+
+### Test and live environments
+
+Test and live data are separate. A user, geofence, trip, or beacon created with a test key isn't visible to a live key, and a live object isn't visible to a test key. Objects returned by the API include a `live` boolean: `true` for live data and `false` for test data.
+
+Use test keys while you build and in non-production environments. Switch to live keys only in production.
+
+## Response format
+
+Every response has a `meta` object with a numeric `code` that matches the HTTP status code. Successful responses add one or more resource fields next to `meta`, as in this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "user": {
+    "_id": "5f3e50491c2b7d005c81f5d9",
+    "live": false,
+    "userId": "user-123",
+    "deviceId": "device-456"
+  }
+}
+```
+
+## Errors
+
+The API uses standard HTTP response codes. An error response has the same `meta` object, with a `message` that describes the problem and, for validation errors, a `param` that names the invalid parameter, as in this response:
+
+```json
+{
+  "meta": {
+    "code": 400,
+    "param": "latitude",
+    "message": "latitude: Invalid latitude. Valid range: [-90, 90]."
+  }
+}
+```
+
+### Status codes
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `200` | Success | Read the response. |
+| `202` | Accepted | The request was accepted and is processed asynchronously. |
+| `400` | Bad request | A parameter is missing or invalid. Check `meta.param` and `meta.message`, fix the request, and don't retry it unchanged. |
+| `401` | Unauthorized | The API key is missing, invalid, expired, or disabled, or it is the wrong type for the operation. For example, a publishable key on a Secret operation returns `Unauthorized. Secret API key required.` |
+| `402` | Payment required | The organization is disabled, usage is exceeded, or the operation isn't included in your plan. |
+| `403` | Forbidden | The key doesn't have permission for this request. |
+| `404` | Not found | The object doesn't exist in this project and environment, or the operation isn't enabled for your project. |
+| `409` | Conflict | The request conflicts with the current state of the object, for example creating an object that already exists. |
+| `429` | Too many requests | A rate limit was exceeded, or the request was throttled. See [Rate limits](#rate-limits). |
+| `451` | Unavailable for legal reasons | The location update is in a country that your project's country allowlist or blocklist excludes. See [Regions](/geofencing/geofences-and-places#regions). |
+| `500` | Internal server error | Retry with backoff. If the error persists, contact [Radar support](https://radar.com/support) with the [request ID](#request-ids). |
+| `503` | Service temporarily unavailable | Retry with backoff. |
+
+Some batch operations return HTTP `200` with a per-item `meta.code`. Check each item. See [Block users and devices](/api/fraud#block-users-and-devices) for an example.
+
+## Request IDs
+
+Every API response includes an `X-Radar-Request-ID` header with a unique identifier for the request, in this form:
+
+```text
+X-Radar-Request-ID: 01890a5d-ac96-774b-bcce-b302099a8057
+```
+
+Log this value with your own request logs. If you contact Radar support about a specific API call, include the request ID so the exact request can be found.
+
+## Rate limits
+
+Rate limits are applied per second. Each operation in this reference lists its default limit. Most data management operations default to 10 requests per second. [Track](/api/tracking#track) is limited to 1 request per second per device. To increase a limit, contact your Radar account team.
+
+When you exceed a limit, the API returns HTTP `429`:
+
+```json
+{
+  "meta": {
+    "code": 429,
+    "message": "Rate limit exceeded. Please try again later."
+  }
+}
+```
+
+A `429` response can also include a `type` string in `meta` that identifies which limit applied. Treat it as diagnostic information and don't branch on its value.
+
+### Retries
+
+- Retry `429`, `500`, and `503` responses with exponential backoff and jitter. Start with a delay of at least 1 second for per-second limits.
+- Don't retry `400`, `401`, `402`, `403`, or `404` responses without changing the request.
+- `PUT` upserts that address an object by `tag` and `externalId`, and `DELETE` requests, are safe to repeat. Before you retry a `POST` that creates an object, check whether the first attempt succeeded.
+- To load many objects, send requests in sequence or with a small fixed concurrency instead of in a burst.
+
+## Pagination
+
+List operations return the newest objects first and accept a `limit` query parameter. Each list operation documents its own default and maximum `limit`.
+
+List responses include `hasMore` in `meta`. When `hasMore` is `true`, request the next page with a datetime cursor: pass the timestamp of the last object you received as the `updatedBefore` or `createdBefore` parameter documented for that operation.
+
+```bash
+curl "https://api.radar.io/v1/geofences?limit=100&updatedBefore=2026-10-21T12:00:00.000Z" \
+  -H "Authorization: prj_live_sk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200,
+    "hasMore": false
+  },
+  "geofences": []
+}
+```
+
+Stop when `hasMore` is `false`.
+
+## Metadata
+
+Users, geofences, trips, and beacons accept a `metadata` dictionary of custom key-value pairs. Send it as a JSON object, or as a JSON string in a form-encoded request.
+
+For users and geofences, the API enforces these rules by default:
+
+- Up to 16 keys.
+- Keys are 1 to 256 characters and can contain letters, numbers, spaces, and the characters `_`, `-`, `:`, and `#`.
+- Values are strings, booleans, or numbers. String values are up to 256 characters.
+
+Don't store names, email addresses, or other personally identifiable information in metadata or in `userId`.
+
+## See also
+
+For the list of resources and operations, see the [REST API overview](/api).

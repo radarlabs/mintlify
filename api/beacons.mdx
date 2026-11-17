@@ -1,0 +1,447 @@
+---
+title: "Beacons API"
+description: "Reference for listing, retrieving, creating, upserting, and deleting the Bluetooth beacons monitored in your Radar project."
+---
+
+Use the Beacons API to manage the Bluetooth beacons monitored in your project from your own systems, for example to register beacons as they are installed at a venue.
+
+| Operation | Endpoint | Authentication |
+| --- | --- | --- |
+| [List beacons](#list-beacons) | `GET /v1/beacons` | Secret key |
+| [Get a beacon](#get-a-beacon) | `GET /v1/beacons/:id` | Secret key |
+| [Create a beacon](#create-a-beacon) | `POST /v1/beacons` | Secret key |
+| [Upsert a beacon](#upsert-a-beacon) | `PUT /v1/beacons/:tag/:externalId`<br />`PUT /v1/beacons/:id` | Secret key |
+| [Delete a beacon](#delete-a-beacon) | `DELETE /v1/beacons/:id` | Secret key |
+
+The base URL is `https://api.radar.io`. Send your API key in the `Authorization` header. For key types, the error format, and rate limits, see [Authentication, errors, and rate limits](/api/fundamentals).
+
+For SDK setup, ranging requirements, and beacon events, see [Track indoor location with beacons](/geofencing/beacons).
+
+## Beacon object
+
+A beacon represents a Bluetooth beacon monitored in your project. Every beacon has a Radar `_id`. A beacon can also have a `tag` and an `externalId` that together identify it in your own system.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `_id` | string | A unique ID for the beacon, provided by Radar. An alphanumeric string. |
+| `createdAt` | ISO 8601 string | The datetime when the beacon was created. |
+| `updatedAt` | ISO 8601 string | The datetime when the beacon was last updated. |
+| `live` | boolean | `true` if the beacon was created with a live API key, `false` if it was created with a test API key. |
+| `description` | string | A display name for the beacon. |
+| `tag` | string | A group for the beacon. |
+| `externalId` | string | An external ID for the beacon. |
+| `type` | string | The type of beacon. One of `ibeacon` (supported on iOS and Android) or `eddystone` (supported on Android only). |
+| `uuid` | string | For iBeacons, the UUID of the beacon. |
+| `major` | string | For iBeacons, the major ID of the beacon. |
+| `minor` | string | For iBeacons, the minor ID of the beacon. |
+| `uid` | string | For Eddystone beacons, the UID of the beacon. |
+| `instance` | string | For Eddystone beacons, the instance ID of the beacon. |
+| `geometry` | GeoJSON geometry | The approximate location of the beacon, a `Point` in [GeoJSON](https://geojson.org/) format with coordinates in `[longitude,latitude]` order. Radar uses it to sync nearby beacons (within 1 kilometer) to the SDK. |
+| `enabled` | boolean | If `true`, the beacon generates events. If `false`, it doesn't. |
+| `metadata` | object | A set of custom key-value pairs for the beacon. |
+
+### Example beacon
+
+This beacon is an iBeacon at a store register.
+
+```json
+{
+  "_id": "60f6da60cf4cc0a72a6c070b",
+  "createdAt": "2026-07-20T14:27:22.283Z",
+  "updatedAt": "2026-07-20T14:27:22.283Z",
+  "live": false,
+  "description": "Store 42 - Register 1",
+  "tag": "store-register",
+  "externalId": "store-42-1",
+  "type": "ibeacon",
+  "uuid": "b9407f30-f5f8-466e-aff9-25556b57fe6d",
+  "major": "100",
+  "minor": "1",
+  "geometry": {
+    "type": "Point",
+    "coordinates": [-73.975384, 40.783747]
+  },
+  "enabled": true,
+  "metadata": {
+    "supportsContactlessPayments": true
+  }
+}
+```
+
+## List beacons
+
+Lists beacons. Beacons are sorted descending by `createdAt`.
+
+- **Endpoint**: `GET /v1/beacons`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `limit` | number | No | The maximum number of beacons to return. A number between 1 and 1000. Defaults to 100. |
+| `createdBefore` | ISO 8601 string | No | A cursor for pagination. Returns beacons created before the specified datetime. A date or valid ISO date string. |
+| `createdAfter` | ISO 8601 string | No | A cursor for pagination. Returns beacons created after the specified datetime. A date or valid ISO date string. |
+| `tag` | string | No | Returns beacons with the specified `tag`. |
+| `externalId` | string | No | Returns beacons with the specified `externalId`. |
+
+To look up a beacon by its `tag` and `externalId`, send both as filters. The matching beacon is the only item in `beacons`.
+
+### Response
+
+A `200` response contains `meta`, with a `hasMore` boolean, and `beacons`, an array of [beacon objects](#beacon-object). To get the next page, pass the `createdAt` of the last beacon as `createdBefore`. See [Pagination](/api/fundamentals#pagination).
+
+### Example
+
+This request lists the beacons with the tag `store-register`.
+
+```bash
+curl "https://api.radar.io/v1/beacons?tag=store-register" \
+  -H "Authorization: prj_live_sk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200,
+    "hasMore": false
+  },
+  "beacons": [
+    {
+      "_id": "6109a4b16dbfe3de2cb03924",
+      "createdAt": "2026-08-03T20:18:57.888Z",
+      "updatedAt": "2026-08-03T20:18:57.888Z",
+      "live": true,
+      "description": "Store 42 - Register 1",
+      "tag": "store-register",
+      "externalId": "store-42-1",
+      "type": "ibeacon",
+      "uuid": "b9407f30-f5f8-466e-aff9-25556b57fe6d",
+      "major": "100",
+      "minor": "1",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-73.975384, 40.783747]
+      },
+      "enabled": true
+    }
+  ]
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | A filter value is invalid. `meta.param` names the parameter. | Fix the parameter named in `meta.param`. |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `429` | The rate limit was exceeded. | Retry with backoff. See [Rate limits](/api/fundamentals#rate-limits). |
+
+## Get a beacon
+
+Gets a beacon by its Radar `_id`.
+
+- **Endpoint**: `GET /v1/beacons/:id`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Yes | The Radar `_id` of the beacon. To find a beacon by `tag` and `externalId`, use [List beacons](#list-beacons) with both filters. |
+
+### Response
+
+A `200` response contains `meta` and `beacon`, a [beacon object](#beacon-object).
+
+### Example
+
+This request gets a beacon by its Radar `_id`.
+
+```bash
+curl "https://api.radar.io/v1/beacons/6109a4b16dbfe3de2cb03924" \
+  -H "Authorization: prj_live_sk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "beacon": {
+    "_id": "6109a4b16dbfe3de2cb03924",
+    "createdAt": "2026-08-03T20:18:57.888Z",
+    "updatedAt": "2026-08-03T20:18:57.888Z",
+    "live": true,
+    "description": "Store 42 - Register 1",
+    "tag": "store-register",
+    "externalId": "store-42-1",
+    "type": "ibeacon",
+    "uuid": "b9407f30-f5f8-466e-aff9-25556b57fe6d",
+    "major": "100",
+    "minor": "1",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [-73.975384, 40.783747]
+    },
+    "enabled": true
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `id` isn't a valid Radar ID. | Fix the request before you retry. |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `404` | No beacon matches the ID in this project and environment. | Check the ID and the environment of your API key. |
+
+A `404` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 404,
+    "message": "Beacon not found."
+  }
+}
+```
+
+## Create a beacon
+
+Creates a beacon. This operation fails if a beacon with the same `tag` and `externalId` already exists. To create or update in one call, use [Upsert a beacon](#upsert-a-beacon).
+
+- **Endpoint**: `POST /v1/beacons`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+
+### Body parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `description` | string | Yes | A display name for the beacon. Only alphanumeric characters, dashes, underscores, spaces, periods, and commas are accepted. |
+| `tag` | string | No | A group for the beacon. We recommend setting `tag` and `externalId` so that you can upsert the beacon later. |
+| `externalId` | string | No | An external ID for the beacon. We recommend setting it with `tag`. |
+| `type` | string | Yes | The type of beacon. One of `ibeacon` (supported on iOS and Android) or `eddystone` (supported on Android only). |
+| `uuid` | string | Conditional | For iBeacons, the UUID of the beacon. Required for type `ibeacon`. |
+| `major` | string | Conditional | For iBeacons, the major ID of the beacon. Required for type `ibeacon`. |
+| `minor` | string | Conditional | For iBeacons, the minor ID of the beacon. Required for type `ibeacon`. |
+| `uid` | string | Conditional | For Eddystone beacons, the UID of the beacon. Required for type `eddystone`. |
+| `instance` | string | Conditional | For Eddystone beacons, the instance ID of the beacon. Required for type `eddystone`. |
+| `coordinates` | array of numbers | Yes | The approximate location of the beacon, in `[longitude,latitude]` format. Radar uses it to sync nearby beacons (within 1 kilometer) to the SDK. |
+| `enabled` | boolean | No | If `true`, the beacon generates events. If `false`, it doesn't. |
+| `metadata` | object | No | A set of custom key-value pairs for the beacon. A dictionary or JSON string with up to 16 keys and values of type string, boolean, or number. |
+
+### Response
+
+A `200` response contains `meta` and `beacon`, the created [beacon object](#beacon-object).
+
+### Example
+
+This request creates an iBeacon.
+
+```bash
+curl "https://api.radar.io/v1/beacons" \
+  -H "Authorization: prj_live_sk_..." \
+  -X POST \
+  -d "description=Store 42 - Register 1" \
+  -d "tag=store-register" \
+  -d "externalId=store-42-1" \
+  -d "type=ibeacon" \
+  -d "uuid=b9407f30-f5f8-466e-aff9-25556b57fe6d" \
+  -d "major=100" \
+  -d "minor=1" \
+  -d "coordinates=[-73.975384,40.783747]" \
+  -d "enabled=true"
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "beacon": {
+    "_id": "6116d947049aee0089a682a2",
+    "createdAt": "2026-08-13T20:42:47.711Z",
+    "updatedAt": "2026-08-13T20:42:47.711Z",
+    "live": true,
+    "description": "Store 42 - Register 1",
+    "tag": "store-register",
+    "externalId": "store-42-1",
+    "type": "ibeacon",
+    "uuid": "b9407f30-f5f8-466e-aff9-25556b57fe6d",
+    "major": "100",
+    "minor": "1",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [-73.975384, 40.783747]
+    },
+    "enabled": true
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | A required parameter is missing or invalid, for example a `description` with unsupported characters or an unknown `type`. `meta.param` names the parameter. | Fix the parameter named in `meta.param`. |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `409` | A beacon with the same `tag` and `externalId` already exists. | Use [Upsert a beacon](#upsert-a-beacon) to update the existing beacon. |
+
+A `409` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 409,
+    "message": "A beacon with the same tag and externalId already exists."
+  }
+}
+```
+
+## Upsert a beacon
+
+Upserts a beacon. Reference the beacon by `tag` and `externalId`, or by Radar `_id`. If a beacon with the specified `tag` and `externalId` exists, Radar updates it. If not, Radar creates it. Because the result is the same when you repeat the request, this is the recommended way to sync beacons from your own system.
+
+- **Endpoint**: `PUT /v1/beacons/:tag/:externalId` or `PUT /v1/beacons/:id`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+- **Used by**: [Track indoor location with beacons](/geofencing/beacons)
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Conditional | The Radar `_id` of the beacon. Send either `id`, or `tag` and `externalId`. |
+| `tag` | string | Conditional | The `tag` of the beacon. Send it with `externalId`. |
+| `externalId` | string | Conditional | The `externalId` of the beacon. Send it with `tag`. |
+
+### Body parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `description` | string | Yes | A display name for the beacon. Only alphanumeric characters, dashes, underscores, spaces, periods, and commas are accepted. |
+| `type` | string | Yes | The type of beacon. One of `ibeacon` (supported on iOS and Android) or `eddystone` (supported on Android only). |
+| `uuid` | string | Conditional | For iBeacons, the UUID of the beacon. Required for type `ibeacon`. |
+| `major` | string | Conditional | For iBeacons, the major ID of the beacon. Required for type `ibeacon`. |
+| `minor` | string | Conditional | For iBeacons, the minor ID of the beacon. Required for type `ibeacon`. |
+| `uid` | string | Conditional | For Eddystone beacons, the UID of the beacon. Required for type `eddystone`. |
+| `instance` | string | Conditional | For Eddystone beacons, the instance ID of the beacon. Required for type `eddystone`. |
+| `coordinates` | array of numbers | Yes | The approximate location of the beacon, in `[longitude,latitude]` format. Radar uses it to sync nearby beacons (within 1 kilometer) to the SDK. |
+| `metadata` | object | No | A set of custom key-value pairs for the beacon. A dictionary or JSON string with up to 16 keys and values of type string, boolean, or number. |
+| `enabled` | boolean | No | If `true`, the beacon generates events. If `false`, it doesn't. Defaults to `true`. |
+
+When you reference the beacon by Radar `_id`, you can also send `tag` and `externalId` in the body to set them.
+
+### Response
+
+A `200` response contains `meta` and `beacon`, the created or updated [beacon object](#beacon-object).
+
+### Example
+
+This request creates or updates an iBeacon by `tag` and `externalId`.
+
+```bash
+curl "https://api.radar.io/v1/beacons/store-register/store-42-1" \
+  -H "Authorization: prj_live_sk_..." \
+  -X PUT \
+  -d "description=Store 42 - Register 1" \
+  -d "type=ibeacon" \
+  -d "uuid=b9407f30-f5f8-466e-aff9-25556b57fe6d" \
+  -d "major=100" \
+  -d "minor=1" \
+  -d "coordinates=[-73.975384,40.783747]" \
+  -d "enabled=true"
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "beacon": {
+    "_id": "6116d947049aee0089a682a2",
+    "createdAt": "2026-08-13T20:42:47.711Z",
+    "updatedAt": "2026-08-14T09:05:11.420Z",
+    "live": true,
+    "description": "Store 42 - Register 1",
+    "tag": "store-register",
+    "externalId": "store-42-1",
+    "type": "ibeacon",
+    "uuid": "b9407f30-f5f8-466e-aff9-25556b57fe6d",
+    "major": "100",
+    "minor": "1",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [-73.975384, 40.783747]
+    },
+    "enabled": true
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | A required parameter is missing or invalid. `meta.param` names the parameter. | Fix the parameter named in `meta.param`. |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `404` | No beacon matches the Radar `_id`. | Check the ID and the environment of your API key. |
+
+## Delete a beacon
+
+Deletes a beacon by its Radar `_id`.
+
+- **Endpoint**: `DELETE /v1/beacons/:id`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Yes | The Radar `_id` of the beacon. To find it from a `tag` and `externalId`, use [List beacons](#list-beacons) with both filters. |
+
+### Response
+
+A `200` response contains only `meta`.
+
+### Example
+
+This request deletes a beacon by its Radar `_id`.
+
+```bash
+curl "https://api.radar.io/v1/beacons/6116d947049aee0089a682a2" \
+  -H "Authorization: prj_live_sk_..." \
+  -X DELETE
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `id` isn't a valid Radar ID. | Fix the request before you retry. |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `404` | No beacon matches the ID in this project and environment. | Check the ID and the environment of your API key. |

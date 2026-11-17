@@ -1,0 +1,276 @@
+---
+title: "Maps API"
+description: "Reference for Radar's map style, vector tile, satellite tile, and static map resources, with formats, authentication, and attribution."
+---
+
+Use the Maps API to load Radar map styles and tiles into a map renderer, or to request a static map image over HTTP. To put a working interactive map on a page with the Radar SDK, start with [Display maps](/maps/maps).
+
+| Operation | Endpoint | Authentication |
+| --- | --- | --- |
+| [Map style](#map-styles) | `GET /maps/styles/{style}` | Publishable key |
+| [Vector tiles](#vector-tiles) | `GET /maps/tiles/v1/{z}/{x}/{y}.pbf` | Publishable key |
+| [Vector tile metadata](#vector-tiles) | `GET /maps/data/v1.json` | Publishable key |
+| [Satellite tiles](#satellite-tiles) | `GET /maps/satellite/v1/{z}/{x}/{y}` | Publishable key |
+| [Static map](#static-maps) | `GET /maps/static` | Publishable key |
+
+The base URL is `https://api.radar.io`. Maps resources live under `/maps`, not `/v1`. Map styles are MapLibre style JSON, vector tiles are Mapbox Vector Tile (MVT) with TileJSON metadata, satellite tiles are JPEG, and static maps are PNG.
+
+## Authentication
+
+Maps resources require a publishable key. Pass it in one of two ways:
+
+- As the `publishableKey` query parameter. Use this for URLs that a browser or map renderer fetches directly, such as an image source or a style URL, where you can't set headers.
+- In the `Authorization` header, as with the rest of the API.
+
+This request passes the key as a query parameter:
+
+```bash
+curl "https://api.radar.io/maps/styles/radar-default-v1?publishableKey=prj_live_pk_..."
+```
+
+Secret keys are rejected. A request with a secret key returns `401`:
+
+```json
+{
+  "meta": {
+    "code": 401,
+    "message": "Unauthorized. Publishable API key required."
+  }
+}
+```
+
+Because the publishable key appears in map URLs, restrict where it can be used. If your project has allowed origins configured, a static map request from a browser whose `Referer` doesn't match an allowed origin returns `401` with the message `Origin not allowed`. See [Set up organizations, projects, accounts, and authentication](/fundamentals/authentication-and-access) for key types and where to manage them.
+
+## Map styles
+
+Returns a map style as a JSON document that conforms to the [MapLibre Style Specification](https://maplibre.org/maplibre-style-spec/). The style references Radar's tile, font, and sprite URLs with your publishable key already applied, so a MapLibre-compatible renderer needs only this one URL.
+
+- **Endpoint**: `GET /maps/styles/{style}`
+- **Authentication**: Publishable key
+- **Used by**: [Display maps](/maps/maps), [Build store locators](/maps/store-locators)
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `style` | string | Yes | A Radar style ID from the table below, or the ID of a custom style created in the Radar dashboard. |
+
+Radar provides these styles:
+
+| Style ID | Description | Availability |
+| --- | --- | --- |
+| `radar-default-v1` | Radar's default style, with detailed street-level information about roads and nearby places. A general-purpose map. | All plans |
+| `radar-light-v1` | A light monochrome style, for highlighting your own data. | All plans |
+| `radar-dark-v1` | A dark monochrome style, for highlighting your own data in dark mode. | All plans |
+| `radar-satellite-v1` | Satellite imagery. | Enterprise plan |
+| `radar-hybrid-v1` | Satellite imagery with roads and other features drawn on top. | Enterprise plan |
+
+A custom style ID is shown in the share dialog when you view or edit the style in the dashboard.
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `publishableKey` | string | Conditional | Your publishable key. Required unless you send the `Authorization` header. |
+| `language` | string | No | The display language for map labels. A 2-letter ISO 639 language code such as `fr`, a language tag such as `en-US`, or `local` to use the first language in the request's `Accept-Language` header. Defaults to `en-US`. |
+
+### Response
+
+A `200` response is the style document, with `Content-Type: application/json`. It isn't wrapped in a `meta` object. The response is sent with `Cache-Control: no-cache`, so fetch it each time you create a map instead of storing a copy.
+
+### Example
+
+Pass the style URL to a MapLibre-compatible renderer. This example uses [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/). The page must load the MapLibre stylesheet and give the map container a height, or the map renders with zero height.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.5.1/dist/maplibre-gl.css">
+    <script src="https://unpkg.com/maplibre-gl@4.5.1/dist/maplibre-gl.js"></script>
+    <style>
+      body { margin: 0; padding: 0; }
+      html, body, #map { height: 100%; }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+      const map = new maplibregl.Map({
+        container: 'map',
+        style: 'https://api.radar.io/maps/styles/radar-default-v1?publishableKey=prj_live_pk_...',
+        center: [-73.9911, 40.7343],
+        zoom: 12,
+      });
+    </script>
+  </body>
+</html>
+```
+
+The same style URL works with other renderers that support the MapLibre style format, including MapLibre Native for iOS and Android. If you use the Radar web SDK, you don't build this URL yourself. Pass the style ID to the SDK as described in [Display maps](/maps/maps).
+
+## Vector tiles
+
+Radar map data is served as vector tiles in the [Mapbox Vector Tile (MVT)](https://github.com/mapbox/vector-tile-spec) format, described by a [TileJSON](https://github.com/mapbox/tilejson-spec) document. Any renderer that supports these two standards can display Radar tiles.
+
+- **Endpoint**: `GET /maps/data/v1.json` or `GET /maps/tiles/v1/{z}/{x}/{y}.pbf`
+- **Authentication**: Publishable key
+- **Zoom range**: Tiles are available for zoom levels 0 to 14. Renderers overzoom the level 14 tiles to display higher zoom levels.
+- **Tile coordinates**: `z`, `x`, and `y` are integers in the standard XYZ tile scheme.
+- **Used by**: [Display maps](/maps/maps)
+
+In most integrations you don't request tiles yourself. The [map style](#map-styles) points the renderer at these two resources:
+
+| Resource | Endpoint | Response |
+| --- | --- | --- |
+| Tile metadata | `GET /maps/data/v1.json` | A TileJSON document that lists the tile URL template, bounds, zoom range, attribution, and vector layers. |
+| Tile | `GET /maps/tiles/v1/{z}/{x}/{y}.pbf` | One vector tile in MVT (protocol buffer) format. |
+
+This request gets the tile metadata:
+
+```bash
+curl "https://api.radar.io/maps/data/v1.json?publishableKey=prj_live_pk_..."
+```
+
+## Satellite tiles
+
+Returns one raster tile of satellite imagery. The `radar-satellite-v1` and `radar-hybrid-v1` styles reference this resource.
+
+- **Endpoint**: `GET /maps/satellite/v1/{z}/{x}/{y}`
+- **Authentication**: Publishable key
+- **Format**: JPEG, 512 by 512 pixels
+- **Zoom range**: 0 to 18
+- **Used by**: [Display maps](/maps/maps)
+
+<Info>
+  Satellite tiles are available on the [Enterprise plan](https://radar.com/pricing) and must be enabled for your project. Contact your Radar account team.
+</Info>
+
+If satellite maps aren't enabled for your project, the request returns `403`:
+
+```json
+{
+  "meta": {
+    "code": 403,
+    "message": "Satellite maps not enabled. Please contact customer support."
+  }
+}
+```
+
+## Static maps
+
+Returns a standalone PNG image of a map. Use a static map anywhere an image works and an interactive map isn't needed, such as an email, a receipt, or a list thumbnail. No JavaScript or mapping library is required.
+
+- **Endpoint**: `GET /maps/static`
+- **Authentication**: Publishable key
+- **Format**: PNG
+- **Used by**: [Display maps](/maps/maps), [Build store locators](/maps/store-locators)
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `width` | number | Yes | The width of the image in pixels. An integer between 100 and 2048. |
+| `height` | number | Yes | The height of the image in pixels. An integer between 100 and 2048. |
+| `center` | string | Conditional | The center of the map, in the format `latitude,longitude`. Required unless you send `bbox`, `markers`, or `path`. |
+| `zoom` | number | Conditional | The zoom level of the map. A number between 1 and 23. Required when the map is positioned only by `center`. |
+| `bbox` | string | No | The bounds the image must fit, in the format `min_latitude,min_longitude,max_latitude,max_longitude`. |
+| `scale` | number | No | The pixel density of the image. A number between 1 and 3. Defaults to 1. The returned image measures `width` times `scale` by `height` times `scale` pixels, and neither product can exceed 2048. |
+| `style` | string | No | A Radar style ID or a custom style ID. See [Map styles](#map-styles). Defaults to `radar-default-v1`. |
+| `language` | string | No | The display language for map labels. A 2-letter ISO 639 language code, a language tag such as `en-US`, or `local`. Defaults to `en-US`. |
+| `markers` | string | No | One or more markers to draw. See [Markers](#markers). Repeat the parameter to use more than one marker style. |
+| `path` | string | No | A line to draw. See [Paths](#paths). Repeat the parameter to draw more than one line. |
+| `publishableKey` | string | Conditional | Your publishable key. Required unless you send the `Authorization` header. |
+
+If you send `markers`, `path`, or `bbox` and omit `center` and `zoom`, Radar positions the map to fit all of them. If you also send `center` or `zoom`, your value overrides the fitted one.
+
+### Markers
+
+A `markers` value is a pipe-delimited list of optional style options followed by one or more locations:
+
+```text
+markers=markerStyle|markerLocation1|markerLocation2
+```
+
+Each location is `latitude,longitude`. Each style option is `optionName:optionValue`. Style options must come before the locations and apply to every location in that `markers` value.
+
+| Option | Description |
+| --- | --- |
+| `color` | The color of the marker, as a hex value in the format `0xFFFFFF` or one of the basic named colors such as `red`, `navy`, or `white`. Defaults to `0x000257`. |
+| `size` | Send `size:small` to draw a smaller marker. |
+| `icon` | The marker image to use: a URL to an SVG or PNG file, or the ID of a custom marker uploaded to your project. Images are capped at 64 by 64 pixels. Defaults to the standard Radar marker. |
+
+To draw markers with different styles in one image, repeat the parameter: `markers=markerStyle1|markerLocation1&markers=markerStyle2|markerLocation2`.
+
+### Paths
+
+A `path` value is a pipe-delimited list of optional style options followed by the line's locations:
+
+```text
+path=pathStyle|pathLocation1|pathLocation2
+```
+
+Each location is `latitude,longitude`. Locations must come after the style options. In place of a list of locations, you can send an encoded polyline prefixed with `enc:` for 5 decimal places of precision or `enc6:` for 6 decimal places of precision:
+
+```text
+path=stroke:0x000257|width:3|enc:g{rwFnlrbMkArDENGRiCfIEJCJHFpA|@VPHFDOBGdC_IFQDO|BiHHUJBb@FxARLBH@
+```
+
+[Routing API](/api/routing#geometry-formats) responses return route shapes as `polyline5` or `polyline6` strings, which you can pass with `enc:` or `enc6:` to draw a route. URL-encode the polyline before you add it to the request URL.
+
+| Option | Description |
+| --- | --- |
+| `stroke` | The color of the line, as a hex value in the format `0xFFFFFF` or a basic named color. Defaults to `0x000257`. |
+| `width` | The width of the line in pixels. Defaults to `3`. |
+| `border` | The color of the line's border, as a hex value in the format `0xFFFFFF` or a basic named color. Defaults to `white`. |
+| `borderwidth` | The width of the border in pixels. Defaults to `2`. Write this option name in lowercase. |
+
+### Response
+
+A `200` response is the image, with `Content-Type: image/png`. Errors are returned as JSON, so an HTML image element shows a broken image when a parameter is invalid. Request the URL directly to read the error message.
+
+### Example
+
+This URL requests a map centered on a point, with one marker, at double pixel density:
+
+```text
+https://api.radar.io/maps/static?width=600&height=400&center=40.73430,-73.99110&zoom=15&style=radar-default-v1&scale=2&markers=color:0x000257|40.73430,-73.99110&publishableKey=prj_live_pk_...
+```
+
+Use the URL as the source of an HTML image element, and give the element descriptive alternative text. Set the element's displayed width and height to the unscaled values, here 600 by 400. With `scale=2`, the returned image has twice as many pixels in each dimension and stays sharp on high-density displays.
+
+This URL requests two marker styles and a line. Radar fits the map to them because `center` and `zoom` are omitted:
+
+```text
+https://api.radar.io/maps/static?width=900&height=600&style=radar-light-v1&scale=2&markers=color:0x000257|40.73430,-73.99110&markers=color:red|size:small|40.706436,-73.997271&path=stroke:0x000257|width:3|border:white|borderwidth:2|40.73430,-73.99110|40.71544,-74.01478|40.706436,-73.997271&publishableKey=prj_live_pk_...
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `width` or `height` is missing, not an integer, or out of range. `width` or `height` multiplied by `scale` exceeds 2048. `zoom` or `scale` is out of range. None of `center`, `bbox`, `markers`, or `path` was sent. `center` was sent without `zoom`. A marker or path has no valid location or has an invalid color or size. | Request the URL directly to read `meta.message`, then fix the parameter. |
+| `401` | The key is missing, invalid, or a secret key, or the request's `Referer` doesn't match your project's allowed origins. | Send a publishable key, and make the request from an allowed origin. |
+
+A `400` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 400,
+    "message": "center: Missing center. One of \"center\", \"bbox\", \"markers\", or \"path\" must be provided."
+  }
+}
+```
+
+## Attribution
+
+Radar map data comes from [OpenStreetMap](https://www.openstreetmap.org/copyright). Keep the Radar and OpenStreetMap attribution visible wherever you display a Radar map.
+
+| Resource | How attribution is provided |
+| --- | --- |
+| Map styles and vector tiles | The style and TileJSON documents include the attribution text "© Radar © OpenStreetMap" with links. MapLibre-based renderers display it in the attribution control automatically. Don't remove or hide the control. |
+| Static maps | The attribution text and the Radar logo are drawn into the image. Don't crop them out. For images 240 pixels wide or narrower, the attribution text is left out of the image, so show the attribution next to the image instead. |
+| Satellite tiles | The satellite source in the style document carries its own imagery attribution, which the renderer displays the same way. |
+
+If you build a renderer integration that doesn't read attribution from the style or TileJSON document, add the attribution to your map yourself.

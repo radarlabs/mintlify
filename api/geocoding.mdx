@@ -1,0 +1,460 @@
+---
+title: "Geocoding API"
+description: "Reference for Radar's forward geocoding, reverse geocoding, IP geocoding, and address validation endpoints."
+---
+
+Use the Geocoding API to convert an address to coordinates, convert coordinates or an IP address to an address, and validate a structured address. For a complete address-entry flow that uses these operations, see [Autocomplete, geocode, and validate addresses](/maps/addresses).
+
+| Operation | Endpoint | Authentication |
+| --- | --- | --- |
+| [Forward geocode](#forward-geocode) | `GET /v1/geocode/forward` | Publishable key |
+| [Reverse geocode](#reverse-geocode) | `GET /v1/geocode/reverse` | Publishable key |
+| [IP geocode](#ip-geocode) | `GET /v1/geocode/ip` | Publishable key |
+| [Validate an address](#validate-an-address) | `GET /v1/addresses/validate` | Publishable key |
+
+The base URL is `https://api.radar.io`. Send your API key in the `Authorization` header. All four operations accept a publishable key, so you can call them from a client. For key types, the error format, and rate limits, see [Authentication, errors, and rate limits](/api/fundamentals).
+
+For partial input such as a few typed characters or a place name, use [Autocomplete](/api/search#autocomplete) instead of forward geocoding.
+
+## Address object
+
+Forward geocode, reverse geocode, IP geocode, and [Autocomplete](/api/search#autocomplete) return addresses in the same shape. Only `latitude`, `longitude`, and `geometry` are always present. Radar includes the other fields when they apply to the result and its layer.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `latitude` | number | The latitude of the address. |
+| `longitude` | number | The longitude of the address. |
+| `geometry` | object | The location as a GeoJSON `Point`. Coordinates are in `[longitude, latitude]` order. |
+| `formattedAddress` | string | The full address formatted as one display string. |
+| `addressLabel` | string | The first line of the address, for example `20 Jay St`. |
+| `placeLabel` | string | The place name, for results in the `place` layer. |
+| `number` | string | The building number. |
+| `street` | string | The street name. |
+| `unit` | string | The unit, such as an apartment or suite. |
+| `neighborhood` | string | The neighborhood name. |
+| `borough` | string | The borough name. |
+| `city` | string | The city name. |
+| `county` | string | The county name. |
+| `state` | string | The state or province name. |
+| `stateCode` | string | The state or province abbreviation. |
+| `postalCode` | string | The postal code. |
+| `country` | string | The country name. |
+| `countryCode` | string | The 2-letter country code. |
+| `countryFlag` | string | The country's flag as a Unicode character. |
+| `layer` | string | The layer of the result, such as `address`, `place`, `postalCode`, `locality`, `county`, `state`, or `country`. |
+| `confidence` | string | Forward geocode only. `exact`, `interpolated`, or `fallback`. |
+| `distance` | number | The distance in meters from the requested coordinates (reverse geocode) or from the `near` location (autocomplete). |
+| `timeZone` | object | Forward, reverse, and IP geocode only. The time zone at the location. |
+| `timeZone.id` | string | The IANA time zone ID, for example `America/New_York`. |
+| `timeZone.name` | string | The display name of the time zone. |
+| `timeZone.code` | string | The time zone abbreviation, for example `EDT`. |
+| `timeZone.currentTime` | string | The current local time as an ISO 8601 string. |
+| `timeZone.utcOffset` | number | The offset from UTC, in seconds. |
+| `timeZone.dstOffset` | number | The daylight saving time offset, in seconds. |
+
+A formatted address, a geocoded coordinate, and a validated address answer different questions. `formattedAddress` is a display string. `latitude` and `longitude` are where Radar located the result, with `confidence` describing how precisely. Only [Validate an address](#validate-an-address) checks the address against postal reference data.
+
+## Forward geocode
+
+Geocodes an address, converting an address to coordinates. This operation works best with complete addresses.
+
+- **Endpoint**: `GET /v1/geocode/forward`
+- **Authentication**: Publishable key
+- **Rate limit**: 100 requests per second
+- **Used by**: [Autocomplete, geocode, and validate addresses](/maps/addresses), [Build store locators](/maps/store-locators)
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `query` | string | Yes | The address to geocode. |
+| `layers` | string | No | Layer filters. A comma-separated string with one or more of `place`, `address`, `postalCode`, `locality`, `county`, `state`, `country`, `coarse`, and `fine`. `coarse` includes `postalCode`, `locality`, `county`, `state`, and `country`. `fine` includes `address` and `place`. If you omit `layers`, Radar returns results from the `address` and `coarse` layers. |
+| `country` | string | No | Country filter. A comma-separated string of 2-letter [country codes](/regions/countries). The server also accepts this filter as `countryCode`, which takes precedence when both are sent. |
+| `lang` | string | No | The language for the results. One of `ar`, `de`, `en`, `es`, `fr`, `ja`, `ko`, `pt`, `ru`, `zh`. Defaults to `en`. |
+
+### Response
+
+A `200` response contains `meta` and `addresses`, an array of [address objects](#address-object). Check that the array isn't empty before you read the first result.
+
+Each address has a `confidence` value that describes the certainty of its `latitude` and `longitude`:
+
+| Confidence | Meaning |
+| --- | --- |
+| `exact` | Precise coordinates for a known address location. |
+| `interpolated` | Estimated coordinates between two known address points, used when an exact address location is unavailable. |
+| `fallback` | Coarse coordinates for the containing region, such as the postal code or city, used when no precise location is available. |
+
+### Example
+
+This request geocodes a street address.
+
+```bash
+curl "https://api.radar.io/v1/geocode/forward?query=20+jay+st+brooklyn+ny" \
+  -H "Authorization: prj_live_pk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "addresses": [
+    {
+      "latitude": 40.7041,
+      "longitude": -73.9867,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-73.9867, 40.7041]
+      },
+      "country": "United States",
+      "countryCode": "US",
+      "countryFlag": "🇺🇸",
+      "county": "Kings County",
+      "confidence": "exact",
+      "borough": "Brooklyn",
+      "city": "Brooklyn",
+      "number": "20",
+      "neighborhood": "DUMBO",
+      "postalCode": "11201",
+      "stateCode": "NY",
+      "state": "New York",
+      "street": "Jay St",
+      "layer": "address",
+      "formattedAddress": "20 Jay St, Brooklyn, New York, NY 11201 USA",
+      "addressLabel": "20 Jay St",
+      "timeZone": {
+        "id": "America/New_York",
+        "name": "Eastern Daylight Time",
+        "code": "EDT",
+        "currentTime": "2024-04-09T10:12:00-04:00",
+        "utcOffset": -14400,
+        "dstOffset": 3600
+      }
+    }
+  ]
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `query` is missing, or `layers` has an unsupported value. `meta.param` names the parameter. | Fix the parameter named in `meta.param`. |
+
+A `400` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 400,
+    "param": "query",
+    "message": "query: Param is required."
+  }
+}
+```
+
+## Reverse geocode
+
+Reverse geocodes a location, converting coordinates to an address.
+
+- **Endpoint**: `GET /v1/geocode/reverse`
+- **Authentication**: Publishable key
+- **Rate limit**: 100 requests per second
+- **Used by**: [Autocomplete, geocode, and validate addresses](/maps/addresses), [Build store locators](/maps/store-locators)
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `coordinates` | string | Yes | The coordinates to reverse geocode, in the format `latitude,longitude`. |
+| `layers` | string | No | Layer filters. A comma-separated string with one or more of `place`, `address`, `postalCode`, `locality`, `county`, `state`, `country`, `coarse`, and `fine`. `coarse` includes `postalCode`, `locality`, `county`, `state`, and `country`. `fine` includes `address` and `place`. If you omit `layers`, Radar returns results from the `address` and `coarse` layers. |
+
+### Response
+
+A `200` response contains `meta` and `addresses`, an array of [address objects](#address-object). Each address includes `distance`, the distance in meters from the requested coordinates.
+
+### Example
+
+This request reverse geocodes a coordinate.
+
+```bash
+curl "https://api.radar.io/v1/geocode/reverse?coordinates=40.70390,-73.98670" \
+  -H "Authorization: prj_live_pk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "addresses": [
+    {
+      "latitude": 40.7039,
+      "longitude": -73.9867,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-73.9867, 40.7039]
+      },
+      "addressLabel": "20 Jay Street",
+      "formattedAddress": "20 Jay Street, Brooklyn, New York, NY 11201 USA",
+      "country": "United States",
+      "countryCode": "US",
+      "countryFlag": "🇺🇸",
+      "state": "New York",
+      "stateCode": "NY",
+      "postalCode": "11201",
+      "city": "New York",
+      "borough": "Brooklyn",
+      "county": "Kings County",
+      "neighborhood": "DUMBO",
+      "timeZone": {
+        "id": "America/New_York",
+        "name": "Eastern Daylight Time",
+        "code": "EDT",
+        "currentTime": "2024-04-09T10:12:00-04:00",
+        "utcOffset": -14400,
+        "dstOffset": 3600
+      },
+      "number": "20",
+      "distance": 5,
+      "layer": "address"
+    }
+  ]
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `coordinates` is missing or malformed. | Fix the request before you retry. |
+
+A `400` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 400,
+    "param": "coordinates",
+    "message": "coordinates: Invalid coordinates: 40.7039. Valid format: \"latitude,longitude\"."
+  }
+}
+```
+
+## IP geocode
+
+Geocodes the requester's IP address, converting the IP address to a city, state, and country.
+
+- **Endpoint**: `GET /v1/geocode/ip`
+- **Authentication**: Publishable key
+- **Rate limit**: 100 requests per second
+- **Used by**: [Autocomplete, geocode, and validate addresses](/maps/addresses)
+
+An IP-derived location is an estimate of where a network connection terminates. Use it to set a default region, language, or search bias. Don't treat it as proof of a device's precise location.
+
+### Query parameters
+
+None. Radar geocodes the IP address that made the request, so call this operation from the device you want to locate. A call from your backend returns your backend's location.
+
+### Response
+
+A `200` response contains `meta` and these fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `address` | object | An [address object](#address-object) with the fields Radar could determine for the IP address, typically `latitude`, `longitude`, `geometry`, `country`, `countryCode`, `countryFlag`, `state`, `stateCode`, `postalCode`, `city`, and `timeZone`. |
+| `proxy` | boolean | `true` if the IP address is a known proxy. |
+| `ip` | string | The IP address that Radar geocoded. |
+
+### Example
+
+This request geocodes the IP address of the caller.
+
+```bash
+curl "https://api.radar.io/v1/geocode/ip" \
+  -H "Authorization: prj_live_pk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "address": {
+    "latitude": 40.7039,
+    "longitude": -73.9867,
+    "geometry": {
+      "type": "Point",
+      "coordinates": [-73.9867, 40.7039]
+    },
+    "country": "United States",
+    "countryCode": "US",
+    "countryFlag": "🇺🇸",
+    "state": "New York",
+    "stateCode": "NY",
+    "postalCode": "11201",
+    "city": "New York",
+    "timeZone": {
+      "id": "America/New_York",
+      "name": "Eastern Daylight Time",
+      "code": "EDT",
+      "currentTime": "2024-04-09T10:12:00-04:00",
+      "utcOffset": -14400,
+      "dstOffset": 3600
+    }
+  },
+  "proxy": false,
+  "ip": "203.0.113.10"
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `404` | Radar can't determine a country for the IP address. | Fall back to a default region, or ask the user. |
+
+A `404` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 404,
+    "message": "No result found."
+  }
+}
+```
+
+## Validate an address
+
+Validates a structured address against postal data and returns the standardized address with a verification status.
+
+- **Endpoint**: `GET /v1/addresses/validate`
+- **Authentication**: Publishable key
+- **Rate limit**: 50 requests per second
+- **Used by**: [Autocomplete, geocode, and validate addresses](/maps/addresses)
+
+<Info>
+  Address validation is available on the [Enterprise plan](https://radar.com/pricing).
+</Info>
+
+This operation supports addresses in the United States and Canada. Use it for complete, structured addresses. For partial addresses or place names, use [Autocomplete](/api/search#autocomplete).
+
+### Query parameters
+
+Send either `addressLabel`, or both `number` and `street`. Don't combine `addressLabel` with `number` or `street`.
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `city` | string | Yes | The city name. |
+| `stateCode` | string | Yes | The 2-letter state or province abbreviation, for example `NY`. |
+| `postalCode` | string | Yes | The postal or ZIP code. ZIP+4 codes are accepted but not required. |
+| `countryCode` | string | Yes | The 2-letter [country code](/regions/countries). `US` or `CA`. |
+| `number` | string | Conditional | The building or P.O. box number. Required with `street` if you don't send `addressLabel`. |
+| `street` | string | Conditional | The street name. Required with `number` if you don't send `addressLabel`. |
+| `unit` | string | No | The unit, such as an apartment or suite, for example `Apt 3`. |
+| `addressLabel` | string | Conditional | The first line of the address, including the building number, street name, and unit if there is one, for example `20 Jay St Apt 3`. Required if you don't send `number` and `street`. |
+
+### Response
+
+A `200` response contains `meta` and these fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `address` | object | The standardized address. Contains [address object](#address-object) fields plus `unit`, `plus4`, and `metadata`. |
+| `address.plus4` | string | The ZIP+4 extension for US addresses. |
+| `address.metadata.recordType` | string | The record type, following USPS standards. See the table below. |
+| `address.metadata.propertyType` | string | `commercial` or `residential`. |
+| `result.verificationStatus` | string | The validation outcome. See the table below. |
+
+`result.verificationStatus` is one of:
+
+| Status | Meaning | Typical handling |
+| --- | --- | --- |
+| `verified` | The input has a complete and unique match. | Accept the returned `address`. |
+| `partially verified` | The input has a partial match. | Show the returned `address` and ask the user to confirm or correct it. |
+| `ambiguous` | The input closely matches more than one result. | Ask the user for more detail, such as a unit or postal code. |
+| `unverified` | Radar could not verify the input address. | Ask the user to correct the address or confirm it as entered. |
+
+`address.metadata.recordType` is one of:
+
+| Value | Meaning |
+| --- | --- |
+| `S` | Street address |
+| `P` | Post office box |
+| `R` | Rural route |
+| `H` | High-rise |
+| `F` | Firm |
+| `G` | General delivery |
+
+For US addresses, the response can also include an `analysis` field with these values:
+
+| Value | Meaning |
+| --- | --- |
+| `unit:missing` | Radar detected units at the address, but the request didn't specify one. |
+| `unit:invalid` | Radar detected units at the address, but the specified unit doesn't exist. |
+
+A `verified` status means the input matched a single record in the reference data. It doesn't confirm that a specific person or business receives mail at the address.
+
+### Example
+
+This request validates a US address that has a unit.
+
+```bash
+curl "https://api.radar.io/v1/addresses/validate?countryCode=US&stateCode=NY&city=New%20York&number=841&postalCode=10003&street=Broadway&unit=Fl%207" \
+  -H "Authorization: prj_live_pk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "address": {
+    "addressLabel": "841 BROADWAY FL 7",
+    "unit": "FL 7",
+    "number": "841",
+    "street": "BROADWAY",
+    "city": "NEW YORK",
+    "stateCode": "NY",
+    "postalCode": "10003",
+    "plus4": "4704",
+    "county": "NEW YORK",
+    "countryCode": "US",
+    "formattedAddress": "841 BROADWAY FL 7, NEW YORK, NY 10003-4704 US",
+    "metadata": {
+      "recordType": "H",
+      "propertyType": "commercial"
+    }
+  },
+  "result": {
+    "verificationStatus": "verified"
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | A required parameter is missing, `countryCode` isn't `US` or `CA`, the request has neither `addressLabel` nor both `number` and `street`, or the request combines `addressLabel` with `number` or `street`. | Fix the request before you retry. |
+| `402` | Your plan doesn't include address validation. | Upgrade to the [Enterprise plan](https://radar.com/pricing). |
+
+A `400` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 400,
+    "message": "Must contain addressLabel or both number and street."
+  }
+}
+```

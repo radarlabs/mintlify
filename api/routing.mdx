@@ -1,0 +1,831 @@
+---
+title: "Routing API"
+description: "Reference for Radar's distance, matrix, directions, route matching, and route optimization endpoints, with limits and units."
+---
+
+Use the Routing API to calculate travel distances and ETAs, compare many origins and destinations at once, get turn-by-turn directions, snap recorded points to roads, and order a list of stops.
+
+| Operation | Endpoint | Authentication |
+| --- | --- | --- |
+| [Distance](#distance) | `GET /v1/route/distance` | Publishable key |
+| [Matrix](#matrix) | `GET /v1/route/matrix` | Publishable key |
+| [Directions](#directions) | `GET /v1/route/directions` | Publishable key |
+| [Route match](#route-match) | `POST /v1/route/match` | Publishable key |
+| [Optimize route](#optimize-route) | `GET /v1/route/optimize` | Publishable key |
+
+The base URL is `https://api.radar.io`. Send your API key in the `Authorization` header. All five operations accept a publishable key, so you can call them from a client. Route match and Optimize route are available on the Enterprise plan. For key types, the error format, and rate limits, see [Authentication, errors, and rate limits](/api/fundamentals).
+
+## Units, modes, and geometry
+
+These conventions apply to every routing operation.
+
+### Coordinates
+
+Coordinates in requests are strings in the format `latitude,longitude`. Lists of coordinates are pipe-delimited: `latitude0,longitude0|latitude1,longitude1`. URL-encode the pipe as `%7C` if your HTTP client doesn't do it for you.
+
+### Distance and duration values
+
+Distances and durations are returned as objects with a numeric `value` and a display `text`.
+
+| Field | `units=imperial` (default) | `units=metric` |
+| --- | --- | --- |
+| `distance.value` | Feet | Meters |
+| `distance.text` | Feet or miles, for example `8.0 mi` | Meters or kilometers, for example `12.9 km` |
+| `duration.value` | Minutes | Minutes |
+| `duration.text` | For example `20 mins` | For example `20 mins` |
+
+`duration.value` is always in minutes, as a decimal number. `units` defaults to `imperial`, so send `units=metric` if your application works in meters.
+
+### Travel modes
+
+| Mode | Description |
+| --- | --- |
+| `car` | Driving. |
+| `truck` | Driving a truck. |
+| `foot` | Walking. |
+| `bike` | Cycling. |
+| `motorbike` | Riding a motorbike. |
+
+### Geometry formats
+
+The `geometry` parameter controls the shape of the route in the response.
+
+| Value | Response |
+| --- | --- |
+| `polyline6` | An object with a `polyline` string encoded with 6 decimal places of precision. |
+| `polyline5` | An object with a `polyline` string encoded with 5 decimal places of precision, compatible with other mapping providers. |
+| `linestring` | A GeoJSON `LineString`. |
+
+Encoded polylines contain backslash characters. Decode the JSON response before you decode the polyline, so that escaped backslashes are handled correctly.
+
+### Straight-line distance and route distance
+
+[Distance](#distance) returns both. `routes.geodesic` is the straight-line distance between the two points and has no duration. The entries keyed by travel mode are route distances and ETAs along the road network. Label them differently in your interface, for example "2.1 mi away" and "8 min drive".
+
+## Distance
+
+Calculates the travel distance and duration between an origin and a destination.
+
+- **Endpoint**: `GET /v1/route/distance`
+- **Authentication**: Publishable key
+- **Rate limit**: 50 requests per second
+- **Used by**: [Build store locators](/maps/store-locators), [Track pickups, deliveries, and workers](/geofencing/trips)
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `origin` | string | Yes | The origin, in the format `latitude,longitude`. |
+| `destination` | string | Yes | The destination, in the format `latitude,longitude`. |
+| `modes` | string | Yes | The travel modes. A comma-separated string with one or more of `car`, `truck`, `foot`, `bike`, and `motorbike`. |
+| `units` | string | No | The distance units, `metric` or `imperial`. Defaults to `imperial`. |
+| `avoid` | string | No | Features for calculated routes to avoid. A comma-separated string with one or more of `tolls`, `highways`, `ferries`, and `borderCrossings`. By default, no features are avoided. |
+| `geometry` | string | No | The format of the route `geometry` in the response: `linestring`, `polyline5`, or `polyline6`. By default, no geometry is returned. |
+| `departureTime` | string | No | The departure date and time as an ISO 8601 string, for example `2025-01-01T14:30:00Z`. Used for historical traffic times. Defaults to the current date and time. |
+
+### Response
+
+A `200` response contains `meta` and these fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `routes.geodesic.distance` | object | The straight-line distance between the origin and the destination. |
+| `routes.<mode>.distance` | object | The route distance for the travel mode. One entry per requested mode. |
+| `routes.<mode>.duration` | object | The route duration for the travel mode, with `value` in minutes. |
+| `routes.<mode>.geometry` | object | The shape of the route. Present only if you sent `geometry`. |
+
+### Example
+
+This request calculates the walking and driving distance between two points.
+
+```bash
+curl "https://api.radar.io/v1/route/distance?origin=40.78382,-73.97536&destination=40.70390,-73.98690&modes=foot,car&units=imperial" \
+  -H "Authorization: prj_live_pk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "routes": {
+    "geodesic": {
+      "distance": {
+        "value": 29333.03,
+        "text": "5.6 mi"
+      }
+    },
+    "foot": {
+      "distance": {
+        "value": 54596.46,
+        "text": "10.3 mi"
+      },
+      "duration": {
+        "value": 98.48,
+        "text": "1 hr 38 min"
+      }
+    },
+    "car": {
+      "distance": {
+        "value": 42480.31,
+        "text": "8.0 mi"
+      },
+      "duration": {
+        "value": 19.9,
+        "text": "20 mins"
+      }
+    }
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `origin`, `destination`, or `modes` is missing or malformed, a parameter has an unsupported value, or the origin and destination are farther apart than the maximum route distance for a requested mode. | Fix the request before you retry. |
+| `404` | No route was found between the origin and the destination. | Check that a route exists between the two points for the requested modes. |
+
+A `400` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 400,
+    "param": "origin",
+    "message": "origin: Param is required."
+  }
+}
+```
+
+## Matrix
+
+Calculates the travel distances and durations between multiple origins and destinations, for up to 625 routes in one request. The number of routes is the number of origins multiplied by the number of destinations.
+
+- **Endpoint**: `GET /v1/route/matrix`
+- **Authentication**: Publishable key
+- **Rate limit**: 10 requests per second
+- **Used by**: [Build store locators](/maps/store-locators), [Track pickups, deliveries, and workers](/geofencing/trips)
+
+Use Matrix to rank several candidate locations by ETA from one user location, or to assign several drivers to several stops.
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `origins` | string | Yes | A list of origins. A pipe-delimited string in the format `latitude0,longitude0\|latitude1,longitude1`. |
+| `destinations` | string | Yes | A list of destinations. A pipe-delimited string in the format `latitude0,longitude0\|latitude1,longitude1`. |
+| `mode` | string | No | The travel mode: `car`, `truck`, `foot`, `bike`, or `motorbike`. We recommend sending it explicitly. If you omit it, the server uses `car`. |
+| `units` | string | No | The distance units, `metric` or `imperial`. Defaults to `imperial`. |
+| `avoid` | string | No | Features for calculated routes to avoid. A comma-separated string with one or more of `tolls`, `highways`, and `ferries`. By default, no features are avoided. |
+
+### Response
+
+A `200` response contains `meta` and these fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `origins` | array of objects | The origins, as objects with `latitude` and `longitude`, in request order. |
+| `destinations` | array of objects | The destinations, as objects with `latitude` and `longitude`, in request order. |
+| `matrix` | array of arrays | One row per origin. Each row has one entry per destination. |
+| `matrix[i][j].distance` | object | The route distance from origin `i` to destination `j`. |
+| `matrix[i][j].duration` | object | The route duration from origin `i` to destination `j`, with `value` in minutes. |
+| `matrix[i][j].originIndex` | number | The index of the origin in `origins`. |
+| `matrix[i][j].destinationIndex` | number | The index of the destination in `destinations`. |
+
+### Example
+
+This request calculates driving distances from one origin to two destinations.
+
+```bash
+curl "https://api.radar.io/v1/route/matrix?origins=40.78382,-73.97536&destinations=40.70390,-73.98670%7C40.73237,-73.94884&mode=car&units=imperial" \
+  -H "Authorization: prj_live_pk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "origins": [
+    {
+      "latitude": 40.78382,
+      "longitude": -73.97536
+    }
+  ],
+  "destinations": [
+    {
+      "latitude": 40.7039,
+      "longitude": -73.9867
+    },
+    {
+      "latitude": 40.73237,
+      "longitude": -73.94884
+    }
+  ],
+  "matrix": [
+    [
+      {
+        "distance": {
+          "value": 42480.31,
+          "text": "8.0 mi"
+        },
+        "duration": {
+          "value": 19.9,
+          "text": "20 mins"
+        },
+        "originIndex": 0,
+        "destinationIndex": 0
+      },
+      {
+        "distance": {
+          "value": 31108.92,
+          "text": "5.8 mi"
+        },
+        "duration": {
+          "value": 17.13,
+          "text": "17 mins"
+        },
+        "originIndex": 0,
+        "destinationIndex": 1
+      }
+    ]
+  ]
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `origins` or `destinations` is missing or malformed, a parameter has an unsupported value, or the number of origins multiplied by the number of destinations exceeds the matrix size limit. | Fix the request. Split a large request into several smaller ones. |
+
+## Route match
+
+Snaps points collected along a route to the roads that were most likely traveled. Returns the matched path and, optionally, road attributes such as names and speed limits.
+
+- **Endpoint**: `POST /v1/route/match`
+- **Authentication**: Publishable key
+- **Rate limit**: 10 requests per second
+- **Used by**: [Track pickups, deliveries, and workers](/geofencing/trips)
+
+<Info>
+  Route matching is available on the [Enterprise plan](https://radar.com/pricing).
+</Info>
+
+For best results, collect points less than 10 seconds apart.
+
+### Body parameters
+
+Send a JSON body with `Content-Type: application/json`.
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `path` | array of objects | Yes | The points along the route to snap, in order. At least 2 points and, by default, at most 100. |
+| `path[].coordinates` | string | Yes | The coordinates of the point, in the format `latitude,longitude`. |
+| `path[].createdAt` | string | No | The time the point was recorded, as an ISO 8601 string. |
+| `path[].accuracy` | number | No | The accuracy of the point, in meters. |
+| `mode` | string | No | The travel mode: `car`, `truck`, `foot`, `bike`, or `motorbike`. Defaults to `car`. |
+| `roadAttributes` | string | No | Attributes of matched roads to include in the response. A comma-separated string with one or more of `speedLimit`, `names`, and `roadClass`. |
+| `units` | string | No | The distance and speed units, `metric` or `imperial`. Defaults to `imperial`. |
+| `geometry` | string | No | The format of the `geometry` in the response: `linestring`, `polyline5`, or `polyline6`. Defaults to `polyline6`. |
+
+The same operation is also available as `GET https://api.radar.io/v1/route/match`, with `mode`, `roadAttributes`, `units`, and `geometry` as query parameters and `path` as a pipe-delimited string of coordinates. The `GET` form can't carry `createdAt` or `accuracy`, so prefer `POST` when you have them.
+
+### Response
+
+A `200` response contains `meta` and these fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `matchedPath` | array of objects | The snapped points, as objects with `latitude`, `longitude`, and `originalIndex`, the index of the corresponding point in the request `path`. |
+| `roadAttributes` | array of objects | The road segments along the matched path. Each segment has `startLocation` and `endLocation`, plus the attributes you requested. A segment that begins at a request point also has `originalIndex`. |
+| `roadAttributes[].names` | array of strings | The names of the road. Present if you requested `names`. |
+| `roadAttributes[].speedLimit` | object | The speed limit, with a numeric `value` and display `text`, in miles per hour for `imperial` and kilometers per hour for `metric`. Present if you requested `speedLimit`. |
+| `roadAttributes[].roadClass` | string | The class of the road. Present if you requested `roadClass`. See the table below. |
+| `geometry` | object | The shape of the matched route, in the requested format. |
+| `distance` | object | The length of the matched route. |
+
+`roadClass` is one of the following, in descending order of road size:
+
+| Value | Meaning |
+| --- | --- |
+| `motorway` | A major divided highway, normally with 2 or more running lanes plus an emergency hard shoulder. |
+| `trunk` | An arterial road meant to support large amounts of traffic. |
+| `primary` | A large road. |
+| `secondary` | A medium-sized road. |
+| `tertiary` | A small road that often connects `residential` roads. |
+| `residential` | A road that provides access to housing. |
+| `unclassified` | A minor road that doesn't provide access to housing. |
+| `service_other` | An access road to or within an industrial estate, camp site, business park, car park, or alley. |
+
+### Example
+
+This request snaps two points to the road network and returns road attributes.
+
+```bash
+curl "https://api.radar.io/v1/route/match" \
+  -H "Authorization: prj_live_pk_..." \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{
+    "path": [
+      {"coordinates": "40.754231505412264,-73.98465161242224", "createdAt": "2024-03-29T20:47:49Z", "accuracy": 23},
+      {"coordinates": "40.73988226756973,-73.9950818342906", "createdAt": "2024-03-29T20:49:02Z", "accuracy": 27}
+    ],
+    "mode": "car",
+    "roadAttributes": "speedLimit,names,roadClass",
+    "geometry": "linestring"
+  }'
+```
+
+This response is shortened to the first and last road segments and a simplified route shape.
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "matchedPath": [
+    {
+      "latitude": 40.754233,
+      "longitude": -73.984727,
+      "originalIndex": 0
+    },
+    {
+      "latitude": 40.739919,
+      "longitude": -73.995156,
+      "originalIndex": 1
+    }
+  ],
+  "roadAttributes": [
+    {
+      "roadClass": "residential",
+      "speedLimit": {
+        "value": 25,
+        "text": "25 mph"
+      },
+      "names": [
+        "West 41st Street"
+      ],
+      "startLocation": {
+        "latitude": 40.754233,
+        "longitude": -73.984728
+      },
+      "endLocation": {
+        "latitude": 40.754464,
+        "longitude": -73.985276
+      },
+      "originalIndex": 0
+    },
+    {
+      "roadClass": "residential",
+      "speedLimit": {
+        "value": 25,
+        "text": "25 mph"
+      },
+      "names": [
+        "West 18th Street"
+      ],
+      "startLocation": {
+        "latitude": 40.740997,
+        "longitude": -73.997721
+      },
+      "endLocation": {
+        "latitude": 40.739919,
+        "longitude": -73.995157
+      },
+      "originalIndex": 1
+    }
+  ],
+  "geometry": {
+    "type": "LineString",
+    "coordinates": [
+      [-73.984728, 40.754233],
+      [-73.987447, 40.755373],
+      [-73.997862, 40.741056],
+      [-73.995157, 40.739919]
+    ]
+  },
+  "distance": {
+    "value": 7439.5,
+    "text": "1.4 mi"
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `path` is missing, has fewer than 2 points or more than the maximum number of points, or contains a point with malformed `coordinates`. Also returned for an unsupported `mode`, `units`, `roadAttributes`, or `geometry` value. | Fix the request before you retry. |
+| `402` | Your plan doesn't include route matching. | Upgrade to the [Enterprise plan](https://radar.com/pricing). |
+
+A `400` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 400,
+    "param": "path",
+    "message": "Route matching requires a minimum of two coordinate pairs."
+  }
+}
+```
+
+## Directions
+
+Calculates the most efficient route between two or more locations visited in the order you provide, with turn-by-turn steps.
+
+- **Endpoint**: `GET /v1/route/directions`
+- **Authentication**: Publishable key
+- **Rate limit**: 20 requests per second
+- **Used by**: [Display maps](/maps/maps), [Track pickups, deliveries, and workers](/geofencing/trips)
+
+To let Radar choose the order of the stops, use [Optimize route](#optimize-route).
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `locations` | string | Yes | A list of 2 to 25 coordinates to visit in order. A pipe-delimited string in the format `latitude0,longitude0\|latitude1,longitude1`. |
+| `mode` | string | No | The travel mode: `car`, `truck`, `foot`, `bike`, or `motorbike`. Defaults to `car`. |
+| `units` | string | No | The distance units, `metric` or `imperial`. Defaults to `imperial`. |
+| `avoid` | string | No | Features for calculated routes to avoid. A comma-separated string with one or more of `tolls`, `highways`, `ferries`, and `borderCrossings`. By default, no features are avoided. |
+| `geometry` | string | No | The format of the `geometry` in the response: `linestring`, `polyline5`, or `polyline6`. Send this parameter explicitly when you plan to draw the route. |
+| `departureTime` | string | No | The departure date and time as an ISO 8601 string, for example `2025-01-01T14:30:00Z`. Used for historical traffic times. Defaults to the current date and time. |
+| `heading` | number | No | The initial heading of travel in degrees, from 0 to 360, where north is 0, east is 90, south is 180, and west is 270. By default, no initial heading is used. |
+| `alternatives` | boolean | No | Whether to try to return alternative routes. Available only when you send exactly two locations. Defaults to `false`. |
+| `lang` | string | No | The language for turn-by-turn instructions. One of `de`, `en`, `es`, `fr`, `ja`, `ko`, `pt`, `ru`. Defaults to `en`. |
+
+### Response
+
+A `200` response contains `meta` and `routes`. `routes` is an array. It has one route unless you sent `alternatives=true` and Radar found alternative routes.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `routes[].distance` | object | The total route distance. |
+| `routes[].duration` | object | The total route duration, with `value` in minutes. |
+| `routes[].geometry` | object | The shape of the whole route. |
+| `routes[].legs` | array of objects | One leg per pair of consecutive locations. A request with 3 locations returns 2 legs. |
+| `legs[].startLocation` | object | The start of the leg, with `latitude` and `longitude`. |
+| `legs[].endLocation` | object | The end of the leg, with `latitude` and `longitude`. |
+| `legs[].distance` | object | The leg distance. |
+| `legs[].duration` | object | The leg duration, with `value` in minutes. |
+| `legs[].geometry` | object | The shape of the leg. |
+| `legs[].steps` | array of objects | The turn-by-turn steps for the leg. |
+
+Each step has these fields. Step field names use snake case.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `distance` | object | The step distance. |
+| `duration` | object | The step duration, with `value` in minutes. |
+| `start_location` | object | The start of the step, with `latitude` and `longitude`. |
+| `end_location` | object | The end of the step, with `latitude` and `longitude`. |
+| `bearing_before` | number | The bearing in degrees before the maneuver. |
+| `bearing_after` | number | The bearing in degrees after the maneuver. |
+| `instructions` | string | The full written instruction for the step. |
+| `banner_instructions` | string | A short instruction suitable for on-screen display. |
+| `voice_instructions` | string | An instruction suitable for speech. |
+| `geometry` | object | The shape of the step. |
+| `mode` | string | The travel mode for the step. |
+| `maneuver` | string | The maneuver type, for example `start`, `left`, `right`, `stay-right`, `destination`, or `destination-right`. |
+| `street_name` | string | The name of the street for the step, if any. |
+
+### Example
+
+This request gets driving directions between two locations, with the route shape as a `polyline6` string.
+
+```bash
+curl "https://api.radar.io/v1/route/directions?locations=40.734250,-73.990934%7C40.729779,-73.986812&mode=car&units=imperial&geometry=polyline6" \
+  -H "Authorization: prj_live_pk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "routes": [
+    {
+      "duration": {
+        "value": 3.92535,
+        "text": "4 mins"
+      },
+      "distance": {
+        "value": 2404.85572,
+        "text": "0.5 mi"
+      },
+      "legs": [
+        {
+          "startLocation": {
+            "latitude": 40.73425,
+            "longitude": -73.990934
+          },
+          "endLocation": {
+            "latitude": 40.729779,
+            "longitude": -73.986812
+          },
+          "duration": {
+            "value": 3.92535,
+            "text": "4 mins"
+          },
+          "distance": {
+            "value": 2404.85572,
+            "text": "0.5 mi"
+          },
+          "geometry": {
+            "polyline": "kafulAnn`clCfKxAhCF`CJdg@vGtB\\|BZfJrAh[lEhC^dBThMjBjRjCdBZn@Pd@Nh@PzAuE|EoO`HqT`CuHl@mBbCkHxBkGhYk}@v@oCfBuFvB_H~c@avAbLm^ZgAj@kB`BmF"
+          },
+          "steps": [
+            {
+              "distance": {
+                "value": 931.75856,
+                "text": "0.2 mi"
+              },
+              "duration": {
+                "value": 1.41428,
+                "text": "1 min"
+              },
+              "start_location": {
+                "latitude": 40.734246,
+                "longitude": -73.990904
+              },
+              "end_location": {
+                "latitude": 40.731744,
+                "longitude": -73.991464
+              },
+              "bearing_before": 0,
+              "bearing_after": 189,
+              "instructions": "Drive south on Broadway. Then, in 300 meters, Turn left onto East 10th Street.",
+              "banner_instructions": "Drive south on Broadway.",
+              "voice_instructions": "Drive south on Broadway.",
+              "geometry": {
+                "polyline": "kafulAnn`clCfKxAhCF`CJdg@vGtB\\|BZfJrAh[lEhC^dBThMjBjRjCdBZn@Pd@Nh@P"
+              },
+              "mode": "car",
+              "maneuver": "start",
+              "street_name": "Broadway"
+            },
+            {
+              "distance": {
+                "value": 1473.09716,
+                "text": "0.3 mi"
+              },
+              "duration": {
+                "value": 2.51107,
+                "text": "3 mins"
+              },
+              "start_location": {
+                "latitude": 40.731744,
+                "longitude": -73.991464
+              },
+              "end_location": {
+                "latitude": 40.729779,
+                "longitude": -73.986812
+              },
+              "bearing_before": 197,
+              "bearing_after": 119,
+              "instructions": "Turn left onto East 10th Street.",
+              "banner_instructions": "Turn left onto East 10th Street.",
+              "voice_instructions": "Turn left onto East 10th Street.",
+              "geometry": {
+                "polyline": "_eaulAnqaclCzAuE|EoO`HqT`CuHl@mBbCkHxBkGhYk}@v@oCfBuFvB_H~c@avAbLm^ZgAj@kB`BmF"
+              },
+              "mode": "car",
+              "maneuver": "left",
+              "street_name": "East 10th Street"
+            },
+            {
+              "distance": {
+                "value": 0,
+                "text": "0.0 ft"
+              },
+              "duration": {
+                "value": 0,
+                "text": "0 min"
+              },
+              "start_location": {
+                "latitude": 40.729779,
+                "longitude": -73.986812
+              },
+              "end_location": {
+                "latitude": 40.729779,
+                "longitude": -73.986812
+              },
+              "bearing_before": 119,
+              "bearing_after": 0,
+              "instructions": "You have arrived at your destination.",
+              "banner_instructions": "You have arrived at your destination.",
+              "voice_instructions": "You have arrived at your destination.",
+              "geometry": {
+                "polyline": "ej}tlAvnxblC"
+              },
+              "mode": "car",
+              "maneuver": "destination"
+            }
+          ]
+        }
+      ],
+      "geometry": {
+        "polyline": "kafulAnn`clCfKxAhCF`CJdg@vGtB\\|BZfJrAh[lEhC^dBThMjBjRjCdBZn@Pd@Nh@PzAuE|EoO`HqT`CuHl@mBbCkHxBkGhYk}@v@oCfBuFvB_H~c@avAbLm^ZgAj@kB`BmF"
+      }
+    }
+  ]
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `locations` is missing, malformed, or has fewer than 2 or more than 25 coordinates, `heading` is outside 0 to 360, a parameter has an unsupported value, or no route was found. | Fix the request before you retry. |
+
+A `400` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 400,
+    "message": "Route not found."
+  }
+}
+```
+
+## Optimize route
+
+Calculates the optimal ordering and route to visit a list of locations. The first location is the origin of the route and the last location is the final destination. Radar chooses the order of the locations in between.
+
+- **Endpoint**: `GET /v1/route/optimize`
+- **Authentication**: Publishable key
+- **Rate limit**: 10 requests per second
+- **Used by**: [Track pickups, deliveries, and workers](/geofencing/trips)
+
+<Info>
+  Route optimization is available on the [Enterprise plan](https://radar.com/pricing).
+</Info>
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `locations` | string | Yes | A list of 2 to 10 coordinates to visit. A pipe-delimited string in the format `latitude0,longitude0\|latitude1,longitude1`. The first location is the origin and the last location is the final destination. |
+| `mode` | string | No | The travel mode: `car`, `truck`, `foot`, `bike`, or `motorbike`. Defaults to `car`. |
+| `units` | string | No | The distance units, `metric` or `imperial`. Defaults to `imperial`. |
+| `geometry` | string | No | The format of the leg `geometry` in the response: `linestring`, `polyline5`, or `polyline6`. By default, no geometry is returned. |
+
+### Response
+
+A `200` response contains `meta` and `route`:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `route.distance` | object | The total route distance. |
+| `route.duration` | object | The total route duration, with `value` in minutes. |
+| `route.legs` | array of objects | The legs of the route, in the optimized visiting order. |
+| `legs[].startLocation` | object | The start of the leg, with `latitude` and `longitude`. |
+| `legs[].endLocation` | object | The end of the leg, with `latitude` and `longitude`. |
+| `legs[].startIndex` | number | The index of the leg's start location in the request `locations` list. |
+| `legs[].endIndex` | number | The index of the leg's end location in the request `locations` list. |
+| `legs[].distance` | object | The leg distance. |
+| `legs[].duration` | object | The leg duration, with `value` in minutes. |
+| `legs[].geometry` | object | The shape of the leg. Present only if you sent `geometry`. |
+
+To read the optimized stop order, take `startIndex` of the first leg followed by `endIndex` of every leg. In the example below, the order is `0, 3, 2, 1, 4`.
+
+### Example
+
+This request orders three stops between a fixed origin and a fixed final destination.
+
+```bash
+curl "https://api.radar.io/v1/route/optimize?locations=40.7343164,-73.995688%7C40.6396701,-73.9257626%7C40.6390023,-73.9975035%7C40.7227423,-73.9983234%7C40.6410279,-73.7746107&mode=car&units=imperial" \
+  -H "Authorization: prj_live_pk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "route": {
+    "distance": {
+      "value": 137388.45584,
+      "text": "26.0 mi"
+    },
+    "duration": {
+      "value": 49.1802166667,
+      "text": "49 mins"
+    },
+    "legs": [
+      {
+        "startLocation": {
+          "latitude": 40.7343164,
+          "longitude": -73.995688
+        },
+        "endLocation": {
+          "latitude": 40.7227423,
+          "longitude": -73.9983234
+        },
+        "startIndex": 0,
+        "endIndex": 3,
+        "distance": {
+          "value": 9137.1394,
+          "text": "1.7 mi"
+        },
+        "duration": {
+          "value": 5.2633833333,
+          "text": "5 mins"
+        }
+      },
+      {
+        "startLocation": {
+          "latitude": 40.7227423,
+          "longitude": -73.9983234
+        },
+        "endLocation": {
+          "latitude": 40.6390023,
+          "longitude": -73.9975035
+        },
+        "startIndex": 3,
+        "endIndex": 2,
+        "distance": {
+          "value": 44586.6156,
+          "text": "8.4 mi"
+        },
+        "duration": {
+          "value": 15.0748166667,
+          "text": "15 mins"
+        }
+      },
+      {
+        "startLocation": {
+          "latitude": 40.6390023,
+          "longitude": -73.9975035
+        },
+        "endLocation": {
+          "latitude": 40.6396701,
+          "longitude": -73.9257626
+        },
+        "startIndex": 2,
+        "endIndex": 1,
+        "distance": {
+          "value": 28047.90116,
+          "text": "5.3 mi"
+        },
+        "duration": {
+          "value": 13.3289166667,
+          "text": "13 mins"
+        }
+      },
+      {
+        "startLocation": {
+          "latitude": 40.6396701,
+          "longitude": -73.9257626
+        },
+        "endLocation": {
+          "latitude": 40.6410279,
+          "longitude": -73.7746107
+        },
+        "startIndex": 1,
+        "endIndex": 4,
+        "distance": {
+          "value": 55616.79968,
+          "text": "10.5 mi"
+        },
+        "duration": {
+          "value": 15.5131,
+          "text": "16 mins"
+        }
+      }
+    ]
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `locations` is missing, malformed, or has fewer than 2 or more than 10 coordinates, a parameter has an unsupported value, or no route was found. | Fix the request before you retry. |
+| `402` | Your plan doesn't include route optimization. | Upgrade to the [Enterprise plan](https://radar.com/pricing). |
+
+## Limits
+
+| Operation | Limit | Rate limit |
+| --- | --- | --- |
+| Distance | 1 origin and 1 destination, with one or more travel modes | 50 requests per second |
+| Matrix | 625 routes (origins multiplied by destinations) | 10 requests per second |
+| Directions | 2 to 25 locations | 20 requests per second |
+| Route match | 2 to 100 points | 10 requests per second |
+| Optimize route | 2 to 10 locations | 10 requests per second |
+
+Rate limits apply per project. A request over the limit returns `429`. For retry guidance and how to request a higher limit, see [Rate limits](/api/fundamentals#rate-limits).

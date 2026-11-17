@@ -1,0 +1,444 @@
+---
+title: "Users API"
+description: "Reference for listing, retrieving, and deleting Radar users, and for sending remote track requests."
+---
+
+Use the Users API to read the users tracked in your project, delete a user, and ask a user's device for a fresh location with a silent push.
+
+| Operation | Endpoint | Authentication |
+| --- | --- | --- |
+| [Create a user](#create-a-user) | `POST /v1/track` | Publishable key |
+| [List users](#list-users) | `GET /v1/users` | Secret key |
+| [Get a user](#get-a-user) | `GET /v1/users/:id` | Secret key |
+| [Delete a user](#delete-a-user) | `DELETE /v1/users/:id` | Secret key |
+| [Send remote track requests to users](#send-remote-track-requests-to-users) | `POST /v1/users/refresh` | Secret key |
+
+The base URL is `https://api.radar.io`. Send your API key in the `Authorization` header. For key types, the error format, and rate limits, see [Authentication, errors, and rate limits](/api/fundamentals).
+
+## User object
+
+A user represents a user tracked in your project. You can reference a user by Radar `_id`, `userId`, or `deviceId`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `_id` | string | A unique ID for the user, provided by Radar. An alphanumeric string. |
+| `live` | boolean | `true` if the user was created with a live API key, `false` if the user was created with a test API key. |
+| `userId` | string | A stable unique ID for the user. |
+| `deviceId` | string | A device ID for the user. |
+| `description` | string | An optional description for the user. |
+| `metadata` | object | An optional dictionary of custom metadata for the user. |
+| `location` | GeoJSON geometry | The user's current location, a `Point` in [GeoJSON](https://geojson.org/) format. |
+| `locationAccuracy` | number | The accuracy of the user's current location in meters. |
+| `foreground` | boolean | `true` if the user's current location was updated in the foreground, `false` if it was updated in the background. |
+| `stopped` | boolean | `true` if the user's current location was updated while stopped, `false` if it was updated while moving. |
+| `deviceType` | string | The user's device type. One of `iOS`, `Android`, or `Web`. |
+| `createdAt` | ISO 8601 string | The datetime when the user was created. |
+| `updatedAt` | ISO 8601 string | The datetime when the user's location was last updated. |
+| `geofences` | array of objects | The user's current [geofences](/api/geofences#geofence-object). |
+| `trip` | object | When a [trip](/api/trips#trip-object) has been started, the user's current trip. Present when the trip has a `status` of `started`, `approaching`, or `arrived`. |
+| `place` | object | When Places is enabled, the user's current place. |
+| `country` | object | When Regions is enabled, the user's current country. |
+| `state` | object | When Regions is enabled, the user's current state. US only. |
+| `dma` | object | When Regions is enabled, the user's current DMA (market area). US only. |
+| `postalCode` | object | When Regions is enabled, the user's current postal code. US only. |
+| `beacons` | array of objects | When [beacons](/api/beacons#beacon-object) have been created, the user's current beacons. |
+| `fraud` | object | When Fraud is enabled, the result of fraud checks for the user. See [Fraud object](/api/fraud#fraud-object). |
+| `expectedAddress` | object | When an expected address is set, the result of comparing the user's location to that address, including `expectedAddress`, `formattedAddress`, `latitude`, `longitude`, `atAddress`, `distance`, and `confidence`. |
+| `locationInsights` | object | When user insights are enabled and Radar has inferred a home or work location, the user's [location insights](#location-insights). |
+
+For how geofence, place, and region context is produced, see [Detect geofence events and place visits](/geofencing/geofences-and-places).
+
+### Location insights
+
+User insights turn a user's location history into current context.
+
+<Info>
+  User insights must be enabled for your project. Contact your Radar account team.
+</Info>
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `atHome` | boolean | `true` if the user is within their inferred home area. |
+| `atWork` | boolean | `true` if the user is within their inferred work area. |
+| `traveling` | boolean | `true` if the user is far from their inferred home area. |
+| `commuting` | boolean | `true` if the user is along an inferred route between home and work. Omitted when commute status is unavailable. |
+
+`locationInsights` is omitted when Radar doesn't have enough history to infer a usable home or work location. Inferred home and work coordinates aren't returned. Insights are calculated separately for test and live data.
+
+### Example user
+
+This user is on an active trip, in one geofence, and in range of one beacon.
+
+```json
+{
+  "_id": "56db1f4613012711002229f4",
+  "live": true,
+  "userId": "user-123",
+  "deviceId": "device-456",
+  "metadata": {
+    "loyaltyTier": "gold",
+    "pushEnabled": false
+  },
+  "location": {
+    "type": "Point",
+    "coordinates": [-73.97536, 40.78382]
+  },
+  "locationAccuracy": 5,
+  "foreground": true,
+  "stopped": true,
+  "deviceType": "iOS",
+  "createdAt": "2026-06-10T11:23:58.741Z",
+  "updatedAt": "2026-06-10T13:44:10.535Z",
+  "geofences": [
+    {
+      "_id": "56db1f4613012711002229f5",
+      "tag": "store",
+      "externalId": "store-42",
+      "description": "Store 42"
+    }
+  ],
+  "trip": {
+    "_id": "5f3e50491c2b7d005c81f5d9",
+    "live": true,
+    "status": "started",
+    "externalId": "order-299",
+    "metadata": {
+      "vehicle": "Green hatchback"
+    },
+    "mode": "car",
+    "destinationGeofenceTag": "store",
+    "destinationGeofenceExternalId": "store-42",
+    "destinationLocation": {
+      "type": "Point",
+      "coordinates": [-73.977797, 40.783826]
+    },
+    "eta": {
+      "duration": 5.5,
+      "distance": 1331
+    }
+  },
+  "country": {
+    "code": "US",
+    "name": "United States"
+  },
+  "state": {
+    "code": "NY",
+    "name": "New York"
+  },
+  "dma": {
+    "code": "501",
+    "name": "New York"
+  },
+  "postalCode": {
+    "code": "10024",
+    "name": "10024"
+  },
+  "beacons": [
+    {
+      "_id": "60f6da60cf4cc0a72a6c070b",
+      "type": "ibeacon",
+      "uuid": "b9407f30-f5f8-466e-aff9-25556b57fe6d",
+      "major": "100",
+      "minor": "1",
+      "description": "Store 42 - Register 1",
+      "tag": "store-register",
+      "externalId": "store-42-1",
+      "enabled": true
+    }
+  ],
+  "fraud": {
+    "verified": true,
+    "passed": false,
+    "bypassed": false,
+    "blocked": false,
+    "mocked": true,
+    "jumped": false,
+    "compromised": false,
+    "inaccurate": false,
+    "proxy": false,
+    "sharing": false,
+    "lastMockedAt": "2026-06-09T17:18:28.536Z",
+    "lastJumpedAt": "2026-06-09T17:18:28.536Z",
+    "lastCompromisedAt": null,
+    "lastInaccurateAt": null,
+    "lastProxyAt": null,
+    "lastSharingAt": null
+  },
+  "locationInsights": {
+    "atHome": false,
+    "atWork": false,
+    "traveling": false,
+    "commuting": false
+  }
+}
+```
+
+## Create a user
+
+There is no separate create operation. To create a user, call [Track](/api/tracking#track). If no user matches the `deviceId` and `userId` you send, Radar creates one.
+
+On iOS and Android, use the [SDK](/sdk/sdk) to track users.
+
+## List users
+
+Lists users. Users are sorted descending by `updatedAt`.
+
+- **Endpoint**: `GET /v1/users`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `limit` | number | No | The maximum number of users to return. A number between 1 and 1000. Defaults to 100. |
+| `updatedBefore` | ISO 8601 string | No | A cursor for pagination. Returns users updated before the specified datetime. A date or valid ISO date string. |
+| `updatedAfter` | ISO 8601 string | No | A cursor for pagination. Returns users updated after the specified datetime. A date or valid ISO date string. |
+| `createdBefore` | ISO 8601 string | No | Returns users created before the specified datetime. A date or valid ISO date string. |
+| `createdAfter` | ISO 8601 string | No | Returns users created after the specified datetime. A date or valid ISO date string. |
+| `userId` | string | No | Returns users with the specified `userId`. |
+| `deviceId` | string | No | Returns users with the specified `deviceId`. |
+
+### Response
+
+A `200` response contains `meta`, with a `hasMore` boolean, and `users`, an array of [user objects](#user-object). To get the next page, pass the `updatedAt` of the last user as `updatedBefore`. See [Pagination](/api/fundamentals#pagination).
+
+### Example
+
+This request lists the 2 most recently updated users.
+
+```bash
+curl "https://api.radar.io/v1/users?limit=2" \
+  -H "Authorization: prj_live_sk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200,
+    "hasMore": true
+  },
+  "users": [
+    {
+      "_id": "56db1f4613012711002229f4",
+      "live": true,
+      "userId": "user-123",
+      "deviceId": "device-456",
+      "updatedAt": "2026-06-10T13:44:10.535Z"
+    },
+    {
+      "_id": "56db1f4613012711002229a1",
+      "live": true,
+      "userId": "user-124",
+      "deviceId": "device-457",
+      "updatedAt": "2026-06-10T13:40:02.118Z"
+    }
+  ]
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | A filter value is invalid, for example a date that can't be parsed. `meta.param` names the parameter. | Fix the parameter named in `meta.param`. |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `429` | The rate limit was exceeded. | Retry with backoff. See [Rate limits](/api/fundamentals#rate-limits). |
+
+## Get a user
+
+Gets a user. Reference the user by Radar `_id`, `userId`, or `deviceId`.
+
+- **Endpoint**: `GET /v1/users/:id`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Yes | The Radar `_id`, the `userId`, or the `deviceId` of the user. |
+
+### Response
+
+A `200` response contains `meta` and `user`, a [user object](#user-object).
+
+### Example
+
+This request gets the user with the `userId` `user-123`.
+
+```bash
+curl "https://api.radar.io/v1/users/user-123" \
+  -H "Authorization: prj_live_sk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "user": {
+    "_id": "56db1f4613012711002229f4",
+    "live": true,
+    "userId": "user-123",
+    "deviceId": "device-456",
+    "location": {
+      "type": "Point",
+      "coordinates": [-73.97536, 40.78382]
+    },
+    "locationAccuracy": 5,
+    "updatedAt": "2026-06-10T13:44:10.535Z"
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `404` | No user matches the ID in this project and environment. | Check the ID and the environment of your API key. |
+
+A `404` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 404,
+    "message": "User not found."
+  }
+}
+```
+
+## Delete a user
+
+Deletes a user. Reference the user by Radar `_id`, `userId`, or `deviceId`. Use this operation to honor a deletion request for a single user.
+
+- **Endpoint**: `DELETE /v1/users/:id`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Yes | The Radar `_id`, the `userId`, or the `deviceId` of the user. |
+
+### Response
+
+A `200` response contains only `meta`.
+
+### Example
+
+This request deletes the user with the `userId` `user-123`.
+
+```bash
+curl "https://api.radar.io/v1/users/user-123" \
+  -H "Authorization: prj_live_sk_..." \
+  -X DELETE
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `404` | No user matches the ID in this project and environment. | Check the ID and the environment of your API key. |
+
+## Send remote track requests to users
+
+Sends a remote track request to a list of users with silent push notifications. Each device that receives the push sends a fresh location update. For device setup, delivery constraints, and platform support, see [Silent push](/sdk/silent-push).
+
+- **Endpoint**: `POST /v1/users/refresh`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+
+Push credentials must be configured for your project before you call this operation.
+
+### Body parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `userIds` | array of strings | Yes | The `userId` values of the users to send the track request to. Between 1 and 10 users per request. |
+| `type` | string | No | The type of notification to send. One of `pushNotification` or `locationExtension`. Defaults to `pushNotification`. |
+
+### Response
+
+A `200` response contains:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `meta` | object | The response metadata, including `code`. |
+| `sent` | array of objects | One object per user the request was sent to, each with a `userId`. |
+| `failed` | array of objects | One object per user the request could not be sent to, each with a `userId` and a `reason` string. |
+
+A `200` response can contain failed users. Check `failed` before you treat the request as delivered. A sent request confirms that the push was handed off, not that the device produced a location update.
+
+### Example
+
+This request sends a remote track request to 3 users.
+
+```bash
+curl "https://api.radar.io/v1/users/refresh" \
+  -H "Authorization: prj_test_sk_..." \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"userIds": ["user-123", "user-124", "user-125"]}'
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "sent": [
+    {
+      "userId": "user-123"
+    },
+    {
+      "userId": "user-124"
+    }
+  ],
+  "failed": [
+    {
+      "userId": "user-125",
+      "reason": "User not found"
+    }
+  ]
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `userIds` is missing, empty, or has more than 10 entries, `type` isn't a valid value, or push notifications aren't configured for the project. | Fix the request, or set up push credentials for your project. |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `429` | The rate limit was exceeded. | Retry with backoff. See [Rate limits](/api/fundamentals#rate-limits). |
+
+A `400` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 400,
+    "message": "Too many userIds provided"
+  }
+}
+```

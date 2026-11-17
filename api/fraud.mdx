@@ -1,0 +1,427 @@
+---
+title: "Fraud API"
+description: "Reference for the Radar fraud object and for the endpoints that block and unblock users and devices."
+---
+
+Use the Fraud API to block or unblock users and devices from your own systems, for example when your risk team confirms abuse, and to read the fraud result that Radar attaches to a user.
+
+| Operation | Endpoint | Authentication |
+| --- | --- | --- |
+| [Block users and devices](#block-users-and-devices) | `POST /v1/fraud/block` | Secret key |
+| [Unblock users and devices](#unblock-users-and-devices) | `POST /v1/fraud/unblock` | Secret key |
+| [Get fraud action status](#get-fraud-action-status) | `GET /v1/fraud/actions/:actionId` | Secret key |
+
+The base URL is `https://api.radar.io`. Send your API key in the `Authorization` header. For key types, the error format, and rate limits, see [Authentication, errors, and rate limits](/api/fundamentals).
+
+<Info>
+  The block, unblock, and action status operations must be enabled for your project. Contact your Radar account team.
+</Info>
+
+## Where fraud results come from
+
+Fraud checks run on the device and on Radar's servers when your app requests a verified location or a risk assessment through an SDK. The REST operations on this page manage block rules. They don't run a fraud check.
+
+| You want to | Use |
+| --- | --- |
+| Verify a user's location and get a signed result | `Radar.trackVerified()` in the SDK, then validate the token on your backend. See [Geo-compliance overview and quickstart](/geo-compliance/overview) and the [Geolocation token schema](/api/geolocation-tokens). |
+| Assess device and network risk without a location | `Radar.revealRisk()` in the SDK. See [Detect risky transactions and verify precise location](/fraud/risky-transactions) and [Fraud plugin setup](/sdk/fraud). |
+| Read the latest fraud result for a user from your backend | [Get a user](/api/users#get-a-user) and read the [fraud object](#fraud-object). |
+| Block or unblock a user or device | The operations on this page. |
+| Report a confirmed outcome for a user | The [Labels API](/api/labels). |
+
+The token schema defines the fields of the verified location token, including identity, expiry, and failure reasons.
+
+## Fraud object
+
+When Fraud is enabled, the [user object](/api/users#user-object) includes a `fraud` object with the result of the most recent fraud checks.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `passed` | boolean | `true` if all fraud checks passed. `true` when the user is bypassed, and `false` when the user is blocked, regardless of the other flags. |
+| `verified` | boolean | `true` if the request was made with `Radar.trackVerified()`. |
+| `bypassed` | boolean | `true` if the user is marked as bypassed. Bypass rules are for internal testing only. |
+| `blocked` | boolean | `true` if the user or device is blocked. |
+| `mocked` | boolean | `true` if the user's location is being mocked, such as in a simulator or with a location spoofing app. |
+| `jumped` | boolean | `true` if the user moved too far too fast. |
+| `compromised` | boolean | `true` if the user's device or app has been compromised, for example rooted or jailbroken. |
+| `inaccurate` | boolean | `true` if the user's location accuracy is too low to pass verification. |
+| `proxy` | boolean | `true` if the user's IP address is a known proxy or VPN. |
+| `sharing` | boolean | `true` if the user is using screen sharing or remote desktop software. |
+| `lastMockedAt` | ISO 8601 string | The datetime when `mocked` was last `true`, or `null`. |
+| `lastJumpedAt` | ISO 8601 string | The datetime when `jumped` was last `true`, or `null`. |
+| `lastCompromisedAt` | ISO 8601 string | The datetime when `compromised` was last `true`, or `null`. |
+| `lastInaccurateAt` | ISO 8601 string | The datetime when `inaccurate` was last `true`, or `null`. |
+| `lastProxyAt` | ISO 8601 string | The datetime when `proxy` was last `true`, or `null`. |
+| `lastSharingAt` | ISO 8601 string | The datetime when `sharing` was last `true`, or `null`. |
+
+A fraud object for a user whose location is mocked looks like this:
+
+```json
+{
+  "verified": true,
+  "passed": false,
+  "bypassed": false,
+  "blocked": false,
+  "mocked": true,
+  "jumped": false,
+  "compromised": false,
+  "inaccurate": false,
+  "proxy": false,
+  "sharing": false,
+  "lastMockedAt": "2026-07-27T17:18:28.536Z",
+  "lastJumpedAt": "2026-07-20T09:02:11.004Z",
+  "lastCompromisedAt": null,
+  "lastInaccurateAt": null,
+  "lastProxyAt": null,
+  "lastSharingAt": null
+}
+```
+
+Make eligibility decisions on your backend from a validated token, not from flags read on the client. See [Fraud overview and quickstart](/fraud/overview).
+
+## Block users and devices
+
+Creates block rules for existing users or devices. Each item targets exactly one user or device. By default, blocking a user doesn't block their devices, and blocking a device doesn't block its users. Set `includeAssociations` to `true` to also block associated devices or users.
+
+- **Endpoint**: `POST /v1/fraud/block`
+- **Authentication**: Secret key
+- **Rate limit**: 5 requests per second
+- **Used by**: [Prevent account takeover and account sharing](/fraud/account-takeover-and-sharing), [Prevent new account fraud, multi-accounting, and promo abuse](/fraud/new-account-fraud)
+
+Each successful block creates a new rule, even if the target is already blocked. If a user or device doesn't exist in the project and environment of your API key, the item succeeds without creating a rule.
+
+### Body parameters
+
+Send the body as JSON. Unknown fields are rejected.
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `items` | array of objects | Yes | The items to block. At least 1 item, and a default maximum of 500 items. |
+| `items[].userId` | string | Conditional | The `userId` of the user to block. Specify exactly one of `userId` or `deviceId`, as a non-empty string. |
+| `items[].deviceId` | string | Conditional | The `deviceId` of the device to block. Specify exactly one of `userId` or `deviceId`, as a non-empty string. |
+| `items[].includeAssociations` | boolean | No | Set to `true` to also block the associated devices for a user, or the immediately associated users for a device, asynchronously. Defaults to `false`. Association processing must be enabled for your project. |
+| `items[].durationMs` | number | No | The duration of the block in milliseconds, starting when the rule is created. Must be non-negative. If omitted, the block has no expiration. |
+| `items[].description` | string | No | A description of the block rule. |
+| `items[].label` | string | No | Either `fraud` or `not_fraud`. Allowed only on items that target a `userId`. Requires fraud labels to be enabled for your project. See the [Labels API](/api/labels). |
+| `items[].fraudType` | string | No | A fraud category, up to 100 characters. Accepts alphanumeric characters, dashes, underscores, spaces, periods, and commas. Requires `label`. |
+| `items[].incidentTime` | string | No | The time of the incident as an ISO 8601 datetime with a timezone, for example `2026-10-21T12:00:00Z`. Requires `label`. |
+
+### Response
+
+The HTTP status is `200` when the request was accepted, even if some items failed. The body contains `meta` and `responses`, with one result per request item, in request order.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `responses[].index` | number | The zero-based index of the request item. |
+| `responses[].target` | object | The requested `userId` or `deviceId`. |
+| `responses[].meta.code` | number | The result for this item. A `2xx` code means the direct action succeeded, including when no rule was created. `500` means the item failed. |
+| `responses[].action.changedBlockCount` | number | The number of block rules created for the item. `0` if the target doesn't exist. |
+| `responses[].action.affected` | object | Arrays of the affected `userIds` and `deviceIds` for the direct target. Both arrays are empty if no rule was created. |
+| `responses[].action.statusUrl` | string | Included when `includeAssociations` was `true` and association processing was accepted. The relative URL for [checking the asynchronous action](#get-fraud-action-status), for example `/v1/fraud/actions/act_0f1e2d3c4b5a69788796a5b4c3d2e1f0`. |
+| `responses[].action.configuration` | object | Included when a rule is created. Contains `description` and `expiresAt`, an ISO 8601 datetime. Each is `null` when no description or expiration was specified. |
+
+Check every item's `meta.code`. Failed items don't include `action`.
+
+Optional labels are delivered asynchronously for successful actions on existing users. An item's success doesn't confirm label delivery. Labels aren't submitted for unknown users.
+
+### Example
+
+This request blocks one user and one device, and also blocks the users associated with the device.
+
+```bash
+curl "https://api.radar.io/v1/fraud/block" \
+  -H "Authorization: prj_live_sk_..." \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"items":[{"userId":"user-123","description":"Confirmed fraudulent activity"},{"deviceId":"device-456","includeAssociations":true}]}'
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "responses": [
+    {
+      "index": 0,
+      "target": {
+        "userId": "user-123"
+      },
+      "meta": {
+        "code": 200
+      },
+      "action": {
+        "changedBlockCount": 1,
+        "affected": {
+          "userIds": ["user-123"],
+          "deviceIds": []
+        },
+        "configuration": {
+          "description": "Confirmed fraudulent activity",
+          "expiresAt": null
+        }
+      }
+    },
+    {
+      "index": 1,
+      "target": {
+        "deviceId": "device-456"
+      },
+      "meta": {
+        "code": 200
+      },
+      "action": {
+        "changedBlockCount": 1,
+        "affected": {
+          "userIds": [],
+          "deviceIds": ["device-456"]
+        },
+        "statusUrl": "/v1/fraud/actions/act_0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+        "configuration": {
+          "description": null,
+          "expiresAt": null
+        }
+      }
+    }
+  ]
+}
+```
+
+In this response, one item failed:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "responses": [
+    {
+      "index": 0,
+      "target": {
+        "userId": "user-123"
+      },
+      "meta": {
+        "code": 500
+      }
+    }
+  ]
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | The body is invalid: `items` is missing, empty, or over the maximum, an item has both or neither of `userId` and `deviceId`, an item has an unknown field, a label field is set on a `deviceId` item, or `fraudType` or `incidentTime` is set without `label`. Also returned when `includeAssociations` is `true` and association processing isn't enabled for your project. | Fix the request before you retry. To use `includeAssociations`, contact your Radar account team. |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `403` | An item includes `label` and fraud labels aren't enabled for your project. | Remove `label`, or contact your Radar account team to use fraud labels. |
+| `404` | The operation isn't enabled for your project. | Contact your Radar account team. |
+| `429` | The rate limit was exceeded. | Retry with backoff. See [Rate limits](/api/fundamentals#rate-limits). |
+
+A `403` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 403,
+    "message": "Fraud labels are not enabled."
+  }
+}
+```
+
+## Unblock users and devices
+
+Disables block rules for the specified users or devices. Each item targets exactly one user or device. By default, unblocking a user doesn't unblock their devices, and unblocking a device doesn't unblock its users. Set `includeAssociations` to `true` to also unblock associated devices or users.
+
+- **Endpoint**: `POST /v1/fraud/unblock`
+- **Authentication**: Secret key
+- **Rate limit**: 5 requests per second
+
+If a target doesn't exist or has no block rules to disable, the item succeeds with `changedBlockCount` set to `0`.
+
+### Body parameters
+
+Send the body as JSON. Unknown fields are rejected. Unlike blocking, unblocking doesn't accept `durationMs` or `description`.
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `items` | array of objects | Yes | The items to unblock. At least 1 item, and a default maximum of 500 items. |
+| `items[].userId` | string | Conditional | The `userId` of the user to unblock. Specify exactly one of `userId` or `deviceId`, as a non-empty string. |
+| `items[].deviceId` | string | Conditional | The `deviceId` of the device to unblock. Specify exactly one of `userId` or `deviceId`, as a non-empty string. |
+| `items[].includeAssociations` | boolean | No | Set to `true` to also unblock the associated devices for a user, or the immediately associated users for a device, asynchronously. Defaults to `false`. Association processing must be enabled for your project. |
+| `items[].label` | string | No | Either `fraud` or `not_fraud`. Allowed only on items that target a `userId`. Requires fraud labels to be enabled for your project. |
+| `items[].fraudType` | string | No | A fraud category, up to 100 characters. Accepts alphanumeric characters, dashes, underscores, spaces, periods, and commas. Requires `label`. |
+| `items[].incidentTime` | string | No | The time of the incident as an ISO 8601 datetime with a timezone, for example `2026-10-21T12:00:00Z`. Requires `label`. |
+
+### Response
+
+The body contains `meta` and `responses`, with one result per request item, in request order.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `responses[].index` | number | The zero-based index of the request item. |
+| `responses[].target` | object | The requested `userId` or `deviceId`. |
+| `responses[].meta.code` | number | The result for this item. A `2xx` code means the direct action succeeded, including when no rules were disabled. `500` means the item failed. |
+| `responses[].action.changedBlockCount` | number | The number of block rules disabled for the item. Can be greater than `1` if the target had several block rules. |
+| `responses[].action.affected` | object | Arrays of the affected `userIds` and `deviceIds` for the direct target. Both arrays are empty if no rules were disabled. |
+| `responses[].action.statusUrl` | string | Included when `includeAssociations` was `true` and association processing was accepted. The relative URL for [checking the asynchronous action](#get-fraud-action-status). |
+
+The partial failure, request error, and asynchronous label delivery behavior described for [blocking](#block-users-and-devices) also applies to unblocking. Unblock responses don't include `action.configuration`.
+
+### Example
+
+This request unblocks one user and one device, and also unblocks the users associated with the device.
+
+```bash
+curl "https://api.radar.io/v1/fraud/unblock" \
+  -H "Authorization: prj_live_sk_..." \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"items":[{"userId":"user-123"},{"deviceId":"device-456","includeAssociations":true}]}'
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "responses": [
+    {
+      "index": 0,
+      "target": {
+        "userId": "user-123"
+      },
+      "meta": {
+        "code": 200
+      },
+      "action": {
+        "changedBlockCount": 1,
+        "affected": {
+          "userIds": ["user-123"],
+          "deviceIds": []
+        }
+      }
+    },
+    {
+      "index": 1,
+      "target": {
+        "deviceId": "device-456"
+      },
+      "meta": {
+        "code": 200
+      },
+      "action": {
+        "changedBlockCount": 1,
+        "affected": {
+          "userIds": [],
+          "deviceIds": ["device-456"]
+        },
+        "statusUrl": "/v1/fraud/actions/act_0f1e2d3c4b5a69788796a5b4c3d2e1f0"
+      }
+    }
+  ]
+}
+```
+
+### Errors
+
+The error responses are the same as for [Block users and devices](#block-users-and-devices).
+
+## Get fraud action status
+
+Gets the status of an asynchronous block or unblock action. Use the `action.statusUrl` returned by [blocking](#block-users-and-devices) or [unblocking](#unblock-users-and-devices) with `includeAssociations` set to `true` to poll for completion.
+
+- **Endpoint**: `GET /v1/fraud/actions/:actionId`
+- **Authentication**: Secret key
+
+An authorized lookup returns HTTP `200`. Check `operation.meta.code` for the status of the action itself.
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `actionId` | string | Yes | The action ID in the `action.statusUrl` returned by the block or unblock request. |
+
+### Response
+
+A `200` response contains `meta` and `operation`:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `operation.actionId` | string | The action ID. |
+| `operation.meta.code` | number | `202` while association processing is pending or in progress, `200` after the full discovered scope succeeds, or `500` if processing failed. |
+| `operation.status` | string | The processing status of the action. One of `queued`, `running`, `completed`, or `failed`. |
+| `operation.acceptedAt` | string | The time the action was accepted. |
+| `operation.directAction` | object | The result for the explicit target, with `changedBlockCount`, `affected`, and, for a block that created a rule, `configuration`. |
+| `operation.associations` | object | Progress for associated entities. Omitted until progress is available. |
+| `operation.associations.discoveryComplete` | boolean | Whether all immediate associations have been discovered. |
+| `operation.associations.processedCount` | number | The number of associated entities processed. |
+| `operation.associations.processedEntityCount` | number | The number of associated entities whose processing has completed. |
+| `operation.associations.skippedEntityCount` | number | The number of associated entities skipped. |
+| `operation.associations.changedBlockCount` | number | The number of block rules created or disabled for associated entities. |
+
+Poll with a delay between requests, and stop when `operation.meta.code` is no longer `202`.
+
+### Example
+
+This request gets the status of an asynchronous action.
+
+```bash
+curl "https://api.radar.io/v1/fraud/actions/act_0f1e2d3c4b5a69788796a5b4c3d2e1f0" \
+  -H "Authorization: prj_live_sk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "operation": {
+    "actionId": "act_0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+    "meta": {
+      "code": 202
+    },
+    "status": "running",
+    "acceptedAt": "2026-10-01T19:00:00.000Z",
+    "directAction": {
+      "changedBlockCount": 1,
+      "affected": {
+        "userIds": [],
+        "deviceIds": ["device-456"]
+      }
+    },
+    "associations": {
+      "discoveryComplete": true,
+      "processedCount": 20,
+      "processedEntityCount": 20,
+      "skippedEntityCount": 0,
+      "changedBlockCount": 20
+    }
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | Association processing isn't enabled for your project. | Contact your Radar account team. |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `404` | No action matches the ID in this project and environment. | Check the ID and the environment of your API key. |
+
+A `404` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 404,
+    "message": "Action not found."
+  }
+}
+```

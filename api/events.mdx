@@ -1,0 +1,258 @@
+---
+title: "Events API"
+description: "Reference for Radar event objects and for the endpoints that log conversions and verify place events."
+---
+
+Use the Events API to log conversions alongside the location events Radar generates, and to accept or reject an event. This page also defines the event object you receive from [Track](/api/tracking#track) responses, SDK callbacks, and [webhooks](/integrations/webhooks).
+
+| Operation | Endpoint | Authentication |
+| --- | --- | --- |
+| [Generate an entry or exit event](#generate-an-entry-or-exit-event) | `POST /v1/track` | Publishable key |
+| [Log a conversion](#log-a-conversion) | `POST /v1/events` | Publishable key |
+| [Verify an event](#verify-an-event) | `PUT /v1/events/:id/verification` | Publishable key |
+
+The base URL is `https://api.radar.io`. Send your API key in the `Authorization` header. For key types, the error format, and rate limits, see [Authentication, errors, and rate limits](/api/fundamentals).
+
+To receive events on your backend as they happen, use [webhooks](/integrations/webhooks) or another [integration](/integrations/integrations). The REST API doesn't provide a general-purpose operation for listing historical events.
+
+## Event object
+
+An event represents a change in user state. You can reference an event by its Radar `_id`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `_id` | string | The unique ID for the event, provided by Radar. An alphanumeric string. |
+| `createdAt` | ISO 8601 string | The datetime when the event was created on the client. |
+| `actualCreatedAt` | ISO 8601 string | The datetime when the event was created on the server. Mobile operating systems can deliver location updates late, so this value can be later than `createdAt`. |
+| `live` | boolean | `true` if the event was generated for a user and geofence created with a live API key, `false` if they were created with a test API key. |
+| `type` | string | The type of event. By default, Radar generates `user.entered_geofence` when a user enters a geofence and `user.exited_geofence` when a user exits a geofence. Places, Regions, trips, and beacons also generate events when enabled. For a conversion, the `name` you logged. |
+| `user` | object | The [user](/api/users#user-object) for which the event was generated. |
+| `geofence` | object | For `user.entered_geofence` and `user.exited_geofence` events, the geofence for which the event was generated, including `description`, `tag`, and `externalId`. |
+| `place` | object | For `user.entered_place` and `user.exited_place` events, the place for which the event was generated, including `name`, `categories`, and `chain`. |
+| `alternatePlaces` | array of objects | For `user.entered_place` events, alternate place candidates. |
+| `verifiedPlace` | object | For verified `user.entered_place` events, the verified place. |
+| `location` | GeoJSON geometry | The location of the user at the time of the event, a `Point` in [GeoJSON](https://geojson.org/) format. |
+| `locationAccuracy` | number | The accuracy of the user's location at the time of the event, in meters. |
+| `confidence` | number | The confidence level of the event. One of `3` (high), `2` (medium), or `1` (low). |
+| `duration` | number | On exit events, the duration between the entry and exit events, in minutes. |
+| `metadata` | object | For conversions, the metadata you logged. |
+
+An entry or exit event describes a transition. To read a user's current state, such as the geofences they are in now, use the `user` object instead of replaying events. Events can arrive late or be replayed after a device was offline, so use `createdAt` to order them.
+
+### Example event
+
+This event was generated when `user-123` exited a geofence after 48 minutes.
+
+```json
+{
+  "_id": "56db1f4613012711002229f6",
+  "createdAt": "2026-06-10T13:44:10.535Z",
+  "actualCreatedAt": "2026-06-10T13:44:12.101Z",
+  "live": true,
+  "type": "user.exited_geofence",
+  "location": {
+    "type": "Point",
+    "coordinates": [-73.97779, 40.78382]
+  },
+  "locationAccuracy": 5,
+  "confidence": 3,
+  "duration": 48.3892,
+  "user": {
+    "_id": "56db1f4613012711002229f4",
+    "userId": "user-123",
+    "deviceId": "device-456"
+  },
+  "geofence": {
+    "_id": "56db1f4613012711002229f5",
+    "tag": "store",
+    "externalId": "store-42",
+    "description": "Store 42"
+  }
+}
+```
+
+## Generate an entry or exit event
+
+There is no operation that creates an entry or exit event directly. Radar generates these events when a location update changes a user's state.
+
+To generate one, call [Track](/api/tracking#track) with a `latitude` and `longitude` inside a geofence you created to produce an entry, then call it again with a location outside the geofence to produce an exit. The events are returned in the `events` array of each response.
+
+On iOS and Android, use the [SDK](/sdk/sdk) to track users. To test event generation without moving, see [Test, troubleshoot, and go live](/fundamentals/testing-and-launch).
+
+## Log a conversion
+
+Logs a conversion to analyze alongside other location activity in your app. A conversion can represent a purchase, a signup, engagement with an in-app feature, or another action.
+
+- **Endpoint**: `POST /v1/events`
+- **Authentication**: Publishable key
+- **Rate limit**: 10 requests per second
+- **Used by**: [Detect geofence events and place visits](/geofencing/geofences-and-places)
+
+<Info>
+  Custom conversions are available on the [Enterprise plan](https://radar.com/pricing).
+</Info>
+
+In the SDKs, this operation is `Radar.logConversion()`.
+
+### Body parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `name` | string | Yes | The name of the conversion. Use a generic name such as `in_app_purchase`. Only alphanumeric characters, underscores, dashes, and spaces are accepted. Radar event type names, such as `user.entered_geofence`, aren't accepted. |
+| `userId` | string | Conditional | The stable unique ID for the user. Identifies logged in users. |
+| `deviceId` | string | Conditional | A device ID for the user. Identifies logged out users. |
+| `installId` | string | Conditional | An install ID for the user. Identifies users who haven't granted location permissions. Can be a random alphanumeric string for users that don't exist in Radar. |
+| `metadata` | object | No | The metadata of the conversion. Don't include sensitive or personally identifiable information. |
+| `revenue` | number | No | The revenue of the conversion. Associates an amount with a transactional conversion such as a purchase or coupon redemption. Radar stores it as `revenue` in the event's `metadata`. |
+| `createdAt` | ISO 8601 string | No | The datetime when the conversion occurred. A date or valid ISO date string. Defaults to the current server time. |
+| `duration` | number | No | The duration of the conversion in minutes. |
+
+Include at least one of `userId`, `deviceId`, or `installId`. If no matching user exists, include `deviceId` or `installId` so Radar can record the conversion without a location.
+
+### Response
+
+A `200` response contains `meta` and `event`, an [event object](#event-object) whose `type` is the conversion `name`. Conversions always have a `confidence` of `3`.
+
+### Example
+
+This request logs an `in_app_purchase` conversion with revenue and metadata for `user-123`.
+
+```bash
+curl "https://api.radar.io/v1/events" \
+  -H "Authorization: prj_live_pk_..." \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"name": "in_app_purchase", "userId": "user-123", "revenue": 12.5, "metadata": {"sku": "sku-001"}}'
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "event": {
+    "_id": "56db1f4613012711002229f6",
+    "createdAt": "2026-06-10T13:44:10.535Z",
+    "live": true,
+    "type": "in_app_purchase",
+    "confidence": 3,
+    "metadata": {
+      "sku": "sku-001",
+      "revenue": 12.5
+    },
+    "user": {
+      "_id": "56db1f4613012711002229f4",
+      "userId": "user-123",
+      "deviceId": "device-456"
+    }
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `name` is missing or contains unsupported characters, `name` is a Radar event type, or none of `userId`, `deviceId`, and `installId` was sent. | Fix the request before you retry. |
+| `401` | The API key is missing or invalid. | Send a valid API key in the `Authorization` header. |
+| `402` | Custom conversions aren't included in your plan. | Upgrade to the [Enterprise plan](https://radar.com/pricing). |
+| `404` | No user matches `userId`, and neither `deviceId` nor `installId` was sent. | Send `deviceId` or `installId` with the request. |
+| `429` | The rate limit was exceeded. | Retry with backoff. See [Rate limits](/api/fundamentals#rate-limits). |
+
+A `400` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 400,
+    "message": "Missing user identifier. Must include one of id, userId, deviceId, or installId."
+  }
+}
+```
+
+## Verify an event
+
+Accepts or rejects an event. Event verifications are used to improve the accuracy and confidence level of future events, for example after a user confirms or corrects a place check-in.
+
+- **Endpoint**: `PUT /v1/events/:id/verification`
+- **Authentication**: Publishable key
+- **Rate limit**: 10 requests per second
+- **Used by**: [Detect geofence events and place visits](/geofencing/geofences-and-places)
+
+In the SDKs, this operation is the accept event and reject event methods. See the [SDK reference](/sdk/sdk) for your platform.
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Yes | The Radar `_id` of the event. |
+
+### Body parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `verification` | number | Yes | The verification value. One of `1` (accept), `-1` (reject), or `0` (unverify). |
+| `verifiedPlaceId` | string | No | For `user.entered_place` events, the Radar `_id` of the place the user was actually at, for example one of the event's `alternatePlaces`. |
+
+### Response
+
+A `200` response contains `meta` and `event`, the updated [event object](#event-object).
+
+### Example
+
+This request accepts an event.
+
+```bash
+curl "https://api.radar.io/v1/events/56db1f4613012711002229f7/verification" \
+  -H "Authorization: prj_live_pk_..." \
+  -X PUT \
+  -d "verification=1"
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "event": {
+    "_id": "56db1f4613012711002229f7",
+    "createdAt": "2026-06-10T13:44:10.535Z",
+    "live": true,
+    "type": "user.entered_place",
+    "confidence": 3,
+    "user": {
+      "_id": "56db1f4613012711002229f4",
+      "userId": "user-123",
+      "deviceId": "device-456"
+    },
+    "place": {
+      "_id": "59f1f4613012711002229aa1",
+      "name": "Example Coffee",
+      "categories": ["food-beverage", "coffee-shop"]
+    }
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `id` isn't a valid Radar ID, or `verification` isn't `1`, `-1`, or `0`. | Fix the request before you retry. |
+| `401` | The API key is missing or invalid. | Send a valid API key in the `Authorization` header. |
+| `404` | No event matches the ID in this project and environment. | Check the ID and the environment of your API key. |
+
+A `404` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 404,
+    "message": "Event not found."
+  }
+}
+```

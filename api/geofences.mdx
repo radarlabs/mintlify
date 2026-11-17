@@ -1,0 +1,465 @@
+---
+title: "Geofences API"
+description: "Reference for listing, retrieving, creating, upserting, and deleting Radar geofences, and for listing the users in a geofence."
+---
+
+Use the Geofences API to manage the custom regions and places monitored in your project from your own systems, for example to keep geofences in sync with a store database.
+
+| Operation | Endpoint | Authentication |
+| --- | --- | --- |
+| [List geofences](#list-geofences) | `GET /v1/geofences` | Secret key |
+| [Get a geofence](#get-a-geofence) | `GET /v1/geofences/:id`<br />`GET /v1/geofences/:tag/:externalId` | Secret key |
+| [Upsert a geofence](#upsert-a-geofence) | `PUT /v1/geofences/:tag/:externalId`<br />`PUT /v1/geofences/:id` | Secret key |
+| [Delete a geofence](#delete-a-geofence) | `DELETE /v1/geofences/:id`<br />`DELETE /v1/geofences/:tag/:externalId` | Secret key |
+| [Get users in a geofence](#get-users-in-a-geofence) | `GET /v1/geofences/:tag/:externalId/users`<br />`GET /v1/geofences/:id/users` | Secret key |
+
+The base URL is `https://api.radar.io`. Send your API key in the `Authorization` header. For key types, the error format, and rate limits, see [Authentication, errors, and rate limits](/api/fundamentals).
+
+To find geofences near a location from a client, use [Search geofences](/api/search#search-geofences), which accepts a publishable key. To create geofences in bulk from a CSV file or a scheduled sync, see [Detect geofence events and place visits](/geofencing/geofences-and-places).
+
+## Geofence object
+
+A geofence represents a custom region or place monitored in your project. You can reference a geofence by Radar `_id`, or by its `tag` and `externalId` together.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `_id` | string | The unique ID for the geofence, provided by Radar. An alphanumeric string. |
+| `createdAt` | ISO 8601 string | The datetime when the geofence was created. |
+| `updatedAt` | ISO 8601 string | The datetime when the geofence was last updated. |
+| `live` | boolean | `true` if the geofence was created with a live API key, `false` if it was created with a test API key. |
+| `tag` | string | A group for the geofence, for example `store`. |
+| `externalId` | string | An external ID for the geofence that maps to your internal database. |
+| `description` | string | A description for the geofence. |
+| `type` | string | The type of geofence geometry. One of `circle`, `polygon`, or `isochrone`. |
+| `geometry` | GeoJSON geometry | The geometry of the geofence, a `Polygon` in [GeoJSON](https://geojson.org/) format. The coordinates you provided for type `polygon`. A calculated polygon approximation for types `circle` and `isochrone`. |
+| `geometryCenter` | GeoJSON geometry | A `Point` in GeoJSON format. The center for type `circle`. The calculated centroid for type `polygon`. The destination for type `isochrone`. |
+| `geometryRadius` | number | The radius in meters for type `circle`. The calculated approximate radius in meters for type `polygon`. The travel duration in minutes for type `isochrone`. |
+| `mode` | string | The [travel mode](/api/routing#units-modes-and-geometry) for type `isochrone`. |
+| `metadata` | object | An optional set of custom key-value pairs for the geofence. |
+| `userIds` | array of strings | An optional user restriction. If set, the geofence generates events only for the specified users. |
+| `ip` | array of strings | An optional IP address restriction. If set, the geofence generates events only for requests from the specified IP addresses or ranges. |
+| `tripApproachingThreshold` | number | The trip approaching threshold for the geofence, in minutes. Overrides the project-level setting. |
+| `dwellThreshold` | number | If set, and `user.dwelled_in_geofence` events are enabled in your project settings, Radar generates an event when a user stays in the geofence longer than this threshold, in minutes. |
+| `stopDetection` | boolean | The stop detection setting for the geofence. Overrides the project-level setting. |
+| `enabled` | boolean | If `true`, the geofence generates events. If `false`, it doesn't. |
+| `disableAfter` | ISO 8601 string | If set, the geofence is disabled after this datetime. |
+| `deleteAfter` | ISO 8601 string | If set, the geofence is deleted after this datetime. |
+| `operatingHours` | object | An optional set of key-value pairs that restricts when the geofence generates events. Each key is a day of the week. Each value is a list of pairs, where a pair is one opening and closing time for that day in `HH:mm` format. |
+
+### Example geofence
+
+This geofence is a circle with a radius of 50 meters.
+
+```json
+{
+  "_id": "56db1f4613012711002229f5",
+  "createdAt": "2026-06-10T13:44:10.535Z",
+  "updatedAt": "2026-06-10T14:40:10.535Z",
+  "live": true,
+  "tag": "store",
+  "externalId": "store-42",
+  "description": "Store 42",
+  "type": "circle",
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [-73.974767, 40.78382],
+        [-73.97536, 40.784269],
+        [-73.975953, 40.78382],
+        [-73.97536, 40.783371],
+        [-73.974767, 40.78382]
+      ]
+    ]
+  },
+  "geometryCenter": {
+    "type": "Point",
+    "coordinates": [-73.97536, 40.78382]
+  },
+  "geometryRadius": 50,
+  "metadata": {
+    "parking": true,
+    "region": "northeast"
+  },
+  "enabled": true
+}
+```
+
+## List geofences
+
+Lists geofences. Geofences are sorted descending by `updatedAt`.
+
+- **Endpoint**: `GET /v1/geofences`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `limit` | number | No | The maximum number of geofences to return. A number between 1 and 1000. Defaults to 100. |
+| `createdBefore` | ISO 8601 string | No | Returns geofences created before the specified datetime. A date or valid ISO date string. |
+| `createdAfter` | ISO 8601 string | No | Returns geofences created after the specified datetime. A date or valid ISO date string. |
+| `updatedBefore` | ISO 8601 string | No | A cursor for pagination. Returns geofences updated before the specified datetime. A date or valid ISO date string. |
+| `updatedAfter` | ISO 8601 string | No | A cursor for pagination. Returns geofences updated after the specified datetime. A date or valid ISO date string. |
+| `tag` | string | No | Returns geofences with the specified `tag`. |
+| `externalId` | string | No | Returns geofences with the specified `externalId`. |
+| `metadata[key]` | string | No | Metadata filters. The value type is inferred. For example, to match `offers == true`, use `metadata[offers]=true`. |
+
+### Response
+
+A `200` response contains `meta`, with a `hasMore` boolean, and `geofences`, an array of [geofence objects](#geofence-object). To get the next page, pass the `updatedAt` of the last geofence as `updatedBefore`. See [Pagination](/api/fundamentals#pagination).
+
+### Example
+
+This request gets the most recently updated geofence with the tag `store`.
+
+```bash
+curl "https://api.radar.io/v1/geofences?tag=store&limit=1" \
+  -H "Authorization: prj_live_sk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200,
+    "hasMore": true
+  },
+  "geofences": [
+    {
+      "_id": "56db1f4613012711002229f5",
+      "createdAt": "2026-06-10T13:44:10.535Z",
+      "updatedAt": "2026-06-10T14:40:10.535Z",
+      "live": true,
+      "tag": "store",
+      "externalId": "store-42",
+      "description": "Store 42",
+      "type": "circle",
+      "geometryCenter": {
+        "type": "Point",
+        "coordinates": [-73.97536, 40.78382]
+      },
+      "geometryRadius": 50,
+      "enabled": true
+    }
+  ]
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `limit` is out of range or a filter value is invalid. `meta.param` names the parameter. | Fix the parameter named in `meta.param`. |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `429` | The rate limit was exceeded. | Retry with backoff. See [Rate limits](/api/fundamentals#rate-limits). |
+
+## Get a geofence
+
+Gets a geofence. Reference the geofence by Radar `_id`, or by `tag` and `externalId`.
+
+- **Endpoint**: `GET /v1/geofences/:id` or `GET /v1/geofences/:tag/:externalId`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Conditional | The Radar `_id` of the geofence. Send either `id`, or `tag` and `externalId`. |
+| `tag` | string | Conditional | The `tag` of the geofence. Send it with `externalId`. |
+| `externalId` | string | Conditional | The `externalId` of the geofence. Send it with `tag`. |
+
+### Response
+
+A `200` response contains `meta` and `geofence`, a [geofence object](#geofence-object).
+
+### Example
+
+This request gets the geofence with the tag `store` and the external ID `store-42`.
+
+```bash
+curl "https://api.radar.io/v1/geofences/store/store-42" \
+  -H "Authorization: prj_live_sk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "geofence": {
+    "_id": "56db1f4613012711002229f5",
+    "createdAt": "2026-06-10T13:44:10.535Z",
+    "updatedAt": "2026-06-10T14:40:10.535Z",
+    "live": true,
+    "tag": "store",
+    "externalId": "store-42",
+    "description": "Store 42",
+    "type": "circle",
+    "geometryCenter": {
+      "type": "Point",
+      "coordinates": [-73.97536, 40.78382]
+    },
+    "geometryRadius": 50,
+    "enabled": true
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `id` isn't a valid Radar ID. | Fix the request before you retry. |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `404` | No geofence matches in this project and environment. | Check the identifiers and the environment of your API key. |
+
+A `404` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 404,
+    "message": "Geofence not found."
+  }
+}
+```
+
+## Upsert a geofence
+
+Upserts a geofence. Reference the geofence by `tag` and `externalId`, or by Radar `_id`. If a geofence with the specified `tag` and `externalId` exists, Radar updates it. If not, Radar creates it. Because the result is the same when you repeat the request, this is the recommended way to sync geofences from your own system.
+
+- **Endpoint**: `PUT /v1/geofences/:tag/:externalId` or `PUT /v1/geofences/:id`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+- **Used by**: [Detect geofence events and place visits](/geofencing/geofences-and-places), [Build store locators](/maps/store-locators)
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Conditional | The Radar `_id` of the geofence. Send either `id`, or `tag` and `externalId`. |
+| `tag` | string | Conditional | The `tag` of the geofence. Send it with `externalId`. |
+| `externalId` | string | Conditional | The `externalId` of the geofence. Send it with `tag`. |
+
+### Body parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `description` | string | Yes | A description for the geofence. 1 to 256 characters. |
+| `type` | string | Yes | The type of geofence geometry. One of `circle`, `polygon`, or `isochrone`. |
+| `coordinates` | array | Conditional | Required if `address` and `placeId` aren't included. For type `circle`, the center, and for type `isochrone`, the destination, as an array or JSON string in the format `[longitude,latitude]`. For type `polygon`, a two-dimensional array or JSON string that represents a closed ring of between 4 and 2,000 coordinates, in the format `[[longitude0,latitude0],[longitude1,latitude1],[longitude2,latitude2],[longitude0,latitude0]]`. Longitude comes before latitude, a GeoJSON convention. |
+| `address` | string | Conditional | Required if `coordinates` and `placeId` aren't included. An address to search for. If found, it is the center for type `circle` or `isochrone`. If you provide both `address` and `coordinates`, they must be near each other, and `coordinates` takes precedence. Ignored for type `polygon`. |
+| `placeId` | string | Conditional | Required if `coordinates` and `address` aren't included. For place matching, the `_id` of the Radar place to match to the geofence. If provided and found, the place centroid overrides `coordinates` and `address`. |
+| `radius` | number | Conditional | Required for types `circle` and `isochrone`. For type `circle`, the radius in meters, a number between `10` and `10000`. For type `isochrone`, the travel duration in minutes, a number between `1` and `90`. Ignored for type `polygon`. |
+| `mode` | string | Conditional | Required for type `isochrone`. The [travel mode](/api/routing#units-modes-and-geometry) for type `isochrone`. |
+| `metadata` | object | No | Custom key-value pairs for the geofence. A dictionary or JSON string with up to 16 keys and values of type string, boolean, or number. See [Metadata](/api/fundamentals#metadata). |
+| `userIds` | string | No | A user restriction. An array or a string of comma-separated user IDs. If set, the geofence generates events only for the specified users. If not set, it generates events for all users. |
+| `userId` | string | No | Deprecated. A single user restriction. Use `userIds` instead. |
+| `ip` | string | No | An IP address restriction. A string of comma-separated IP address ranges, each a single IP (`192.0.2.8`), wildcard notation (`192.0.2.*`), or CIDR notation (`192.0.2.0/24`). If set, the geofence generates events only for requests from the specified addresses. |
+| `enabled` | boolean | No | If `true`, the geofence generates events. If `false`, it doesn't. Defaults to `true`. |
+| `disableAfter` | ISO 8601 string | No | Use to create temporary geofences. If set, the geofence is disabled after the specified datetime. A date or valid ISO date string. |
+| `deleteAfter` | ISO 8601 string | No | Use to create temporary geofences. If set, the geofence is deleted after the specified datetime. A date or valid ISO date string. |
+| `stopDetection` | boolean | No | The stop detection setting for the geofence. Overrides the project-level setting. |
+| `tripApproachingThreshold` | number | No | The trip approaching threshold for the geofence, in minutes. A number greater than 0. Overrides the project-level setting. |
+| `dwellThreshold` | number | No | If set, and `user.dwelled_in_geofence` events are enabled in your project settings, Radar generates an event when a user stays in the geofence longer than this threshold, in minutes. A number greater than 0. |
+| `operatingHours` | object | No | Key-value pairs that restrict when the geofence generates events. Each key is a day of the week (for example `Sunday`) or its three-letter abbreviation (for example `Sun`), case insensitive. Each value is a list of pairs, where a pair is one opening and closing time for that day. Accepted time formats include `h:mm aa` (for example `12:45 AM`) and `HH:mm` (for example `00:45`). If not set, the geofence is always open. |
+
+When you reference the geofence by Radar `_id`, you can also send `tag` and `externalId` in the body to change them.
+
+A restaurant that is open only for lunch and dinner on Sundays uses this `operatingHours` value:
+
+```json
+{
+  "Sunday": [
+    ["11:00", "14:00"],
+    ["19:00", "22:00"]
+  ]
+}
+```
+
+### Response
+
+A `200` response contains `meta` and `geofence`, the created or updated [geofence object](#geofence-object).
+
+### Example
+
+This request creates or updates a circle geofence with a radius of 50 meters.
+
+```bash
+curl "https://api.radar.io/v1/geofences/store/store-42" \
+  -H "Authorization: prj_live_sk_..." \
+  -X PUT \
+  -d "description=Store 42" \
+  -d "type=circle" \
+  -d "coordinates=[-73.97536,40.78382]" \
+  -d "radius=50"
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "geofence": {
+    "_id": "56db1f4613012711002229f5",
+    "createdAt": "2026-06-10T13:44:10.535Z",
+    "updatedAt": "2026-06-10T14:40:10.535Z",
+    "live": true,
+    "tag": "store",
+    "externalId": "store-42",
+    "description": "Store 42",
+    "type": "circle",
+    "geometryCenter": {
+      "type": "Point",
+      "coordinates": [-73.97536, 40.78382]
+    },
+    "geometryRadius": 50,
+    "enabled": true
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | A required parameter is missing or invalid. `meta.param` names the parameter, for example `description`, `type`, `coordinates`, `radius`, `mode`, `metadata`, or `operatingHours`. | Fix the parameter named in `meta.param`. |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `404` | The `address` or `placeId` could not be found, or no geofence matches the Radar `_id`. | Check the `address`, the `placeId`, or the Radar `_id`. |
+
+A `400` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 400,
+    "param": "radius",
+    "message": "radius: Param is required for type circle."
+  }
+}
+```
+
+## Delete a geofence
+
+Deletes a geofence. Reference the geofence by Radar `_id`, or by `tag` and `externalId`.
+
+- **Endpoint**: `DELETE /v1/geofences/:id` or `DELETE /v1/geofences/:tag/:externalId`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Conditional | The Radar `_id` of the geofence. Send either `id`, or `tag` and `externalId`. |
+| `tag` | string | Conditional | The `tag` of the geofence. Send it with `externalId`. |
+| `externalId` | string | Conditional | The `externalId` of the geofence. Send it with `tag`. |
+
+### Response
+
+A `200` response contains only `meta`.
+
+### Example
+
+This request deletes the geofence with the tag `store` and the external ID `store-42`.
+
+```bash
+curl "https://api.radar.io/v1/geofences/store/store-42" \
+  -H "Authorization: prj_live_sk_..." \
+  -X DELETE
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `404` | No geofence matches in this project and environment. | Check the identifiers and the environment of your API key. |
+
+## Get users in a geofence
+
+Gets the users currently in a geofence. Users are sorted descending by `updatedAt`.
+
+- **Endpoint**: `GET /v1/geofences/:tag/:externalId/users` or `GET /v1/geofences/:id/users`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Conditional | The Radar `_id` of the geofence. Send either `id`, or `tag` and `externalId`. |
+| `tag` | string | Conditional | The `tag` of the geofence. Send it with `externalId`. |
+| `externalId` | string | Conditional | The `externalId` of the geofence. Send it with `tag`. |
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `limit` | number | No | The maximum number of users to return. A number between 1 and 1000. Defaults to 100. |
+| `updatedBefore` | ISO 8601 string | No | A cursor for pagination. Returns users updated before the specified datetime. A date or valid ISO date string. |
+| `updatedAfter` | ISO 8601 string | No | A cursor for pagination. Returns users updated after the specified datetime. A date or valid ISO date string. |
+
+### Response
+
+A `200` response contains `meta`, with a `hasMore` boolean, and `users`, an array of [user objects](/api/users#user-object).
+
+### Example
+
+This request lists the users in the geofence with the tag `store` and the external ID `store-42`.
+
+```bash
+curl "https://api.radar.io/v1/geofences/store/store-42/users" \
+  -H "Authorization: prj_live_sk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200,
+    "hasMore": false
+  },
+  "users": [
+    {
+      "_id": "56db1f4613012711002229f4",
+      "live": true,
+      "userId": "user-123",
+      "deviceId": "device-456",
+      "location": {
+        "type": "Point",
+        "coordinates": [-73.97536, 40.78382]
+      },
+      "locationAccuracy": 5,
+      "updatedAt": "2026-06-10T13:44:10.535Z"
+    }
+  ]
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | A parameter is invalid. `meta.param` names the parameter. | Fix the parameter named in `meta.param`. |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `429` | The rate limit was exceeded. | Retry with backoff. See [Rate limits](/api/fundamentals#rate-limits). |

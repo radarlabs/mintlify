@@ -1,0 +1,162 @@
+---
+title: "Project settings API"
+description: "Reference for the Radar endpoints that read and update the Places settings of a project: chain metadata, chain mappings, and place filters."
+---
+
+Use the Project settings API to read and update your project's Places settings from your own systems, for example to keep chain metadata in sync with your offers database.
+
+| Operation | Endpoint | Authentication |
+| --- | --- | --- |
+| [Get Places settings](#get-places-settings) | `GET /v1/settings` | Secret key |
+| [Update Places settings](#update-places-settings) | `PATCH /v1/settings` | Secret key |
+
+The base URL is `https://api.radar.io`. Send your API key in the `Authorization` header. For key types, the error format, and rate limits, see [Authentication, errors, and rate limits](/api/fundamentals).
+
+These are the only project settings available through the REST API. Change all other project settings, such as event types, tracking options, and integrations, on the [Settings](https://dashboard.radar.com/settings) page of the Radar dashboard. See [Set up organizations, projects, accounts, and authentication](/fundamentals/authentication-and-access).
+
+## Places settings
+
+Places settings are your project's current settings for Places. For how Places generates context and events, see [Detect geofence events and place visits](/geofencing/geofences-and-places).
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `chainMetadata` | object | Custom metadata for Radar chains. Each key is a [chain slug](/places/chains). Each value is a dictionary of metadata for that chain, exposed as `place.chain.metadata` in user context and events. |
+| `chainMappings` | object | Custom IDs for Radar chains. Each key is a [chain slug](/places/chains). Each value is your ID for that chain, exposed as `place.chain.externalId` in user context and events. |
+| `placeFilters` | object | The chains, categories, and groups for which Radar generates place entry and exit events. Optional keys `chain`, `category`, and `group`, each with an array of strings. |
+
+A field is omitted from responses when it has never been set.
+
+## Get Places settings
+
+Gets your current Places settings.
+
+- **Endpoint**: `GET /v1/settings`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+
+### Response
+
+A `200` response contains `meta` and the [Places settings](#places-settings) fields at the top level.
+
+### Example
+
+This request gets the Places settings for the project.
+
+```bash
+curl "https://api.radar.io/v1/settings" \
+  -H "Authorization: prj_live_sk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "chainMetadata": {
+    "mcdonalds": {
+      "availableDeals": true
+    },
+    "starbucks": {
+      "availableDeals": true
+    }
+  },
+  "chainMappings": {
+    "mcdonalds": "retailer-1",
+    "starbucks": "retailer-2"
+  },
+  "placeFilters": {
+    "chain": ["mcdonalds", "starbucks"],
+    "category": ["restaurant"]
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `429` | The rate limit was exceeded. | Retry with backoff. See [Rate limits](/api/fundamentals#rate-limits). |
+
+## Update Places settings
+
+Updates your Places settings.
+
+- **Endpoint**: `PATCH /v1/settings`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+
+Send only the fields you want to change:
+
+- A field you include replaces the whole stored value of that field. For example, a `chainMappings` value with one chain removes the mappings for all other chains.
+- A field you omit isn't changed.
+- A field you set to `null` is cleared.
+
+Because an included field is replaced as a whole, read the current settings first, change the copy, and send the full value of each field you update.
+
+### Body parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `chainMetadata` | object | No | Custom metadata for Radar chains. Each key is a chain slug of up to 256 characters. Each value is a dictionary with up to 16 keys. Metadata keys are strings of up to 256 characters. Metadata values are strings of up to 256 characters, booleans, or numbers. |
+| `chainMappings` | object | No | Custom IDs for Radar chains. Keys and values are strings of up to 256 characters. |
+| `placeFilters` | object | No | A dictionary with the optional keys `chain`, `category`, and `group`, each with an array of strings. `chain` values must be Radar [chain slugs](/places/chains). `category` values must be Radar [place categories](/places/categories). |
+
+### Response
+
+A `200` response contains `meta` and the updated [Places settings](#places-settings) fields at the top level.
+
+### Example
+
+This request replaces the chain metadata, chain mappings, and place filters.
+
+```bash
+curl "https://api.radar.io/v1/settings" \
+  -H "Authorization: prj_live_sk_..." \
+  -H "Content-Type: application/json" \
+  -X PATCH \
+  -d '{"chainMetadata":{"mcdonalds":{"availableDeals":false}},"chainMappings":{"mcdonalds":"retailer-1"},"placeFilters":{"chain":["mcdonalds"]}}'
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "chainMetadata": {
+    "mcdonalds": {
+      "availableDeals": false
+    }
+  },
+  "chainMappings": {
+    "mcdonalds": "retailer-1"
+  },
+  "placeFilters": {
+    "chain": ["mcdonalds"]
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | A field isn't a dictionary, a key or value is too long or has the wrong type, `chainMetadata` for a chain has more than 16 keys, or `placeFilters` has an unknown key or an unrecognized chain, category, or group. `meta.param` names the field. | Fix the field named in `meta.param`. |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `429` | The rate limit was exceeded. | Retry with backoff. See [Rate limits](/api/fundamentals#rate-limits). |
+
+A `400` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 400,
+    "param": "placeFilters",
+    "message": "placeFilters: Filter key must be one of category, chain, or group."
+  }
+}
+```

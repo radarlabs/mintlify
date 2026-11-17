@@ -1,0 +1,972 @@
+---
+title: "Trips API"
+description: "Reference for creating, updating, listing, and deleting Radar trips, including trip routes and multi-leg trips."
+---
+
+Use the Trips API to start and manage trips from your backend, for example when an order is placed, and to read trip status, ETAs, and locations for an operations view.
+
+| Operation | Endpoint | Authentication |
+| --- | --- | --- |
+| [Get a trip](#get-a-trip) | `GET /v1/trips/:id` | Secret key |
+| [Get a trip route](#get-a-trip-route) | `GET /v1/trips/:id/route` | Secret key |
+| [List trips](#list-trips) | `GET /v1/trips` | Secret key |
+| [Create a new trip](#create-a-new-trip) | `POST /v1/trips` | Publishable key |
+| [Update a trip](#update-a-trip) | `PATCH /v1/trips/:id/update` | Publishable key |
+| [Delete a trip](#delete-a-trip) | `DELETE /v1/trips/:id` | Secret key |
+| [Add a trip leg](#add-a-trip-leg) | `POST /v1/trips/:id/legs` | Publishable key |
+| [Update a trip leg](#update-a-trip-leg) | `PATCH /v1/trips/:id/legs/:legId` | Publishable key |
+| [Reorder trip legs](#reorder-trip-legs) | `PUT /v1/trips/:id/legs` | Publishable key |
+| [Delete a trip leg](#delete-a-trip-leg) | `DELETE /v1/trips/:id/legs/:legId` | Publishable key |
+
+The base URL is `https://api.radar.io`. Send your API key in the `Authorization` header. For key types, the error format, and rate limits, see [Authentication, errors, and rate limits](/api/fundamentals).
+
+For the full pickup, delivery, and worker tracking workflows, see [Track pickups, deliveries, and workers](/geofencing/trips). For most apps, start and update trips with the [SDK](/sdk/sdk), which also changes tracking behavior on the device while a trip is active.
+
+## Trip object
+
+A trip is a sequence of location updates with metadata and a unique ID, optionally with an ETA to a destination geofence. Depending on your use case, a trip can represent a pickup, a delivery, or something else.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `_id` | string | The unique ID for the trip, provided by Radar. An alphanumeric string. |
+| `live` | boolean | `true` if the trip was created with a live API key, `false` if it was created with a test API key. |
+| `externalId` | string | A stable unique ID for the trip. Depending on your use case, an order ID, a delivery ID, or something else. |
+| `metadata` | object | An optional set of custom key-value pairs for the trip, displayed in the trip tracking dashboard. |
+| `mode` | string | The [travel mode](/api/routing#units-modes-and-geometry) for the trip. One of `car`, `foot`, `bike`, `truck`, or `motorbike`. |
+| `destinationGeofenceTag` | string | For trips with a destination, the tag of the destination geofence. |
+| `destinationGeofenceExternalId` | string | For trips with a destination, the external ID of the destination geofence. |
+| `destinationLocation` | GeoJSON geometry | For trips with a destination, the location of the destination geofence, a `Point` in [GeoJSON](https://geojson.org/) format. |
+| `eta` | object | For trips with a destination, the ETA to the destination based on the travel mode, including `duration` in minutes and `distance` in meters. |
+| `approachingThreshold` | number | For trips with a destination, the trip approaching threshold for the trip, in minutes. Overrides the geofence-level and project-level settings. |
+| `createdAt` | ISO 8601 string | The datetime when the trip was created. |
+| `updatedAt` | ISO 8601 string | The datetime when the trip's location was last updated. |
+| `scheduledArrivalAt` | ISO 8601 string | The datetime when the device on the trip is expected to arrive. Required for [Olo order firing](/integrations/olo), where the order is fired `approachingThreshold` minutes before `scheduledArrivalAt` as a backstop. |
+| `orderFiredAt` | ISO 8601 string | With the [Olo integration](/integrations/olo), the datetime when the order associated with the trip was fired. |
+| `arrivedAt` | ISO 8601 string | For trips with a destination, the datetime when the user arrived at the destination (entered the destination geofence). |
+| `completedAt` | ISO 8601 string | The datetime when the trip was stopped. |
+| `status` | string | The [status](#trip-statuses) of the trip. |
+| `user` | object | The [user](/api/users#user-object) for which the trip is being tracked. |
+| `userId` | string | The `userId` of the user for which the trip is being tracked. |
+| `locations` | array of objects | The location updates tracked while the trip was active. An array of `Point` objects in [GeoJSON](https://geojson.org/) format, each with an `updatedAt`. |
+| `delay` | object | The predicted delay for the trip, including a `delayed` boolean and `scheduledArrivalTimeDelay`, the delay in minutes. |
+| `currentLegId` | string | For [multi-leg trips](#trip-legs), the `_id` of the current leg. |
+| `legs` | array of objects | For [multi-leg trips](#trip-legs), the legs of the trip in order. |
+
+### Trip statuses
+
+| Status | Meaning |
+| --- | --- |
+| `pending` | The trip was created but hasn't started. |
+| `started` | The trip is in progress. |
+| `approaching` | The user is within the approaching threshold of the destination. |
+| `arrived` | The user entered the destination geofence. |
+| `completed` | The trip was completed. |
+| `canceled` | The trip was canceled. |
+| `expired` | The trip expired. |
+
+A trip with a status of `started`, `approaching`, or `arrived` is active. An active trip appears as `trip` on the [user object](/api/users#user-object).
+
+### Example trip
+
+This trip is a pickup in progress, with a destination geofence and an ETA.
+
+```json
+{
+  "_id": "5f3e50491c2b7d005c81f5d9",
+  "live": true,
+  "status": "started",
+  "externalId": "order-299",
+  "metadata": {
+    "vehicle": "Green hatchback",
+    "parkingSpot": "4"
+  },
+  "mode": "car",
+  "destinationGeofenceTag": "store",
+  "destinationGeofenceExternalId": "store-42",
+  "destinationLocation": {
+    "type": "Point",
+    "coordinates": [-105.061198, 39.779366]
+  },
+  "approachingThreshold": 3,
+  "eta": {
+    "duration": 5.5,
+    "distance": 1331
+  },
+  "createdAt": "2026-08-20T10:27:55.830Z",
+  "updatedAt": "2026-08-20T10:30:55.837Z",
+  "user": {
+    "_id": "56db1f4613012711002229f4",
+    "userId": "user-123",
+    "deviceId": "device-456"
+  },
+  "userId": "user-123",
+  "locations": [
+    {
+      "type": "Point",
+      "coordinates": [-105.062645, 39.76606],
+      "updatedAt": "2026-08-20T10:29:55.897Z"
+    },
+    {
+      "type": "Point",
+      "coordinates": [-105.062673, 39.769057],
+      "updatedAt": "2026-08-20T10:30:55.837Z"
+    }
+  ],
+  "delay": {
+    "delayed": false,
+    "scheduledArrivalTimeDelay": 0
+  }
+}
+```
+
+## Get a trip
+
+Gets a trip, including its locations. Reference the trip by Radar `_id` or `externalId`.
+
+- **Endpoint**: `GET /v1/trips/:id`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Yes | The Radar `_id` or the `externalId` of the trip. |
+
+### Response
+
+A `200` response contains `meta` and `trip`, a [trip object](#trip-object).
+
+### Example
+
+This request gets the trip with the `externalId` `order-299`.
+
+```bash
+curl "https://api.radar.io/v1/trips/order-299" \
+  -H "Authorization: prj_live_sk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "trip": {
+    "_id": "5f3e50491c2b7d005c81f5d9",
+    "live": true,
+    "status": "started",
+    "externalId": "order-299",
+    "mode": "car",
+    "destinationGeofenceTag": "store",
+    "destinationGeofenceExternalId": "store-42",
+    "destinationLocation": {
+      "type": "Point",
+      "coordinates": [-105.061198, 39.779366]
+    },
+    "eta": {
+      "duration": 5.5,
+      "distance": 1331
+    },
+    "createdAt": "2026-08-20T10:27:55.830Z",
+    "updatedAt": "2026-08-20T10:30:55.837Z",
+    "userId": "user-123",
+    "locations": [
+      {
+        "type": "Point",
+        "coordinates": [-105.062645, 39.76606],
+        "updatedAt": "2026-08-20T10:29:55.897Z"
+      }
+    ]
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `404` | No trip matches the ID in this project and environment. | Check the ID and the environment of your API key. |
+
+A `404` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 404,
+    "param": "tripId",
+    "message": "Trip not found."
+  }
+}
+```
+
+## Get a trip route
+
+Gets the route for a trip as a distance and an encoded polyline.
+
+- **Endpoint**: `GET /v1/trips/:id/route`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+
+<Info>
+  Trip routes must be enabled for your project. Contact your Radar account team.
+</Info>
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Yes | The Radar `_id` or the `externalId` of the trip. |
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `units` | string | No | The distance units for the response. One of `metric` or `imperial`. Defaults to `imperial`. |
+
+### Response
+
+A `200` response contains:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `meta` | object | The response metadata, including `code`. |
+| `distance` | object | The route distance, with a numeric `value` and a display `text` in the requested units. |
+| `geometry` | object | The route geometry, with an encoded `polyline` string. |
+
+### Example
+
+This request gets the route for the trip `order-299`.
+
+```bash
+curl "https://api.radar.io/v1/trips/order-299/route" \
+  -H "Authorization: prj_live_sk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "distance": {
+    "value": 1077.1,
+    "text": "0.2 mi"
+  },
+  "geometry": {
+    "polyline": "waczjAhnokgEia@BcXXga@Ri|@KmIDsIDyD@mD@"
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `units` isn't `metric` or `imperial`. | Fix the request before you retry. |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `404` | No trip matches the ID, or the operation isn't enabled for your project. | Check the ID and the environment of your API key. If both are correct, contact your Radar account team. |
+
+## List trips
+
+Lists trips. Trips are sorted descending by `updatedAt` unless you set `sortBy`.
+
+- **Endpoint**: `GET /v1/trips`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+
+### Query parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `status` | string | No | Returns trips by status. A comma-separated string with one or more of `pending`, `started`, `approaching`, `arrived`, `completed`, `canceled`, and `expired`. |
+| `destinationGeofenceTag` | string | No | Returns trips with the specified destination geofence tag. |
+| `destinationGeofenceExternalId` | string | No | Returns trips with the specified destination geofence external ID. |
+| `externalId` | string | No | Returns trips by `externalId`. A comma-separated string with one or more IDs. |
+| `userId` | string | No | Returns trips for the user with the specified Radar `_id`. |
+| `includeLocations` | boolean | No | Whether to include `locations` on each trip. Set to `false` for smaller responses. |
+| `createdAfter` | ISO 8601 string | No | A cursor for pagination. Returns trips created after the specified datetime. A date or valid ISO date string. |
+| `createdBefore` | ISO 8601 string | No | A cursor for pagination. Returns trips created before the specified datetime. A date or valid ISO date string. |
+| `sortBy` | string | No | Sorts trips by the specified field in descending order. One of `createdAt` or `updatedAt`. Defaults to `updatedAt`. |
+| `delayed` | boolean | No | Returns trips that match the specified delayed state. |
+| `limit` | number | No | The maximum number of trips to return. A number between 1 and 1000. Defaults to 500. |
+
+### Response
+
+A `200` response contains `meta`, with a `hasMore` boolean, and `trips`, an array of [trip objects](#trip-object). To page through trips, set `sortBy=createdAt` and pass the `createdAt` of the last trip as `createdBefore`. See [Pagination](/api/fundamentals#pagination).
+
+### Example
+
+This request lists the started and approaching trips to one store, without locations.
+
+```bash
+curl "https://api.radar.io/v1/trips?status=started,approaching&destinationGeofenceTag=store&destinationGeofenceExternalId=store-42&includeLocations=false" \
+  -H "Authorization: prj_live_sk_..."
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200,
+    "hasMore": false
+  },
+  "trips": [
+    {
+      "_id": "5f3e50491c2b7d005c81f5d9",
+      "live": true,
+      "status": "started",
+      "externalId": "order-299",
+      "metadata": {
+        "vehicle": "Green hatchback"
+      },
+      "mode": "car",
+      "destinationGeofenceTag": "store",
+      "destinationGeofenceExternalId": "store-42",
+      "destinationLocation": {
+        "type": "Point",
+        "coordinates": [-105.061198, 39.779366]
+      },
+      "eta": {
+        "duration": 5.5,
+        "distance": 1331
+      },
+      "createdAt": "2026-08-20T10:27:55.830Z",
+      "updatedAt": "2026-08-20T10:30:55.837Z",
+      "userId": "user-123"
+    }
+  ]
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | A filter value is invalid, for example an unknown `status` or `sortBy`. `meta.param` names the parameter. | Fix the parameter named in `meta.param`. |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `429` | The rate limit was exceeded. | Retry with backoff. See [Rate limits](/api/fundamentals#rate-limits). |
+
+## Create a new trip
+
+Creates a new trip. Location updates from the [SDK](/sdk/sdk) with the trip's `userId` update the trip for that user.
+
+- **Endpoint**: `POST /v1/trips`
+- **Authentication**: Publishable key
+- **Rate limit**: 10 requests per second
+- **Used by**: [Track pickups, deliveries, and workers](/geofencing/trips), [Olo pickup and order firing](/integrations/olo)
+
+Use the SDK to start trips and track users for most use cases. Create a trip with this operation when the trip starts from your backend or from an integration, for example when an order is placed.
+
+### Body parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `externalId` | string | Yes | A stable unique ID for the trip. Depending on your use case, an order ID, a delivery ID, or something else. |
+| `destinationGeofenceTag` | string | No | For trips with a destination, the tag of the destination geofence. Send it together with `destinationGeofenceExternalId`. |
+| `destinationGeofenceExternalId` | string | No | For trips with a destination, the external ID of the destination geofence. Send it together with `destinationGeofenceTag`. |
+| `userId` | string | No | The `userId` of the [user](/api/users#user-object) for which the trip is being tracked. |
+| `mode` | string | No | The [travel mode](/api/routing#units-modes-and-geometry) for the trip. One of `car`, `foot`, `bike`, `truck`, or `motorbike`. Defaults to `car`. |
+| `status` | string | No | The initial status of the trip. One of `pending` or `started`. Defaults to `started`. |
+| `approachingThreshold` | number | No | For trips with a destination, the trip approaching threshold for the trip, in minutes. Overrides the geofence-level and project-level settings. |
+| `scheduledArrivalAt` | ISO 8601 string | No | The datetime when the device on the trip is expected to arrive. Required for [Olo order firing](/integrations/olo). A date or valid ISO date string. |
+| `metadata` | object | No | An optional set of custom key-value pairs for the trip. A dictionary or JSON string. |
+| `legs` | array of objects | No | For [multi-leg trips](#trip-legs), an array of legs. Each leg accepts the [leg parameters](#add-a-trip-leg). Requires multi-leg trips to be enabled for your project. |
+
+### Response
+
+A `200` response contains `meta` and `trip`, the created [trip object](#trip-object).
+
+### Example
+
+This request creates a trip to the geofence `store-42` for `user-123`.
+
+```bash
+curl "https://api.radar.io/v1/trips" \
+  -H "Authorization: prj_test_pk_..." \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"externalId": "order-299", "mode": "car", "destinationGeofenceTag": "store", "destinationGeofenceExternalId": "store-42", "userId": "user-123", "approachingThreshold": 3, "metadata": {"parkingSpot": "4"}}'
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "trip": {
+    "_id": "6334960ad9735600116b7ab5",
+    "live": false,
+    "externalId": "order-299",
+    "userId": "user-123",
+    "mode": "car",
+    "status": "started",
+    "destinationGeofenceTag": "store",
+    "destinationGeofenceExternalId": "store-42",
+    "destinationLocation": {
+      "type": "Point",
+      "coordinates": [-73.977797, 40.783826]
+    },
+    "metadata": {
+      "parkingSpot": "4"
+    },
+    "approachingThreshold": 3,
+    "user": {
+      "_id": "56db1f4613012711002229f4",
+      "userId": "user-123",
+      "deviceId": "device-456"
+    },
+    "locations": []
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `externalId` is missing, a value is invalid, or only one of `destinationGeofenceTag` and `destinationGeofenceExternalId` was sent. | Fix the request before you retry. |
+| `401` | The API key is missing or invalid. | Send a valid API key in the `Authorization` header. |
+| `404` | The destination geofence doesn't exist in this project and environment. | Check the `tag` and `externalId` of the destination geofence and the environment of your API key. |
+| `409` | The request conflicts with another change to the same trip. | Retry the request. |
+
+A `404` response looks like this:
+
+```json
+{
+  "meta": {
+    "code": 404,
+    "message": "Destination geofence not found."
+  }
+}
+```
+
+## Update a trip
+
+Updates a trip. Reference the trip by Radar `_id` or `externalId`. Use this operation to change a trip's status, for example to complete or cancel it, or to change its destination, mode, or metadata.
+
+- **Endpoint**: `PATCH /v1/trips/:id/update`
+- **Authentication**: Publishable key
+- **Rate limit**: 10 requests per second
+- **Used by**: [Track pickups, deliveries, and workers](/geofencing/trips)
+
+On iOS and Android, use the [SDK](/sdk/sdk) to update trips.
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Yes | The Radar `_id` or the `externalId` of the trip. |
+
+### Body parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `status` | string | No | The new status of the trip. One of `pending`, `started`, `approaching`, `arrived`, `completed`, `canceled`, or `expired`. |
+| `mode` | string | No | The [travel mode](/api/routing#units-modes-and-geometry) for the trip. One of `car`, `foot`, `bike`, `truck`, or `motorbike`. |
+| `destinationGeofenceTag` | string | No | For trips with a destination, the tag of the destination geofence. |
+| `destinationGeofenceExternalId` | string | No | For trips with a destination, the external ID of the destination geofence. |
+| `approachingThreshold` | number | No | For trips with a destination, the trip approaching threshold for the trip, in minutes. Overrides the geofence-level and project-level settings. |
+| `scheduledArrivalAt` | ISO 8601 string | No | The datetime when the device on the trip is expected to arrive. Required for [Olo order firing](/integrations/olo). A date or valid ISO date string. |
+| `metadata` | object | No | An optional set of custom key-value pairs for the trip. A dictionary or JSON string. |
+| `userId` | string | No | The `userId` of the user for the trip. You can set it on a trip that has no user. You can't change the user on a trip that already has one. |
+
+### Response
+
+A `200` response contains `meta` and `trip`, the updated [trip object](#trip-object).
+
+### Example
+
+This request completes the trip `order-299`.
+
+```bash
+curl "https://api.radar.io/v1/trips/order-299/update" \
+  -H "Authorization: prj_live_pk_..." \
+  -X PATCH \
+  -d "status=completed"
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "trip": {
+    "_id": "6334960ad9735600116b7ab5",
+    "live": true,
+    "externalId": "order-299",
+    "userId": "user-123",
+    "mode": "car",
+    "status": "completed",
+    "destinationGeofenceTag": "store",
+    "destinationGeofenceExternalId": "store-42",
+    "destinationLocation": {
+      "type": "Point",
+      "coordinates": [-73.977797, 40.783826]
+    },
+    "metadata": {
+      "parkingSpot": "4"
+    },
+    "approachingThreshold": 3,
+    "user": {
+      "_id": "56db1f4613012711002229f4",
+      "userId": "user-123",
+      "deviceId": "device-456"
+    },
+    "locations": []
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | A value is invalid, for example an unknown `status` or `mode`, or the request tries to change the trip's `userId`. | Fix the request before you retry. |
+| `401` | The API key is missing or invalid. | Send a valid API key in the `Authorization` header. |
+| `404` | No trip matches the ID in this project and environment. | Check the ID and the environment of your API key. |
+| `409` | The request conflicts with another change to the same trip. | Retry the request. |
+
+## Delete a trip
+
+Deletes a trip. Reference the trip by Radar `_id` or `externalId`.
+
+- **Endpoint**: `DELETE /v1/trips/:id`
+- **Authentication**: Secret key
+- **Rate limit**: 10 requests per second
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Yes | The Radar `_id` or the `externalId` of the trip. |
+
+### Response
+
+A `200` response contains only `meta`.
+
+### Example
+
+This request deletes the trip `order-299`.
+
+```bash
+curl "https://api.radar.io/v1/trips/order-299" \
+  -H "Authorization: prj_live_sk_..." \
+  -X DELETE
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `401` | The API key is missing or invalid, or isn't a secret key. | Send a valid secret key in the `Authorization` header. |
+| `404` | No trip matches the ID in this project and environment. | Check the ID and the environment of your API key. |
+
+## Trip legs
+
+A multi-leg trip has several destinations, visited in order. Each destination is a leg. On a multi-leg trip, destinations are defined on each leg, and the top-level `destinationGeofenceTag`, `destinationGeofenceExternalId`, and `destinationLocation` fields aren't present.
+
+<Info>
+  Multi-leg trips must be enabled for your project. Contact your Radar account team.
+</Info>
+
+### Leg object
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `_id` | string | The unique ID for the leg, provided by Radar. Use it in the leg operations. |
+| `status` | string | The status of the leg. One of `pending`, `started`, `approaching`, `arrived`, `completed`, `canceled`, or `expired`. |
+| `destinationGeofenceTag` | string | For legs with a geofence destination, the tag of the destination geofence. |
+| `destinationGeofenceExternalId` | string | For legs with a geofence destination, the external ID of the destination geofence. |
+| `stopDuration` | number | The expected time at the stop, in minutes. |
+| `metadata` | object | An optional set of custom key-value pairs for the leg. |
+| `eta` | object | The ETA to the leg's destination, including `duration` in minutes and `distance` in meters. |
+
+### Example multi-leg trip
+
+This trip has two legs, each with a geofence destination.
+
+```json
+{
+  "_id": "5f3e50491c2b7d005c81f5d9",
+  "live": true,
+  "status": "started",
+  "externalId": "route-123",
+  "mode": "car",
+  "currentLegId": "6f4e60591d3c8e006d9206ea",
+  "legs": [
+    {
+      "_id": "6f4e60591d3c8e006d9206ea",
+      "status": "started",
+      "destinationGeofenceTag": "stop",
+      "destinationGeofenceExternalId": "stop-1",
+      "stopDuration": 5,
+      "metadata": {
+        "orderId": "order-101"
+      },
+      "eta": {
+        "duration": 8.2,
+        "distance": 3200
+      }
+    },
+    {
+      "_id": "705f71602e4d9f117ea307fb",
+      "status": "pending",
+      "destinationGeofenceTag": "stop",
+      "destinationGeofenceExternalId": "stop-2",
+      "stopDuration": 5,
+      "metadata": {
+        "orderId": "order-102"
+      },
+      "eta": {
+        "duration": 15.7,
+        "distance": 6100
+      }
+    }
+  ],
+  "eta": {
+    "duration": 15.7,
+    "distance": 6100
+  }
+}
+```
+
+## Add a trip leg
+
+Adds a leg to a multi-leg trip.
+
+- **Endpoint**: `POST /v1/trips/:id/legs`
+- **Authentication**: Publishable key
+- **Rate limit**: 10 requests per second
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Yes | The Radar `_id` or the `externalId` of the trip. |
+
+### Body parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `destination` | object | Yes | The destination of the leg. Use exactly one of the destination forms below. |
+| `destination.destinationGeofenceTag` | string | Conditional | With `destination.destinationGeofenceExternalId`, the destination geofence. |
+| `destination.destinationGeofenceExternalId` | string | Conditional | With `destination.destinationGeofenceTag`, the destination geofence. |
+| `destination.destinationGeofenceId` | string | Conditional | The Radar `_id` of the destination geofence. |
+| `destination.address` | string | Conditional | An address to geocode and use as the destination. |
+| `destination.coordinates` | array of numbers | Conditional | The destination in the format `[longitude,latitude]`. |
+| `destination.arrivalRadius` | number | No | For address and coordinate destinations, the radius of the arrival zone, in meters. |
+| `status` | string | No | The initial status of the leg. Defaults to `pending`. |
+| `stopDuration` | number | No | The number of minutes the user is expected to stay at the stop. Radar adds it to the ETA of later legs. |
+| `metadata` | object | No | An optional set of custom key-value pairs for the leg. |
+| `index` | number | No | The position in `legs` at which to insert the new leg. A number from 0 to the current number of legs. |
+
+### Response
+
+A `200` response contains `meta` and `trip`, the updated [trip object](#trip-object) with its `legs`.
+
+### Example
+
+This request adds a leg with a geofence destination to the trip `route-123`.
+
+```bash
+curl "https://api.radar.io/v1/trips/route-123/legs" \
+  -H "Authorization: prj_live_pk_..." \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"destination": {"destinationGeofenceTag": "stop", "destinationGeofenceExternalId": "stop-3"}, "stopDuration": 5, "metadata": {"orderId": "order-103"}}'
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "trip": {
+    "_id": "5f3e50491c2b7d005c81f5d9",
+    "live": true,
+    "status": "started",
+    "externalId": "route-123",
+    "mode": "car",
+    "currentLegId": "6f4e60591d3c8e006d9206ea",
+    "legs": [
+      {
+        "_id": "6f4e60591d3c8e006d9206ea",
+        "status": "started",
+        "destinationGeofenceTag": "stop",
+        "destinationGeofenceExternalId": "stop-1",
+        "stopDuration": 5
+      },
+      {
+        "_id": "705f71602e4d9f117ea307fb",
+        "status": "pending",
+        "destinationGeofenceTag": "stop",
+        "destinationGeofenceExternalId": "stop-2",
+        "stopDuration": 5
+      },
+      {
+        "_id": "806082713f5ea0228fb4a80c",
+        "status": "pending",
+        "destinationGeofenceTag": "stop",
+        "destinationGeofenceExternalId": "stop-3",
+        "stopDuration": 5,
+        "metadata": {
+          "orderId": "order-103"
+        }
+      }
+    ]
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | The destination is missing or invalid, more than one destination form was sent, the trip already has the maximum number of legs, or the trip isn't a multi-leg trip. | Fix the request before you retry. |
+| `401` | The API key is missing or invalid. | Send a valid API key in the `Authorization` header. |
+| `404` | No trip matches the ID, the destination geofence doesn't exist, or multi-leg trips aren't enabled for your project. | Check the ID and the environment of your API key. If both are correct, contact your Radar account team. |
+| `409` | The request conflicts with another change to the same trip. | Retry the request. |
+
+## Update a trip leg
+
+Updates one leg of a multi-leg trip, for example to mark a stop as completed or to change its destination.
+
+- **Endpoint**: `PATCH /v1/trips/:id/legs/:legId`
+- **Authentication**: Publishable key
+- **Rate limit**: 10 requests per second
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Yes | The Radar `_id` or the `externalId` of the trip. |
+| `legId` | string | Yes | The Radar `_id` of the leg. |
+
+### Body parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `status` | string | No | The new status of the leg. One of `pending`, `started`, `approaching`, `arrived`, `completed`, `canceled`, or `expired`. |
+| `destination` | object | No | A new destination for the leg, in the same form as for [Add a trip leg](#add-a-trip-leg). |
+| `stopDuration` | number | No | The number of minutes the user is expected to stay at the stop. Radar adds it to the ETA of later legs. |
+| `metadata` | object | No | An optional set of custom key-value pairs for the leg. |
+
+### Response
+
+A `200` response contains `meta` and `trip`, the updated [trip object](#trip-object) with its `legs`.
+
+### Example
+
+This request completes one leg of the trip `route-123`.
+
+```bash
+curl "https://api.radar.io/v1/trips/route-123/legs/6f4e60591d3c8e006d9206ea" \
+  -H "Authorization: prj_live_pk_..." \
+  -X PATCH \
+  -d "status=completed"
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "trip": {
+    "_id": "5f3e50491c2b7d005c81f5d9",
+    "live": true,
+    "status": "started",
+    "externalId": "route-123",
+    "mode": "car",
+    "currentLegId": "705f71602e4d9f117ea307fb",
+    "legs": [
+      {
+        "_id": "6f4e60591d3c8e006d9206ea",
+        "status": "completed",
+        "destinationGeofenceTag": "stop",
+        "destinationGeofenceExternalId": "stop-1",
+        "stopDuration": 5
+      },
+      {
+        "_id": "705f71602e4d9f117ea307fb",
+        "status": "started",
+        "destinationGeofenceTag": "stop",
+        "destinationGeofenceExternalId": "stop-2",
+        "stopDuration": 5
+      }
+    ]
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `legId` isn't a valid Radar ID, or a value is invalid. | Fix the request before you retry. |
+| `401` | The API key is missing or invalid. | Send a valid API key in the `Authorization` header. |
+| `404` | No trip matches the ID, the leg isn't on the trip, or multi-leg trips aren't enabled for your project. | Check the ID and the environment of your API key. If both are correct, contact your Radar account team. |
+| `409` | The request conflicts with another change to the same trip. | Retry the request. |
+
+## Reorder trip legs
+
+Reorders the legs of a multi-leg trip. The trip must be pending or active and have more than one leg.
+
+- **Endpoint**: `PUT /v1/trips/:id/legs`
+- **Authentication**: Publishable key
+- **Rate limit**: 10 requests per second
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Yes | The Radar `_id` or the `externalId` of the trip. |
+
+### Body parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `legs` | array of strings | Yes | The leg `_id` values in the new order. The array must contain exactly the IDs of the trip's current legs. |
+
+### Response
+
+A `200` response contains `meta` and `trip`, the updated [trip object](#trip-object) with its `legs` in the new order.
+
+### Example
+
+This request puts the two legs of the trip `route-123` in a new order.
+
+```bash
+curl "https://api.radar.io/v1/trips/route-123/legs" \
+  -H "Authorization: prj_live_pk_..." \
+  -H "Content-Type: application/json" \
+  -X PUT \
+  -d '{"legs": ["705f71602e4d9f117ea307fb", "6f4e60591d3c8e006d9206ea"]}'
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "trip": {
+    "_id": "5f3e50491c2b7d005c81f5d9",
+    "live": true,
+    "status": "pending",
+    "externalId": "route-123",
+    "mode": "car",
+    "legs": [
+      {
+        "_id": "705f71602e4d9f117ea307fb",
+        "status": "pending",
+        "destinationGeofenceTag": "stop",
+        "destinationGeofenceExternalId": "stop-2"
+      },
+      {
+        "_id": "6f4e60591d3c8e006d9206ea",
+        "status": "pending",
+        "destinationGeofenceTag": "stop",
+        "destinationGeofenceExternalId": "stop-1"
+      }
+    ]
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `legs` isn't an array of the trip's leg IDs, the trip isn't pending or active, or the trip has only one leg. | Fix the request before you retry. |
+| `401` | The API key is missing or invalid. | Send a valid API key in the `Authorization` header. |
+| `404` | No trip matches the ID, or multi-leg trips aren't enabled for your project. | Check the ID and the environment of your API key. If both are correct, contact your Radar account team. |
+| `409` | The request conflicts with another change to the same trip. | Retry the request. |
+
+## Delete a trip leg
+
+Deletes a leg from a multi-leg trip. A trip must keep at least one leg.
+
+- **Endpoint**: `DELETE /v1/trips/:id/legs/:legId`
+- **Authentication**: Publishable key
+- **Rate limit**: 10 requests per second
+
+### Path parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Yes | The Radar `_id` or the `externalId` of the trip. |
+| `legId` | string | Yes | The Radar `_id` of the leg. |
+
+### Response
+
+A `200` response contains `meta` and `trip`, the updated [trip object](#trip-object) with its remaining `legs`.
+
+### Example
+
+This request deletes one leg from the trip `route-123`.
+
+```bash
+curl "https://api.radar.io/v1/trips/route-123/legs/705f71602e4d9f117ea307fb" \
+  -H "Authorization: prj_live_pk_..." \
+  -X DELETE
+```
+
+Radar returns this response:
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "trip": {
+    "_id": "5f3e50491c2b7d005c81f5d9",
+    "live": true,
+    "status": "started",
+    "externalId": "route-123",
+    "mode": "car",
+    "currentLegId": "6f4e60591d3c8e006d9206ea",
+    "legs": [
+      {
+        "_id": "6f4e60591d3c8e006d9206ea",
+        "status": "started",
+        "destinationGeofenceTag": "stop",
+        "destinationGeofenceExternalId": "stop-1",
+        "stopDuration": 5
+      }
+    ]
+  }
+}
+```
+
+### Errors
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `400` | `legId` isn't a valid Radar ID, or the leg is the trip's only leg. | Fix the request before you retry. |
+| `401` | The API key is missing or invalid. | Send a valid API key in the `Authorization` header. |
+| `404` | No trip matches the ID, the leg isn't on the trip, or multi-leg trips aren't enabled for your project. | Check the ID and the environment of your API key. If both are correct, contact your Radar account team. |
+| `409` | The request conflicts with another change to the same trip. | Retry the request. |
