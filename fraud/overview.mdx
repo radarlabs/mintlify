@@ -6,13 +6,137 @@ description: "Run a device and network risk assessment with Radar Fraud, use the
 
 import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
 
-By the end of this page you have a working device and network risk assessment: your app calls `Radar.revealRisk()`, your backend validates the signed result, and your backend decides whether to allow the action, ask for more, or send it to review. The rest of the page explains the signals behind the result, how scores relate to decisions, and where to configure rules and inspect checks.
+By the end of this page you have a working device and network risk assessment: your app calls `Radar.revealRisk()`, your backend verifies the signed result, and your backend reads the risk level and the signals behind it. The rest of the page explains those signals, how risk scores relate to what your product does, and where to configure rules and inspect checks.
 
 <Info>
   Fraud is available on the [Enterprise plan](https://radar.com/pricing).
 </Info>
 
 ## Quickstart: assess device and network risk
+
+This is the whole integration on each platform, and the steps below explain each part. `sendRiskToken` is the function you write that posts the token to your backend, or posts no token when the assessment didn't complete.
+
+<CodeGroup>
+
+```swift Swift
+import RadarSDK
+
+// At app launch
+Radar.initialize(publishableKey: "prj_test_pk_...")
+
+// At the moment you want to assess, such as a login or the start of a payment
+Radar.revealRisk { status, risk in
+  guard status == .success, let riskToken = risk?.token else {
+    // The assessment didn't complete. Your backend treats the risk as unknown.
+    sendRiskToken(nil)
+    return
+  }
+
+  sendRiskToken(riskToken)
+}
+```
+
+```kotlin Kotlin
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarInitializeOptions
+
+// In Application.onCreate()
+Radar.initialize(
+  context = this,
+  publishableKey = "prj_test_pk_...",
+  options = RadarInitializeOptions(fraud = true)
+)
+
+// At the moment you want to assess, such as a login or the start of a payment
+Radar.revealRisk { status, risk ->
+  val riskToken = risk?.token
+  if (status != Radar.RadarStatus.SUCCESS || riskToken == null) {
+    // The assessment didn't complete. Your backend treats the risk as unknown.
+    sendRiskToken(null)
+    return@revealRisk
+  }
+
+  sendRiskToken(riskToken)
+}
+```
+
+```javascript JavaScript
+import Radar from 'radar-sdk-js';
+import { createFraudPlugin } from '@radarlabs/plugin-fraud';
+
+// When the page loads
+Radar.registerPlugin(createFraudPlugin());
+Radar.initialize('prj_test_pk_...');
+
+// At the moment you want to assess, such as a login or the start of a payment
+try {
+  const risk = await Radar.fraud.revealRisk();
+  await sendRiskToken(risk.token ?? null);
+} catch (err) {
+  // The assessment didn't complete. Your backend treats the risk as unknown.
+  await sendRiskToken(null);
+}
+```
+
+```javascript React Native
+import Radar from 'react-native-radar';
+
+// At app launch. The second argument turns on fraud detection.
+Radar.initialize('prj_test_pk_...', true);
+
+// At the moment you want to assess, such as a login or the start of a payment
+try {
+  const result = await Radar.revealRisk();
+  await sendRiskToken(result.token?.token ?? null);
+} catch (err) {
+  // The assessment didn't complete. Your backend treats the risk as unknown.
+  await sendRiskToken(null);
+}
+```
+
+</CodeGroup>
+
+Your backend verifies the token with your project's JWT secret key and reads the result. `requireSession` and `riskAssessments` are your own session middleware and store.
+
+<CodeGroup>
+
+```javascript Node.js
+import express from 'express';
+import { jwtVerify } from 'jose';
+
+const app = express();
+app.use(express.json());
+
+const secret = new TextEncoder().encode(process.env.RADAR_JWT_SECRET_KEY);
+
+app.post('/api/risk', requireSession, async (req, res) => {
+  let assessment;
+  try {
+    // Checks the signature and the expiry, and accepts HS256 only.
+    ({ payload: assessment } = await jwtVerify(req.body.riskToken ?? '', secret, {
+      algorithms: ['HS256'],
+    }));
+  } catch (err) {
+    // Missing, changed, or expired. The risk is unknown, not low.
+    return res.status(400).json({ error: 'risk_token_invalid' });
+  }
+
+  // The token has no user ID. Tie it to this session, and accept each assessment once.
+  const firstUse = await riskAssessments.insertOnce({
+    id: assessment.jti,
+    userId: req.session.userId,
+    level: assessment.risk.level,
+    reasons: assessment.risk.reasons,
+  });
+  if (!firstUse) {
+    return res.status(409).json({ error: 'risk_token_reused' });
+  }
+
+  res.json({ riskLevel: assessment.risk.level, riskReasons: assessment.risk.reasons });
+});
+```
+
+</CodeGroup>
 
 ### Before you start
 
@@ -27,91 +151,18 @@ By the end of this page you have a working device and network risk assessment: y
 
 ### Request the assessment
 
-Call `Radar.revealRisk()` at the moment you want to assess, such as a login or the start of a payment. The SDK collects the signals and sends them to `POST /v1/reveal/risk` with your publishable key. The call doesn't request location permission and doesn't need a user ID. Send the returned `token` to your backend. Use the other fields only to update your UI.
+Call `Radar.revealRisk()` at the moment you want to assess, such as a login or the start of a payment. The SDK collects the signals and sends them to `POST /v1/reveal/risk` with your publishable key. The call doesn't request location permission and doesn't need a user ID.
 
-In these examples, `sendRiskTokenToBackend` and the error handlers are functions you write.
+Each platform returns the same assessment in its own shape:
 
-<CodeGroup>
+| Platform | Call | Signed token |
+| --- | --- | --- |
+| iOS | `Radar.revealRisk(completionHandler:)`, which receives a `RadarStatus` and a `RadarRevealRiskToken` | `token` on the `RadarRevealRiskToken` |
+| Android | `Radar.revealRisk(callback)`, which receives a `RadarStatus` and a `RadarRevealRiskToken` | `token` on the `RadarRevealRiskToken` |
+| Web | `Radar.fraud.revealRisk()`, which resolves to the assessment and rejects on an error | `token` on the resolved object |
+| React Native | `Radar.revealRisk()`, which resolves to `{ status, token }` and rejects on an error | `token.token` |
 
-```swift Swift
-import RadarSDK
-
-// After Radar.initialize(publishableKey:) with the fraud plugin installed
-Radar.revealRisk { (status, token) in
-  guard status == .success, let riskToken = token?.token else {
-    // The assessment did not complete, or no signed token was issued.
-    // Tell your backend, so it can choose the cautious path.
-    reportRiskUnavailable(status)
-    return
-  }
-
-  // Your backend validates the token and returns the decision.
-  sendRiskTokenToBackend(riskToken)
-}
-```
-
-```kotlin Kotlin
-import io.radar.sdk.Radar
-
-// After Radar.initialize(...) with fraud = true
-Radar.revealRisk { status, token ->
-  val riskToken = token?.token
-  if (status != Radar.RadarStatus.SUCCESS || riskToken == null) {
-    // The assessment did not complete, or no signed token was issued.
-    // Tell your backend, so it can choose the cautious path.
-    reportRiskUnavailable(status)
-    return@revealRisk
-  }
-
-  // Your backend validates the token and returns the decision.
-  sendRiskTokenToBackend(riskToken)
-}
-```
-
-```javascript JavaScript
-import Radar from 'radar-sdk-js';
-import { createFraudPlugin } from '@radarlabs/plugin-fraud';
-
-Radar.registerPlugin(createFraudPlugin());
-Radar.initialize('prj_test_pk_...');
-
-try {
-  const result = await Radar.fraud.revealRisk();
-
-  if (!result.token) {
-    // No signed token was issued. Choose the cautious path.
-    await reportRiskUnavailable('no_token');
-  } else {
-    // Your backend validates the token and returns the decision.
-    await sendRiskTokenToBackend(result.token);
-  }
-} catch (err) {
-  // The assessment did not complete. Choose the cautious path.
-  await reportRiskUnavailable(err.status);
-}
-```
-
-```javascript React Native
-import Radar from 'react-native-radar';
-
-// After Radar.initialize('prj_test_pk_...', true)
-Radar.revealRisk()
-  .then((result) => {
-    const riskToken = result.token?.token;
-    if (!riskToken) {
-      // No signed token was issued. Choose the cautious path.
-      return reportRiskUnavailable(result.status);
-    }
-    // Your backend validates the token and returns the decision.
-    return sendRiskTokenToBackend(riskToken);
-  })
-  .catch((err) => {
-    // The assessment did not complete. Choose the cautious path.
-    return reportRiskUnavailable(err);
-  });
-```
-
-</CodeGroup>
+Send the signed `token` to your backend. Use the other fields in your app only to update your UI. The token is optional in every SDK model, so when the call fails or returns no token, tell your backend that no assessment is available instead of skipping the request.
 
 ### Read the result
 
@@ -178,7 +229,7 @@ The SDK returns the assessment as an object and as a signed `token` that carries
 | `network.asn` | object | The network operator: `asn`, `name`, `domain`, `type`, `country`, and `network`. |
 | `device` | object | Device, operating system, SDK, and app details. On web it also includes `userAgent` and browser name and version. |
 | `token` | string | The signed result. Send this to your backend. Optional in the SDK models, so handle its absence. |
-| `expiresAt`, `expiresIn` | datetime, number | When the token expires, and its lifetime in seconds. Present with `token`. Read the lifetime from the token instead of assuming the value in the example. |
+| `expiresAt`, `expiresIn` | ISO 8601 string, number | When the token expires, and its lifetime in seconds. Present with `token`. Read the lifetime from the token instead of assuming the value in the example. |
 
 The assessment has no `passed` field and no user ID. It reports what Radar observed about the device and network. Your app decides what to do with it.
 
@@ -186,86 +237,35 @@ The assessment has no `passed` field and no user ID. It reports what Radar obser
 
 The token is a JSON Web Token signed with `HS256` and your project's JWT secret key, the same key that signs geolocation tokens. Its `jti` claim equals the assessment `_id`. Decoding a token isn't validating it, so verify the signature and expiry before you read any field.
 
-This Node.js example uses the [`jose`](https://github.com/panva/jose) library to verify the signature, the algorithm, and the expiry:
-
-```javascript Node.js
-import { jwtVerify } from 'jose';
-
-// Load the secret from your environment. Never hardcode it.
-const secret = new TextEncoder().encode(process.env.RADAR_JWT_SECRET_KEY);
-
-/**
- * @param {string | undefined} token Risk token sent by the client
- * @returns {Promise<{ ok: true, assessment: object } | { ok: false, reason: string }>}
- */
-export async function validateRiskToken(token) {
-  if (!token) {
-    return { ok: false, reason: 'risk_token_missing' };
-  }
-
-  let payload;
-  try {
-    // Library checks: signature, HS256 only, and exp.
-    ({ payload } = await jwtVerify(token, secret, {
-      algorithms: ['HS256'],
-      clockTolerance: 5, // seconds
-    }));
-  } catch (err) {
-    return { ok: false, reason: 'risk_token_invalid' };
-  }
-
-  if (!payload.risk || typeof payload.risk.level !== 'string') {
-    return { ok: false, reason: 'risk_token_invalid' };
-  }
-
-  return { ok: true, assessment: payload };
-}
-```
+The backend example at the top of this quickstart does this with the [`jose`](https://github.com/panva/jose) library. `jwtVerify` checks the signature and the `exp` claim, and the `algorithms` option rejects a token signed with anything other than `HS256`. Load the secret from your environment and never hardcode it.
 
 The token says nothing about who is asking, so bind it yourself:
 
 - Accept the token only on a request you have already tied to a user or a registration attempt, such as an authenticated session.
-- Record `jti` with the action it was used for, and reject a `jti` you have already used for a different action.
+- Record `jti` with the action it was used for, and reject a `jti` you have already used. In the example, `riskAssessments.insertOnce` is your own store with a unique constraint on the ID.
 - Treat a missing, invalid, or expired token as "risk unknown", not as "no risk".
 
 ### Use the result
 
-Map the assessment to one of your own outcomes on your backend. This example reads the levels that trigger a stronger check from configuration, because the right policy depends on your product, your users, and what the action is worth. It is an example policy, not a recommended threshold.
+Radar reports what it observed. What your product does with it depends on the action, your users, and what a false positive costs you. A risk level isn't a probability of fraud, and there is no universal level at which to block.
 
-```javascript Node.js
-// Example policy. Tune it for each action from your own outcomes.
-const STEP_UP_LEVELS = new Set(
-  (process.env.RISK_STEP_UP_LEVELS ?? 'medium,high').split(',')
-);
+| What your backend reads | What it tells you | What an app typically does |
+| --- | --- | --- |
+| `risk.level` is `none` or `low` | Radar found no signals, or weak ones, on this device and network. | Continues with the action. |
+| `risk.level` is `medium` or `high` | Radar found more, or stronger, signals. | For a sensitive action, asks for something more first: another authentication factor, a verified location check, or a manual review. |
+| `risk.reasons` | Which signals Radar found. | Records them with the action, and uses them for a message the user can act on, such as disconnecting a VPN. |
+| `network.privacy` and `network.asn` | The detail behind a network signal: VPN, proxy, Tor, relay, or hosting, and the operator. | Distinguishes a consumer VPN from a hosting network before acting. |
+| No valid token | The risk is unknown. | Handles a sensitive action as it would a raised risk level. Doesn't treat it as low risk. |
 
-/**
- * @param {Awaited<ReturnType<typeof validateRiskToken>>} result
- * @returns {{ decision: 'allow' | 'step_up', riskLevel: string | null, reasons: string[] }}
- */
-export function decideFromRisk(result) {
-  if (!result.ok) {
-    // Risk unknown. Take the cautious path instead of allowing by default.
-    return { decision: 'step_up', riskLevel: null, reasons: [result.reason] };
-  }
-
-  const { level, reasons } = result.assessment.risk;
-
-  if (STEP_UP_LEVELS.has(level)) {
-    return { decision: 'step_up', riskLevel: level, reasons };
-  }
-
-  return { decision: 'allow', riskLevel: level, reasons };
-}
-```
-
-What `step_up` means is your choice: a verified location check, a second authentication factor, a hold for manual review, or a lower limit. [Detect risky transactions and verify precise location](/fraud/risky-transactions) implements the verified location version end to end.
+[Detect risky transactions and verify precise location](/fraud/risky-transactions) implements the verified location check as the follow-up, end to end.
 
 ### Verify that it works
 
-1. Run your app with a Test publishable key and trigger the assessment. Confirm that the client receives a `token` and that your backend returns `allow`.
+1. Run your app with a Test publishable key and trigger the assessment. Confirm that the client receives a `token` and that your backend responds with the `riskLevel` it read from the token.
 2. Connect the device to a commercial VPN and repeat. Confirm that `network.privacy.vpn` is `true` or that `risk.reasons` isn't empty, and note the `risk.level` you get. Results depend on the VPN service and on your project configuration.
-3. Change one character of the token and send it. Confirm that your backend returns `step_up` with `risk_token_invalid`.
-4. Send the request with no token. Confirm that your backend returns `step_up` with `risk_token_missing`.
+3. Change one character of the token and send it. Confirm that your backend responds with `400` and `risk_token_invalid`.
+4. Send the request with no token. Confirm the same `400` response.
+5. Send a valid token a second time. Confirm that your backend responds with `409` and `risk_token_reused`.
 
 ## Decide when to collect precise location
 
@@ -314,12 +314,12 @@ Four different things are easy to confuse. Keep them separate in your code and i
 | Risk score | A summary of how much risk Radar sees. It ranks cases for attention. | `risk.level` on a risk assessment. `user.fraud.risk` on a verified location check, when risk scores are enabled for your project. | Radar |
 | Warning | A signal that Radar reports without failing the check. | `warningReasons` on a verified location check. | Radar, according to your project configuration |
 | Failure | A signal or condition that makes a verified location check fail. | `failureReasons`, with `passed` set to `false`. `user.fraud.passed` is the result of the fraud checks alone. | Radar, according to your project configuration |
-| Application decision | What your product does: allow, step up, review, or block. | Your backend's response to your client. | You |
+| Application decision | What your product does with the result, such as continuing, asking for another factor, or refusing. | Your backend's response to your client. | You |
 
 ### Risk scores
 
 - A risk score isn't a probability of fraud. It is a ranking signal. A higher score means Radar found more, or stronger, signals. It doesn't mean a given percentage of such users are fraudulent, and an individual legitimate user can score high.
-- There is no universal threshold. The level at which you step up, review, or block depends on the action, on what a false positive costs you, and on your own outcome data. Choose it for each action, start by observing, and adjust it from recorded outcomes.
+- There is no universal threshold. The level at which you ask for more, review, or refuse depends on the action, on what a false positive costs you, and on your own outcome data. Choose it for each action, start by observing, and adjust it from recorded outcomes.
 - `risk.level` on a risk assessment is one of `none`, `low`, `medium`, or `high`. It reflects the device and network signals found in that assessment. `risk.reasons` lists those signals.
 - `user.fraud.risk` on a verified location check is a number. It reflects the signals on that check together with the recent history of the user and the device, over a lookback period configured for your project. Because it includes history, it can stay raised on a check that has no flags of its own. Its presence and behavior depend on your project configuration, so read it as described in [Fraud fields](/api/geolocation-tokens#fraud-fields) and confirm the configuration with your Radar account team before you build logic on specific values.
 - Reasons explain a score. In the dashboard, the user, device, and check pages show the risk score next to the reasons that produced it. Use the reasons, not the number alone, when you review a case.
@@ -339,14 +339,14 @@ A new device, several devices for one user, several users on one device, or a ne
 
 ### From results to a decision
 
-Radar's part ends at the result. Your backend turns it into a decision, and only your backend's decision authorizes an action.
+Radar's part ends at the result. Your backend reads it, and only your backend authorizes an action.
 
 1. Validate the token. An unvalidated value from the client isn't a result.
 2. Read the result: the risk level, the reasons, and for a verified location check, `passed`, the failure reasons, and the warnings.
 3. Combine it with what you know: the user's tenure, the value of the action, and your own records.
-4. Return one decision to the client and record it with the Radar ID of the assessment or check, so an analyst can find it later.
+4. Respond to the client, and record what you did with the Radar ID of the assessment or check, so an analyst can find it later.
 
-Radar can also act by itself in two ways that you configure: a [block rule or fraud rule](#configure-rules-and-actions) can block a user or device, and a project can be configured to block automatically at a high risk score. In both cases later verified checks fail with a `fraud_blocked_` failure reason, and your backend still makes the decision from the validated result.
+Radar can also act by itself in two ways that you configure: a [block rule or fraud rule](#configure-rules-and-actions) can block a user or device, and a project can be configured to block automatically at a high risk score. In both cases later verified location checks fail with a `fraud_blocked_` failure reason, which your backend reads from the validated token like any other failed check.
 
 ## Configure rules and actions
 
@@ -461,7 +461,7 @@ The three Fraud guides combine these two calls for different goals:
     Assess risk at registration and redemption, and investigate linked accounts and devices.
   </Card>
   <Card title="Detect risky transactions and verify precise location" icon="location-crosshairs" href="/fraud/risky-transactions">
-    Step up to a verified location check only when the risk assessment calls for it.
+    Ask for a verified location check only when the risk assessment is elevated.
   </Card>
 </CardGroup>
 
