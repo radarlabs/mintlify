@@ -44,43 +44,8 @@ The SDK stores the `userId` on the device and keeps using it across app sessions
 
 ### Handle login, logout, and user switching
 
-Radar keeps a separate user record for each combination of `installId`, `deviceId`, and `userId`. That rule determines what happens at each identity change:
+Call `Radar.setUserId()` with the new ID whenever a user logs in. Radar keeps a separate user record for each combination of `installId`, `deviceId`, and `userId`, so a different user who logs in on the same device gets their own record.
 
-| Moment | What to call | What Radar does |
-| --- | --- | --- |
-| Anonymous user logs in | `Radar.setUserId("user-123")` | Assigns the `userId` to the existing record for this install. Earlier anonymous activity stays on the same record. |
-| A different user logs in on the same device | `Radar.setUserId("user-456")` | Creates a new user record. Activity from here on belongs to `user-456`. |
-| User logs out | Your choice, described after this table | Clearing the `userId` creates a new anonymous record. Keeping it attributes later activity to the last user. |
-| Same user logs in on a second device | `Radar.setUserId("user-123")` | Creates a record for that device with the same `userId`. |
+`userId` is nullable. When the user logs out, you can clear it by passing `nil` in Swift or `null` in Kotlin, or by calling `Radar.setUserId()` with no argument in JavaScript.
 
-What to do at logout depends on what you use Radar for. Neither option is a default:
-
-- **Clear the `userId`**: Do this when a result must never be attributed to the wrong person, for example location verification, fraud checks, or any shared device. Pass `nil` in Swift, `null` in Kotlin, or no argument in JavaScript. If you use verified location checks on iOS, Android, React Native, or Flutter, also call `Radar.clearVerifiedLocationToken()` so the next user starts with a fresh check.
-- **Keep the `userId`**: Do this only if you have decided that activity after logout stays associated with the last signed-in user, for example for marketing analytics on a personal device. Document that decision, because every later location update and event carries that user's ID.
-
-This example clears the `userId` at logout:
-
-<CodeGroup>
-
-```swift Swift
-// On logout, when later activity must not be attributed to this user
-Radar.setUserId(nil)
-Radar.clearVerifiedLocationToken()
-```
-
-```kotlin Kotlin
-// On logout, when later activity must not be attributed to this user
-Radar.setUserId(null)
-Radar.clearVerifiedLocationToken()
-```
-
-```javascript JavaScript
-// On logout, when later activity must not be attributed to this user
-Radar.setUserId();
-```
-
-</CodeGroup>
-
-To stop background tracking for a signed-out user, also call `Radar.stopTracking()` at logout.
-
-To confirm the result, open the [Users](https://dashboard.radar.com/geofencing/users) page in the dashboard after each step and check that the **External ID** on the most recent record is the one you expect.
+To confirm the result, open the [Users](https://dashboard.radar.com/geofencing/users) page in the dashboard and check that the **External ID** on the most recent record is the one you expect.

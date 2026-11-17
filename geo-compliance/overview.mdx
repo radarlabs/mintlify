@@ -1,7 +1,7 @@
 ---
 title: "Geo-compliance overview and quickstart"
 sidebarTitle: "Overview and quickstart"
-description: "Understand how Radar verified location checks work, then run one check end to end and make an allow or deny decision on your backend."
+description: "Understand how Radar verified location checks work, then run one check end to end and read the pass or fail result on your backend."
 ---
 
 import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
@@ -9,7 +9,7 @@ import VerifiedCheck from '/snippets/verified-check.mdx';
 import CheckResults from '/snippets/check-results.mdx';
 import TokenValidation from '/snippets/token-validation.mdx';
 
-Geo-compliance verifies that a user is in a location where your product is allowed, and that the location can be trusted. At the end of this quickstart, your app runs one verified location check, your backend validates the returned geolocation token, and you have seen both an allowed and a rejected result.
+Geo-compliance verifies that a user is in a location where your product is allowed, and that the location can be trusted. At the end of this quickstart, your app runs one verified location check, your backend verifies the returned geolocation token and reads `passed`, and you have seen both a passed and a failed check.
 
 <Info>
   Fraud is available on the [Enterprise plan](https://radar.com/pricing).
@@ -17,12 +17,312 @@ Geo-compliance verifies that a user is in a location where your product is allow
 
 ## Quickstart
 
-The quickstart has four parts: configure where your product is allowed, run a check in your app, validate the token on your backend, and produce both results.
+This is the whole implementation at a glance: the client runs one check on each platform, and the sections below explain each part.
+
+<CodeGroup>
+
+```swift Swift
+import CoreLocation
+import RadarSDK
+
+final class LocationCheck: NSObject, CLLocationManagerDelegate {
+  private let locationManager = CLLocationManager()
+
+  func start() {
+    Radar.initialize(publishableKey: "prj_test_pk_...")
+    Radar.setUserId("user-123")
+    Radar.setProduct("sportsbook")
+
+    locationManager.delegate = self
+    locationManager.requestWhenInUseAuthorization()
+  }
+
+  func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+    let status = manager.authorizationStatus
+    if status == .authorizedWhenInUse || status == .authorizedAlways {
+      check(reason: "login")
+    }
+  }
+
+  func check(reason: String) {
+    Radar.trackVerified(
+      beacons: false,
+      desiredAccuracy: .medium,
+      reason: reason,
+      transactionId: nil
+    ) { (status, token) in
+      guard status == .success, let token = token, let jwt = token.token else {
+        showCheckError(status)
+        return
+      }
+
+      if token.passed {
+        sendTokenToBackend(jwt)
+      } else {
+        showFailure(token.failureReasons ?? [])
+      }
+    }
+  }
+}
+```
+
+```kotlin Kotlin
+import android.Manifest
+import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarInitializeOptions
+
+class MainActivity : AppCompatActivity() {
+  private val requestLocation =
+    registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+      if (grants.values.any { it }) check("login")
+    }
+
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+
+    Radar.initialize(
+      context = this,
+      publishableKey = "prj_test_pk_...",
+      options = RadarInitializeOptions(fraud = true)
+    )
+    Radar.setUserId("user-123")
+    Radar.setProduct("sportsbook")
+
+    requestLocation.launch(
+      arrayOf(
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.ACCESS_COARSE_LOCATION
+      )
+    )
+  }
+
+  private fun check(reason: String) {
+    Radar.trackVerified(reason = reason) { status, token ->
+      if (status != Radar.RadarStatus.SUCCESS || token == null) {
+        showCheckError(status)
+        return@trackVerified
+      }
+
+      if (token.passed) {
+        sendTokenToBackend(token.token)
+      } else {
+        showFailure(token.failureReasons)
+      }
+    }
+  }
+}
+```
+
+```javascript JavaScript
+import Radar from 'radar-sdk-js';
+import { createFraudPlugin } from '@radarlabs/plugin-fraud';
+
+Radar.registerPlugin(createFraudPlugin());
+Radar.initialize('prj_test_pk_...');
+Radar.setUserId('user-123');
+Radar.setProduct('sportsbook');
+
+// false uses the Radar Verify app. true verifies in the browser without it.
+const skipVerifyApp = false;
+
+async function check(reason) {
+  try {
+    const result = await Radar.fraud.trackVerified({ skipVerifyApp, reason });
+
+    if (result.passed) {
+      await sendTokenToBackend(result.token);
+    } else {
+      showFailure(result.failureReasons);
+    }
+  } catch (err) {
+    if (err instanceof Radar.fraud.errors.RadarVerifyAppError) {
+      promptToOpenVerifyApp();
+    } else {
+      showCheckError(err.status);
+    }
+  }
+}
+
+check('login');
+```
+
+```javascript React Native
+import Radar from 'react-native-radar';
+
+Radar.initialize('prj_test_pk_...', true);
+Radar.setUserId('user-123');
+Radar.setProduct('sportsbook');
+
+async function check(reason) {
+  const permission = await Radar.requestPermissions(false);
+  if (permission !== 'GRANTED_FOREGROUND' && permission !== 'GRANTED_BACKGROUND') {
+    showPermissionNeeded();
+    return;
+  }
+
+  try {
+    const { token } = await Radar.trackVerified({ reason });
+
+    if (token?.passed) {
+      await sendTokenToBackend(token.token);
+    } else {
+      showFailure();
+    }
+  } catch (err) {
+    showCheckError(err);
+  }
+}
+
+check('login');
+```
+
+```swift macOS
+import RadarVerifySDK
+
+// Call once at launch. Requests location permission and warms up location services.
+func start() {
+  RadarVerify.setup()
+}
+
+func check(reason: String) async {
+  let result = await RadarVerify.trackVerified(
+    publishableKey: "prj_test_pk_...",
+    userId: "user-123",
+    product: "sportsbook",
+    reason: reason
+  )
+
+  guard result.status == .success, let token = result.token else {
+    showCheckError(result.status)
+    return
+  }
+
+  if token.passed {
+    sendTokenToBackend(token.token)
+  } else {
+    showFailure(token.failureReasons)
+  }
+}
+```
+
+```csharp Windows
+using System.Threading.Tasks;
+using RadarVerify;
+
+public static class LocationCheck
+{
+    // Call once at startup. Checks location permission and warms up location services.
+    public static Task<RadarStatus> Start() => Radar.Setup();
+
+    public static async Task Check(string reason)
+    {
+        var (status, token) = await Radar.TrackVerified(
+            publishableKey: "prj_test_pk_...",
+            userId: "user-123",
+            product: "sportsbook",
+            reason: reason);
+
+        if (status != RadarStatus.Success || token == null)
+        {
+            ShowCheckError(status);
+            return;
+        }
+
+        if (token.Passed)
+        {
+            await SendTokenToBackend(token.Token);
+        }
+        else
+        {
+            ShowFailure(token.FailureReasons);
+        }
+    }
+}
+```
+
+</CodeGroup>
+
+The backend verifies the token and reads `passed`:
+
+<CodeGroup>
+
+```javascript Node.js
+import express from 'express';
+import { jwtVerify } from 'jose';
+import { requireSession } from './auth.js';
+
+const secret = new TextEncoder().encode(process.env.RADAR_JWT_SECRET_KEY);
+const app = express();
+app.use(express.json());
+
+app.post('/api/wagers', requireSession, async (req, res) => {
+  let payload;
+  try {
+    ({ payload } = await jwtVerify(req.body.geolocationToken, secret, {
+      algorithms: ['HS256'],
+    }));
+  } catch (err) {
+    return res.status(401).json({ error: 'invalid_geolocation_token' });
+  }
+
+  if (payload.user?.userId !== req.session.userId || payload.product !== 'sportsbook') {
+    return res.status(401).json({ error: 'invalid_geolocation_token' });
+  }
+
+  if (payload.passed !== true) {
+    return res.status(403).json({ passed: false, failureReasons: payload.failureReasons });
+  }
+
+  // Place the wager.
+  res.status(201).json({ placed: true });
+});
+```
+
+```python Python
+import os
+
+import jwt  # PyJWT
+from flask import Flask, jsonify, request, session
+
+app = Flask(__name__)
+app.secret_key = os.environ["SESSION_SECRET_KEY"]
+SECRET = os.environ["RADAR_JWT_SECRET_KEY"]
+
+
+@app.post("/api/wagers")
+def place_wager():
+    if "user_id" not in session:
+        return jsonify(error="not_signed_in"), 401
+
+    body = request.get_json(silent=True) or {}
+    try:
+        payload = jwt.decode(body.get("geolocationToken", ""), SECRET, algorithms=["HS256"])
+    except jwt.InvalidTokenError:
+        return jsonify(error="invalid_geolocation_token"), 401
+
+    user_id = (payload.get("user") or {}).get("userId")
+    if user_id != session["user_id"] or payload.get("product") != "sportsbook":
+        return jsonify(error="invalid_geolocation_token"), 401
+
+    if payload.get("passed") is not True:
+        return jsonify(passed=False, failureReasons=payload.get("failureReasons", [])), 403
+
+    # Place the wager.
+    return jsonify(placed=True), 201
+```
+
+</CodeGroup>
+
+The rest of the quickstart has four parts: configure where your product is allowed, run a check in your app, validate the token on your backend, and produce both results.
 
 ### Before you start
 
 - Enable Fraud for your project: under **Fraud** on the [Settings](https://dashboard.radar.com/settings#fraud-settings) page of the Radar dashboard, select **Yes** for **Enabled**.
 - Have a backend route that knows which user is signed in.
+- For a native macOS or Windows app, ask your Radar account team for the Mac or Windows SDK. See [Verify from a native desktop app](/geo-compliance/gaming#verify-from-a-native-desktop-app).
 
 <EnvironmentAndKeys />
 
@@ -42,11 +342,11 @@ Whether you can edit these lists yourself is account-specific. If the controls a
 
 <TokenValidation />
 
-## See an allowed and a rejected result
+## See a passed and a failed result
 
 Run the flow twice, once for each result.
 
-For the allowed result, sign in as `user-123` from an allowed state and trigger the action. After signature verification, the decoded payload includes these fields:
+For the passed result, sign in as `user-123` from an allowed state and trigger the action. After signature verification, the decoded payload includes these fields:
 
 ```json
 {
@@ -73,17 +373,9 @@ For the allowed result, sign in as `user-123` from an allowed state and trigger 
 }
 ```
 
-Your backend returns an `allow` decision:
+`passed` is `true`, so your backend performs the action.
 
-```json
-{
-  "decision": "allow",
-  "reasons": [],
-  "expiresAt": "2026-11-17T18:20:00.000Z"
-}
-```
-
-For the rejected result, produce a failed check without changing location. On the **Block rules** page in the dashboard, create a rule that blocks the user ID `user-123`, then trigger the action again. The request succeeds, and the token now carries a failed result:
+For the failed result, produce a failed check without changing location. On the **Block rules** page in the dashboard, create a rule that blocks the user ID `user-123`, then trigger the action again. The request succeeds, and the token now carries a failed result:
 
 ```json
 {
@@ -111,24 +403,17 @@ For the rejected result, produce a failed check without changing location. On th
 }
 ```
 
-Your backend returns a `deny` decision with the failure reason:
-
-```json
-{
-  "decision": "deny",
-  "reasons": ["fraud_blocked_user_id"]
-}
-```
+`passed` is `false`, so your backend rejects the action and returns `failureReasons`.
 
 The payloads are synthetic and omit most fields, and your `expiresIn` differs because Radar sets the expiry for each check. For the full payload, see [Geolocation token schema](/api/geolocation-tokens).
 
-Now confirm that your backend is the one deciding. With the block rule in place, send the protected request to your backend directly, with `"passed": true` in the request body and the failed token. Your backend must still deny it.
+Now confirm that your backend reads `passed` from the token and from nowhere else. With the block rule in place, send the protected request to your backend directly, with `"passed": true` in the request body and the failed token. Your backend must still reject it.
 
-Remove the block rule when you finish. For the full test procedure, including bypass rules for internal testing, see [Test the integration](/geo-compliance/sportsbooks-and-casinos#test-the-integration).
+Remove the block rule when you finish. For the full test procedure, including bypass rules for internal testing, see [Test the integration](/geo-compliance/gaming#test-the-integration).
 
 ## How it works
 
-Every Geo-compliance integration follows the same eight steps. The three guides add the details for each kind of product.
+Every Geo-compliance integration follows the same eight steps. The two guides add the details for each kind of product.
 
 | Step | Where it happens | What you do |
 | --- | --- | --- |
@@ -136,9 +421,9 @@ Every Geo-compliance integration follows the same eight steps. The three guides 
 | 2. Initialize the SDK | Your app | Install the Radar SDK and the fraud plugin, and initialize with a publishable key. |
 | 3. Identify the user | Your app | Call `Radar.setUserId()` with the ID of the signed-in user. |
 | 4. Run a verified location check | Your app | Call `Radar.trackVerified()` with a reason. Radar returns a signed geolocation token. |
-| 5. Send the token to your backend | Your app to your backend | Send it on an authenticated request, whether the check passed or failed. |
-| 6. Validate the token | Your backend | Verify the signature and expiry, then check the user, product, and result. |
-| 7. Enforce the result | Your backend | Allow or deny the action. Your app shows what your backend decided. |
+| 5. Send the token to your backend | Your app to your backend | Send it on an authenticated request. |
+| 6. Validate the token | Your backend | Verify the signature and expiry, then check the user and product. |
+| 7. Enforce the result | Your backend | Read `passed`. Perform the action when it is `true`, and reject it when it is `false`. |
 | 8. Recheck | Your app | Run a new check before the token expires, when the product or user changes, and before sensitive actions. |
 
 A backend can't produce a verified location result by itself. The check has to run on the user's device, because that is where the location and integrity signals come from.
@@ -149,12 +434,9 @@ A backend can't produce a verified location result by itself. The check has to r
 
 ## Choose a guide
 
-<CardGroup cols={3}>
-  <Card title="Sportsbooks and casinos" icon="dice" href="/geo-compliance/sportsbooks-and-casinos">
-    Per-product footprints, exclusion zones, check orchestration, shadow testing, and rollout.
-  </Card>
-  <Card title="Predictions, DFS, and sweepstakes" icon="trophy" href="/geo-compliance/predictions-dfs-and-sweepstakes">
-    The same building blocks with the configuration and timing differences for these products.
+<CardGroup cols={2}>
+  <Card title="Gaming" icon="dice" href="/geo-compliance/gaming">
+    Sportsbooks, casinos, daily fantasy sports, prediction markets, and sweepstakes: per-product footprints, when to check, the web path, testing, and rollout.
   </Card>
   <Card title="Non-gaming use cases" icon="location-dot" href="/geo-compliance/non-gaming">
     Verify presence in a region, at a store or workplace, or near an expected address.

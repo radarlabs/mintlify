@@ -4,7 +4,7 @@ sidebarTitle: "Geolocation tokens"
 description: "Reference for the signed geolocation token returned by Radar verified location checks: envelope, payload fields, failure reasons, expiry, and example payloads."
 ---
 
-A verified location check returns a geolocation token. Use this reference to verify how the token is signed, read the decoded payload, and interpret identity, product, and expiry. For the validation procedure, see [Validate the response on the backend](/geo-compliance/sportsbooks-and-casinos#validate-the-response-on-the-backend).
+A verified location check returns a geolocation token. Use this reference to verify how the token is signed, read the decoded payload, and interpret identity, product, and expiry. For the validation procedure, see [Validate the response on the backend](/geo-compliance/gaming#validate-the-response-on-the-backend).
 
 <Warning>
   Read fields from the payload only after your backend has verified the signature. A decoded token that isn't verified proves nothing about where the token came from.
@@ -431,7 +431,7 @@ Sign test fixtures with a test-only secret, never with your project's JWT secret
 
 ## See also
 
-- [Verify location eligibility for sportsbooks and casinos](/geo-compliance/sportsbooks-and-casinos)
+- [Verify location eligibility for sportsbooks, casinos, and fantasy](/geo-compliance/gaming)
 - [Geo-compliance overview and quickstart](/geo-compliance/overview)
 - [Fraud plugin setup](/sdk/fraud)
 - [Fraud API](/api/fraud)

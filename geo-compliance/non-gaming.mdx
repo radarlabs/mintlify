@@ -1,7 +1,7 @@
 ---
 title: "Verify location for non-gaming use cases"
 sidebarTitle: "Non-gaming use cases"
-description: "Verify that a user is in an allowed region, inside a store, workplace, or service location, or near an expected address, and enforce the result on your backend."
+description: "Verify that a user is in an allowed region, inside a store, workplace, or service location, or near an expected address, and check the result on your backend."
 ---
 
 import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
@@ -11,28 +11,354 @@ import VerifiedCheck from '/snippets/verified-check.mdx';
 import CheckResults from '/snippets/check-results.mdx';
 import TokenValidation from '/snippets/token-validation.mdx';
 
-At the end of this guide, your app verifies a location condition as a step in a workflow, such as "the employee is at the workplace when they clock in" or "the customer is in the store when they redeem the offer", and your backend performs the action only when a validated geolocation token shows that the condition holds.
+At the end of this guide, your app verifies a location condition as a step in a workflow, such as "the employee is at the workplace when they clock in" or "the customer is in the store when they redeem the offer", and your backend performs the action only when the geolocation token it verified has `passed` set to `true` and shows that the condition holds.
 
-For a clock-in at `store-42`, your backend returns an `allow` decision when the employee is inside the store geofence:
-
-```json
-{
-  "decision": "allow",
-  "condition": "inside_geofence",
-  "geofenceExternalId": "store-42"
-}
-```
-
-When the employee is somewhere else, your backend returns a `deny` decision:
+For a clock-in at `store-42`, the verified token payload shows a passed check inside the store geofence:
 
 ```json
 {
-  "decision": "deny",
-  "reasons": ["outside_required_location"]
+  "passed": true,
+  "failureReasons": [],
+  "reason": "clock_in",
+  "transactionId": "txn-789",
+  "user": {
+    "userId": "user-123",
+    "geofences": [
+      {
+        "tag": "store",
+        "externalId": "store-42"
+      }
+    ]
+  }
 }
 ```
 
-`outside_required_location` is a value from this page's example backend, not a Radar failure reason. The check itself passed. The user was somewhere else.
+## Complete example
+
+This is the whole client side of a clock-in check on each platform, and the sections below explain each part.
+
+<CodeGroup>
+
+```swift Swift
+import CoreLocation
+import RadarSDK
+
+final class ClockIn: NSObject, CLLocationManagerDelegate {
+  private let locationManager = CLLocationManager()
+  private var transactionId: String?
+
+  // transactionId comes from your backend for this clock-in.
+  func start(transactionId: String) {
+    self.transactionId = transactionId
+    Radar.initialize(publishableKey: "prj_test_pk_...")
+    Radar.setUserId("user-123")
+
+    locationManager.delegate = self
+    locationManager.requestWhenInUseAuthorization()
+  }
+
+  func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+    let status = manager.authorizationStatus
+    if status == .authorizedWhenInUse || status == .authorizedAlways {
+      check()
+    }
+  }
+
+  func check() {
+    Radar.trackVerified(
+      beacons: false,
+      desiredAccuracy: .medium,
+      reason: "clock_in",
+      transactionId: transactionId
+    ) { (status, token) in
+      guard status == .success, let token = token, let jwt = token.token else {
+        showCheckError(status)
+        return
+      }
+
+      if token.passed {
+        sendClockIn(jwt)
+      } else {
+        showFailure(token.failureReasons ?? [])
+      }
+    }
+  }
+}
+```
+
+```kotlin Kotlin
+import android.Manifest
+import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarInitializeOptions
+
+class ClockInActivity : AppCompatActivity() {
+  // transactionId comes from your backend for this clock-in.
+  private val transactionId by lazy { intent.getStringExtra("transactionId") }
+
+  private val requestLocation =
+    registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+      if (grants.values.any { it }) check()
+    }
+
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+
+    Radar.initialize(
+      context = this,
+      publishableKey = "prj_test_pk_...",
+      options = RadarInitializeOptions(fraud = true)
+    )
+    Radar.setUserId("user-123")
+
+    requestLocation.launch(
+      arrayOf(
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.ACCESS_COARSE_LOCATION
+      )
+    )
+  }
+
+  private fun check() {
+    Radar.trackVerified(reason = "clock_in", transactionId = transactionId) { status, token ->
+      if (status != Radar.RadarStatus.SUCCESS || token == null) {
+        showCheckError(status)
+        return@trackVerified
+      }
+
+      if (token.passed) {
+        sendClockIn(token.token)
+      } else {
+        showFailure(token.failureReasons)
+      }
+    }
+  }
+}
+```
+
+```javascript JavaScript
+import Radar from 'radar-sdk-js';
+import { createFraudPlugin } from '@radarlabs/plugin-fraud';
+
+Radar.registerPlugin(createFraudPlugin());
+Radar.initialize('prj_test_pk_...');
+Radar.setUserId('user-123');
+
+// true verifies in the browser. false uses the Radar Verify app.
+const skipVerifyApp = true;
+
+// transactionId comes from your backend for this clock-in.
+async function clockIn(transactionId) {
+  try {
+    const result = await Radar.fraud.trackVerified({
+      skipVerifyApp,
+      reason: 'clock_in',
+      transactionId,
+    });
+
+    if (result.passed) {
+      await sendClockIn(result.token);
+    } else {
+      showFailure(result.failureReasons);
+    }
+  } catch (err) {
+    showCheckError(err.status);
+  }
+}
+```
+
+```javascript React Native
+import Radar from 'react-native-radar';
+
+Radar.initialize('prj_test_pk_...', true);
+Radar.setUserId('user-123');
+
+// transactionId comes from your backend for this clock-in.
+async function clockIn(transactionId) {
+  const permission = await Radar.requestPermissions(false);
+  if (permission !== 'GRANTED_FOREGROUND' && permission !== 'GRANTED_BACKGROUND') {
+    showPermissionNeeded();
+    return;
+  }
+
+  try {
+    const { token } = await Radar.trackVerified({ reason: 'clock_in', transactionId });
+
+    if (token?.passed) {
+      await sendClockIn(token.token);
+    } else {
+      showFailure();
+    }
+  } catch (err) {
+    showCheckError(err);
+  }
+}
+```
+
+```swift macOS
+import RadarVerifySDK
+
+// Call once at launch. Requests location permission and warms up location services.
+func start() {
+  RadarVerify.setup()
+}
+
+// transactionId comes from your backend for this clock-in.
+func clockIn(transactionId: String) async {
+  let result = await RadarVerify.trackVerified(
+    publishableKey: "prj_test_pk_...",
+    userId: "user-123",
+    reason: "clock_in",
+    transactionId: transactionId
+  )
+
+  guard result.status == .success, let token = result.token else {
+    showCheckError(result.status)
+    return
+  }
+
+  if token.passed {
+    sendClockIn(token.token)
+  } else {
+    showFailure(token.failureReasons)
+  }
+}
+```
+
+```csharp Windows
+using System.Threading.Tasks;
+using RadarVerify;
+
+public static class ClockIn
+{
+    // Call once at startup. Checks location permission and warms up location services.
+    public static Task<RadarStatus> Start() => Radar.Setup();
+
+    // transactionId comes from your backend for this clock-in.
+    public static async Task Check(string transactionId)
+    {
+        var (status, token) = await Radar.TrackVerified(
+            publishableKey: "prj_test_pk_...",
+            userId: "user-123",
+            reason: "clock_in",
+            transactionId: transactionId);
+
+        if (status != RadarStatus.Success || token == null)
+        {
+            ShowCheckError(status);
+            return;
+        }
+
+        if (token.Passed)
+        {
+            await SendClockIn(token.Token);
+        }
+        else
+        {
+            ShowFailure(token.FailureReasons);
+        }
+    }
+}
+```
+
+</CodeGroup>
+
+The backend verifies the token, reads `passed`, and then checks the geofence:
+
+<CodeGroup>
+
+```javascript Node.js
+import express from 'express';
+import { jwtVerify } from 'jose';
+import { requireSession } from './auth.js';
+import { loadShift, recordClockIn } from './shifts.js';
+
+const secret = new TextEncoder().encode(process.env.RADAR_JWT_SECRET_KEY);
+const app = express();
+app.use(express.json());
+
+app.post('/api/shifts/:shiftId/clock-in', requireSession, async (req, res) => {
+  const shift = await loadShift(req.params.shiftId, req.session.userId);
+
+  let payload;
+  try {
+    ({ payload } = await jwtVerify(req.body.geolocationToken, secret, {
+      algorithms: ['HS256'],
+    }));
+  } catch (err) {
+    return res.status(401).json({ error: 'invalid_geolocation_token' });
+  }
+
+  if (
+    payload.user?.userId !== req.session.userId ||
+    payload.transactionId !== shift.clockInTransactionId
+  ) {
+    return res.status(401).json({ error: 'invalid_geolocation_token' });
+  }
+
+  if (payload.passed !== true) {
+    return res.status(403).json({ passed: false, failureReasons: payload.failureReasons });
+  }
+
+  // passed doesn't say which store. Check the geofence your records require.
+  const geofences = payload.user.geofences ?? [];
+  if (!geofences.some((geofence) => geofence.externalId === shift.storeExternalId)) {
+    return res.status(403).json({ error: 'not_at_required_location' });
+  }
+
+  await recordClockIn(shift, payload._id);
+  res.status(201).json({ clockedIn: true });
+});
+```
+
+```python Python
+import os
+
+import jwt  # PyJWT
+from flask import Flask, jsonify, request, session
+
+from shifts import load_shift, record_clock_in
+
+app = Flask(__name__)
+app.secret_key = os.environ["SESSION_SECRET_KEY"]
+SECRET = os.environ["RADAR_JWT_SECRET_KEY"]
+
+
+@app.post("/api/shifts/<shift_id>/clock-in")
+def clock_in(shift_id):
+    if "user_id" not in session:
+        return jsonify(error="not_signed_in"), 401
+
+    shift = load_shift(shift_id, session["user_id"])
+
+    body = request.get_json(silent=True) or {}
+    try:
+        payload = jwt.decode(body.get("geolocationToken", ""), SECRET, algorithms=["HS256"])
+    except jwt.InvalidTokenError:
+        return jsonify(error="invalid_geolocation_token"), 401
+
+    user = payload.get("user") or {}
+    if (
+        user.get("userId") != session["user_id"]
+        or payload.get("transactionId") != shift.clock_in_transaction_id
+    ):
+        return jsonify(error="invalid_geolocation_token"), 401
+
+    if payload.get("passed") is not True:
+        return jsonify(passed=False, failureReasons=payload.get("failureReasons", [])), 403
+
+    # passed doesn't say which store. Check the geofence your records require.
+    geofences = user.get("geofences") or []
+    if not any(g.get("externalId") == shift.store_external_id for g in geofences):
+        return jsonify(error="not_at_required_location"), 403
+
+    record_clock_in(shift, payload["_id"])
+    return jsonify(clockedIn=True), 201
+```
+
+</CodeGroup>
 
 ## Build with an agent
 
@@ -57,24 +383,26 @@ Read:
 
 Implement, as documented:
 - SDK and fraud plugin setup with a publishable key from an environment variable.
-- Radar.setUserId() with the authenticated user ID, cleared on logout.
+- Radar.setUserId() with the authenticated user ID.
 - A foreground location permission request at the workflow step, with an
   explanation shown first.
 - One Radar.trackVerified() call (Radar.fraud.trackVerified() on web) at the
   workflow step, with a reason and a transactionId generated by the backend.
-- A backend validator that verifies the HS256 signature with the project's JWT
+- On web, pass skipVerifyApp: true to verify without the Radar Verify app.
+- A backend route that verifies the HS256 signature with the project's JWT
   secret key from an environment variable, enforces an algorithm allowlist and
-  expiry, checks user.userId against the session user, transactionId, user.live
-  in production, and passed, and THEN checks the location condition itself
-  (user.geofences for the required externalId, or user.expectedAddress), using
-  the required location from the backend's own records.
-- Explicit branches for: condition met, condition not met, failed check,
-  permission denied, location unavailable, and technical error. Never assume the
-  condition holds when no validated token is available.
+  expiry, checks user.userId against the session user, transactionId, and
+  user.live in production, reads passed, and THEN checks the location condition
+  itself (user.geofences for the required externalId, or user.expectedAddress),
+  using the required location from the backend's own records.
+- Explicit branches for: condition met, condition not met, failed check (passed
+  false), permission not granted, location unavailable, and any other status
+  that is not success. Never assume the condition holds when no verified token
+  is available.
 
-Do not authorize the action from a client-supplied value. Do not treat passed
-alone as proof of presence at a specific place. Do not invent methods, fields,
-supported platforms, or defaults.
+Do not perform the action because of a client-supplied value. Do not treat
+passed alone as proof of presence at a specific place. Do not invent methods,
+fields, supported platforms, or defaults.
 
 Add backend tests for: token inside the required geofence, token inside a
 different geofence, token in no geofence, failed check, tampered token, expired
@@ -89,7 +417,7 @@ or deploy without approval.
 ## Prerequisites
 
 - **Access**: Fraud is enabled for your project under **Fraud** on the [Settings](https://dashboard.radar.com/settings#fraud-settings) page of the Radar dashboard.
-- **Platform**: iOS, Android, React Native, or web. Use a Radar SDK and fraud plugin pair from the [compatibility table](/sdk/fraud#compatibility).
+- **Platform**: iOS, Android, React Native, web, or a native macOS or Windows app. Use a Radar SDK and fraud plugin pair from the [compatibility table](/sdk/fraud#compatibility).
 - **SDK versions**: The examples use iOS SDK 3.46.0, Android SDK 4.3.0, and Web SDK 5.3.0 with `@radarlabs/plugin-fraud` 1.6.1.
 - **Platform setup**: The fraud plugin is installed. See [Fraud plugin setup](/sdk/fraud).
 - **Keys**: A Test publishable key for your app and your project's JWT secret key for your backend.
@@ -104,8 +432,8 @@ or deploy without approval.
 | --- | --- |
 | Your app | Identifies the user, requests location permission, runs one check at the workflow step, and sends the token with the action. |
 | Radar | Collects location with device and network integrity signals, runs fraud and jurisdiction checks, and returns a signed token that includes the verified location, the custom geofences it is inside, and, when requested, the expected-address comparison. |
-| Your backend | Validates the token, then checks the location condition against the location that your own records require for this action, and performs or refuses the action. |
-| Your downstream systems | Timekeeping, order, or account systems act only on your backend's decision. |
+| Your backend | Verifies the token, reads `passed`, then checks the location condition against the location that your own records require for this action. It performs the action only when both hold. |
+| Your downstream systems | Timekeeping, order, or account systems act only after your backend has verified the token and checked the condition. |
 
 ## Choose this guide or the risky transactions guide
 
@@ -117,7 +445,7 @@ Use [Detect risky transactions and verify precise location](/fraud/risky-transac
 | --- | --- | --- |
 | When the check runs | Always, at a defined step | Only when a risk assessment triggers it |
 | What starts it | The workflow | A risk result |
-| What your backend decides | Whether the location condition holds | Whether the original action can proceed after the step-up |
+| What your backend checks | Whether the location condition holds | Whether the original action can proceed after the step-up |
 | Permission prompt | Expected by the user as part of the task | Shown to a subset of users, so it needs more explanation |
 
 Both use the same verified location check and the same token validation. If you build both, share one backend validator.
@@ -154,8 +482,6 @@ Your backend also needs your project's JWT secret key, shown under **Fraud** on 
 ### Identify the user
 
 <IdentifyUser />
-
-For verification workflows, clear the user ID at logout, so that a check on a shared device, such as a store tablet, is never attributed to the previous user.
 
 ## Configure the location condition
 
@@ -216,17 +542,19 @@ The address your app sends is client input. On your backend, compare `user.expec
 
 ## Choose the web path
 
-On web, a check runs through the Radar Verify companion app or through the no-download path in the browser.
+On web, pass `skipVerifyApp: true` to `Radar.fraud.trackVerified()` to verify without the Radar Verify companion app. The check runs in the browser, the user grants location access to your site, and the user installs nothing.
 
-| | Companion app | No-download |
-| --- | --- | --- |
-| What the user installs | Radar Verify for Mac or Windows | Nothing |
-| How to select it | `skipVerifyApp: false`, which is the default | `skipVerifyApp: true` |
-| Permission the user grants | Location access for the Radar Verify app | Location access for your site in the browser |
-| Signals | Adds remote desktop detection, more advanced `mocked` and `proxy` detection, and more stable device IDs | Browser signals |
-| Path-specific error | `ERROR_VERIFY_APP` when the app isn't installed or isn't running | None |
+```javascript JavaScript
+const result = await Radar.fraud.trackVerified({
+  skipVerifyApp: true,
+  reason: 'clock_in',
+  transactionId: 'txn-789',
+});
+```
 
-Choose from your requirements: whether you need the additional desktop signals, and whether your users can install software. For details, see [Choose the companion app or the no-download path](/sdk/fraud#choose-the-companion-app-or-the-no-download-path).
+We recommend the companion app for sportsbooks and casinos in the US and Canada. See [Choose the web path](/geo-compliance/gaming#choose-the-web-path) in the gaming guide.
+
+A native macOS or Windows app runs the check with the Radar Verify SDK, as shown in the macOS and Windows tabs of [Complete example](#complete-example). See [Verify from a native desktop app](/geo-compliance/gaming#verify-from-a-native-desktop-app).
 
 ## Request location permission
 
@@ -250,88 +578,58 @@ Run one check at the workflow step, with a `reason` that names the step and a `t
 
 ### Check the location condition
 
-Token validation tells you the token is authentic, current, for this user, and passed. The location condition is a separate step that you write. To run it, the validator has to hand back the verified payload. In the Node.js example above, add `payload` to the object returned on the allow path:
+Token validation tells you the token is authentic, current, for this user, and that the check passed. The location condition is a separate step that you write against the verified payload, which `verifyGeolocationToken` returns in the Node.js example above. The required location comes from your own records, never from the request body.
 
 ```javascript Node.js
-return {
-  decision: 'allow',
-  reasons: [],
-  expiresAt: new Date(payload.exp * 1000),
-  payload,
-};
-```
+function isInsideGeofence(payload, externalId) {
+  const geofences = payload.user.geofences ?? [];
+  return geofences.some((geofence) => geofence.externalId === externalId);
+}
 
-Then check the condition. The required location comes from your own records, never from the request body.
-
-```javascript Node.js
-/**
- * @param {object} payload Verified token payload
- * @param {{ geofenceExternalId?: string, expectedAddress?: string }} required
- *   What your own records say this action requires
- */
-function checkLocationCondition(payload, required) {
-  if (required.geofenceExternalId) {
-    const geofences = payload.user.geofences ?? [];
-    const inside = geofences.some((g) => g.externalId === required.geofenceExternalId);
-    return inside
-      ? { met: true, condition: 'inside_geofence' }
-      : { met: false, reasons: ['outside_required_location'] };
-  }
-
-  if (required.expectedAddress) {
-    const result = payload.user.expectedAddress;
-    if (!result || result.expectedAddress !== required.expectedAddress) {
-      // The check did not compare against the address on file.
-      return { met: false, reasons: ['address_not_checked'] };
-    }
-    // Decide which confidence levels your workflow accepts.
-    const confident = result.confidence === 'high' || result.confidence === 'medium';
-    return result.atAddress === true && confident
-      ? { met: true, condition: 'at_expected_address' }
-      : { met: false, reasons: ['not_at_expected_address'] };
-  }
-
-  // No place or address requirement: the region result in `passed` is the condition.
-  return { met: true, condition: 'allowed_region' };
+function isAtExpectedAddress(payload, addressOnFile) {
+  const result = payload.user.expectedAddress;
+  // The check must have compared against the address in your records.
+  if (!result || result.expectedAddress !== addressOnFile) return false;
+  // Choose which confidence levels your workflow accepts.
+  const confident = result.confidence === 'high' || result.confidence === 'medium';
+  return result.atAddress === true && confident;
 }
 
 app.post('/api/shifts/:shiftId/clock-in', requireSession, async (req, res) => {
   const shift = await loadShift(req.params.shiftId, req.session.userId);
 
-  const result = await validateGeolocationToken(req.body.geolocationToken, {
-    userId: req.session.userId,
-    transactionId: shift.clockInTransactionId,
-    requireLive: process.env.NODE_ENV === 'production',
-  });
-
-  if (result.decision !== 'allow') {
-    return res.status(403).json({ decision: result.decision, reasons: result.reasons });
+  let payload;
+  try {
+    payload = await verifyGeolocationToken(req.body.geolocationToken, {
+      userId: req.session.userId,
+      transactionId: shift.clockInTransactionId,
+      requireLive: process.env.NODE_ENV === 'production',
+    });
+  } catch (err) {
+    return res.status(401).json({ error: 'invalid_geolocation_token' });
   }
 
-  const condition = checkLocationCondition(result.payload, {
-    geofenceExternalId: shift.storeExternalId, // for example 'store-42'
-  });
-
-  if (!condition.met) {
-    return res.status(403).json({ decision: 'deny', reasons: condition.reasons });
+  if (payload.passed !== true) {
+    return res.status(403).json({ passed: false, failureReasons: payload.failureReasons });
   }
 
-  await recordClockIn(shift, result.payload._id);
-  return res.json({
-    decision: 'allow',
-    condition: condition.condition,
-    geofenceExternalId: shift.storeExternalId,
-  });
+  // For example 'store-42'
+  if (!isInsideGeofence(payload, shift.storeExternalId)) {
+    return res.status(403).json({ error: 'not_at_required_location' });
+  }
+
+  await recordClockIn(shift, payload._id);
+  return res.status(201).json({ clockedIn: true });
 });
 ```
 
-`loadShift`, `recordClockIn`, and the reason strings in `checkLocationCondition` belong to the example application. Which `confidence` levels to accept for an address condition is your decision. Start strict and review real results before you relax it.
+`loadShift`, `recordClockIn`, and the `not_at_required_location` error belong to the example application. For an address condition, call `isAtExpectedAddress` with the address from your records in place of `isInsideGeofence`. Which `confidence` levels to accept is your choice. Start strict and review real results before you relax it.
 
 ### Inside and outside examples
 
 Both payloads are synthetic, are shown after signature verification, and omit most fields.
 
-Inside the required geofence. `passed` is `true` and `store-42` is present, so your backend allows the clock-in:
+Inside the required geofence. `passed` is `true` and `store-42` is present, so your backend records the clock-in:
 
 ```json
 {
@@ -360,7 +658,7 @@ Inside the required geofence. `passed` is `true` and `store-42` is present, so y
 }
 ```
 
-Outside it. `passed` is still `true`, because nothing was wrong with the device or the region. The geofence list is empty, so your backend denies the clock-in with `outside_required_location`:
+Outside it. `passed` is still `true`, because nothing was wrong with the device or the region. The geofence list is empty, so your backend rejects the clock-in:
 
 ```json
 {
@@ -383,11 +681,11 @@ Outside it. `passed` is still `true`, because nothing was wrong with the device 
 }
 ```
 
-A backend that reads only `passed` would allow both.
+A backend that reads only `passed` would accept both.
 
 ## Operate the integration
 
-- **Investigate a check**: Find it on the [Locations](https://dashboard.radar.com/geofencing/locations) page by user ID, reason, or transaction ID. See [Inspect data and control access](/geo-compliance/sportsbooks-and-casinos#inspect-data-and-control-access).
+- **Investigate a check**: Find it on the [Locations](https://dashboard.radar.com/geofencing/locations) page by user ID, reason, or transaction ID. See [Inspect data and control access](/geo-compliance/gaming#inspect-data-and-control-access).
 - **Access and retention**: Location checks are personal data about your employees or customers. Limit who can view them and set retention to match your obligations. See [Roles and what each can do](/fundamentals/authentication-and-access#roles-and-what-each-can-do) and [Control what data Radar keeps](/fundamentals/authentication-and-access#control-what-data-radar-keeps).
 - **Permissions**: See [Understand foreground and background location permissions](/fundamentals/location-permissions).
 
@@ -399,14 +697,14 @@ A backend that reads only `passed` would allow both.
 
 | Outcome | How you detect it | Application action |
 | --- | --- | --- |
-| Condition met | Backend returns `allow` | Perform the action. |
-| Condition not met | Token is valid and `passed` is `true`, and the place or address condition fails | Deny. Tell the user where they need to be. Allow a retry after they move. |
-| Failed check | Token is valid and `passed` is `false` | Deny. Show a message based on the failure reason, such as disconnecting from a VPN. |
-| Permission denied | Client returns `ERROR_PERMISSIONS`, no token | Don't perform the action. Explain how to grant location access. Offer your manual alternative if you have one. |
-| Location unavailable | Client returns `ERROR_LOCATION`, no token | Don't perform the action. Ask the user to turn on location services and Wi-Fi and retry. |
-| Low-quality location | Token has `fraud_inaccurate_exceeded_accuracy_threshold`, or an address result with `confidence` of `low` or `unknown` | Deny or ask for a retry. Don't round up to a pass. |
-| Technical error | Client returns `ERROR_NETWORK` or `ERROR_SERVER`, no token | Don't perform the action. Retry after a short delay, a limited number of times. |
-| Expired token | Backend returns `retry` | Run a new check. |
+| Condition met | The token is valid, `passed` is `true`, and the place or address condition holds | Perform the action. |
+| Condition not met | The token is valid and `passed` is `true`, and the place or address condition fails | Reject the action. Tell the user where they need to be. Let them check again after they move. |
+| Failed check | The token is valid and `passed` is `false` | Reject the action. Show a message based on `failureReasons`, such as disconnecting from a VPN. |
+| Permission not granted | Client returns `ERROR_PERMISSIONS`, no token | Don't perform the action. Explain how to grant location access. Offer your manual alternative if you have one. |
+| Location unavailable | Client returns `ERROR_LOCATION`, no token | Don't perform the action. Ask the user to turn on location services and Wi-Fi and run a new check. |
+| Low-quality location | Token has `fraud_inaccurate_exceeded_accuracy_threshold`, or an address result with `confidence` of `low` or `unknown` | Reject the action or ask for a new check. Don't round up to a pass. |
+| Other error | Client returns `ERROR_NETWORK` or `ERROR_SERVER`, no token | Don't perform the action. Run a new check after a short delay, a limited number of times. |
+| Expired token | Your backend rejects the token because the current time is past `exp` | Run a new check. |
 
 No branch treats a missing or unverifiable result as presence. If your business needs an exception path, such as a supervisor override for a clock-in, build it as an explicit, logged action in your own system and don't record it as a verified location.
 
@@ -414,28 +712,28 @@ No branch treats a missing or unverifiable result as presence. If your business 
 
 Use the Test environment with a Test publishable key and a dedicated test account.
 
-1. **Inside**: Stand inside a test geofence, or set an address or coordinates override on the test user so that later checks return a location inside it. Run the step. Confirm that the geofence appears in `user.geofences` and that your backend allows the action. To set an override, open the user in the dashboard, open its menu, and select **Set override**. Remove it when you finish.
-2. **Outside**: Move outside the geofence, or change the override to a location outside it. Run the step. Confirm `passed` is `true`, the geofence is absent, and your backend denies with your not-at-location reason.
-3. **Wrong place**: Run the step inside a geofence for a different store. Confirm your backend denies it.
-4. **Failed check**: On the **Block rules** page, create a rule that blocks the test user ID, run the step, and confirm the token has `passed` set to `false` with `fraud_blocked_user_id` and your backend denies it. Remove the rule afterward. Bypass rules are for internal testing only. Never apply them to real users.
-5. **Permission denied**: Deny location permission and run the step. Confirm that no token is sent and the action isn't performed.
+1. **Inside**: Stand inside a test geofence, or set an address or coordinates override on the test user so that later checks return a location inside it. Run the step. Confirm that the geofence appears in `user.geofences` and that your backend performs the action. To set an override, open the user in the dashboard, open its menu, and select **Set override**. Remove it when you finish.
+2. **Outside**: Move outside the geofence, or change the override to a location outside it. Run the step. Confirm `passed` is `true`, the geofence is absent, and your backend rejects the action.
+3. **Wrong place**: Run the step inside a geofence for a different store. Confirm your backend rejects it.
+4. **Failed check**: On the **Block rules** page, create a rule that blocks the test user ID, run the step, and confirm the token has `passed` set to `false` with `fraud_blocked_user_id` and your backend rejects it. Remove the rule afterward. Bypass rules are for internal testing only. Never apply them to real users.
+5. **Permission not granted**: Deny location permission and run the step. Confirm that no token is sent and the action isn't performed.
 6. **Location unavailable**: Turn off location services, or use airplane mode for the network case. Confirm the same.
-7. **Backend only**: Send the request directly to your backend with a valid token for a different transaction, with a tampered token, and with `"passed": true` and no token. Confirm each is denied. For the full list, see [Negative tests](#negative-tests).
+7. **Backend only**: Send the request directly to your backend with a valid token for a different transaction, with a tampered token, and with `"passed": true` and no token. Confirm each is rejected. For the full list, see [Negative tests](#negative-tests).
 8. **Inspect**: Open the check on the [Locations](https://dashboard.radar.com/geofencing/locations) page and confirm the user ID, reason, and transaction ID.
 
 A fixture or an override confirms your code paths. It doesn't confirm how location behaves inside your buildings. Test the place condition on real devices at a real location before launch, at the edges of the boundary and indoors.
 
-For the full block, bypass, and override procedure, see [Test the integration](/geo-compliance/sportsbooks-and-casinos#test-the-integration).
+For the full block, bypass, and override procedure, see [Test the integration](/geo-compliance/gaming#test-the-integration).
 
 ## Production checklist
 
 - [ ] Your backend checks the specific place or address condition, not only `passed`.
 - [ ] The required location comes from backend records. An address or geofence ID in the request body is never trusted.
-- [ ] Your backend checks signature, algorithm, expiry, user, `transactionId`, `user.live`, and `passed`, and fails closed.
+- [ ] Your backend checks signature, algorithm, expiry, user, `transactionId`, `user.live`, and `passed`, and rejects the action when any check fails.
 - [ ] Every outcome in [Decide every branch](#decide-every-branch) has a tested path.
 - [ ] Geofence boundaries were tested on real devices at real locations.
 - [ ] For an address condition, the accepted `confidence` levels are a recorded decision.
-- [ ] `Radar.setUserId()` is set at login and cleared at logout, and the expected address is cleared when the workflow ends.
+- [ ] `Radar.setUserId()` is set at login, and the expected address is cleared when the workflow ends.
 - [ ] Every check passes a `reason`.
 - [ ] Live publishable key in production clients. JWT secret key only on your backend.
 - [ ] No bypass rule or override exists in the Live environment for a real user.

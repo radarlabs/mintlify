@@ -1,0 +1,1075 @@
+---
+title: "Verify location eligibility for sportsbooks, casinos, and fantasy"
+sidebarTitle: "Gaming"
+description: "Run verified location checks for sportsbooks, casinos, fantasy, predictions, and sweepstakes, and read the pass or fail result on your backend."
+---
+
+import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
+import IdentifyUser from '/snippets/identify-user.mdx';
+import LocationPermissions from '/snippets/location-permissions.mdx';
+import VerifiedCheck from '/snippets/verified-check.mdx';
+import CheckResults from '/snippets/check-results.mdx';
+import TokenValidation from '/snippets/token-validation.mdx';
+import TestBlockBypass from '/snippets/test-block-bypass.mdx';
+
+At the end of this guide, your app runs a verified location check for the signed-in player and the selected product, and your backend performs wagers, contest entries, deposits, and withdrawals only when the geolocation token it verified has `passed` set to `true`. The guide covers sportsbooks, casinos, daily fantasy sports, prediction markets, and sweepstakes.
+
+After your backend verifies a token, the payload includes these fields:
+
+```json
+{
+  "passed": true,
+  "failureReasons": [],
+  "product": "sportsbook",
+  "reason": "login",
+  "user": {
+    "userId": "user-123",
+    "state": {
+      "code": "NJ",
+      "allowed": true,
+      "passed": true
+    }
+  }
+}
+```
+
+## Complete example
+
+This is the whole client side of one check on each platform, and the sections below explain each part.
+
+<CodeGroup>
+
+```swift Swift
+import CoreLocation
+import RadarSDK
+
+final class LocationCheck: NSObject, CLLocationManagerDelegate {
+  private let locationManager = CLLocationManager()
+
+  func start() {
+    Radar.initialize(publishableKey: "prj_test_pk_...")
+    Radar.setUserId("user-123")
+    Radar.setProduct("sportsbook")
+
+    locationManager.delegate = self
+    locationManager.requestWhenInUseAuthorization()
+  }
+
+  func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+    let status = manager.authorizationStatus
+    if status == .authorizedWhenInUse || status == .authorizedAlways {
+      check(reason: "login")
+    }
+  }
+
+  func check(reason: String) {
+    Radar.trackVerified(
+      beacons: false,
+      desiredAccuracy: .medium,
+      reason: reason,
+      transactionId: nil
+    ) { (status, token) in
+      guard status == .success, let token = token, let jwt = token.token else {
+        showCheckError(status)
+        return
+      }
+
+      if token.passed {
+        sendTokenToBackend(jwt)
+      } else {
+        showFailure(token.failureReasons ?? [])
+      }
+    }
+  }
+}
+```
+
+```kotlin Kotlin
+import android.Manifest
+import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarInitializeOptions
+
+class MainActivity : AppCompatActivity() {
+  private val requestLocation =
+    registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+      if (grants.values.any { it }) check("login")
+    }
+
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+
+    Radar.initialize(
+      context = this,
+      publishableKey = "prj_test_pk_...",
+      options = RadarInitializeOptions(fraud = true)
+    )
+    Radar.setUserId("user-123")
+    Radar.setProduct("sportsbook")
+
+    requestLocation.launch(
+      arrayOf(
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.ACCESS_COARSE_LOCATION
+      )
+    )
+  }
+
+  private fun check(reason: String) {
+    Radar.trackVerified(reason = reason) { status, token ->
+      if (status != Radar.RadarStatus.SUCCESS || token == null) {
+        showCheckError(status)
+        return@trackVerified
+      }
+
+      if (token.passed) {
+        sendTokenToBackend(token.token)
+      } else {
+        showFailure(token.failureReasons)
+      }
+    }
+  }
+}
+```
+
+```javascript JavaScript
+import Radar from 'radar-sdk-js';
+import { createFraudPlugin } from '@radarlabs/plugin-fraud';
+
+Radar.registerPlugin(createFraudPlugin());
+Radar.initialize('prj_test_pk_...');
+Radar.setUserId('user-123');
+Radar.setProduct('sportsbook');
+
+// false uses the Radar Verify app. true verifies in the browser without it.
+const skipVerifyApp = false;
+
+async function check(reason) {
+  try {
+    const result = await Radar.fraud.trackVerified({ skipVerifyApp, reason });
+
+    if (result.passed) {
+      await sendTokenToBackend(result.token);
+    } else {
+      showFailure(result.failureReasons);
+    }
+  } catch (err) {
+    if (err instanceof Radar.fraud.errors.RadarVerifyAppError) {
+      promptToOpenVerifyApp();
+    } else {
+      showCheckError(err.status);
+    }
+  }
+}
+
+check('login');
+```
+
+```javascript React Native
+import Radar from 'react-native-radar';
+
+Radar.initialize('prj_test_pk_...', true);
+Radar.setUserId('user-123');
+Radar.setProduct('sportsbook');
+
+async function check(reason) {
+  const permission = await Radar.requestPermissions(false);
+  if (permission !== 'GRANTED_FOREGROUND' && permission !== 'GRANTED_BACKGROUND') {
+    showPermissionNeeded();
+    return;
+  }
+
+  try {
+    const { token } = await Radar.trackVerified({ reason });
+
+    if (token?.passed) {
+      await sendTokenToBackend(token.token);
+    } else {
+      showFailure();
+    }
+  } catch (err) {
+    showCheckError(err);
+  }
+}
+
+check('login');
+```
+
+```swift macOS
+import RadarVerifySDK
+
+// Call once at launch. Requests location permission and warms up location services.
+func start() {
+  RadarVerify.setup()
+}
+
+func check(reason: String) async {
+  let result = await RadarVerify.trackVerified(
+    publishableKey: "prj_test_pk_...",
+    userId: "user-123",
+    product: "sportsbook",
+    reason: reason
+  )
+
+  guard result.status == .success, let token = result.token else {
+    showCheckError(result.status)
+    return
+  }
+
+  if token.passed {
+    sendTokenToBackend(token.token)
+  } else {
+    showFailure(token.failureReasons)
+  }
+}
+```
+
+```csharp Windows
+using System.Threading.Tasks;
+using RadarVerify;
+
+public static class LocationCheck
+{
+    // Call once at startup. Checks location permission and warms up location services.
+    public static Task<RadarStatus> Start() => Radar.Setup();
+
+    public static async Task Check(string reason)
+    {
+        var (status, token) = await Radar.TrackVerified(
+            publishableKey: "prj_test_pk_...",
+            userId: "user-123",
+            product: "sportsbook",
+            reason: reason);
+
+        if (status != RadarStatus.Success || token == null)
+        {
+            ShowCheckError(status);
+            return;
+        }
+
+        if (token.Passed)
+        {
+            await SendTokenToBackend(token.Token);
+        }
+        else
+        {
+            ShowFailure(token.FailureReasons);
+        }
+    }
+}
+```
+
+</CodeGroup>
+
+The backend verifies the token and reads `passed`:
+
+<CodeGroup>
+
+```javascript Node.js
+import express from 'express';
+import { jwtVerify } from 'jose';
+import { requireSession } from './auth.js';
+
+const secret = new TextEncoder().encode(process.env.RADAR_JWT_SECRET_KEY);
+const app = express();
+app.use(express.json());
+
+app.post('/api/wagers', requireSession, async (req, res) => {
+  let payload;
+  try {
+    ({ payload } = await jwtVerify(req.body.geolocationToken, secret, {
+      algorithms: ['HS256'],
+    }));
+  } catch (err) {
+    return res.status(401).json({ error: 'invalid_geolocation_token' });
+  }
+
+  if (payload.user?.userId !== req.session.userId || payload.product !== 'sportsbook') {
+    return res.status(401).json({ error: 'invalid_geolocation_token' });
+  }
+
+  if (payload.passed !== true) {
+    return res.status(403).json({ passed: false, failureReasons: payload.failureReasons });
+  }
+
+  // Place the wager.
+  res.status(201).json({ placed: true });
+});
+```
+
+```python Python
+import os
+
+import jwt  # PyJWT
+from flask import Flask, jsonify, request, session
+
+app = Flask(__name__)
+app.secret_key = os.environ["SESSION_SECRET_KEY"]
+SECRET = os.environ["RADAR_JWT_SECRET_KEY"]
+
+
+@app.post("/api/wagers")
+def place_wager():
+    if "user_id" not in session:
+        return jsonify(error="not_signed_in"), 401
+
+    body = request.get_json(silent=True) or {}
+    try:
+        payload = jwt.decode(body.get("geolocationToken", ""), SECRET, algorithms=["HS256"])
+    except jwt.InvalidTokenError:
+        return jsonify(error="invalid_geolocation_token"), 401
+
+    user_id = (payload.get("user") or {}).get("userId")
+    if user_id != session["user_id"] or payload.get("product") != "sportsbook":
+        return jsonify(error="invalid_geolocation_token"), 401
+
+    if payload.get("passed") is not True:
+        return jsonify(passed=False, failureReasons=payload.get("failureReasons", [])), 403
+
+    # Place the wager.
+    return jsonify(placed=True), 201
+```
+
+</CodeGroup>
+
+## Build with an agent
+
+Copy this prompt into a coding agent that has access to your repository.
+
+```text
+Implement Radar verified location checks for a sportsbook, casino, daily fantasy,
+prediction market, or sweepstakes product in this repository using the current
+Radar documentation.
+
+First inspect the application framework, platform versions, existing Radar code,
+authentication flow, session handling, and tests. Identify every action that
+must be restricted by location (for example wager, contest entry, deposit,
+withdrawal) and list them for me before you change code. Preserve existing
+behavior outside this task.
+
+Read:
+- https://docs.radar.com/geo-compliance/gaming.md
+- https://docs.radar.com/sdk/fraud.md
+- https://docs.radar.com/api/geolocation-tokens.md
+- The SDK reference for this platform: https://docs.radar.com/sdk/ios.md,
+  https://docs.radar.com/sdk/android.md, https://docs.radar.com/sdk/web.md, or
+  https://docs.radar.com/sdk/react-native.md
+
+Implement, as documented:
+- SDK and fraud plugin setup with a publishable key from an environment variable.
+- Radar.setUserId() with the authenticated player ID.
+- Radar.setProduct() with the product the player is using, when the project has
+  more than one product.
+- Checks with Radar.trackVerified() (Radar.fraud.trackVerified() on web) at
+  session start, on product change, and before restricted actions. Pass a
+  reason on every check.
+- Reuse a token until its returned expiry, never a hardcoded interval. Run a new
+  check when the token expires and when the SDK reports an IP change. Never run
+  two checks at once.
+- On web, use the Radar Verify companion app (the default) for a sportsbook or
+  casino in the US or Canada. For other products and other markets, pass
+  skipVerifyApp: true.
+- A backend route that verifies the HS256 signature with the project's JWT
+  secret key from an environment variable, enforces an algorithm allowlist and
+  expiry, checks user.userId against the session user, product, transactionId
+  when used, and user.live in production, then reads passed. If passed is
+  false, reject the action and return failureReasons.
+- Separate handling for a failed check (token with passed false) and an error
+  (a status that is not success, no token). Do not perform the action in
+  either case.
+
+Do not perform any action because of a client-supplied passed value. Do not
+invent methods, fields, supported platforms, or defaults. Do not assume which
+states or countries are allowed. Ask me for the list per product.
+
+Add backend tests for: valid token with passed true, valid token with passed
+false, tampered token, token signed with another secret, alg none, expired
+token, wrong user, wrong product, test-environment token in production, and
+missing token. Add a client test that a restricted action with an expired token
+triggers exactly one new check.
+
+Run the repository's relevant checks. Report changed files, test results,
+required dashboard setup (products, country and state lists, test block rule),
+and anything that still needs confirmation. Do not change production settings
+or deploy without approval.
+```
+
+## Prerequisites
+
+- **Access**: Fraud is enabled for your project under **Fraud** on the [Settings](https://dashboard.radar.com/settings#fraud-settings) page of the Radar dashboard.
+- **Platform**: iOS, Android, React Native, web, or a native macOS or Windows app. Use a Radar SDK and fraud plugin pair from the [compatibility table](/sdk/fraud#compatibility).
+- **SDK versions**: The examples use iOS SDK 3.46.0, Android SDK 4.3.0, and Web SDK 5.3.0 with `@radarlabs/plugin-fraud` 1.6.1.
+- **Platform setup**: The fraud plugin is installed and device attestation is configured. See [Fraud plugin setup](/sdk/fraud).
+- **Keys**: A Test publishable key for your app and your project's JWT secret key for your backend.
+- **Backend**: An authenticated endpoint for each restricted action, and a JWT library that supports `HS256`.
+- **Permissions**: Foreground location permission on the device. Background permission isn't needed for checks that run while the app is open.
+- **Footprint**: A written list, per product, of the countries and states where the product is allowed or blocked.
+- **Dashboard access**: An account that can view locations and create block rules in the Test environment. See [Roles and what each can do](/fundamentals/authentication-and-access#roles-and-what-each-can-do).
+
+## How it works
+
+| Party | Responsibility |
+| --- | --- |
+| Your app | Identifies the player and the product, requests location permission, runs a check at the right moments, and sends the token to your backend. |
+| Radar | Collects location with device and network integrity signals, evaluates your allowed locations and fraud checks for the product, and returns a signed geolocation token with `passed`, `failureReasons`, and an expiry. |
+| Your backend | Verifies the token signature and expiry, confirms the token belongs to the session user, the product, and the action, and reads `passed`. If `passed` is `false`, it rejects the action. |
+| Your downstream systems | Wagering, contest, payment, and account systems act only after your backend has read `passed` from a verified token. They never read a client result directly. |
+
+The sequence for one restricted action:
+
+1. The player signs in. Your app calls `Radar.setUserId()` and `Radar.setProduct()`.
+2. Your app runs a check and receives a token.
+3. Your app sends the token to your backend on an authenticated request.
+4. Your backend verifies the token and reads `passed`.
+5. Your app reuses the token until it expires, then repeats from step 2.
+
+## Set up the project, identity, and products
+
+### Choose projects and environments
+
+<EnvironmentAndKeys />
+
+Each project has its own keys, settings, users, devices, and location checks. Users with the same user ID inside one project share history, block rules, and risk signals. That makes the project boundary an identity decision:
+
+| Situation | Project layout |
+| --- | --- |
+| Several brands share one player account system, so `user-123` is the same person in each brand | One project for those brands. Separate the offerings with products. |
+| Brands have separate account systems, so the same ID can mean different people | One project per brand. |
+| A brand must not share settings, keys, or data with another | One project per brand. |
+
+Use the Test environment for development and the Live environment for production. The token carries `user.live`, and the validation steps on this page reject a Test environment token in production.
+
+As an alternative to a publishable key, a project can initialize the SDK with short-lived auth tokens that your backend signs. This is account-specific. See [Use auth tokens instead of a publishable key](/fundamentals/authentication-and-access#use-auth-tokens-instead-of-a-publishable-key).
+
+### Map the authenticated player to the SDK user ID
+
+The token proves which user ID a check ran for. Your backend proves who is making the request. The two match only if your app sets the same ID your backend uses for the session.
+
+<IdentifyUser />
+
+### Select the product
+
+A product is a named configuration inside a project, such as `sportsbook`, `casino`, or `fantasy`. Each product can have its own allowed countries and states and its own check settings. A product setting overrides the project setting with the same name. Where a product doesn't set a value, the project value applies.
+
+| Your situation | Configuration |
+| --- | --- |
+| One offering, one footprint | No products. Set the lists on the project and leave out `Radar.setProduct()`. |
+| Several offerings with different footprints, such as a sportsbook and a fantasy contest product in one app | One product per offering, each with its own lists. |
+
+If the allowed states of two offerings differ at all, use separate products, so that a token for one can't be presented for the other.
+
+Call `Radar.setProduct()` before the check, with the product the player is using:
+
+<CodeGroup>
+
+```swift Swift
+Radar.setProduct("casino")
+```
+
+```kotlin Kotlin
+Radar.setProduct("casino")
+```
+
+```javascript JavaScript
+Radar.setProduct('casino');
+```
+
+```javascript React Native
+Radar.setProduct('casino');
+```
+
+</CodeGroup>
+
+How product selection affects the result:
+
+- `passed` and `failureReasons` in the token are the result for the product named in `product`.
+- A token for `sportsbook` doesn't establish eligibility for `casino`. Your backend compares `product` to the product of the action.
+- When the player switches product, set the new product and run a new check.
+- If per-product results are enabled for your project, the token also carries a `products` object with one `passed` value per configured product from the same check. This is account-specific. See [Payload fields](/api/geolocation-tokens#payload-fields).
+
+Product names are short identifiers made of letters, numbers, hyphens, and underscores. Use the same names in the dashboard, your app, and your backend. Contact your Radar account team for help configuring products.
+
+To narrow a check to the jurisdiction of the player's session, call `Radar.setExpectedJurisdiction()` with a country code and a state code before the check (`Radar.fraud.setExpectedJurisdiction()` on web). A check outside that jurisdiction fails with `country_not_expected` or `state_not_expected`, even when the location is allowed in settings.
+
+## Configure allowed locations
+
+Your allowed locations are your footprint. Radar evaluates four things for the state or province the player is in, for the selected product:
+
+| Setting | What it does | Result in the token |
+| --- | --- | --- |
+| Country list and state list | Each list is either an allowlist or a blocklist. An empty list allows every country or state. | `user.country.allowed`, `user.state.allowed`. Failure reasons `country_not_allowed`, `state_not_allowed`. |
+| Buffer zones | Fails a check that is too close to a border, based on a jurisdiction threshold or the accuracy reported by the device. | `user.state.inBufferZone`, `user.state.distanceToBorder`. Failure reason `state_in_buffer_zone`. |
+| Exclusion zones | Fails a check inside a zone within an otherwise allowed state. Can be turned on for all states or for specific states. | `user.state.inExclusionZone`. Failure reason `state_in_exclusion_zone`. |
+| Custom geofence zones | A custom geofence can be marked as a state exclusion zone, which fails checks inside it, or a state inclusion zone, which lets a check inside it pass the allowed-state test. | `user.state.inExclusionZone`, `user.state.inInclusionZone`, and the geofence in `user.geofences`. |
+
+A state check passes when the state matches the expected jurisdiction if you set one, the location isn't in an exclusion zone, the location isn't in a buffer zone, and the state is allowed or the location is in an inclusion zone.
+
+The footprint comes from your requirements, not from the product category. Prediction markets, daily fantasy sports, and sweepstakes are offered under different rules in different places, and two products in the same category can need different lists. Confirm the footprint for each product with your legal and compliance team.
+
+### View or change the lists
+
+The jurisdiction settings are in the **Fraud** section of the [Settings](https://dashboard.radar.com/settings#fraud-settings) page, once for the project and once for each product. The controls are a list type (allowlist or blocklist) and a list for countries, the same pair for states, and a setting that turns state exclusion zones on for all states, for specific states, or off.
+
+- Use an allowlist when the product is offered in a short list of places. Use a blocklist when it is offered everywhere except a short list.
+- An empty list allows every country or state. Check that each product's lists are populated before you go live.
+- Changes apply to checks made after you save. Tokens already issued keep their result until they expire, so a player who passed before the change can hold a passing token until its expiry.
+- Changing a list changes where your product is offered. Treat it as a controlled change with a named approver.
+- Whether your organization can edit these settings itself is account-specific. On some accounts they are read-only and Radar makes the change for you. See [Who can change jurisdiction settings and block or bypass rules](/fundamentals/authentication-and-access#who-can-change-jurisdiction-settings-and-block-or-bypass-rules).
+- Access to buffer zones and exclusion zones is account-specific. Contact your Radar account team to use them.
+
+Verify a change in the Test environment: run a check from a location in the state you changed, or use a location override on a test user, and confirm `user.state.allowed` and `passed` in the token.
+
+### Add custom geofences and beacons
+
+To fail or pass checks inside a property, create a custom geofence on the [Geofences](https://dashboard.radar.com/geofencing/geofences) page and set its fraud zone type to a state exclusion zone or a state inclusion zone. The geofence takes effect for checks made after you save it. Geofences without a zone type don't change `passed`. They appear in `user.geofences` for your own rules and investigations.
+
+On iOS and Android, a check can also range nearby beacons. Pass `beacons: true` to `Radar.trackVerified()`. When beacons are enabled for your project, the beacons in range are returned with the user in the verified payload. A beacon doesn't change `passed` on its own in the behavior documented here, so if your eligibility rule depends on being near a beacon, apply that rule on your backend after token validation. For beacon setup, ranging behavior, and hardware guidance, see [Track indoor location with beacons](/geofencing/beacons).
+
+## Choose manual or automatic checks
+
+There are two ways to run checks. This guide uses manual checks as the worked example, because your app decides when each check runs and can label each one with a reason.
+
+| | Manual checks | Automatic checks with caching |
+| --- | --- | --- |
+| Method | `Radar.trackVerified()` | `Radar.startTrackingVerified()`, then `Radar.getVerifiedLocationToken()` |
+| Who starts each check | Your app | The SDK |
+| When checks run | When you call the method | When tracking starts, then at your interval, sooner when the last token expires before the interval, and when the device IP address changes |
+| Token delivery | The completion handler or promise of your call | `RadarVerifiedDelegate.didUpdateToken()` on iOS, `RadarVerifiedReceiver.onTokenUpdated()` on Android, `Radar.fraud.onTokenUpdated()` on web, and the result of `getVerifiedLocationToken()` |
+| `reason` | You pass a reason on every check | The SDK sets the reason on the checks it starts on iOS and Android, such as `interval` and `ip_change` |
+| `transactionId` | Supported | Not sent on checks the SDK starts |
+| Last token | You keep the last token until it expires | `getVerifiedLocationToken()` returns the last token if it is still valid, and requests a new one if not |
+| Expiry and overlap | You handle them. See [Run checks at the right time](#run-checks-at-the-right-time). | Handled by the SDK |
+
+Which to use:
+
+- Use manual checks when checks must line up with specific application moments, such as a contest entry, a trade, or a withdrawal, when you want your own reason on every check, or when you tie checks to actions with `transactionId`.
+- Use automatic checks when you want the SDK to keep a current token available for the whole session and you don't need a reason or transaction on each check.
+- You can combine them: run automatic checks for the session, and call `Radar.trackVerified()` with a `reason` and `transactionId` before a single-use action.
+
+Whichever you use, the backend validation is the same.
+
+### Use automatic checks
+
+These examples start automatic checks, read the last token before a restricted action, and stop when the session ends. On web, `interval` defaults to 300 seconds and `ipChanges` defaults to `false`.
+
+<CodeGroup>
+
+```swift Swift
+import RadarSDK
+
+// Conform to RadarVerifiedDelegate to receive each new token.
+Radar.setVerifiedDelegate(self)
+
+// Check at least every 1200 seconds, sooner when a token expires earlier.
+Radar.startTrackingVerified(interval: 1200, beacons: false)
+
+// Before a restricted action: last token if still valid, new check if not.
+Radar.getVerifiedLocationToken { (status, token) in
+  guard status == .success, let jwt = token?.token else {
+    showCheckError(status)
+    return
+  }
+  sendTokenToBackend(jwt)
+}
+
+// RadarVerifiedDelegate
+func didUpdateToken(_ token: RadarVerifiedLocationToken) {
+  if let jwt = token.token {
+    sendTokenToBackend(jwt)
+  }
+}
+
+// When the session ends.
+Radar.stopTrackingVerified()
+```
+
+```kotlin Kotlin
+import android.content.Context
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarVerifiedReceiver
+import io.radar.sdk.model.RadarVerifiedLocationToken
+
+class VerifiedReceiver : RadarVerifiedReceiver() {
+  override fun onTokenUpdated(context: Context, token: RadarVerifiedLocationToken) {
+    sendTokenToBackend(token.token)
+  }
+}
+
+Radar.setVerifiedReceiver(VerifiedReceiver())
+
+// Check at least every 1200 seconds, sooner when a token expires earlier.
+Radar.startTrackingVerified(interval = 1200, beacons = false)
+
+// Before a restricted action: last token if still valid, new check if not.
+Radar.getVerifiedLocationToken { status, token ->
+  if (status != Radar.RadarStatus.SUCCESS || token == null) {
+    showCheckError(status)
+    return@getVerifiedLocationToken
+  }
+  sendTokenToBackend(token.token)
+}
+
+// When the session ends.
+Radar.stopTrackingVerified()
+```
+
+```javascript JavaScript
+const skipVerifyApp = false; // use the same value in every call
+
+Radar.fraud.onTokenUpdated((result) => {
+  sendTokenToBackend(result.token);
+});
+
+Radar.fraud.startTrackingVerified({ interval: 1200, skipVerifyApp, ipChanges: true });
+
+// Before a restricted action: last token if still valid, new check if not.
+try {
+  const result = await Radar.fraud.getVerifiedLocationToken({ skipVerifyApp });
+  if (result) {
+    await sendTokenToBackend(result.token);
+  }
+} catch (err) {
+  showCheckError(err);
+}
+
+// When the session ends.
+Radar.fraud.stopTrackingVerified();
+```
+
+</CodeGroup>
+
+With automatic checks, when the player changes product, call `Radar.clearVerifiedLocationToken()` (`Radar.fraud.clearVerifiedLocationToken()` on web) after `Radar.setProduct()`, so that the next call returns a token for the new product.
+
+## Choose the web path
+
+On web, the `skipVerifyApp` option of `Radar.fraud.trackVerified()` selects how the check runs. We recommend the path by product and market:
+
+| Your product and market | Recommended path | `skipVerifyApp` |
+| --- | --- | --- |
+| A sportsbook or casino in the US or Canada | The Radar Verify companion app. The player installs Radar Verify for Mac or Windows once, and the check runs through the app. | `false`, which is the default |
+| Any other product, such as daily fantasy sports, a prediction market, or sweepstakes, and any other market | Verify without the app. The check runs in the browser and the player installs nothing. | `true` |
+
+The difference in code is one option:
+
+<CodeGroup>
+
+```javascript With the Radar Verify app
+const result = await Radar.fraud.trackVerified({ reason: 'login' });
+```
+
+```javascript Without the app
+const result = await Radar.fraud.trackVerified({ skipVerifyApp: true, reason: 'login' });
+```
+
+</CodeGroup>
+
+What changes with each path:
+
+- **With the Radar Verify app**: The app provides the location, and the player grants location access to the app. It adds remote desktop detection for the `sharing` flag, more advanced `mocked` and `proxy` detection, and more stable device IDs. If the app isn't installed or isn't running, the call fails with `ERROR_VERIFY_APP` (`RadarVerifyAppError`). Tell the player to open Radar Verify, or to install it, then run the check again.
+- **Without the app**: The browser's geolocation API provides the location, and the player grants location access to your site.
+
+Pass the same `skipVerifyApp` value to `Radar.fraud.trackVerified()`, `Radar.fraud.startTrackingVerified()`, and `Radar.fraud.getVerifiedLocationToken()`. For download links and install steps, see [Choose the companion app or the no-download path](/sdk/fraud#choose-the-companion-app-or-the-no-download-path).
+
+## Verify from a native desktop app
+
+<Info>
+  The Mac and Windows SDKs are available on request. Contact your Radar account team for access.
+</Info>
+
+A native macOS or Windows app runs the check itself with the Radar Verify SDK, without the web SDK or the companion app. The macOS and Windows tabs in [Complete example](#complete-example) show the whole call. The Mac SDK supports macOS 12.4 or later, and the Windows SDK supports Windows 10 or later with .NET 8 or later.
+
+The desktop SDKs differ from the mobile and web SDKs in three ways:
+
+- Call `RadarVerify.setup()` on macOS, or `Radar.Setup()` on Windows, once at launch before the first check.
+- There is no separate initialize, `setUserId()`, or `setProduct()` call. Pass `publishableKey`, `userId`, `product`, `reason`, and `transactionId` to each `trackVerified()` call. To set an expected jurisdiction, pass `expectedCountryCode` and `expectedStateCode`.
+- The result is a status and a token. The token has `token`, `passed`, `failureReasons`, `expiresAt`, and `expiresIn`. A status other than success means the check didn't complete and there is no token.
+
+Your backend validates a desktop token the same way as any other. See [Validate the response on the backend](#validate-the-response-on-the-backend).
+
+## Request location permission
+
+A verified location check needs foreground location permission and can't succeed without it. Ask for it when the player first reaches a restricted feature, with a short explanation of why. Background permission isn't required for checks that run while the app is open, so stop after the foreground steps below.
+
+<LocationPermissions />
+
+If the player denies permission, the check returns `ERROR_PERMISSIONS` and no token. Keep the restricted action unavailable and explain how to grant access.
+
+## Run a manual check
+
+<VerifiedCheck />
+
+## Run checks at the right time
+
+A check is needed whenever the last token no longer covers what the player is about to do.
+
+| Moment | What to do | Example `reason` |
+| --- | --- | --- |
+| Account registration | Run a check to tell the player early if the product is unavailable where they are. | `signup` |
+| Session start or login | Set the user ID and product, then run a check before you show restricted features. | `login` |
+| Product change | Set the new product, then run a check. A token for one product doesn't cover another. | `product_change` |
+| A wager, contest entry, trade, or purchase | Use the last token if it hasn't expired. Run a check first if it has. | `wager`, `entry`, `trade` |
+| A withdrawal or prize redemption | Run a new check tied to the action with a `transactionId`. | `withdrawal`, `redemption` |
+| App returns to the foreground, or the page becomes visible | Compare the current time to the token's `expiresAt`. Run a check if it has passed. | `resume` |
+| Device IP address changes | Run a check. See [Respond to network changes](#respond-to-network-changes). | `ip_change` |
+
+The `reason` values are examples. Choose your own set and keep it stable.
+
+A sportsbook or casino usually needs a current token for the whole wagering session. A daily fantasy, prediction, or sweepstakes product often needs one only at specific actions, and can check at those actions instead.
+
+### Schedule checks from the returned expiry
+
+Radar sets the expiry on each token from your product and jurisdiction configuration and the distance to the border. Tokens issued close to a border expire sooner, which is how a player who is moving toward a border gets checked more often. Don't replace this with a fixed interval, and don't use a token past its expiry. See [Expiry](/api/geolocation-tokens#expiry).
+
+### Orchestrate manual checks
+
+A manual integration has three rules: use the token until it expires, run a new check when it has expired or the SDK reports an IP change, and never run two checks at once. These examples apply them in one function that you call at each moment in the table above. `sendTokenToBackend`, `showFailure`, and `showCheckError` are functions you write.
+
+<CodeGroup>
+
+```swift Swift
+import RadarSDK
+
+var lastToken: RadarVerifiedLocationToken?
+var isChecking = false
+
+func checkLocation(reason: String) {
+  // Use the last token until it expires.
+  if let last = lastToken, last.passed, let expiresAt = last.expiresAt, expiresAt > Date() { return }
+
+  // One check at a time.
+  guard !isChecking else { return }
+  isChecking = true
+
+  Radar.trackVerified(
+    beacons: false,
+    desiredAccuracy: .medium,
+    reason: reason,
+    transactionId: nil
+  ) { (status, token) in
+    isChecking = false
+
+    guard status == .success, let token = token, let jwt = token.token else {
+      showCheckError(status)
+      return
+    }
+
+    lastToken = token
+    if token.passed {
+      sendTokenToBackend(jwt)
+    } else {
+      showFailure(token.failureReasons ?? [])
+    }
+  }
+}
+```
+
+```kotlin Kotlin
+import io.radar.sdk.Radar
+import io.radar.sdk.model.RadarVerifiedLocationToken
+import java.util.Date
+
+var lastToken: RadarVerifiedLocationToken? = null
+var isChecking = false
+
+fun checkLocation(reason: String) {
+  // Use the last token until it expires.
+  val last = lastToken
+  if (last != null && last.passed && last.expiresAt.after(Date())) return
+
+  // One check at a time.
+  if (isChecking) return
+  isChecking = true
+
+  Radar.trackVerified(reason = reason) { status, token ->
+    isChecking = false
+
+    if (status != Radar.RadarStatus.SUCCESS || token == null) {
+      showCheckError(status)
+      return@trackVerified
+    }
+
+    lastToken = token
+    if (token.passed) {
+      sendTokenToBackend(token.token)
+    } else {
+      showFailure(token.failureReasons)
+    }
+  }
+}
+```
+
+```javascript JavaScript
+import Radar from 'radar-sdk-js';
+
+let lastResult = null;
+let inFlight = null;
+
+export function checkLocation(reason) {
+  // Use the last token until it expires.
+  if (lastResult?.passed && lastResult.expiresAt > new Date()) {
+    return Promise.resolve(lastResult);
+  }
+
+  // One check at a time. Callers share the check that is running.
+  inFlight ??= Radar.fraud
+    .trackVerified({ reason })
+    .then(async (result) => {
+      lastResult = result;
+      if (result.passed) {
+        await sendTokenToBackend(result.token);
+      } else {
+        showFailure(result.failureReasons);
+      }
+      return result;
+    })
+    .finally(() => {
+      inFlight = null;
+    });
+
+  return inFlight;
+}
+```
+
+</CodeGroup>
+
+Call `checkLocation` when the app returns to the foreground or the page becomes visible, and before each restricted action. It does nothing while the last token is still current. For a single-use action such as a withdrawal, call `Radar.trackVerified()` directly with a `transactionId` instead, as shown in [Tie a check to one action](#tie-a-check-to-one-action).
+
+Keeping the last token on the client saves unnecessary checks. Your backend still enforces the expiry on every restricted request, as described in [Validate the response on the backend](#validate-the-response-on-the-backend).
+
+### Respond to network changes
+
+The SDK reports when the device IP address changes, so that a manual integration can run a new check.
+
+| Platform | How to receive the change | Notes |
+| --- | --- | --- |
+| iOS | Set a `RadarVerifiedDelegate` with `Radar.setVerifiedDelegate()` and implement `didChangeIP()`. | The SDK monitors IP changes while a verified delegate is set or automatic checks are running. |
+| Android | Set a `RadarVerifiedReceiver` with `Radar.setVerifiedReceiver()` and override `onIpChanged(context)`. | Same condition as iOS. |
+| Web | Register a callback with `Radar.fraud.onIpChanged()`. Pass `null` to remove it. | The plugin monitors IP changes while a callback is registered. |
+
+In the callback, discard the last token and run a new check:
+
+```javascript JavaScript
+Radar.fraud.onIpChanged(() => {
+  lastResult = null;
+  checkLocation('ip_change').catch(showCheckError);
+});
+```
+
+With automatic checks, the SDK starts the check itself on iOS and Android, and on web when you pass `ipChanges: true`.
+
+The SDK has no separate callback for a location change. Movement toward a border is handled by the shorter expiry on the token.
+
+## Record check reasons
+
+Pass a `reason` on every check. It costs one argument and it is the main way to tell checks apart later.
+
+- **Investigation**: The reason appears on the location check in the dashboard and can be used as a filter on the [Locations](https://dashboard.radar.com/geofencing/locations) page and as a column or grouping in reports. When a player disputes a blocked withdrawal, you can go straight to the checks with the `withdrawal` reason.
+- **Rules**: Fraud rules can use the location check reason as a condition, so a rule can apply to `withdrawal` checks without firing on every `interval` check. See [Configure rules and actions](/fraud/overview#configure-rules-and-actions).
+- **Backend**: The reason is returned in the token as `reason`. Your backend can require a specific reason for a specific action, for example a `withdrawal` check for a withdrawal.
+
+`reason` and `transactionId` are free-form strings. Radar doesn't restrict them to a list. Define a small fixed set of reasons, such as `login`, `resume`, `product_change`, `wager`, `entry`, `deposit`, and `withdrawal`, and use the same spelling on every platform. Don't put personal data in either field.
+
+## Validate the response on the backend
+
+<TokenValidation />
+
+### What the token format means for your verifier
+
+| Topic | Behavior | What you implement |
+| --- | --- | --- |
+| Supported format | A signed token: JWS compact serialization with `HS256`. The token isn't encrypted. | Reject anything that isn't a three-segment JWS with `alg` set to `HS256`. Treat the payload as readable by the player. |
+| Trusted key selection | One JWT secret key per project. The header has no `kid`. | Load the key from your own configuration for the project the request belongs to. Never choose a key from a value inside the token. |
+| Allowed algorithms | `HS256` only. | Pass an explicit allowlist to the library. |
+| Decryption | Not applicable. There is no encrypted envelope to open. | Nothing. |
+| Signature verification | Required for every token. | Performed by the JWT library with your secret key. |
+| Key rotation | No key identifier, so no per-token key selection. | The two-key overlap in [Change the secret key](#change-the-secret-key). |
+| Authenticated-user binding | `user.userId` is the value your app set. | Compare it to the session user. |
+| Freshness | `exp` on the token. | Enforced by the library. Don't accept a token after `exp`. |
+| Selected product | `product`, and `products` when enabled. | Compare to the product of the action. |
+| Failure and warning fields | `passed`, `failureReasons`, `warningReasons`. | Reject the action when `passed` isn't `true`. Warnings don't fail a check. See [failure reasons](/api/geolocation-tokens#failure-reasons) and [warning reasons](/api/geolocation-tokens#warning-reasons). |
+| Replay and transaction binding | Radar doesn't track whether a token was already presented. `transactionId` is returned unchanged and isn't checked for uniqueness. | For single-use actions, generate the `transactionId` on your backend, compare it, and mark it used. |
+
+### Reuse a verified result for a session
+
+You can require a token on every restricted request, or verify a token once and remember its result. If you remember it, store the verified values on the server, keyed by your session:
+
+```json
+{
+  "userId": "user-123",
+  "product": "sportsbook",
+  "passed": true,
+  "expiresAt": "2026-11-17T18:20:00.000Z",
+  "locationCheckId": "66f1c2a9e4b0a1b2c3d4e5f6"
+}
+```
+
+Then, for each restricted request, reject it unless a stored result exists for the session user and the product of the action, `passed` is `true`, and the current time is before `expiresAt`. Take `expiresAt` from the token's `exp` claim, and keep `_id` from the token as `locationCheckId` so that support staff can find the check in the dashboard. Replace the stored result each time your backend verifies a later token for the same session, including one with `passed` set to `false`.
+
+For withdrawals, redemptions, and other single-use actions, require a token on the request itself, tied to the action with `transactionId`.
+
+## Evaluate and roll out
+
+### Shadow test against a current provider
+
+In a shadow test, your current provider stays in control. Your app also runs a Radar check at the same moments, and your backend records the Radar result without enforcing it.
+
+- **Mirror your current integration**: Run the Radar check where the current check runs, with a matching `reason`, so that you compare like with like.
+- **Record both results**: On your backend, store the user ID, product, platform, reason, timestamp, `passed`, failure reasons, and latency.
+- **Shadow traffic can create history and risk signals**: Shadow checks are real checks. They create user and device records and location history in Radar, and they can contribute to fraud flags, risk scores, and, if it is enabled for your project, automatic blocking. Agree with your Radar account team before the test how that history is handled when you start enforcing, and whether automatic blocking stays off during the test.
+- **Confirm your data-sharing position first**: A shadow test sends player location data to Radar. Check with your legal and compliance team whether a jurisdiction requires approval before that happens.
+- **Prompts**: A second SDK can mean a second permission prompt or a second companion app. Choose which platforms and web paths are in scope so that players aren't asked to install two apps.
+
+### Run two SDKs side by side
+
+Two location SDKs in one app or page share the same device location services and, on web, the same browser APIs. Before you trust shadow numbers, confirm on each platform that both SDKs return valid results when loaded together, in the load order you ship. If one platform doesn't produce valid results for both, leave that platform out of the shadow test instead of comparing skewed data.
+
+### Compare metrics
+
+| Metric | What to look at |
+| --- | --- |
+| Pass rate | By jurisdiction, product, and platform |
+| Failure reasons | The mix of jurisdiction and fraud reasons, and how it differs from your current provider |
+| Technical error rate | By status, such as `ERROR_LOCATION` and `ERROR_NETWORK`, separately from failed checks |
+| Latency | Time from the check call to the token, by platform |
+| Agreement | Checks where the two providers disagree. Review a sample of each direction. |
+| Support contacts | Location-related contacts per active player, after you start enforcing |
+
+### Roll out in stages
+
+1. **Internal**: Enforce for staff accounts in the Live environment, in one jurisdiction.
+2. **Limited**: Enforce for one jurisdiction or a percentage of players, behind a server-side flag that your backend reads on each restricted request.
+3. **Expand**: Add jurisdictions or raise the percentage when the metrics hold.
+4. **Complete**: Remove the previous provider after every jurisdiction and platform is enforcing on Radar.
+
+Keep the flag on your backend, so that the path that enforces is the path that was tested and a client build can't choose its own provider.
+
+### Roll back
+
+Rollback is the same flag turned off: your backend returns to the previous provider's result for the affected jurisdiction or cohort. Keep the previous integration deployable until the final stage is complete. Rehearse the rollback once in a non-production environment, and set in advance which signals trigger it, such as a technical error rate above your threshold. Subscribe to the [Radar status page](https://status.radar.com) for incident notices.
+
+## Inspect data and control access
+
+### Find a check
+
+<Steps>
+  <Step title="Open the Locations page">
+    Open the [Locations](https://dashboard.radar.com/geofencing/locations) page in the environment where the check ran.
+  </Step>
+  <Step title="Filter the list">
+    Filter by user ID, product, reason, failure reason, state, or date. Your backend's stored `locationCheckId` is Radar's ID for the check.
+  </Step>
+  <Step title="Open the check">
+    Click the row to open the location check.
+  </Step>
+</Steps>
+
+The location check shows:
+
+| What | Detail |
+| --- | --- |
+| Result | Whether the check passed or failed, with the failure reasons |
+| Identity | The user ID and device ID. Each links to its own page with related users and devices and location history. |
+| Reason and transaction ID | The values your client passed to the check |
+| Jurisdiction | The country and state, whether each is allowed, distance to border, and buffer, exclusion, and inclusion zone status |
+| Fraud and network | The fraud flags and IP address information |
+| Token | The decoded token, its result, and when it expires |
+| Timestamp | When the check ran |
+
+For how to read the fraud signals and work through a user or device investigation, see [Inspect a check](/fraud/overview#inspect-a-check).
+
+### Control access
+
+- **Roles**: Give support staff read access to the Live environment, and keep the group that can create bypass rules or change settings small. See [Roles and what each can do](/fundamentals/authentication-and-access#roles-and-what-each-can-do).
+- **Footprint changes**: Limit who can change allowed countries and states. See [Who can change jurisdiction settings and block or bypass rules](/fundamentals/authentication-and-access#who-can-change-jurisdiction-settings-and-block-or-bypass-rules).
+- **Retention**: Location checks are kept for the retention period configured for your project. See [Find and change data retention](/fundamentals/authentication-and-access#find-and-change-data-retention).
+- **Exports and reports**: See [Export data](/fundamentals/authentication-and-access#export-data) and [Find, export, and report on data](/fundamentals/testing-and-launch#find-export-and-report-on-data).
+- **Your own records**: If you must keep evidence of each result for longer than your Radar retention period, store the token or the verified fields on your backend when you verify it.
+
+## Handle results and errors
+
+<CheckResults />
+
+### Show the right message
+
+Keep three client states apart, because the player's next step is different in each:
+
+| State | How you detect it | What to show |
+| --- | --- | --- |
+| Not eligible here | `passed` is `false` with a jurisdiction failure reason, such as `state_not_allowed` or `state_in_buffer_zone` | The product isn't available at this location. Let the player check again after they move. |
+| Device or network problem the player can fix | `passed` is `false` with a fraud failure reason, such as `fraud_proxy_known_proxy_ip` | What to change, for example disconnect from a VPN, then a button that runs a new check. |
+| Check couldn't complete | The status isn't success and there is no token, or your backend rejected an expired token | A technical message and a button that runs a new check. Don't say the player is ineligible. |
+
+Handle a failure reason you don't recognize with a general message, because the list can grow. After an error, limit automatic new checks to a small number with a delay between them, then wait for the player.
+
+## Test the integration
+
+Use the Test environment with a Test publishable key, the matching JWT secret key on a staging backend, and a dedicated test account.
+
+### Test the happy path
+
+<Steps>
+  <Step title="Sign in from an allowed location">
+    Sign in as the test user from a location inside the product's footprint.
+  </Step>
+  <Step title="Confirm the passing check">
+    Confirm that a check runs at login, that the token has `passed` set to `true`, and that the restricted action succeeds on your backend.
+  </Step>
+  <Step title="Inspect the check">
+    On the [Locations](https://dashboard.radar.com/geofencing/locations) page, open the check and confirm the user ID, product, and reason are the values you sent.
+  </Step>
+  <Step title="Confirm reuse and the new check">
+    Perform the action again before the expiry and confirm that no new check runs. Put the app in the background past the expiry, bring it back, and confirm that exactly one new check runs and no overlapping checks appear on the Locations page.
+  </Step>
+</Steps>
+
+### Test failed checks with block and bypass rules
+
+<TestBlockBypass />
+
+### Test the backend rejections
+
+Send each of these directly to your backend, without your UI, and confirm the result. For the fixture list, see [Negative tests](#negative-tests).
+
+| Case | How to produce it | Expected result |
+| --- | --- | --- |
+| Invalid token | Change one character in the payload segment of a real token | Rejected |
+| Expired token | Present a token after its `exp` | Rejected, and the action isn't performed |
+| Mismatched user | Present a token for `test-user-123` on a session for another test user | Rejected |
+| Wrong product | Present a `sportsbook` token on a `casino` action | Rejected |
+| Failed check | Present the token from a blocked test user | Rejected, with the failure reasons in the response |
+| Client-only pass | Send `"passed": true` in the request body with no token | Rejected |
+| Error status | Deny location permission or turn on airplane mode, then attempt the action | Your app has no token and your backend performs nothing |
+
+## Production checklist
+
+- [ ] Live publishable key in production client builds. No secret key or JWT secret key in any client.
+- [ ] JWT secret key loaded from a secret manager on your backend.
+- [ ] Each product's country and state lists match the written footprint, and no list that is meant to restrict is empty.
+- [ ] `Radar.setUserId()` is set at login with the session user ID.
+- [ ] `Radar.setProduct()` is set before every check when you use products, and a product change triggers a new check.
+- [ ] Every check passes a `reason` from your fixed list.
+- [ ] One check runs at a time. A token is reused only until its returned expiry, and resume compares against that expiry.
+- [ ] On web, `skipVerifyApp` matches the recommendation for each product and market, and the same value is passed to every call.
+- [ ] Every restricted endpoint verifies a token, or reads a server-side result that came from a verified token. None reads a client-supplied `passed`.
+- [ ] Your backend checks signature, algorithm, expiry, user, product, `transactionId` when used, `user.live`, and `passed`, and rejects the action when any check fails.
+- [ ] Failed checks and errors show different messages.
+- [ ] Your backend negative tests pass in CI.
+- [ ] Allowed countries, states, and zones are reviewed for each product in the Live environment by the accountable owner.
+- [ ] No bypass rule or override exists in the Live environment for a real player, and test block rules are removed.
+- [ ] The rollout flag and rollback steps are tested.
+- [ ] The [go-live checklist](/fundamentals/testing-and-launch#go-live-checklist) is complete.
+
+## See also
+
+- [Geo-compliance overview and quickstart](/geo-compliance/overview): the common flow and a minimal end-to-end example.
+- [Geolocation token schema](/api/geolocation-tokens): the verified location check payload, [failure reasons](/api/geolocation-tokens#failure-reasons), [warning reasons](/api/geolocation-tokens#warning-reasons), and [expiry](/api/geolocation-tokens#expiry).
+- [Fraud plugin setup](/sdk/fraud): plugin installation and attestation setup.
+- [Fraud API](/api/fraud): the block and unblock endpoints.
+- [Fraud overview and quickstart](/fraud/overview): signals, risk scores, and rules.
+- [Set up organizations, projects, accounts, and authentication](/fundamentals/authentication-and-access): roles, keys, and data retention.
+- [Test, troubleshoot, and go live](/fundamentals/testing-and-launch): test procedures and launch steps.
+- [Track indoor location with beacons](/geofencing/beacons): beacon setup and ranging.
+
+To have a coding agent implement this guide, use the prompt in [Build with an agent](#build-with-an-agent).

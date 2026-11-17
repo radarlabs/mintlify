@@ -20,13 +20,13 @@ Before you start:
     Your app shows its blocked state and doesn't offer the protected action.
   </Step>
   <Step title="Confirm your backend rejects the action">
-    Send the protected request directly to your backend with the failed token, bypassing your UI. Your backend must deny it. If the request succeeds, your backend is trusting the client instead of validating the token.
+    Send the protected request directly to your backend with the failed token, without your UI. Your backend must reject it. If the request succeeds, your backend is trusting the client instead of reading `passed` from the verified token.
   </Step>
 </Steps>
 
 ### Bypass checks for a test user
 
-Use a bypass rule when a tester is physically outside your allowed area, or uses a development device that fails integrity checks, and needs to reach the allowed path.
+Use a bypass rule when a tester is physically outside your allowed area, or uses a development device that fails integrity checks, and needs a passing check.
 
 <Steps>
   <Step title="Create the bypass rule">
@@ -35,12 +35,12 @@ Use a bypass rule when a tester is physically outside your allowed area, or uses
   <Step title="Run a check as the test user">
     The token returns `passed` set to `true` and `user.fraud.bypassed` set to `true`.
   </Step>
-  <Step title="Confirm the allowed path">
-    Your backend validates the token and allows the action.
+  <Step title="Confirm the action succeeds">
+    Your backend validates the token, reads `passed` as `true`, and performs the action.
   </Step>
 </Steps>
 
-Your backend can read `user.fraud.bypassed` to tell a bypassed pass from a regular one. In production, consider denying tokens with `user.fraud.bypassed` set to `true` unless the user is on your internal tester list.
+Your backend can read `user.fraud.bypassed` to tell a bypassed pass from a regular one. In production, consider rejecting tokens with `user.fraud.bypassed` set to `true` unless the user is on your internal tester list.
 
 ### Override failure reasons or location for a test user
 

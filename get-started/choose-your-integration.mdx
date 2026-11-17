@@ -25,14 +25,13 @@ Maps is the fourth path. Displaying a map, searching for an address, and geocodi
 
 ## Find your guide
 
-Each row is one of the 12 implementation guides. "Precise location" means the device's location is collected for that outcome.
+Each row is one of the 11 implementation guides. "Precise location" means the device's location is collected for that outcome.
 
 ### Geo-compliance
 
 | Outcome | Precise location | Platforms | SDK or API path | Permissions | Output | Guide |
 | --- | --- | --- | --- | --- | --- | --- |
-| Allow sportsbook or casino play only in permitted jurisdictions | Yes | iOS, Android, React Native, web | Core SDK and fraud plugin on the client, `Radar.trackVerified()`. Token validation on your backend. | Foreground location | Signed geolocation token | [Verify location eligibility for sportsbooks and casinos](/geo-compliance/sportsbooks-and-casinos) |
-| Allow prediction market, DFS, or sweepstakes actions only in permitted states and countries | Yes | iOS, Android, React Native, web | Same as above, with checks tied to restricted actions | Foreground location | Signed geolocation token | [Verify location eligibility for predictions, DFS, and sweepstakes](/geo-compliance/predictions-dfs-and-sweepstakes) |
+| Allow sportsbook, casino, fantasy, prediction market, or sweepstakes play only in permitted jurisdictions | Yes | iOS, Android, React Native, web, macOS, Windows | Core SDK and fraud plugin on the client, `Radar.trackVerified()`. Token validation on your backend. | Foreground location | Signed geolocation token | [Verify location eligibility for sportsbooks, casinos, and fantasy](/geo-compliance/gaming) |
 | Confirm a user is in a region, at a store or workplace, or near an expected address | Yes | iOS, Android, React Native, web | Same as above. Your backend also checks the region, place, or address condition in the token. | Foreground location | Signed geolocation token | [Verify location for non-gaming use cases](/geo-compliance/non-gaming) |
 
 ### Fraud

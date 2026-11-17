@@ -1,4 +1,4 @@
-A verified location check collects the device location together with device and network integrity signals, sends them to Radar, and returns a signed geolocation token. Your app sends that token to your backend, and your backend decides whether to allow the action.
+A verified location check collects the device location together with device and network integrity signals, sends them to Radar, and returns a signed geolocation token with `passed` set to `true` or `false`. Your app sends that token to your backend, and your backend verifies it and reads `passed` before it performs the action.
 
 Before you request a check:
 
@@ -27,13 +27,13 @@ The Flutter, Cordova, and .NET MAUI SDKs expose earlier verified location method
 | `transactionId` | string | No | Your identifier for the action the check protects. Radar returns it in the token as `transactionId`. Radar doesn't check it for uniqueness. Your backend compares it to the action it is authorizing. |
 | `beacons` | boolean | No | iOS and Android only. Ranges nearby beacons and includes them in the check. Defaults to `false`. |
 | `desiredAccuracy` | enum | No | iOS and Android only. Location accuracy for the check. Defaults to medium. |
-| `skipVerifyApp` | boolean | No | Web only. `false` (the default) uses the Radar Verify companion app. `true` uses the no-download path in the browser. |
+| `skipVerifyApp` | boolean | No | Web only. `false` (the default) runs the check through the Radar Verify companion app on the user's computer. `true` runs the check in the browser without the app. |
 
 When your project has more than one product configured, call `Radar.setProduct()` with the product name before the check, for example `sportsbook`. The token returns it as `product`.
 
 ### Request a check
 
-Each example runs one check, sends the token to your backend, and leaves the allow or deny decision to your backend. `sendTokenToBackend` and the error handlers are functions you write.
+Each example runs one check and handles the three results: an error status with no token, a token with `passed` set to `false`, and a token with `passed` set to `true`. `sendTokenToBackend`, `showFailure`, and `showCheckError` are functions you write.
 
 <CodeGroup>
 
@@ -50,41 +50,39 @@ Radar.trackVerified(
   reason: "login",
   transactionId: nil
 ) { (status, token) in
-  guard status == .success, let jwt = token?.token else {
-    // The check did not complete. No token was issued.
-    handleCheckError(status)
+  guard status == .success, let token = token, let jwt = token.token else {
+    // The check didn't complete, so there is no token.
+    showCheckError(status)
     return
   }
 
-  // Always send the token, including when token.passed is false.
-  // Your backend validates it and returns the decision.
-  sendTokenToBackend(jwt)
+  if token.passed {
+    sendTokenToBackend(jwt)
+  } else {
+    showFailure(token.failureReasons ?? [])
+  }
 }
 ```
 
 ```kotlin Kotlin
 import io.radar.sdk.Radar
-import io.radar.sdk.RadarTrackingOptions
 
 // After Radar.initialize(...) with fraud = true and location permission
 Radar.setUserId("user-123")
 Radar.setProduct("sportsbook")
 
-Radar.trackVerified(
-  beacons = false,
-  desiredAccuracy = RadarTrackingOptions.RadarTrackingOptionsDesiredAccuracy.MEDIUM,
-  reason = "login",
-  transactionId = null
-) { status, token ->
+Radar.trackVerified(reason = "login") { status, token ->
   if (status != Radar.RadarStatus.SUCCESS || token == null) {
-    // The check did not complete. No token was issued.
-    handleCheckError(status)
+    // The check didn't complete, so there is no token.
+    showCheckError(status)
     return@trackVerified
   }
 
-  // Always send the token, including when token.passed is false.
-  // Your backend validates it and returns the decision.
-  sendTokenToBackend(token.token)
+  if (token.passed) {
+    sendTokenToBackend(token.token)
+  } else {
+    showFailure(token.failureReasons)
+  }
 }
 ```
 
@@ -99,22 +97,18 @@ Radar.setUserId('user-123');
 Radar.setProduct('sportsbook');
 
 try {
-  const result = await Radar.fraud.trackVerified({
-    skipVerifyApp: false, // true uses the no-download path
-    reason: 'login',
-  });
+  // Add skipVerifyApp: true to run the check without the Radar Verify app.
+  const result = await Radar.fraud.trackVerified({ reason: 'login' });
 
-  // Always send the token, including when result.passed is false.
-  // Your backend validates it and returns the decision.
-  await sendTokenToBackend(result.token);
-} catch (err) {
-  if (err instanceof Radar.fraud.errors.RadarVerifyAppError) {
-    // The Radar Verify companion app is not running or not installed.
-    promptToOpenVerifyApp();
+  if (result.passed) {
+    await sendTokenToBackend(result.token);
   } else {
-    // The check did not complete. No token was issued. See err.status.
-    handleCheckError(err);
+    showFailure(result.failureReasons);
   }
+} catch (err) {
+  // The check didn't complete, so there is no token. err.status has the reason,
+  // for example ERROR_VERIFY_APP when the Radar Verify app isn't running.
+  showCheckError(err);
 }
 ```
 
@@ -125,21 +119,23 @@ import Radar from 'react-native-radar';
 Radar.setUserId('user-123');
 Radar.setProduct('sportsbook');
 
-Radar.trackVerified({ reason: 'login' })
-  .then((result) => {
-    // Always send the token, including when result.token.passed is false.
-    // Your backend validates it and returns the decision.
-    if (result.token) {
-      sendTokenToBackend(result.token.token);
-    }
-  })
-  .catch((err) => {
-    // The check did not complete. No token was issued.
-    handleCheckError(err);
-  });
+try {
+  const { token } = await Radar.trackVerified({ reason: 'login' });
+
+  if (token?.passed) {
+    await sendTokenToBackend(token.token);
+  } else {
+    showFailure();
+  }
+} catch (err) {
+  // The check didn't complete, so there is no token.
+  showCheckError(err);
+}
 ```
 
 </CodeGroup>
+
+Your backend verifies the token and reads `passed` itself before it performs the action. The `passed` value your app reads is for your UI.
 
 ### Tie a check to one action
 
@@ -159,12 +155,7 @@ Radar.trackVerified(
 ```
 
 ```kotlin Kotlin
-Radar.trackVerified(
-  beacons = false,
-  desiredAccuracy = RadarTrackingOptions.RadarTrackingOptionsDesiredAccuracy.MEDIUM,
-  reason = "withdrawal",
-  transactionId = "txn-789"
-) { status, token ->
+Radar.trackVerified(reason = "withdrawal", transactionId = "txn-789") { status, token ->
   // Handle the result as in the previous example.
 }
 ```
@@ -177,7 +168,7 @@ const result = await Radar.fraud.trackVerified({
 ```
 
 ```javascript React Native
-const result = await Radar.trackVerified({
+const { token } = await Radar.trackVerified({
   reason: 'withdrawal',
   transactionId: 'txn-789',
 });
@@ -187,4 +178,4 @@ const result = await Radar.trackVerified({
 
 ### Avoid overlapping checks
 
-Run one check at a time. If a check is in progress when the user triggers another, wait for the first result instead of starting a second request. When the app returns to the foreground, compare the current time to the `expiresAt` of the last token before you reuse it, and request a new check if it has passed.
+Run one check at a time. If a check is in progress when the user triggers another, wait for the first result instead of starting a second request. A token is good until its `expiresAt`. When the app returns to the foreground, compare the current time to the `expiresAt` of the last token before you reuse it, and run a new check if it has passed.
