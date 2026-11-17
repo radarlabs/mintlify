@@ -5,175 +5,19 @@ description: "Build an address entry flow with Radar autocomplete, then use forw
 ---
 
 import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
+import { RadarAutocompleteDemo } from '/snippets/radar-demos.jsx';
 
 By the end of this guide you have an address form that suggests addresses as the user types, fills structured fields from the chosen suggestion, lets the user correct them, and checks a hand-typed address before accepting it. You also know when to use forward geocoding, reverse geocoding, IP geocoding, and address validation, and what each result does and doesn't tell you.
 
-A finished entry looks like this: the user types "841 broad", chooses "841 Broadway, New York, NY 10003 USA" from the suggestions, and the form fills street `841 Broadway`, city `New York`, state `NY`, postal code `10003`, and country `US`. The application keeps those fields together with the coordinate `40.7343, -73.9911`.
+<RadarAutocompleteDemo />
 
-## Build with an agent
+## Complete example
 
-Copy this prompt into a coding agent that has access to your repository.
+The JavaScript tab is the whole address form in one HTML page, the other tabs make the same autocomplete and geocode calls in a native app, and the sections below explain each part.
 
-```text
-Add address autocomplete and address checking to this repository using the current
-Radar documentation.
+<CodeGroup>
 
-First inspect the application framework, platform versions, existing Radar code,
-the existing address form and its field names, how addresses are stored and
-submitted, how environment variables reach the client, and the existing tests.
-Preserve existing behavior outside this task.
-
-Read:
-- https://docs.radar.com/maps/addresses.md
-- https://docs.radar.com/sdk/web.md
-- https://docs.radar.com/api/search.md
-- https://docs.radar.com/api/geocoding.md
-
-Implement the documented flow: the Radar autocomplete component (or an
-AutocompleteSession behind the existing input) with a minimum input length and
-debounce; structured fields filled from the selected result and editable by the
-user; a check on submit for addresses that were typed or edited by hand; and clear
-handling of ambiguous matches, no match, and request errors. Use address validation
-only if this project has access to it, and treat its verification status exactly as
-documented. If IP geocoding is used for defaults, treat it as an estimate that the
-user can override. Use a publishable key in client code, read from configuration.
-Do not invent methods, fields, validation outcomes, supported countries, or
-defaults.
-
-Add tests for: selecting a suggestion fills every structured field; a valid
-hand-typed address is accepted; an ambiguous address shows choices and accepts the
-chosen one; an address with no match shows a correction message and does not
-submit; a failed request shows an error and lets the user retry or continue as the
-product requires. Run the repository's relevant checks. Report changed files, test
-results, required dashboard or plan setup, and anything that still needs
-confirmation. Do not change production settings or deploy without approval.
-```
-
-## Prerequisites
-
-- A Radar account and a publishable key. See [Keys](#keys).
-- **Web**: The examples use `radar-sdk-js` 5.3.0 and `@radarlabs/plugin-autocomplete` 1.2.0. The autocomplete plugin requires `radar-sdk-js` 5.3.0 or later. The geocoding and validation methods are part of the core SDK and need no plugin.
-- **Permissions**: None for autocomplete, forward geocoding, IP geocoding, or validation. Reverse geocoding the user's current position needs location permission. Reverse geocoding a coordinate you already have doesn't.
-- **Plan**: Address validation is available on the [Enterprise plan](https://radar.com/pricing), for United States and Canada addresses. Address enrichment on autocomplete selections must be enabled for your project. Everything else in this guide is available to any project.
-
-### Keys
-
-<EnvironmentAndKeys />
-
-Every operation in this guide accepts a publishable key, so the form can call Radar directly from the browser or app.
-
-## How it works
-
-### Five operations
-
-These are separate operations with different inputs and outputs. Choose by what you have and what you need.
-
-| Operation | You have | You get | Use it for | Reference |
-| --- | --- | --- | --- | --- |
-| Autocomplete | A partial address or place name, as the user types | A ranked list of candidate addresses | Address entry in forms and search boxes | [Autocomplete](/api/search#autocomplete) |
-| Forward geocode | A complete address as text | Matching addresses with coordinates and a confidence level | Turning a stored or typed address into a coordinate | [Forward geocode](/api/geocoding#forward-geocode) |
-| Reverse geocode | A coordinate | The address or region at that coordinate | Labeling a map pin or a device position | [Reverse geocode](/api/geocoding#reverse-geocode) |
-| IP geocode | Nothing. Radar reads the request's IP address | An estimated city, state, and country | Defaults such as country or language, with no permission prompt | [IP geocode](/api/geocoding#ip-geocode) |
-| Validate | A complete address in structured fields | A standardized address and a verification status | Checking an address before you ship or bill to it | [Validate an address](/api/geocoding#validate-an-address) |
-
-Autocomplete is for partial input and forward geocoding is for complete addresses. Don't call forward geocoding on every keystroke, and don't use autocomplete to resolve a stored address in a batch job.
-
-### Formatted address, geocoded coordinate, and validated address
-
-A Radar address result can carry three different kinds of information. They answer different questions.
-
-| Term | Where it appears | What it tells you | What it doesn't tell you |
-| --- | --- | --- | --- |
-| Formatted address | `formattedAddress` on every address result | A display string assembled from the result's fields, such as `841 Broadway, New York, NY 10003 USA`. | That the address was checked. A formatted string exists for a city or postal code result too. |
-| Geocoded coordinate | `latitude`, `longitude`, `layer`, and, on forward geocode results, `confidence` | Where Radar places the result, and how precisely. `exact` is a known address location, `interpolated` is an estimate between known address points, and `fallback` is the center of a containing area such as a postal code or city. | That mail or a courier can reach it. A `fallback` coordinate can be far from the building. |
-| Validated address | The `address` and `result.verificationStatus` returned by the validate operation | Whether the structured input matched a known address record, in standardized form with fields such as `plus4` and a record type. | That a delivery will succeed, that the recipient is there, or that an unverified address doesn't exist. |
-
-A coordinate tells you where to put a pin. A verification status tells you whether the text of the address matched a record. Don't treat either as the other.
-
-### Responsibilities
-
-| Part | Responsibility |
-| --- | --- |
-| Your form | Renders the autocomplete input and editable fields, applies the selected result, checks hand-typed input on submit, and shows correction messages. |
-| Radar | Returns candidates, coordinates, estimates, and verification results. |
-| Your backend | Receives the final fields and coordinate, and applies your own rules, such as whether to accept an unverified address. If the decision matters, repeat the check on your backend, because anything sent from a browser can be changed by the user. |
-
-## Build an address entry flow
-
-### Add the autocomplete component
-
-The autocomplete component renders a search input and a suggestions list, handles keyboard navigation and screen reader announcements, and calls you back when the user chooses a result.
-
-<Tabs>
-  <Tab title="HTML">
-    Add the stylesheet, the core SDK, and the autocomplete plugin, in that order. The plugin script registers itself with the core SDK.
-
-    ```html
-    <link href="https://js.radar.com/autocomplete/v1.2.0/radar-autocomplete.css" rel="stylesheet">
-    <script src="https://js.radar.com/v5.3.0/radar.min.js"></script>
-    <script src="https://js.radar.com/autocomplete/v1.2.0/radar-autocomplete.min.js"></script>
-
-    <div id="autocomplete"></div>
-
-    <script>
-      Radar.initialize('prj_test_pk_...');
-
-      Radar.ui.autocomplete({
-        container: 'autocomplete',
-        onSelection: (address) => {
-          console.log(address.formattedAddress);
-        },
-      });
-    </script>
-    ```
-  </Tab>
-  <Tab title="React">
-    Install the core SDK and the plugin:
-
-    ```bash
-    npm install radar-sdk-js @radarlabs/plugin-autocomplete
-    ```
-
-    Import the plugin stylesheet, register the plugin, and create the component in an effect. Remove it when the component unmounts.
-
-    ```jsx
-    import { useEffect, useRef } from 'react';
-    import Radar from 'radar-sdk-js';
-    import { createAutocompletePlugin } from '@radarlabs/plugin-autocomplete';
-    import '@radarlabs/plugin-autocomplete/dist/radar-autocomplete.css';
-
-    Radar.registerPlugin(createAutocompletePlugin());
-    Radar.initialize(process.env.REACT_APP_RADAR_PUBLISHABLE_KEY);
-
-    export default function AddressSearch({ onAddress }) {
-      const containerRef = useRef(null);
-
-      useEffect(() => {
-        const autocomplete = Radar.ui.autocomplete({
-          container: containerRef.current,
-          layers: ['address'],
-          onSelection: (address) => onAddress(address),
-          onError: (error) => console.error(error),
-        });
-
-        return () => autocomplete.remove();
-      }, [onAddress]);
-
-      return <div ref={containerRef} />;
-    }
-    ```
-  </Tab>
-</Tabs>
-
-`container` is an element ID or an element. If you pass an existing `input` element, the component attaches its suggestions list to that input and leaves the input's styling alone. If the container can't be found, `Radar.ui.autocomplete()` throws an error with the `status` `CONTAINER_NOT_FOUND`.
-
-To verify, type three or more characters. Suggestions appear under the input, the arrow keys move through them, and Enter selects one.
-
-### Run the complete example
-
-This page combines the component with editable fields and a check on submit. Save it as an HTML file, replace the key, and open it in a browser. The sections after it explain each part.
-
-```html
+```html JavaScript
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -341,6 +185,419 @@ This page combines the component with editable fields and a check on submit. Sav
   </body>
 </html>
 ```
+
+```swift Swift
+import RadarSDK
+import UIKit
+
+@main
+class AppDelegate: UIResponder, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        Radar.initialize(publishableKey: "prj_test_pk_...")
+        return true
+    }
+}
+
+// Call as the user types, after three characters and a 200 ms pause.
+func suggestAddresses(for query: String) {
+    Radar.autocomplete(query: query, near: nil, layers: ["address"], limit: 8, country: "US") { (status, addresses) in
+        guard status == .success, let addresses = addresses else {
+            // Show that suggestions are unavailable. Manual entry still works.
+            return
+        }
+
+        // Show each address's formattedAddress as a suggestion, or a "no results" row when the array is empty.
+        print(addresses.count)
+    }
+}
+
+// Call when the user chooses a suggestion, to fill the editable fields.
+func fillFields(from address: RadarAddress) {
+    let numberAndStreet = [address.number, address.street].compactMap { $0 }.joined(separator: " ")
+    let line1 = numberAndStreet.isEmpty ? (address.addressLabel ?? "") : numberAndStreet
+    let unit = address.unit ?? ""
+    let city = address.city ?? ""
+    let stateCode = address.stateCode ?? ""
+    let postalCode = address.postalCode ?? ""
+    let countryCode = address.countryCode ?? ""
+
+    // Set your text fields from these values, and keep address.coordinate with them.
+    print(line1, unit, city, stateCode, postalCode, countryCode)
+}
+
+// Call on submit when the address was typed or edited by hand.
+func checkTypedAddress(line1: String, city: String, stateCode: String, postalCode: String, countryCode: String) {
+    let query = "\(line1), \(city), \(stateCode) \(postalCode)"
+
+    Radar.geocode(address: query, layers: ["address"], countries: [countryCode]) { (status, addresses) in
+        guard status == .success, let addresses = addresses else {
+            // Show a retry message.
+            return
+        }
+
+        if addresses.isEmpty {
+            // No result. Ask the user to check the street number, street name, and postal code.
+        } else if addresses.count == 1 && addresses[0].confidence == .exact {
+            // One exact match: a valid address.
+            fillFields(from: addresses[0])
+        } else {
+            // Several matches, or an approximate match. Show up to five and ask the user to choose or correct.
+            print(addresses.prefix(5).compactMap { $0.formattedAddress })
+        }
+    }
+}
+```
+
+```kotlin Kotlin
+import android.app.Application
+import io.radar.sdk.Radar
+import io.radar.sdk.model.RadarAddress
+
+class MainApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        Radar.initialize(this, "prj_test_pk_...")
+    }
+}
+
+// Call as the user types, after three characters and a 200 ms pause.
+fun suggestAddresses(query: String) {
+    Radar.autocomplete(query = query, layers = arrayOf("address"), limit = 8, country = "US") { status, addresses ->
+        if (status != Radar.RadarStatus.SUCCESS || addresses == null) {
+            // Show that suggestions are unavailable. Manual entry still works.
+            return@autocomplete
+        }
+
+        // Show each address's formattedAddress as a suggestion, or a "no results" row when the array is empty.
+        println(addresses.size)
+    }
+}
+
+// Call when the user chooses a suggestion, to fill the editable fields.
+fun fillFields(address: RadarAddress) {
+    val line1 = listOfNotNull(address.number, address.street).joinToString(" ").ifEmpty { address.addressLabel.orEmpty() }
+    val unit = address.unit.orEmpty()
+    val city = address.city.orEmpty()
+    val stateCode = address.stateCode.orEmpty()
+    val postalCode = address.postalCode.orEmpty()
+    val countryCode = address.countryCode.orEmpty()
+
+    // Set your text fields from these values, and keep address.coordinate with them.
+    println("$line1 $unit $city $stateCode $postalCode $countryCode")
+}
+
+// Call on submit when the address was typed or edited by hand.
+fun checkTypedAddress(line1: String, city: String, stateCode: String, postalCode: String, countryCode: String) {
+    val query = "$line1, $city, $stateCode $postalCode"
+
+    Radar.geocode(query, arrayOf("address"), arrayOf(countryCode)) { status, addresses ->
+        if (status != Radar.RadarStatus.SUCCESS || addresses == null) {
+            // Show a retry message.
+            return@geocode
+        }
+
+        if (addresses.isEmpty()) {
+            // No result. Ask the user to check the street number, street name, and postal code.
+        } else if (addresses.size == 1 && addresses[0].confidence == RadarAddress.RadarAddressConfidence.EXACT) {
+            // One exact match: a valid address.
+            fillFields(addresses[0])
+        } else {
+            // Several matches, or an approximate match. Show up to five and ask the user to choose or correct.
+            println(addresses.take(5).map { it.formattedAddress })
+        }
+    }
+}
+```
+
+```jsx React Native
+import { useState } from 'react';
+import { Button, Text, TextInput, View } from 'react-native';
+import Radar, { Autocomplete } from 'react-native-radar';
+
+Radar.initialize('prj_test_pk_...');
+
+const LABELS = {
+  line1: 'Street address',
+  unit: 'Apartment, suite, or unit',
+  city: 'City',
+  stateCode: 'State',
+  postalCode: 'Postal code',
+  countryCode: 'Country',
+};
+
+// Copy a Radar address result into the editable fields.
+const toFields = (address, unit) => ({
+  line1: [address.number, address.street].filter(Boolean).join(' ') || address.addressLabel || '',
+  unit: address.unit || unit,
+  city: address.city || '',
+  stateCode: address.stateCode || '',
+  postalCode: address.postalCode || '',
+  countryCode: address.countryCode || '',
+});
+
+export default function AddressForm({ onAccept }) {
+  const [fields, setFields] = useState({ line1: '', unit: '', city: '', stateCode: '', postalCode: '', countryCode: 'US' });
+  // The last result taken from Radar. Cleared when the user edits a field by hand.
+  const [accepted, setAccepted] = useState(null);
+  const [choices, setChoices] = useState([]);
+  const [status, setStatus] = useState('');
+
+  const fill = (address) => {
+    const next = toFields(address, fields.unit);
+    setFields(next);
+    setAccepted(address);
+    setChoices([]);
+    return next;
+  };
+
+  const edit = (key, value) => {
+    setFields({ ...fields, [key]: value });
+    if (key !== 'unit') setAccepted(null);
+  };
+
+  const submit = async () => {
+    setChoices([]);
+    if (!fields.line1.trim() || !fields.city.trim() || !fields.postalCode.trim() || !fields.countryCode.trim()) {
+      setStatus('Enter a street address, city, postal code, and country.');
+      return;
+    }
+
+    // The fields still match a result the user chose. No second request is needed.
+    if (accepted) {
+      onAccept(fields, accepted);
+      return;
+    }
+
+    // The address was typed or edited by hand. Check that it resolves.
+    setStatus('Checking address...');
+    let addresses;
+    try {
+      ({ addresses } = await Radar.geocode({
+        address: `${fields.line1}, ${fields.city}, ${fields.stateCode} ${fields.postalCode}`,
+        layers: ['address'],
+        countries: [fields.countryCode],
+      }));
+    } catch (err) {
+      setStatus('We could not check the address right now. Try again.');
+      return;
+    }
+
+    if (!addresses || addresses.length === 0) {
+      setStatus('We could not find that address. Check the street number, street name, and postal code.');
+    } else if (addresses.length === 1 && addresses[0].confidence === 'exact') {
+      setStatus('');
+      onAccept(fill(addresses[0]), addresses[0]);
+    } else {
+      // Several matches, or an approximate match: ask the user to choose or correct.
+      setStatus('Is one of these your address? Choose one, or edit the fields and try again.');
+      setChoices(addresses.slice(0, 5));
+    }
+  };
+
+  return (
+    <View>
+      <Autocomplete
+        options={{
+          layers: ['address'],
+          countryCode: 'US',
+          placeholder: 'Start typing your address',
+          onSelection: (address) => {
+            fill(address);
+            setStatus('Check the details, add a unit if you have one, then continue.');
+          },
+          onError: () => setStatus('Address suggestions are unavailable. Enter your address in the fields below.'),
+        }}
+      />
+      {Object.keys(LABELS).map((key) => (
+        <TextInput
+          key={key}
+          accessibilityLabel={LABELS[key]}
+          placeholder={LABELS[key]}
+          value={fields[key]}
+          onChangeText={(value) => edit(key, value)}
+        />
+      ))}
+      <Button title="Continue" onPress={submit} />
+      <Text accessibilityLiveRegion="polite">{status}</Text>
+      {choices.map((address) => (
+        <Button
+          key={address.formattedAddress}
+          title={address.formattedAddress}
+          onPress={() => onAccept(fill(address), address)}
+        />
+      ))}
+    </View>
+  );
+}
+```
+
+</CodeGroup>
+
+## Build with an agent
+
+Copy this prompt into a coding agent that has access to your repository.
+
+```text
+Add address autocomplete and address checking to this repository using the current
+Radar documentation.
+
+First inspect the application framework, platform versions, existing Radar code,
+the existing address form and its field names, how addresses are stored and
+submitted, how environment variables reach the client, and the existing tests.
+Preserve existing behavior outside this task.
+
+Read:
+- https://docs.radar.com/maps/addresses.md
+- https://docs.radar.com/sdk/web.md
+- https://docs.radar.com/api/search.md
+- https://docs.radar.com/api/geocoding.md
+
+Implement the documented flow: the Radar autocomplete component (or an
+AutocompleteSession behind the existing input) with a minimum input length and
+debounce; structured fields filled from the selected result and editable by the
+user; a check on submit for addresses that were typed or edited by hand; and clear
+handling of ambiguous matches, no match, and request errors. Use address validation
+only if this project has access to it, and treat its verification status exactly as
+documented. If IP geocoding is used for defaults, treat it as an estimate that the
+user can override. Use a publishable key in client code, read from configuration.
+Do not invent methods, fields, validation outcomes, supported countries, or
+defaults.
+
+Add tests for: selecting a suggestion fills every structured field; a valid
+hand-typed address is accepted; an ambiguous address shows choices and accepts the
+chosen one; an address with no match shows a correction message and does not
+submit; a failed request shows an error and lets the user retry or continue as the
+product requires. Run the repository's relevant checks. Report changed files, test
+results, required dashboard or plan setup, and anything that still needs
+confirmation. Do not change production settings or deploy without approval.
+```
+
+## Prerequisites
+
+- A Radar account and a publishable key. See [Keys](#keys).
+- **Web**: The examples use `radar-sdk-js` 5.3.0 and `@radarlabs/plugin-autocomplete` 1.2.0. The autocomplete plugin requires `radar-sdk-js` 5.3.0 or later. The geocoding and validation methods are part of the core SDK and need no plugin.
+- **Permissions**: None for autocomplete, forward geocoding, IP geocoding, or validation. Reverse geocoding the user's current position needs location permission. Reverse geocoding a coordinate you already have doesn't.
+- **Plan**: Address validation is available on the [Enterprise plan](https://radar.com/pricing), for United States and Canada addresses. Address enrichment on autocomplete selections must be enabled for your project. Everything else in this guide is available to any project.
+
+### Keys
+
+<EnvironmentAndKeys />
+
+Every operation in this guide accepts a publishable key, so the form can call Radar directly from the browser or app.
+
+## How it works
+
+### Five operations
+
+These are separate operations with different inputs and outputs. Choose by what you have and what you need.
+
+| Operation | You have | You get | Use it for | Reference |
+| --- | --- | --- | --- | --- |
+| Autocomplete | A partial address or place name, as the user types | A ranked list of candidate addresses | Address entry in forms and search boxes | [Autocomplete](/api/search#autocomplete) |
+| Forward geocode | A complete address as text | Matching addresses with coordinates and a confidence level | Turning a stored or typed address into a coordinate | [Forward geocode](/api/geocoding#forward-geocode) |
+| Reverse geocode | A coordinate | The address or region at that coordinate | Labeling a map pin or a device position | [Reverse geocode](/api/geocoding#reverse-geocode) |
+| IP geocode | Nothing. Radar reads the request's IP address | An estimated city, state, and country | Defaults such as country or language, with no permission prompt | [IP geocode](/api/geocoding#ip-geocode) |
+| Validate | A complete address in structured fields | A standardized address and a verification status | Checking an address before you ship or bill to it | [Validate an address](/api/geocoding#validate-an-address) |
+
+Autocomplete is for partial input and forward geocoding is for complete addresses. Don't call forward geocoding on every keystroke, and don't use autocomplete to resolve a stored address in a batch job.
+
+### Formatted address, geocoded coordinate, and validated address
+
+A Radar address result can carry three different kinds of information. They answer different questions.
+
+| Term | Where it appears | What it tells you | What it doesn't tell you |
+| --- | --- | --- | --- |
+| Formatted address | `formattedAddress` on every address result | A display string assembled from the result's fields, such as `841 Broadway, New York, NY 10003 USA`. | That the address was checked. A formatted string exists for a city or postal code result too. |
+| Geocoded coordinate | `latitude`, `longitude`, `layer`, and, on forward geocode results, `confidence` | Where Radar places the result, and how precisely. `exact` is a known address location, `interpolated` is an estimate between known address points, and `fallback` is the center of a containing area such as a postal code or city. | That mail or a courier can reach it. A `fallback` coordinate can be far from the building. |
+| Validated address | The `address` and `result.verificationStatus` returned by the validate operation | Whether the structured input matched a known address record, in standardized form with fields such as `plus4` and a record type. | That a delivery will succeed, that the recipient is there, or that an unverified address doesn't exist. |
+
+A coordinate tells you where to put a pin. A verification status tells you whether the text of the address matched a record. Don't treat either as the other.
+
+### Responsibilities
+
+| Part | Responsibility |
+| --- | --- |
+| Your form | Renders the autocomplete input and editable fields, applies the selected result, checks hand-typed input on submit, and shows correction messages. |
+| Radar | Returns candidates, coordinates, estimates, and verification results. |
+| Your backend | Receives the final fields and coordinate, and applies your own rules, such as whether to accept an unverified address. If the decision matters, repeat the check on your backend, because anything sent from a browser can be changed by the user. |
+
+## Build an address entry flow
+
+A finished entry looks like this: the user types "841 broad", chooses "841 Broadway, New York, NY 10003 USA" from the suggestions, and the form fills street `841 Broadway`, city `New York`, state `NY`, postal code `10003`, and country `US`. The application keeps those fields together with the coordinate `40.7343, -73.9911`.
+
+### Add the autocomplete component
+
+The autocomplete component renders a search input and a suggestions list, handles keyboard navigation and screen reader announcements, and calls you back when the user chooses a result.
+
+<Tabs>
+  <Tab title="HTML">
+    Add the stylesheet, the core SDK, and the autocomplete plugin, in that order. The plugin script registers itself with the core SDK.
+
+    ```html
+    <link href="https://js.radar.com/autocomplete/v1.2.0/radar-autocomplete.css" rel="stylesheet">
+    <script src="https://js.radar.com/v5.3.0/radar.min.js"></script>
+    <script src="https://js.radar.com/autocomplete/v1.2.0/radar-autocomplete.min.js"></script>
+
+    <div id="autocomplete"></div>
+
+    <script>
+      Radar.initialize('prj_test_pk_...');
+
+      Radar.ui.autocomplete({
+        container: 'autocomplete',
+        onSelection: (address) => {
+          console.log(address.formattedAddress);
+        },
+      });
+    </script>
+    ```
+  </Tab>
+  <Tab title="React">
+    Install the core SDK and the plugin:
+
+    ```bash
+    npm install radar-sdk-js @radarlabs/plugin-autocomplete
+    ```
+
+    Import the plugin stylesheet, register the plugin, and create the component in an effect. Remove it when the component unmounts.
+
+    ```jsx
+    import { useEffect, useRef } from 'react';
+    import Radar from 'radar-sdk-js';
+    import { createAutocompletePlugin } from '@radarlabs/plugin-autocomplete';
+    import '@radarlabs/plugin-autocomplete/dist/radar-autocomplete.css';
+
+    Radar.registerPlugin(createAutocompletePlugin());
+    Radar.initialize(process.env.REACT_APP_RADAR_PUBLISHABLE_KEY);
+
+    export default function AddressSearch({ onAddress }) {
+      const containerRef = useRef(null);
+
+      useEffect(() => {
+        const autocomplete = Radar.ui.autocomplete({
+          container: containerRef.current,
+          layers: ['address'],
+          onSelection: (address) => onAddress(address),
+          onError: (error) => console.error(error),
+        });
+
+        return () => autocomplete.remove();
+      }, [onAddress]);
+
+      return <div ref={containerRef} />;
+    }
+    ```
+  </Tab>
+</Tabs>
+
+`container` is an element ID or an element. If you pass an existing `input` element, the component attaches its suggestions list to that input and leaves the input's styling alone. If the container can't be found, `Radar.ui.autocomplete()` throws an error with the `status` `CONTAINER_NOT_FOUND`.
+
+To verify, type three or more characters. Suggestions appear under the input, the arrow keys move through them, and Enter selects one.
+
+The JavaScript tab in [Complete example](#complete-example) combines the component with editable fields and a check on submit. To run it, save it as an HTML file, replace the key, and open it in a browser. The sections that follow explain each part.
 
 ### Fill structured fields from the selection
 
@@ -607,7 +864,7 @@ The same operations are available in the Radar mobile SDKs. The React Native SDK
 
 The native `validateAddress()` methods in the table need iOS SDK 3.46.0 or later and Android SDK 4.3.0 or later. Each also has a form that takes `addressLabel` in place of `street` and `number`.
 
-Native methods report a `RadarStatus` and results through a completion handler or callback instead of a promise. These examples request suggestions on each platform:
+Native methods report a `RadarStatus` and results through a completion handler or callback instead of a promise. The native tabs in [Complete example](#complete-example) request suggestions, read the structured fields, and check a typed address with forward geocoding. These examples request suggestions on their own:
 
 <CodeGroup>
 

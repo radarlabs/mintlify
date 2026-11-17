@@ -5,19 +5,11 @@ description: "Make your first Radar Maps request, display a map, and find the gu
 ---
 
 import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
+import { RadarMapDemo } from '/snippets/radar-demos.jsx';
 
 Radar Maps gives you base maps, geocoding, address autocomplete and validation, search, and routing behind one publishable key. By the end of this page you have made one geocoding request, rendered one map, and know which guide or reference page covers the rest.
 
-## What Maps includes
-
-| Capability | What it does | Start here | Reference |
-| --- | --- | --- | --- |
-| Map display | Interactive vector maps on the web and in native apps, plus static map images. | [Display maps](/maps/maps) | [Maps API](/api/maps), [Web SDK](/sdk/web) |
-| Address tools | Autocomplete as a user types, forward and reverse geocoding, IP geocoding, and address validation. | [Autocomplete, geocode, and validate addresses](/maps/addresses) | [Geocoding API](/api/geocoding), [Search API](/api/search) |
-| Search | Find your own locations (geofences) or Radar places near a point. | [Build store locators](/maps/store-locators) | [Search API](/api/search) |
-| Routing | Distance and duration, matrices, directions, route matching, and route optimization. | [Routing and static map reference](#routing-and-static-map-reference) | [Routing API](/api/routing) |
-
-Radar map data comes from [OpenStreetMap](https://www.openstreetmap.org). The interactive map component is built on [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/), so MapLibre options, events, and plugins work with it.
+<RadarMapDemo center={[-73.9867, 40.7041]} markerText="20 Jay St" />
 
 ## Quickstart
 
@@ -70,11 +62,13 @@ Radar map data comes from [OpenStreetMap](https://www.openstreetmap.org). The in
     If you get `401`, the key is missing or wrong. See [Authentication, errors, and rate limits](/api/fundamentals).
   </Step>
   <Step title="Display a map">
-    Save this as an HTML file, replace the key, and open it in a browser. It loads the Radar web SDK 5.3.0 and the maps plugin 1.2.0 from Radar's CDN.
+    Each tab renders a Radar map centered on the address you geocoded, adds one marker, and shows a message if the map fails to load. To try the JavaScript tab, save it as an HTML file, replace the key, and open it in a browser. It loads the Radar web SDK 5.3.0 and the maps plugin 1.2.0 from Radar's CDN.
 
-    ```html
+    <CodeGroup>
+
+    ```html JavaScript
     <!DOCTYPE html>
-    <html>
+    <html lang="en">
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -82,30 +76,307 @@ Radar map data comes from [OpenStreetMap](https://www.openstreetmap.org). The in
         <script src="https://js.radar.com/v5.3.0/radar.min.js"></script>
         <script src="https://js.radar.com/maps/v1.2.0/radar-maps.min.js"></script>
       </head>
+
       <body>
+        <p id="map-status" role="status">Loading map...</p>
         <div id="map" style="width: 100%; height: 500px;"></div>
 
         <script>
-          Radar.initialize('prj_test_pk_...');
+          const statusEl = document.getElementById('map-status');
+          let loaded = false;
 
-          const map = Radar.ui.map({
-            container: 'map',
-            style: 'radar-default-v1',
-            center: [-73.9867, 40.7041], // [longitude, latitude]
-            zoom: 14,
-          });
+          try {
+            Radar.initialize('prj_test_pk_...');
 
-          Radar.ui.marker({ popup: { text: '20 Jay St' } })
-            .setLngLat([-73.9867, 40.7041])
-            .addTo(map);
+            const map = Radar.ui.map({
+              container: 'map',
+              style: 'radar-default-v1',
+              center: [-73.9867, 40.7041], // [longitude, latitude]
+              zoom: 14,
+            });
+
+            map.on('load', () => {
+              loaded = true;
+              statusEl.hidden = true;
+
+              Radar.ui.marker({ popup: { text: '20 Jay St' } })
+                .setLngLat([-73.9867, 40.7041])
+                .addTo(map);
+            });
+
+            map.on('error', (event) => {
+              console.error('Map error', event.error);
+              if (!loaded) {
+                statusEl.textContent = 'The map could not load. Refresh the page to try again.';
+              }
+            });
+          } catch (err) {
+            // Thrown when the key is missing or is a secret key, or when the plugin did not load.
+            console.error(err);
+            statusEl.textContent = 'The map could not load.';
+          }
         </script>
       </body>
     </html>
     ```
 
-    The page shows a street map centered on Brooklyn with one marker, zoom buttons and attribution in the bottom right, and the Radar logo in the bottom left. Select the marker to open its popup. If the page is blank, check that the container has a width and a height and that the stylesheet loaded. For npm installs, React, native apps, and error handling, see [Display maps](/maps/maps).
+    ```jsx React
+    import { useEffect, useRef, useState } from 'react';
+    import Radar from 'radar-sdk-js';
+    import { createMapsPlugin } from '@radarlabs/plugin-maps';
+    import '@radarlabs/plugin-maps/dist/radar-maps.css';
+
+    Radar.registerPlugin(createMapsPlugin());
+    Radar.initialize(process.env.REACT_APP_RADAR_PUBLISHABLE_KEY);
+
+    const CENTER = [-73.9867, 40.7041]; // [longitude, latitude]
+
+    export default function RadarMap() {
+      const containerRef = useRef(null);
+      const [status, setStatus] = useState('loading');
+
+      useEffect(() => {
+        let loaded = false;
+
+        const map = Radar.ui.map({
+          container: containerRef.current,
+          style: 'radar-default-v1',
+          center: CENTER,
+          zoom: 14,
+        });
+
+        map.on('load', () => {
+          loaded = true;
+          setStatus('ready');
+
+          Radar.ui.marker({ popup: { text: '20 Jay St' } })
+            .setLngLat(CENTER)
+            .addTo(map);
+        });
+
+        map.on('error', (event) => {
+          console.error('Map error', event.error);
+          if (!loaded) {
+            setStatus('error');
+          }
+        });
+
+        // Remove the map when the component unmounts.
+        return () => map.remove();
+      }, []);
+
+      return (
+        <div>
+          {status === 'loading' && <p role="status">Loading map...</p>}
+          {status === 'error' && <p role="alert">The map could not load. Refresh the page to try again.</p>}
+          <div ref={containerRef} style={{ width: '100%', height: '500px' }} />
+        </div>
+      );
+    }
+    ```
+
+    ```swift Swift
+    import SwiftUI
+    import MapLibre
+
+    struct RadarMap: UIViewRepresentable {
+        let publishableKey = "prj_test_pk_..."
+        let center = CLLocationCoordinate2D(latitude: 40.7041, longitude: -73.9867)
+        var onLoadFailed: (Error) -> Void
+
+        func makeCoordinator() -> Coordinator {
+            Coordinator(self)
+        }
+
+        func makeUIView(context: Context) -> MLNMapView {
+            let styleURL = URL(string: "https://api.radar.io/maps/styles/radar-default-v1?publishableKey=\(publishableKey)")
+
+            let mapView = MLNMapView(frame: .zero, styleURL: styleURL)
+            mapView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            mapView.setCenter(center, zoomLevel: 14, animated: false)
+            mapView.delegate = context.coordinator
+
+            // The Radar logo replaces the MapLibre logo. Add radar-logo to your asset catalog.
+            mapView.logoView.isHidden = true
+            let logoImageView = UIImageView(image: UIImage(named: "radar-logo"))
+            logoImageView.translatesAutoresizingMaskIntoConstraints = false
+            mapView.addSubview(logoImageView)
+            NSLayoutConstraint.activate([
+                logoImageView.bottomAnchor.constraint(equalTo: mapView.safeAreaLayoutGuide.bottomAnchor, constant: -10),
+                logoImageView.leadingAnchor.constraint(equalTo: mapView.safeAreaLayoutGuide.leadingAnchor, constant: 10),
+                logoImageView.widthAnchor.constraint(equalToConstant: 74),
+                logoImageView.heightAnchor.constraint(equalToConstant: 26)
+            ])
+
+            return mapView
+        }
+
+        func updateUIView(_ uiView: MLNMapView, context: Context) {
+        }
+
+        class Coordinator: NSObject, MLNMapViewDelegate {
+            let control: RadarMap
+
+            init(_ control: RadarMap) {
+                self.control = control
+            }
+
+            // Add the marker when the style finishes loading. Add default-marker to your asset catalog.
+            func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
+                let point = MLNPointAnnotation()
+                point.coordinate = control.center
+
+                let shapeSource = MLNShapeSource(identifier: "marker-source", shape: point, options: nil)
+                let shapeLayer = MLNSymbolStyleLayer(identifier: "marker-style", source: shapeSource)
+
+                if let image = UIImage(named: "default-marker") {
+                    style.setImage(image, forName: "marker")
+                }
+                shapeLayer.iconImageName = NSExpression(forConstantValue: "marker")
+
+                style.addSource(shapeSource)
+                style.addLayer(shapeLayer)
+            }
+
+            func mapViewDidFailLoadingMap(_ mapView: MLNMapView, withError error: Error) {
+                control.onLoadFailed(error)
+            }
+        }
+    }
+    ```
+
+    ```kotlin Kotlin
+    import android.os.Bundle
+    import android.widget.Toast
+    import androidx.appcompat.app.AppCompatActivity
+    import androidx.core.content.res.ResourcesCompat
+    import androidx.core.graphics.drawable.toBitmap
+    import org.maplibre.android.MapLibre
+    import org.maplibre.android.camera.CameraPosition
+    import org.maplibre.android.geometry.LatLng
+    import org.maplibre.android.maps.MapView
+    import org.maplibre.android.plugins.annotation.SymbolManager
+    import org.maplibre.android.plugins.annotation.SymbolOptions
+
+    class MapActivity : AppCompatActivity() {
+
+        private lateinit var mapView: MapView
+
+        override fun onCreate(savedInstanceState: Bundle?) {
+            super.onCreate(savedInstanceState)
+
+            val publishableKey = "prj_test_pk_..."
+            val styleURL = "https://api.radar.io/maps/styles/radar-default-v1?publishableKey=$publishableKey"
+            val center = LatLng(40.7041, -73.9867)
+
+            // Must be called before the layout is inflated. The layout holds the MapView and the Radar logo.
+            MapLibre.getInstance(this)
+            setContentView(R.layout.activity_main)
+
+            mapView = findViewById(R.id.mapView)
+            mapView.onCreate(savedInstanceState)
+
+            mapView.addOnDidFailLoadingMapListener {
+                Toast.makeText(this, "The map could not load.", Toast.LENGTH_LONG).show()
+            }
+
+            mapView.getMapAsync { map ->
+                map.uiSettings.isLogoEnabled = false
+                map.cameraPosition = CameraPosition.Builder().target(center).zoom(14.0).build()
+
+                map.setStyle(styleURL) { loadedStyle ->
+                    val markerDrawable = ResourcesCompat.getDrawable(resources, R.drawable.default_marker, null)!!
+                    loadedStyle.addImage("radar-marker", markerDrawable.toBitmap())
+
+                    val symbolManager = SymbolManager(mapView, map, loadedStyle)
+                    symbolManager.iconAllowOverlap = true
+                    symbolManager.iconIgnorePlacement = true
+                    symbolManager.create(
+                        SymbolOptions()
+                            .withLatLng(center)
+                            .withIconImage("radar-marker")
+                            .withIconAnchor("bottom")
+                    )
+                }
+            }
+        }
+
+        override fun onStart() { super.onStart(); mapView.onStart() }
+        override fun onResume() { super.onResume(); mapView.onResume() }
+        override fun onPause() { super.onPause(); mapView.onPause() }
+        override fun onStop() { super.onStop(); mapView.onStop() }
+        override fun onLowMemory() { super.onLowMemory(); mapView.onLowMemory() }
+        override fun onDestroy() { super.onDestroy(); mapView.onDestroy() }
+
+        override fun onSaveInstanceState(outState: Bundle) {
+            super.onSaveInstanceState(outState)
+            mapView.onSaveInstanceState(outState)
+        }
+    }
+    ```
+
+    ```jsx React Native
+    import { useState } from 'react';
+    import { Text, View } from 'react-native';
+    import { Camera, Marker } from '@maplibre/maplibre-react-native';
+    import Radar, { Map } from 'react-native-radar';
+
+    Radar.initialize('prj_test_pk_...');
+
+    const CENTER = [-73.9867, 40.7041]; // [longitude, latitude]
+
+    export default function RadarMap() {
+      const [failed, setFailed] = useState(false);
+
+      if (failed) {
+        return <Text accessibilityRole="alert">The map could not load.</Text>;
+      }
+
+      return (
+        <View style={{ width: '100%', height: 500 }}>
+          <Map
+            mapOptions={{
+              mapStyle: 'radar-default-v1',
+              showUserLocation: false,
+              onDidFailLoadingMap: () => setFailed(true),
+            }}
+          >
+            <Camera initialViewState={{ center: CENTER, zoom: 14 }} />
+            <Marker lngLat={CENTER}>
+              <View
+                accessibilityLabel="20 Jay St"
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  borderWidth: 3,
+                  borderColor: '#FFFFFF',
+                  backgroundColor: '#000257',
+                }}
+              />
+            </Marker>
+          </Map>
+        </View>
+      );
+    }
+    ```
+
+    </CodeGroup>
+
+    The page shows a street map centered on Brooklyn with one marker, zoom buttons and attribution in the bottom right, and the Radar logo in the bottom left. Select the marker to open its popup. If the page is blank, check that the container has a width and a height and that the stylesheet loaded. The React tab needs the npm packages, and the native tabs use MapLibre with a Radar style URL and the Radar logo and marker image assets. For setup on each platform, see [Display maps](/maps/maps).
   </Step>
 </Steps>
+
+## What Maps includes
+
+| Capability | What it does | Start here | Reference |
+| --- | --- | --- | --- |
+| Map display | Interactive vector maps on the web and in native apps, plus static map images. | [Display maps](/maps/maps) | [Maps API](/api/maps), [Web SDK](/sdk/web) |
+| Address tools | Autocomplete as a user types, forward and reverse geocoding, IP geocoding, and address validation. | [Autocomplete, geocode, and validate addresses](/maps/addresses) | [Geocoding API](/api/geocoding), [Search API](/api/search) |
+| Search | Find your own locations (geofences) or Radar places near a point. | [Build store locators](/maps/store-locators) | [Search API](/api/search) |
+| Routing | Distance and duration, matrices, directions, route matching, and route optimization. | [Routing and static map reference](#routing-and-static-map-reference) | [Routing API](/api/routing) |
+
+Radar map data comes from [OpenStreetMap](https://www.openstreetmap.org). The interactive map component is built on [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/), so MapLibre options, events, and plugins work with it.
 
 ## Keys and authentication
 

@@ -4,115 +4,20 @@ description: "Build a location finder that searches your stores, branches, or AT
 ---
 
 import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
+import { RadarStoreLocatorDemo } from '/snippets/radar-demos.jsx';
 import GeofenceImport from '/snippets/geofence-import.mdx';
 
 By the end of this guide you have a location finder in a web page. A visitor types an address (no location permission needed) or chooses to share their position, sees the nearest locations in a list and on a map, selects one, and sees its details with the driving distance and time.
 
-A finished search looks like this: the status line reads "3 locations near 841 Broadway, New York, NY 10003 USA, nearest first.", the list shows "Store 42, 0.4 mi away (straight line)" and two more entries, and the map shows three markers fitted to the view. Selecting "Store 42" highlights it, opens its popup on the map, and changes its distance line to "0.5 mi by car, about 3 mins".
+<RadarStoreLocatorDemo />
 
-## Build with an agent
+## Complete example
 
-Copy this prompt into a coding agent that has access to your repository.
+The JavaScript tab is the whole locator in one HTML page, the other tabs run the same address search and nearby search in a native app, and the sections below explain each part.
 
-```text
-Build a store locator (location finder) in this repository using the current Radar
-documentation.
+<CodeGroup>
 
-First inspect the application framework, platform versions, existing Radar or map
-code, where location data (stores, branches, ATMs) lives today, how environment
-variables reach the client, and the existing tests. Preserve existing behavior
-outside this task.
-
-Read:
-- https://docs.radar.com/maps/store-locators.md
-- https://docs.radar.com/sdk/web.md
-- https://docs.radar.com/api/search.md
-- https://docs.radar.com/api/routing.md
-
-Implement the documented flow: locations loaded into Radar as geofences with a tag,
-external ID, and metadata (or the application's own list); address search with the
-Radar autocomplete component; an optional "use my location" action; a nearby search
-with Radar.searchGeofences; a results list and a map that always show the same
-locations; selecting a location from either the list or the map; and route distance
-and travel time labeled separately from straight-line distance. Handle denied
-location permission, no results, search errors, and loading states, and make the
-layout work on a narrow mobile screen. Use a publishable key in client code, read
-from configuration. Geofence import with a secret key belongs on the backend or in
-the dashboard, never in client code. Do not invent methods, fields, supported
-platforms, or defaults.
-
-Add tests for: a manual address search with location permission denied returns
-results; the list and the map show the same locations in the same order; selecting
-a list item and selecting a marker lead to the same selected state; a search with
-no nearby locations shows the empty state; a failed search request shows the error
-state and allows a retry. Run the repository's relevant checks. Report changed
-files, test results, required dashboard setup (keys, geofence import, tags), and
-anything that still needs confirmation. Do not change production settings or
-deploy without approval.
-```
-
-## Prerequisites
-
-- A Radar account and a publishable key. See [Keys](#keys).
-- Your locations, each with a name, coordinates or an address, and an ID from your own system.
-- **Web**: The examples use `radar-sdk-js` 5.3.0, `@radarlabs/plugin-maps` 1.2.0, and `@radarlabs/plugin-autocomplete` 1.2.0. The autocomplete plugin requires `radar-sdk-js` 5.3.0 or later.
-- **Permissions**: None. Address search works without location permission. The "Use my location" button asks for browser location permission only when the visitor selects it.
-- **Access**: To import geofences in the Radar dashboard, you need access to the project's Geofences page. To import through the API, you need a secret key on your backend.
-
-### Keys
-
-<EnvironmentAndKeys />
-
-Everything the locator does in the browser uses the publishable key. Only geofence import through the API uses a secret key, and that runs on your backend.
-
-## How it works
-
-| Part | Responsibility |
-| --- | --- |
-| Radar (setup) | Stores your locations as geofences. Each has a `tag` (such as `store`), an `externalId` (your ID), a `description` (the display name), and `metadata` (hours, phone, services). |
-| Your page | Collects a search origin from the autocomplete component or the browser's location, calls the search, and renders the list and the map from the same result array. |
-| Radar (search) | Returns the geofences near the origin, nearest first, filtered by tag. Separately returns route distance and travel time on request. |
-| Your backend | Keeps Radar in step with your location database through import, the API, or nightly sync. It isn't in the request path of a search. |
-
-Two different distances appear in a locator, and they aren't interchangeable:
-
-| Question | Straight-line distance | Route distance and travel time |
-| --- | --- | --- |
-| What it is | The distance between two points over the earth's surface, ignoring roads. | The distance along roads for a travel mode, and the estimated time to travel it. |
-| Where it comes from | Geofence search orders results by it. You compute the number in the browser. | `Radar.distance()` for one destination or `Radar.matrix()` for many. |
-| Cost | No extra request. | One extra request per selection or per result set. |
-| Label it as | "0.4 mi away" or "straight line". | "0.5 mi by car, about 3 mins". |
-
-The nearest location in a straight line isn't always the quickest to reach, for example across a river or a highway. If you show both numbers, label each one.
-
-## Load your locations
-
-The locator searches geofences in your Radar project. Give every location the same `tag` so the search can filter on it, your own ID as the `externalId`, and the fields you want to display as `metadata`. If you'd rather not store locations in Radar, see [Use your own location list](#use-your-own-location-list).
-
-For a locator, a small circle at each location is enough. This CSV defines three stores:
-
-```csv
-description,tag,externalId,type,radius,coordinates,enabled,metadata
-"Store 41",store,store-41,circle,100,"[-73.990500,40.735900]",true,"{""phone"":""555-0141"",""hours"":""8am to 9pm"",""pickup"":true}"
-"Store 42",store,store-42,circle,100,"[-73.989700,40.741100]",true,"{""phone"":""555-0142"",""hours"":""8am to 9pm"",""pickup"":false}"
-"Store 43",store,store-43,circle,100,"[-73.984000,40.726500]",true,"{""phone"":""555-0143"",""hours"":""9am to 6pm"",""pickup"":true}"
-```
-
-Geofence metadata is returned to anyone who can run a search with your publishable key. Put only public information in it.
-
-Import your locations with one of the methods that follow. To verify the import, open the [Geofences](https://dashboard.radar.com/geofencing/geofences) page and confirm that your locations appear with the tag you chose. For how the same geofences also generate entry and exit events, see [Detect geofence events and place visits](/geofencing/geofences-and-places).
-
-<GeofenceImport />
-
-## Build the locator
-
-The locator is one page: an address input, a "Use my location" button, a results list, and a map, all driven by one search function.
-
-### Run the complete example
-
-Save this as an HTML file, replace the key, and open it in a browser. The sections after it explain each part.
-
-```html
+```html JavaScript
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -364,6 +269,269 @@ Save this as an HTML file, replace the key, and open it in a browser. The sectio
 </html>
 ```
 
+```swift Swift
+import CoreLocation
+import RadarSDK
+import UIKit
+
+@main
+class AppDelegate: UIResponder, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        Radar.initialize(publishableKey: "prj_test_pk_...")
+        return true
+    }
+}
+
+func findStores(near query: String) {
+    // Search by address. Works with no location permission.
+    Radar.geocode(address: query) { (status, addresses) in
+        guard status == .success, let address = addresses?.first else {
+            // Show that the address could not be found.
+            return
+        }
+
+        let origin = CLLocation(latitude: address.coordinate.latitude, longitude: address.coordinate.longitude)
+
+        Radar.searchGeofences(
+            near: origin,
+            radius: 10000,
+            tags: ["store"],
+            metadata: nil,
+            limit: 10,
+            includeGeometry: false
+        ) { (status, _, geofences) in
+            guard status == .success, let geofences = geofences else {
+                // Show the error state.
+                return
+            }
+
+            if geofences.isEmpty {
+                // Show the empty state.
+                return
+            }
+
+            // Geofences are sorted by distance from the origin. Render the list and the map from this one array.
+            for geofence in geofences {
+                guard let circle = geofence.geometry as? RadarCircleGeometry else { continue }
+                let center = circle.center.coordinate
+                let meters = origin.distance(from: CLLocation(latitude: center.latitude, longitude: center.longitude))
+                print(geofence.externalId ?? "", geofence.__description, String(format: "%.1f mi away (straight line)", meters / 1609.344))
+            }
+        }
+    }
+}
+```
+
+```kotlin Kotlin
+import android.app.Application
+import android.location.Location
+import io.radar.sdk.Radar
+import io.radar.sdk.model.RadarCircleGeometry
+
+class MainApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        Radar.initialize(this, "prj_test_pk_...")
+    }
+}
+
+fun findStores(query: String) {
+    // Search by address. Works with no location permission.
+    Radar.geocode(query) { geocodeStatus, addresses ->
+        val address = addresses?.firstOrNull()
+        if (geocodeStatus != Radar.RadarStatus.SUCCESS || address == null) {
+            // Show that the address could not be found.
+            return@geocode
+        }
+
+        val origin = Location("search").apply {
+            latitude = address.coordinate.latitude
+            longitude = address.coordinate.longitude
+        }
+
+        Radar.searchGeofences(
+            near = origin,
+            radius = 10000,
+            tags = arrayOf("store"),
+            metadata = null,
+            limit = 10,
+            includeGeometry = false
+        ) { status, _, geofences ->
+            if (status != Radar.RadarStatus.SUCCESS || geofences == null) {
+                // Show the error state.
+                return@searchGeofences
+            }
+
+            if (geofences.isEmpty()) {
+                // Show the empty state.
+                return@searchGeofences
+            }
+
+            // Geofences are sorted by distance from the origin. Render the list and the map from this one array.
+            for (geofence in geofences) {
+                val center = (geofence.geometry as? RadarCircleGeometry)?.center ?: continue
+                val meters = FloatArray(1)
+                Location.distanceBetween(origin.latitude, origin.longitude, center.latitude, center.longitude, meters)
+                println("${geofence.externalId} ${geofence.description} ${"%.1f".format(meters[0] / 1609.344)} mi away (straight line)")
+            }
+        }
+    }
+}
+```
+
+```javascript React Native
+import Radar from 'react-native-radar';
+
+Radar.initialize('prj_test_pk_...');
+
+export async function findStores(query) {
+  try {
+    // Search by address. Works with no location permission.
+    const { addresses } = await Radar.geocode({ address: query });
+    if (!addresses || addresses.length === 0) {
+      // Show that the address could not be found.
+      return [];
+    }
+
+    const origin = { latitude: addresses[0].latitude, longitude: addresses[0].longitude };
+
+    const { geofences } = await Radar.searchGeofences({
+      near: origin,
+      radius: 10000,
+      tags: ['store'],
+      limit: 10,
+      includeGeometry: false,
+    });
+
+    if (!geofences || geofences.length === 0) {
+      // Show the empty state.
+      return [];
+    }
+
+    // Geofences are sorted by distance from the origin. Render the list and the map from this one array.
+    return geofences.map((geofence) => {
+      const [longitude, latitude] = geofence.geometryCenter.coordinates;
+      return {
+        id: geofence.externalId,
+        name: geofence.description,
+        metadata: geofence.metadata || {},
+        latitude,
+        longitude,
+      };
+    });
+  } catch (err) {
+    // Show the error state. The promise rejects with a Radar status such as ERROR_NETWORK in err.code.
+    console.error(err.code);
+    return [];
+  }
+}
+```
+
+</CodeGroup>
+
+## Build with an agent
+
+Copy this prompt into a coding agent that has access to your repository.
+
+```text
+Build a store locator (location finder) in this repository using the current Radar
+documentation.
+
+First inspect the application framework, platform versions, existing Radar or map
+code, where location data (stores, branches, ATMs) lives today, how environment
+variables reach the client, and the existing tests. Preserve existing behavior
+outside this task.
+
+Read:
+- https://docs.radar.com/maps/store-locators.md
+- https://docs.radar.com/sdk/web.md
+- https://docs.radar.com/api/search.md
+- https://docs.radar.com/api/routing.md
+
+Implement the documented flow: locations loaded into Radar as geofences with a tag,
+external ID, and metadata (or the application's own list); address search with the
+Radar autocomplete component; an optional "use my location" action; a nearby search
+with Radar.searchGeofences; a results list and a map that always show the same
+locations; selecting a location from either the list or the map; and route distance
+and travel time labeled separately from straight-line distance. Handle denied
+location permission, no results, search errors, and loading states, and make the
+layout work on a narrow mobile screen. Use a publishable key in client code, read
+from configuration. Geofence import with a secret key belongs on the backend or in
+the dashboard, never in client code. Do not invent methods, fields, supported
+platforms, or defaults.
+
+Add tests for: a manual address search with location permission denied returns
+results; the list and the map show the same locations in the same order; selecting
+a list item and selecting a marker lead to the same selected state; a search with
+no nearby locations shows the empty state; a failed search request shows the error
+state and allows a retry. Run the repository's relevant checks. Report changed
+files, test results, required dashboard setup (keys, geofence import, tags), and
+anything that still needs confirmation. Do not change production settings or
+deploy without approval.
+```
+
+## Prerequisites
+
+- A Radar account and a publishable key. See [Keys](#keys).
+- Your locations, each with a name, coordinates or an address, and an ID from your own system.
+- **Web**: The examples use `radar-sdk-js` 5.3.0, `@radarlabs/plugin-maps` 1.2.0, and `@radarlabs/plugin-autocomplete` 1.2.0. The autocomplete plugin requires `radar-sdk-js` 5.3.0 or later.
+- **Permissions**: None. Address search works without location permission. The "Use my location" button asks for browser location permission only when the visitor selects it.
+- **Access**: To import geofences in the Radar dashboard, you need access to the project's Geofences page. To import through the API, you need a secret key on your backend.
+
+### Keys
+
+<EnvironmentAndKeys />
+
+Everything the locator does in the browser uses the publishable key. Only geofence import through the API uses a secret key, and that runs on your backend.
+
+## How it works
+
+| Part | Responsibility |
+| --- | --- |
+| Radar (setup) | Stores your locations as geofences. Each has a `tag` (such as `store`), an `externalId` (your ID), a `description` (the display name), and `metadata` (hours, phone, services). |
+| Your page | Collects a search origin from the autocomplete component or the browser's location, calls the search, and renders the list and the map from the same result array. |
+| Radar (search) | Returns the geofences near the origin, nearest first, filtered by tag. Separately returns route distance and travel time on request. |
+| Your backend | Keeps Radar in step with your location database through import, the API, or nightly sync. It isn't in the request path of a search. |
+
+Two different distances appear in a locator, and they aren't interchangeable:
+
+| Question | Straight-line distance | Route distance and travel time |
+| --- | --- | --- |
+| What it is | The distance between two points over the earth's surface, ignoring roads. | The distance along roads for a travel mode, and the estimated time to travel it. |
+| Where it comes from | Geofence search orders results by it. You compute the number in the browser. | `Radar.distance()` for one destination or `Radar.matrix()` for many. |
+| Cost | No extra request. | One extra request per selection or per result set. |
+| Label it as | "0.4 mi away" or "straight line". | "0.5 mi by car, about 3 mins". |
+
+The nearest location in a straight line isn't always the quickest to reach, for example across a river or a highway. If you show both numbers, label each one.
+
+## Load your locations
+
+The locator searches geofences in your Radar project. Give every location the same `tag` so the search can filter on it, your own ID as the `externalId`, and the fields you want to display as `metadata`. If you'd rather not store locations in Radar, see [Use your own location list](#use-your-own-location-list).
+
+For a locator, a small circle at each location is enough. This CSV defines three stores:
+
+```csv
+description,tag,externalId,type,radius,coordinates,enabled,metadata
+"Store 41",store,store-41,circle,100,"[-73.990500,40.735900]",true,"{""phone"":""555-0141"",""hours"":""8am to 9pm"",""pickup"":true}"
+"Store 42",store,store-42,circle,100,"[-73.989700,40.741100]",true,"{""phone"":""555-0142"",""hours"":""8am to 9pm"",""pickup"":false}"
+"Store 43",store,store-43,circle,100,"[-73.984000,40.726500]",true,"{""phone"":""555-0143"",""hours"":""9am to 6pm"",""pickup"":true}"
+```
+
+Geofence metadata is returned to anyone who can run a search with your publishable key. Put only public information in it.
+
+Import your locations with one of the methods that follow. To verify the import, open the [Geofences](https://dashboard.radar.com/geofencing/geofences) page and confirm that your locations appear with the tag you chose. For how the same geofences also generate entry and exit events, see [Detect geofence events and place visits](/geofencing/geofences-and-places).
+
+<GeofenceImport />
+
+## Build the locator
+
+The locator is one page: an address input, a "Use my location" button, a results list, and a map, all driven by one search function.
+
+To run the JavaScript tab in [Complete example](#complete-example), save it as an HTML file, replace the key, and open it in a browser. A finished search looks like this: the status line reads "3 locations near 841 Broadway, New York, NY 10003 USA, nearest first.", the list shows "Store 42, 0.4 mi away (straight line)" and two more entries, and the map shows three markers fitted to the view. Selecting "Store 42" highlights it, opens its popup on the map, and changes its distance line to "0.5 mi by car, about 3 mins".
+
 For npm projects, install and register the two plugins as shown in [Display maps](/maps/maps#with-npm-or-yarn) and [Autocomplete, geocode, and validate addresses](/maps/addresses#add-the-autocomplete-component). The calls are the same.
 
 ### Accept an address
@@ -455,7 +623,7 @@ To find public places, such as a category of business or a named chain, use `Rad
 
 ### Native apps
 
-The same flow works in a native app: a search field, a nearby search, a list, and a map. The Radar iOS and Android SDKs provide `Radar.searchGeofences`, `Radar.autocomplete`, `Radar.geocode`, and `Radar.getDistance`, and [Display maps](/maps/maps#compatibility) shows how to render a Radar map with MapLibre Native. These examples show the nearby search:
+The same flow works in a native app: a search field, a nearby search, a list, and a map. The Radar iOS, Android, and React Native SDKs provide `Radar.searchGeofences`, `Radar.autocomplete`, `Radar.geocode`, and `Radar.getDistance`, and [Display maps](/maps/maps#compatibility) shows how to render a Radar map with MapLibre Native. The native tabs in [Complete example](#complete-example) geocode a typed address and search near it. These examples show the nearby search on its own:
 
 <CodeGroup>
 
@@ -470,7 +638,7 @@ func searchStores(near origin: CLLocation) {
         tags: ["store"],
         metadata: nil,
         limit: 10,
-        includeGeometry: true
+        includeGeometry: false
     ) { (status, location, geofences) in
         guard status == .success, let geofences = geofences else {
             // Show the error state.
@@ -505,7 +673,7 @@ fun searchStores(origin: Location) {
         tags = arrayOf("store"),
         metadata = null,
         limit = 10,
-        includeGeometry = true
+        includeGeometry = false
     ) { status, _, geofences ->
         if (status != Radar.RadarStatus.SUCCESS || geofences == null) {
             // Show the error state.
@@ -528,7 +696,7 @@ fun searchStores(origin: Location) {
 
 </CodeGroup>
 
-Initialize the SDK before you call these methods. For setup and the address search methods, see [iOS SDK](/sdk/ios) and [Android SDK](/sdk/android).
+Initialize the SDK before you call these methods. On each platform the search returns every geofence's center, so the examples leave out the full shapes with `includeGeometry` set to `false`. For setup and the address search methods, see [iOS SDK](/sdk/ios), [Android SDK](/sdk/android), and [React Native SDK](/sdk/react-native).
 
 ## Handle results and errors
 
