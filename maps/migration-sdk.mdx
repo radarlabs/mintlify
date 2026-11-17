@@ -3,13 +3,11 @@ title: "Migration SDK"
 description: "Migrate a Google Maps web implementation to Radar Maps by swapping a script with the Radar Maps Migration SDK."
 ---
 
-The Radar Maps Migration SDK allows you to easily convert your Google Maps web implementations with Radar Maps by simply swapping the script import tag.
+The Radar Maps Migration SDK converts a web page built on the Google Maps JavaScript API to Radar Maps by replacing the script import tag. For the overall migration path, including Google web services and other map libraries, see [Migrate to Radar Maps](/maps/overview#migrate-to-radar-maps).
 
 ## How it works
 
-The Google maps import will look like one of the following:
-
-**Direct src import**
+The Google Maps import on your page takes one of two forms. This is a direct `src` import:
 
 ```html
 <script
@@ -19,7 +17,7 @@ The Google maps import will look like one of the following:
 </script>
 ```
 
-**Dynamic Library import**
+This is a dynamic library import:
 
 ```html
 <script>
@@ -32,13 +30,15 @@ The Google maps import will look like one of the following:
 </script>
 ```
 
-For either of these imports, simply replace these lines with the Radar Migration SDK script. Now without any further changes to the code, calls to the Google Maps API will now be made to Radar's API.
+For either import, replace these lines with the Radar Migration SDK script:
 
 ```html
-<script src="https://js.radar.com/v1/radar-migration-sdk.js?key=RADAR_PUBLISHABLE_KEY"></script>
+<script src="https://js.radar.com/v1/radar-migration-sdk.js?key=prj_live_pk_..."></script>
 ```
 
-Additionally you can specify a callback and Radar map style which is defined below.
+Radar then serves the calls your page makes to the Google Maps JavaScript API. Test each map interaction your page uses after the change.
+
+To set a callback or a Radar map style, add the query parameters in [Configuration](#configuration).
 
 ## Configuration
 
@@ -46,19 +46,18 @@ Additionally you can specify a callback and Radar map style which is defined bel
 
 `src` `https://js.radar.com/v1/radar-migration-sdk.js`
 
-### Query Parameters
+### Query parameters
 
-| Name       | Default            | Possible values                                                          | Description                                                                                                                                                                          |
-| ---------- | ------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `key`      | none (required)    | string                                                                   | Your Radar publishable API key.                                                                                                                                                      |
-| `style`    | `radar-default-v1` | `radar-default-v1`, `radar-light-v1`, `radar-dark-v1`, `CUSTOM_STYLE_ID` | The style of the map. One of Radar's out-of-the box styles, or a [custom style](/maps/maps#custom-styles) ID. See [map styles](https://radar.com/maps/maps#styles) for more details. |
-| `callback` | none               | string                                                                   | The name of a maps callback function to be called once the library is imported                                                                                                       |
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `key` | string | None | Required. Your Radar publishable key. |
+| `style` | string | `radar-default-v1` | The map style: `radar-default-v1`, `radar-light-v1`, `radar-dark-v1`, or a [custom style](/maps/maps#custom-styles) ID. See [Styles](/maps/maps#styles). |
+| `callback` | string | None | The name of a maps callback function to call after the library is imported. |
 
 ## Coverage
 
-See [Maps coverage](/maps/maps#coverage) for more details.
+See [Maps coverage](/maps/maps#coverage).
 
 ## Support
 
-Have questions? We're here to help\! Contact us at [radar.com/support](https://radar.com/support).
-
+For help, contact [Radar support](https://radar.com/support).

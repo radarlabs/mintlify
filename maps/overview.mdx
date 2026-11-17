@@ -1,80 +1,194 @@
 ---
-title: "Overview"
-description: "Overview of Radar's Maps Platform: geocoding, search, routing, and base map APIs as a cost-effective alternative to Google Maps and Mapbox."
+title: "Maps overview and quickstart"
+sidebarTitle: "Overview and quickstart"
+description: "Make your first Radar Maps request, display a map, and find the guide for maps, store locators, addresses, search, and routing."
 ---
 
-Radar Maps Platform is a cost-effective solution for geocoding APIs, search APIs, routing APIs, and base maps.
+import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
 
-Together with our [Geofencing Platform](/geofencing/overview), Radar provides full-stack location infrastructure for any product or service. We power location-based experiences for [enterprises and startups](https://radar.com/customers) across hundreds of millions of devices worldwide.
+Radar Maps gives you base maps, geocoding, address autocomplete and validation, search, and routing behind one publishable key. By the end of this page you have made one geocoding request, rendered one map, and know which guide or reference page covers the rest.
 
-## Features
+## What Maps includes
 
-<CardGroup cols={2}>
-  <Card title="Geocoding APIs" icon={<svg
-xmlns="http://www.w3.org/2000/svg"
-width={32}
-height={32}
-viewBox="0 0 36 36"
-fill="none"
-{...props}
->
-<rect width={36} height={36} fill="#00C3D9" rx={18} />
-<path fill="#fff" d="M15.5 11.75h5V13h-5z" />
-<path
-fill="#fff"
-fillRule="evenodd"
-d="M18.287 9.25c3.315.164 5.963 3.086 5.963 6.665v.285c0 3.94-4.998 9.62-5.521 10.2-.206.23-.524.35-.729.35-.205 0-.523-.12-.729-.35-.513-.58-5.521-6.26-5.521-10.2v-.285c0-3.579 2.637-6.5 5.963-6.665h.574ZM18 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"
-clipRule="evenodd"
-/>
-</svg>} href="/maps/geocoding">
-    Forward, reverse, and IP geocoding APIs
+| Capability | What it does | Start here | Reference |
+| --- | --- | --- | --- |
+| Map display | Interactive vector maps on the web and in native apps, plus static map images. | [Display maps](/maps/maps) | [Maps API](/api/maps), [Web SDK](/sdk/web) |
+| Address tools | Autocomplete as a user types, forward and reverse geocoding, IP geocoding, and address validation. | [Autocomplete, geocode, and validate addresses](/maps/addresses) | [Geocoding API](/api/geocoding), [Search API](/api/search) |
+| Search | Find your own locations (geofences) or Radar places near a point. | [Build store locators](/maps/store-locators) | [Search API](/api/search) |
+| Routing | Distance and duration, matrices, directions, route matching, and route optimization. | [Routing and static map reference](#routing-and-static-map-reference) | [Routing API](/api/routing) |
+
+Radar map data comes from [OpenStreetMap](https://www.openstreetmap.org). The interactive map component is built on [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/), so MapLibre options, events, and plugins work with it.
+
+## Quickstart
+
+<Steps>
+  <Step title="Get a publishable key">
+    <EnvironmentAndKeys />
+
+    Maps requests from a browser or app use a publishable key (`prj_test_pk_...` or `prj_live_pk_...`). Start with the Test key.
+  </Step>
+  <Step title="Make a request">
+    Forward geocode an address. Pass the publishable key in the `Authorization` header.
+
+    ```bash
+    curl "https://api.radar.io/v1/geocode/forward?query=20+jay+st+brooklyn+ny" \
+      -H "Authorization: prj_test_pk_..."
+    ```
+
+    A successful response has `meta.code` of `200` and an `addresses` array. Each address carries coordinates, structured fields, a `formattedAddress`, and a `confidence` value.
+
+    ```json
+    {
+      "meta": {
+        "code": 200
+      },
+      "addresses": [
+        {
+          "latitude": 40.7041,
+          "longitude": -73.9867,
+          "geometry": {
+            "type": "Point",
+            "coordinates": [-73.9867, 40.7041]
+          },
+          "country": "United States",
+          "countryCode": "US",
+          "state": "New York",
+          "stateCode": "NY",
+          "city": "Brooklyn",
+          "postalCode": "11201",
+          "number": "20",
+          "street": "Jay St",
+          "layer": "address",
+          "confidence": "exact",
+          "addressLabel": "20 Jay St",
+          "formattedAddress": "20 Jay St, Brooklyn, New York, NY 11201 USA"
+        }
+      ]
+    }
+    ```
+
+    If you get `401`, the key is missing or wrong. See [Authentication, errors, and rate limits](/api/fundamentals).
+  </Step>
+  <Step title="Display a map">
+    Save this as an HTML file, replace the key, and open it in a browser. It loads the Radar web SDK 5.3.0 and the maps plugin 1.2.0 from Radar's CDN.
+
+    ```html
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://js.radar.com/maps/v1.2.0/radar-maps.css" rel="stylesheet">
+        <script src="https://js.radar.com/v5.3.0/radar.min.js"></script>
+        <script src="https://js.radar.com/maps/v1.2.0/radar-maps.min.js"></script>
+      </head>
+      <body>
+        <div id="map" style="width: 100%; height: 500px;"></div>
+
+        <script>
+          Radar.initialize('prj_test_pk_...');
+
+          const map = Radar.ui.map({
+            container: 'map',
+            style: 'radar-default-v1',
+            center: [-73.9867, 40.7041], // [longitude, latitude]
+            zoom: 14,
+          });
+
+          Radar.ui.marker({ popup: { text: '20 Jay St' } })
+            .setLngLat([-73.9867, 40.7041])
+            .addTo(map);
+        </script>
+      </body>
+    </html>
+    ```
+
+    The page shows a street map centered on Brooklyn with one marker, zoom buttons and attribution in the bottom right, and the Radar logo in the bottom left. Select the marker to open its popup. If the page is blank, check that the container has a width and a height and that the stylesheet loaded. For npm installs, React, native apps, and error handling, see [Display maps](/maps/maps).
+  </Step>
+</Steps>
+
+## Keys and authentication
+
+- **Publishable keys**: The geocoding, search, routing, and map endpoints used in these guides accept a publishable key, so the map component, the autocomplete component, and direct requests from a browser or app need no secret key.
+- **Secret keys**: Keep them on your backend. The web SDK refuses to initialize with one.
+- **REST requests**: Send the key in the `Authorization` header. Map style URLs and static map URLs, which are loaded by a map library or an image element and can't set headers, take the key as a `publishableKey` query parameter.
+- **Environments**: Test and Live keys belong to separate environments. Build with the Test key, then switch to the Live key at launch.
+
+To find your keys, see [Set up organizations, projects, accounts, and authentication](/fundamentals/authentication-and-access). For error shapes and rate limits, see [Authentication, errors, and rate limits](/api/fundamentals).
+
+## Guides
+
+<CardGroup cols={3}>
+  <Card title="Display maps" icon="map" href="/maps/maps">
+    Render an interactive map with markers, popups, shapes, and custom styles on web and native, or generate a static map image.
   </Card>
-  <Card title="Search APIs" icon={<svg
-xmlns="http://www.w3.org/2000/svg"
-width={32}
-height={32}
-viewBox="0 0 36 36"
-fill="none"
-{...props}
->
-<rect width={36} height={36} fill="#00C3D9" rx={18} />
-<path
-fill="#fff"
-d="m25.226 23.897-2.24-2.24-.675-.676a6.484 6.484 0 0 0 1.312-3.919A6.57 6.57 0 0 0 17.06 10.5a6.57 6.57 0 0 0-6.561 6.563 6.57 6.57 0 0 0 6.561 6.562c1.472 0 2.831-.497 3.919-1.313l1.574 1.575 1.34 1.341a.905.905 0 0 0 .666.272.96.96 0 0 0 .666-.272.934.934 0 0 0 0-1.322v-.01Zm-12.851-6.834c0-2.588 2.1-4.688 4.686-4.688a4.689 4.689 0 0 1 0 9.375 4.689 4.689 0 0 1-4.686-4.688Z"
-/>
-</svg>} href="/maps/search">
-    Autocomplete, address validation, and place search APIs
+  <Card title="Build store locators" icon="store" href="/maps/store-locators">
+    Search your locations near an address or the user's position and show a matching list and map.
   </Card>
-  <Card title="Routing APIs" icon={<svg
-xmlns="http://www.w3.org/2000/svg"
-width={32}
-height={32}
-viewBox="0 0 36 36"
-fill="none"
-{...props}
->
-<rect width={36} height={36} fill="#00C3D9" rx={18} />
-<path
-fill="#fff"
-d="M24.001 10.5c.507 0 .922.421.922.937v9.378a.932.932 0 0 1-.922.937H13.115v2.812a.932.932 0 0 1-.922.936H12a.932.932 0 0 1-.922-.936V11.437c0-.515.415-.937.922-.937h12.002Z"
-/>
-</svg>} href="/maps/routing">
-    Distance, matrix, and route matching APIs
-  </Card>
-  <Card title="Maps" icon={<svg
-xmlns="http://www.w3.org/2000/svg"
-width={32}
-height={32}
-viewBox="0 0 36 36"
-fill="none"
-{...props}
->
-<rect width={36} height={36} fill="#00C3D9" rx={18} />
-<path
-fill="#fff"
-d="m24.188 10.583-4.313 1.69-3.375-1.69c-.188-.094-.469-.094-.75 0l-4.688 1.878c-.374.094-.562.47-.562.845v11.266a.924.924 0 0 0 1.313.845l4.312-1.69 3.375 1.69c.281.093.469.093.75 0l4.688-1.784c.375-.094.562-.47.562-.845v-11.36a.924.924 0 0 0-1.313-.845Zm-7.125 2.347 1.875.94v9.2l-1.875-.94v-9.2Zm-4.688 1.033 2.813-1.127v9.2l-2.813 1.127v-9.2Zm11.25 8.168-2.813 1.032v-9.2l2.813-1.127v9.295Z"
-/>
-</svg>} href="/maps/maps">
-    A cost-effective alternative to Google Maps and Mapbox
+  <Card title="Autocomplete, geocode, and validate addresses" icon="location-dot" href="/maps/addresses">
+    Build an address entry flow, then geocode, reverse geocode, IP geocode, or validate.
   </Card>
 </CardGroup>
+
+## Routing and static map reference
+
+The quickstart and guides use a small part of the routing surface. Everything below is supported and documented in the reference.
+
+| Operation | Use it to | Reference |
+| --- | --- | --- |
+| Distance | Get travel distance and duration between one origin and one destination, for one or more travel modes. | [Distance](/api/routing#distance) |
+| Matrix | Get distances and durations between several origins and destinations in one request. | [Matrix](/api/routing#matrix) |
+| Directions | Get a route through two or more locations in order, with turn-by-turn steps and geometry. | [Directions](/api/routing#directions) |
+| Route matching | Snap recorded points to the roads most likely traveled. | [Route match](/api/routing#route-match) |
+| Route optimization | Order a list of stops and get the route that visits them. | [Optimize route](/api/routing#optimize-route) |
+| Static maps | Request a map image by URL, with optional markers and paths. | [Static maps](/maps/maps#static-maps), [Maps API](/api/maps) |
+
+In the web SDK, `Radar.distance()` and `Radar.matrix()` wrap the distance and matrix endpoints. Call the other routing endpoints over REST. [Build store locators](/maps/store-locators#show-route-distance-and-travel-time) uses distance and matrix, [Display maps](/maps/maps#display-a-route) draws a route on a map, and [Track pickups, deliveries, and workers](/geofencing/trips) covers live trip ETAs.
+
+## Migrate to Radar Maps
+
+How you migrate depends on what you're migrating from.
+
+### From Google Maps on the web
+
+Radar maintains a Migration SDK for web pages built on the Google Maps JavaScript API. You replace the Google Maps script tag with the Radar Migration SDK script tag, and existing `google.maps` calls are served by Radar. This is the supported migration path for Google Maps. For the script URL and its `key`, `style`, and `callback` parameters, see [Migration SDK](/maps/migration-sdk).
+
+The Migration SDK is a compatibility layer, not a guarantee that every Google Maps feature behaves identically. After the swap, test every map interaction, control, and overlay your pages use, and port anything that doesn't behave as expected to the Radar web SDK in [Display maps](/maps/maps).
+
+Google web services called from your backend or app (geocoding, places, routes) are separate HTTP APIs. They aren't covered by the Migration SDK. Port each call to the Radar endpoint that does the same job:
+
+| Google Maps Platform | Radar |
+| --- | --- |
+| Dynamic Maps | [Display maps](/maps/maps) |
+| Static Maps | [Static maps](/maps/maps#static-maps) |
+| Geocoding API | [Forward geocode](/api/geocoding#forward-geocode) |
+| Reverse Geocoding API | [Reverse geocode](/api/geocoding#reverse-geocode) |
+| Autocomplete API | [Autocomplete](/api/search#autocomplete) |
+| Place Autocomplete UI | [Autocomplete component](/maps/addresses#add-the-autocomplete-component) |
+| Address Validation API | [Validate an address](/api/geocoding#validate-an-address) |
+| Nearby Search API | [Search places](/api/search#search-places) |
+| Distance Matrix API | [Matrix](/api/routing#matrix) |
+| Directions API | [Directions](/api/routing#directions) |
+| Snap to Roads API | [Route match](/api/routing#route-match) |
+| Speed Limits API | [Route match](/api/routing#route-match), with `speedLimit` in the `roadAttributes` parameter |
+| Compute Routes API | [Matrix](/api/routing#matrix), [Directions](/api/routing#directions), or [Optimize route](/api/routing#optimize-route) |
+
+Request parameters and response shapes differ between the two platforms, so each ported call needs its own request mapping and response parsing. Radar also offers [IP geocoding](/api/geocoding#ip-geocode), which has no direct Google Maps Platform equivalent in this table.
+
+### From Mapbox, MapLibre, Leaflet, or another library
+
+There's no migration SDK for these libraries. Port them by hand:
+
+- **Mapbox GL JS or MapLibre GL JS**: Keep your map code on MapLibre GL JS and point its `style` option at a Radar style URL, or move to the Radar web SDK, which wraps MapLibre and adds markers, popups, and shape helpers. See [MapLibre GL JS](/maps/maps#maplibre-gl-js).
+- **Leaflet**: Use Radar as the base map through the MapLibre Leaflet plugin. See [Leaflet](/maps/maps#leaflet).
+- **Native iOS and Android, React Native, Flutter**: Use MapLibre Native or the Radar React Native map component with a Radar style. See [Compatibility](/maps/maps#compatibility).
+- **Geocoding, search, and routing calls**: Replace each request with the matching Radar endpoint from the table in [From Google Maps on the web](#from-google-maps-on-the-web) and update your response parsing.
+
+Plan time to rebuild custom styles in the dashboard and to retest clustering, drawing, or other plugins you depend on. See [Custom styles](/maps/maps#custom-styles).
+
+## Coverage, caching, and support
+
+- Maps coverage is listed in [Display maps](/maps/maps#coverage). Geocoding and search coverage by country is listed in [Autocomplete, geocode, and validate addresses](/maps/addresses#coverage).
+- Routing coverage for distance, matrix, and route matching is rated great for consumer and logistics use cases in the US, Canada, the UK, and the EU, and good elsewhere.
+- You can cache API responses for up to 30 days. See the [terms of use](https://radar.com/terms).
+- To report a bad geocoding, search, or routing result, contact [Radar support](https://radar.com/support).
