@@ -1,11 +1,37 @@
 ---
-title: "Capacitor plugin"
-description: "Install and integrate the Radar Capacitor plugin to add location tracking, geofencing, and trip tracking to your Capacitor app."
+title: "Capacitor SDK"
+description: "Install, configure, and call the capacitor-radar plugin, with native setup, version pairing, and feature availability for iOS and Android."
 ---
 
-This is the documentation for the Capacitor plugin. Before integrating, read the [native SDK documentation](https://docs.radar.com/sdk) to familiarize yourself with the platform.
+At the end of this page you have `capacitor-radar` installed, the native iOS and Android projects configured, and a reference for every method and listener the plugin exposes.
 
-See the source on GitHub [here](https://github.com/radarlabs/capacitor-radar). Or, see the `capacitor-radar` package on npm [here](https://www.npmjs.com/package/capacitor-radar).
+This page documents `capacitor-radar` 4.1.1. The source is on [GitHub](https://github.com/radarlabs/capacitor-radar) and the package is on [npm](https://www.npmjs.com/package/capacitor-radar).
+
+## Versions and feature availability
+
+| Item | `capacitor-radar` 4.1.1 |
+| --- | --- |
+| Capacitor | 8. |
+| Node.js | 22 or later (required by the Capacitor 8 CLI). |
+| iOS SDK | Radar iOS SDK 3.38.0. Minimum iOS 15.0. |
+| Android SDK | `io.radar:sdk:3.35.0`. Minimum SDK level 24. Builds need JDK 21. |
+| Fraud plugin, iOS | `RadarSDKFraud` 1.4.1, bundled with the plugin. |
+| Fraud plugin, Android | `io.radar:sdk-fraud:1.2.1`, declared by the plugin. |
+
+| Feature | Available | Notes |
+| --- | --- | --- |
+| Foreground and background tracking | Yes | Presets, custom options, mock tracking, listeners. |
+| Trips | Yes | Includes `updateTripLeg()`, `updateCurrentTripLeg()`, and `reorderTripLegs()`. |
+| Verified location (Geo-compliance and Fraud) | Yes | The fraud plugin ships with the plugin on both platforms. See [Verified location](#verified-location). |
+| Beacons | Yes | `beacons` option on `trackOnce()`, `trackVerified()`, `startTrackingVerified()`, and tracking options. |
+| Maps and address UI | No | The plugin has no map or autocomplete component. For a Capacitor web view, use the [Web SDK](/sdk/web) components. |
+| In-app messages | Yes | `showInAppMessage()` and in-app message listeners. |
+
+`startIndoorScan()` works on iOS only and rejects on Android. For how the wrappers compare, see [SDK overview and compatibility](/sdk/sdk).
+
+### Upgrade from 3.x
+
+Version 4.0.0 requires Capacitor 8 (3.x used Capacitor 6), Node.js 22, JDK 21, iOS 15.0, and Android SDK level 24. `addListener()` now returns `Promise<PluginListenerHandle>`, so await it before you call `remove()`. For every step, see [MIGRATION.md](https://github.com/radarlabs/capacitor-radar/blob/master/MIGRATION.md).
 
 ## Install
 
@@ -21,9 +47,9 @@ Then, update dependencies:
 npx cap sync
 ```
 
-If successful, you will see:
+A successful sync prints:
 
-```
+```text
 ✔ Updating Android plugins
   Found 1 Capacitor plugin for android:
     capacitor-radar
@@ -36,193 +62,227 @@ If successful, you will see:
 ✔ update ios
 ```
 
-Before writing any JavaScript, you must integrate the Radar SDK with your iOS and Android apps as described in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+The plugin brings in the Radar iOS and Android SDKs. Finish the native configuration below before you write any JavaScript.
 
 ### iOS
 
-You must add location usage descriptions and background modes to your `Info.plist`. For foreground permissions, you must add a value for `NSLocationWhenInUseUsageDescription` _(Privacy - Location When In Use Usage Description)_. For background permissions, you must add a value for `NSLocationAlwaysAndWhenInUseUsageDescription` _(Privacy - Location Always and When In Use Usage Description)_. These strings are displayed in permissions prompts.
+1. Add location usage descriptions to `ios/App/App/Info.plist`. These strings appear in the permission prompts.
 
-![](/images/sdk/f2vbu16fzuly/66LUD7W9uTt7f2H5pMmpBp/1e5a2bb2baaf79328e88c3ea47a7f6ff/permissions.png)
+   | Key | When it is required |
+   | --- | --- |
+   | `NSLocationWhenInUseUsageDescription` | Always. Needed for foreground permission. |
+   | `NSLocationAlwaysAndWhenInUseUsageDescription` | When you request background permission. |
+   | `NSMotionUsageDescription` | When you call `requestMotionActivityPermission()`. |
 
-If you are planning to leverage background tracking, such as responsive or continuous mode, in your project settings, go to _Signing & Capabilities_, add _Background Modes_, and turn on _Background fetch_ and _Location updates_. Note that this requires additional justification during App Store review. [Learn more](/sdk/ios#submit-to-app-store).
+2. For background tracking with the responsive or continuous preset, open the App target in Xcode, select **Signing & Capabilities**, add **Background Modes**, and select **Location updates** and **Background fetch**. Background location needs justification during App Store review. See the [iOS SDK reference](/sdk/ios).
 
-![Background Modes Pn](/images/sdk/background-modes.png)
+3. Initialize the SDK in `application:didFinishLaunchingWithOptions:` in `AppDelegate.swift` with your publishable key:
 
-Finally, initialize the SDK in `application:didFinishLaunchingWithOptions:` in `AppDelegate.swift`, passing in your Radar publishable API key:
+   ```swift
+   import UIKit
+   import Capacitor
+   import RadarSDK
 
-```swift
-import Capacitor
-import RadarSDK
+   @UIApplicationMain
+   class AppDelegate: UIResponder, UIApplicationDelegate {
 
-@UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
-
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        Radar.initialize(publishableKey: publishableKey)
-        return true
-    }
-}
-```
+       func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+           Radar.initialize(publishableKey: "prj_test_pk_...")
+           return true
+       }
+   }
+   ```
 
 ### Android
 
-You must add Google Play Services Location to your project _(use version 21.0.1 or higher)_.
+1. Add Google Play Services Location to your app module. Use version 21.0.1 or later.
+
+   ```gradle
+   implementation "com.google.android.gms:play-services-location:21.0.1"
+   ```
+
+   The plugin declares `io.radar:sdk` and `io.radar:sdk-fraud` as API dependencies, so you don't add the Radar Android SDK yourself.
+
+   When you upgrade `capacitor-radar`, the paired Android SDK version changes with it. Each release lists it on the [releases page](https://github.com/radarlabs/capacitor-radar/releases).
+
+2. Initialize the SDK in `onCreate()` in `MainActivity.java` with your publishable key. Call `Radar.initialize()` before `super.onCreate(savedInstanceState)`, because Capacitor 4 and later changed the [plugin loading order](https://capacitorjs.com/docs/updating/4-0#change-registerplugin-order).
+
+   ```java
+   import android.os.Bundle;
+
+   import com.getcapacitor.BridgeActivity;
+   import io.radar.sdk.Radar;
+
+   public class MainActivity extends BridgeActivity {
+
+       @Override
+       public void onCreate(Bundle savedInstanceState) {
+           Radar.initialize(this, "prj_test_pk_...");
+           super.onCreate(savedInstanceState);
+       }
+   }
+   ```
+
+3. For background tracking without a foreground service, when you target API level 29 or later, add `ACCESS_BACKGROUND_LOCATION` to your manifest:
+
+   ```xml
+   <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+       <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+   </manifest>
+   ```
+
+If the build reports a `desugar_jdk_libs` version error, use version 2.1.5 or later in your app-level `build.gradle`:
 
 ```gradle
-implementation "com.google.android.gms:play-services-location:21.0.1"
-```
-
-Make sure that the Android SDK version matches the version in the `radar-capacitor` module's `build.gradle`.
-
-<Info>
-  When upgrading the SDK, ensure the Android SDK version is updated to match the plugin's pinned version. For details on the latest SDK releases, see the [releases page](https://github.com/radarlabs/capacitor-radar/releases) on GitHub.
-</Info>
-
-Add the SDK to your project, preferably using Gradle. Finally, initialize the SDK and the plugin in `onCreate()` in `MainActivity.java`, passing in your Radar publishable API key:
-
-```java
-import android.os.Bundle;
-
-import com.getcapacitor.BridgeActivity;
-import io.radar.sdk.Radar;
-
-public class MainActivity extends BridgeActivity {
-
-    @Override 
-    public void onCreate(Bundle savedInstanceState) {
-        Radar.initialize(this, publishableKey);
-        super.onCreate(savedInstanceState);
-    }
+dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 }
-```
-
-<Warning>
-  Note that `Radar.initialize(this, publishableKey)` must be called before `super.onCreate(savedInstanceState)` on Capacitor v4 and higher because of changes to [plugin loading](https://capacitorjs.com/docs/updating/4-0#change-registerplugin-order).
-</Warning>
-
-For background tracking without a foreground service, and if targeting API level `29` or higher, Radar also requires the `ACCESS_BACKGROUND_LOCATION` permission. You must add the `ACCESS_BACKGROUND_LOCATION` permission to your manifest manually:
-
-```xml
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-
-</manifest>
 ```
 
 ## Integrate
 
 ### Import module
 
-First, import the module:
+Import the plugin:
 
 ```javascript
 import { Radar } from 'capacitor-radar';
 ```
 
+Every method takes a single options object. For example, `setUserId` takes `{ userId }`, not a bare string. Methods that return data return a promise.
+
+### Initialize
+
+Initialize natively as described in [iOS](#ios) and [Android](#android), so the SDK is ready when the operating system relaunches the app in the background. You can also initialize from JavaScript:
+
+```javascript
+Radar.initialize({ publishableKey: 'prj_test_pk_...' });
+```
+
+Use your test publishable key (`prj_test_pk_...`) in development and your live publishable key (`prj_live_pk_...`) in production.
+
+<Warning>
+  Use publishable keys in client code. Never put a secret key in an app or web page.
+</Warning>
+
+`initialize()` accepts an optional `options` object:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `silentPush` | boolean | Enables [silent push](/sdk/silent-push). |
+| `autoLogNotificationConversions` | boolean | iOS. Logs a conversion when a Radar notification opens the app. |
+| `autoHandleNotificationDeepLinks` | boolean | iOS. Opens the deep link in a Radar notification payload. |
+| `authToken` | string | Initializes with an auth token in place of a publishable key. |
+
+`nativeSetup({ options })`, `initializeWithAppGroup({ appGroup })`, `setAppGroup({ appGroup })`, and `setLocationExtensionToken({ token })` apply to iOS. On Android they resolve without doing anything.
+
 ### Identify user
 
-To identify the user when logged in, call:
+Identify the user with an ID, metadata, and a description:
 
 ```javascript
-Radar.setUserId(userId);
+Radar.setUserId({ userId: 'user-123' });
+Radar.setMetadata({ metadata: { tier: 'gold', orders: 12, optedIn: true } });
+Radar.setDescription({ description: 'Example user' });
 ```
 
-where `userId` is a stable unique ID for the user.
+| Method | Argument |
+| --- | --- |
+| `setUserId({ userId })` | A stable unique ID for the user. |
+| `setMetadata({ metadata })` | An object with string, number, or boolean values. Radar accepts up to 16 keys. |
+| `setDescription({ description })` | A string shown in the Radar dashboard. |
 
-To set an optional dictionary of custom metadata for the user, call:
+These values persist across app sessions, so call each setter once, for example after login. `getUserId()`, `getMetadata()`, and `getDescription()` return promises with the stored values.
+
+`Radar.setAnonymousTrackingEnabled({ enabled })` turns anonymous tracking on or off. `Radar.setProduct({ product })` and `Radar.getProduct()` set and read an optional product name.
+
+### Debug logging
+
+By default, only critical errors are logged to the console. To change the level, call:
 
 ```javascript
-Radar.setMetadata(metadata);
+Radar.setLogLevel({ level: 'debug' });
 ```
 
-where `metadata` is a JSON object with up to 16 keys and values of type string, boolean, or number.
+Valid levels are `'error'`, `'warning'`, `'info'`, and `'debug'`. On iOS, any other value is rejected. To receive log lines in JavaScript, add a `log` listener.
 
-Finally, to set an optional description for the user, displayed in the dashboard, call:
-
-```javascript
-Radar.setDescription(description);
-```
-
-where `description` is a string.
-
-You only need to call these functions once, as these settings will be persisted across app sessions.
-
-Learn about platform-specific implementations of these functions in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+`Radar.logBackgrounding()` and `Radar.logResigningActive()` record app lifecycle events. `Radar.logTermination()` does the same on iOS only.
 
 ### Request permissions
 
-Before tracking the user's location, the user must have granted location permissions for the app.
-
-To determine the whether user has granted location permissions for the app, call:
+The user must grant location permission before you track. To read the current status, call:
 
 ```javascript
-Radar.getLocationPermissionsStatus().then((result) => { 
-    // do something with result.status
-});
+const result = await Radar.getLocationPermissionsStatus();
+// result.status
 ```
 
-`result.status` will be a string, one of:
+`result.status` is one of:
 
-- **`GRANTED_BACKGROUND`**
-- **`GRANTED_FOREGROUND`**
-- **`NOT_DETERMINED`**
-- **`DENIED`**
+- `GRANTED_BACKGROUND`
+- `GRANTED_FOREGROUND`
+- `DENIED`
 
-To request location permissions for the app, call:
+The plugin reports `DENIED` both when the user denied permission and when the user hasn't been asked yet.
+
+To request permission, call:
 
 ```javascript
-Radar.requestLocationPermissions({ background: true });
+Radar.requestLocationPermissions({ background: false });
 ```
 
-where `background` is a boolean indicating whether to request background location permissions or foreground location permissions.
+`background` is required. Pass `false` to request foreground permission and `true` to request background permission. Request foreground permission first. The call returns as soon as the prompt is requested, so call `getLocationPermissionsStatus()` afterward to read the result.
 
-Learn about platform-specific permissions in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+`Radar.requestMotionActivityPermission()` requests motion permission on iOS.
+
+To verify, build and run the app on a device and confirm both prompts appear. For when to ask for each level, see [Understand foreground and background location permissions](/fundamentals/location-permissions).
 
 ### Foreground tracking
 
-Once you have initialized the SDK and the user has granted permissions, you can track the user's location.
-
-To track the user's location in the foreground, call:
+After the SDK is initialized and the user grants permission, track the user's location once:
 
 ```javascript
-Radar.trackOnce().then((result) => { 
-    // do something with result.location, result.events, result.user.geofences
-}).catch((err) => { 
-    // optionally, do something with err
-});
+try {
+  const result = await Radar.trackOnce();
+  // result.status, result.location, result.events, result.user
+} catch (err) {
+  console.warn('trackOnce failed', err.message);
+}
 ```
 
-`err` will be a string, one of:
+`trackOnce()` accepts either a location (see [Manual tracking](#manual-tracking)) or `{ desiredAccuracy, beacons }`, where `desiredAccuracy` is `'high'`, `'medium'`, `'low'`, or `'none'` and `beacons` is a boolean.
+
+Promise-returning methods resolve on success with `status` set to `SUCCESS`. On failure they reject, and the error message is one of these status strings. Trip methods are the exception: they resolve with the failing status in `status`. See [Trip tracking](#trip-tracking).
 
 - **`ERROR_PUBLISHABLE_KEY`**: SDK not initialized
 - **`ERROR_PERMISSIONS`**: location permissions not granted
-- **`ERROR_LOCATION`**: location services error or timeout (10 seconds)
-- **`ERROR_NETWORK`**: network error or timeout (10 seconds)
+- **`ERROR_LOCATION`**: location services error or timeout
+- **`ERROR_BLUETOOTH`**: beacon ranging error or timeout
+- **`ERROR_NETWORK`**: network error or timeout
 - **`ERROR_BAD_REQUEST`**: bad request (missing or invalid params)
 - **`ERROR_UNAUTHORIZED`**: unauthorized (invalid API key)
 - **`ERROR_PAYMENT_REQUIRED`**: payment required (organization disabled or usage exceeded)
 - **`ERROR_FORBIDDEN`**: forbidden (insufficient permissions or no beta access)
 - **`ERROR_NOT_FOUND`**: not found
-- **`ERROR_RATE_LIMIT`**: too many requests ([rate limit](/api#track) exceeded)
+- **`ERROR_RATE_LIMIT`**: too many requests (rate limit exceeded)
 - **`ERROR_SERVER`**: internal server error
 - **`ERROR_UNKNOWN`**: unknown error
 
-Learn about platform-specific implementations of this function in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+A call with a missing required argument rejects with a message that names the argument, such as `query is required`.
+
+`Radar.getLocation({ desiredAccuracy })` reads the device location without sending it to Radar. It resolves to `{ status, location, stopped }`.
 
 ### Background tracking
 
-On iOS and Android, once you have initialized the SDK and the user has granted permissions, you can start tracking the user's location in the background.
+After the SDK is initialized and the user grants permission, start tracking in the background. The SDK supports custom tracking options and three presets:
 
-For background tracking, the SDK supports custom tracking options as well as three presets:
-
-- **`EFFICIENT`**: A low frequency of location updates and lowest battery usage. On Android, avoids Android vitals bad behavior thresholds.
+- **`EFFICIENT`**: A low frequency of location updates and the lowest battery usage. On Android, avoids Android vitals bad behavior thresholds.
 - **`RESPONSIVE`**: A medium frequency of location updates and low battery usage. Suitable for most consumer use cases.
-- **`CONTINUOUS`**: A high frequency of location updates and higher battery usage. Suitable for on-demand use cases (e.g., delivery tracking) and some consumer use cases (e.g., order ahead, "mall mode").
+- **`CONTINUOUS`**: A high frequency of location updates and higher battery usage. Suitable for on-demand use cases such as delivery tracking.
 
-Learn about platform-specific implementations of these presets in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
-
-To start tracking the user's location in the background, call one of:
+Start tracking with one of the presets:
 
 ```javascript
 Radar.startTrackingEfficient();
@@ -232,19 +292,19 @@ Radar.startTrackingResponsive();
 Radar.startTrackingContinuous();
 ```
 
-You only need to call these methods once, as these settings will be persisted across app sessions.
+Call one of these once. Tracking options persist across app sessions.
 
-Though we recommend using presets for most use cases, you can customize the tracking options. See the [tracking options reference](/sdk/tracking).
+Presets cover most use cases. To customize, pass tracking options under the `options` key. For field meanings, units, and defaults, see the [tracking options reference](/sdk/tracking).
 
 ```javascript
-// optionally adjust foreground service options for android
+// Android only: configure the foreground service notification
 Radar.setForegroundServiceOptions({ 
     options: { 
-        text: "Location tracking started", 
-        title: "Location updates", 
+        text: 'Location tracking started', 
+        title: 'Location updates', 
         updatesOnly: false,
         importance: 2, 
-        activity: 'com.yourapp.MainActivity' 
+        activity: 'com.example.app.MainActivity' 
     }
 });
 
@@ -267,53 +327,61 @@ Radar.startTrackingCustom({
 });
 ```
 
-To determine whether tracking has been started, call:
+`setForegroundServiceOptions()` does nothing on iOS.
+
+To check and stop tracking:
 
 ```javascript
-Radar.isTracking();
-```
+const result = await Radar.isTracking();
+// result.isTracking
 
-To stop tracking the user's location in the background (e.g., when the user logs out), call:
-
-```javascript
 Radar.stopTracking();
 ```
 
-Learn about platform-specific implementations of these functions in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+`Radar.getTrackingOptions()` resolves to the options in use. `Radar.isUsingRemoteTrackingOptions()` reports whether [remote configuration](/sdk/remote-configuration) controls them.
 
-To listen for events, location updates, and errors, you can add event listeners:
+#### Listen for events
+
+Add listeners with `addListener(eventName, callback)`. It returns a promise for a handle. Await it, then call `remove()` on the handle to stop listening.
 
 ```javascript
-Radar.addListener('clientLocation', (result) => { 
-    // do something with result.location, result.stopped, result.source
+const clientLocationHandle = await Radar.addListener('clientLocation', (result) => { 
+    // result.location, result.stopped, result.source
 });
 
-Radar.addListener('location', (result) => { 
-    // do something with result.location, result.user
+const locationHandle = await Radar.addListener('location', (result) => { 
+    // result.location, result.user
 });
 
-Radar.addListener('events', (result) => { 
-    // do something with result.events, result.user
+const eventsHandle = await Radar.addListener('events', (result) => { 
+    // result.events, result.user
 });
 
-Radar.addListener('error', (result) => { 
-    // do something with result.err
+const errorHandle = await Radar.addListener('error', (result) => { 
+    // result.status
 });
 
-Radar.addListener('log', (result) => { 
-    // do something with result.message
-});
+// Later
+await eventsHandle.remove();
 ```
 
-<Warning>
-  Listeners should be set only once and before tracking begins.
-</Warning>
+| Event name | Callback argument |
+| --- | --- |
+| `clientLocation` | `{ location, stopped, source }` |
+| `location` | `{ location, user }` |
+| `events` | `{ events, user }` |
+| `error` | `{ status }` |
+| `log` | `{ message }` |
+| `token` | `{ token }`. See [Verified location](#verified-location). |
+| `ipChanged` | No argument. |
+| `sharingChanged` | `{ sharing }` |
+| `inAppMessage`, `inAppMessageDismissed`, `inAppMessageButtonClicked` | `{ message }` |
 
-Add event listeners outside of your view lifecycle if you want them to work when the app is in the background. Capacitor event listeners will only fire while the Capacitor WebView and JavaScript engine are alive. When the Android activity is killed (e.g., swiped away), these services will shut down. To process locations in the background, implement the native event emitters (`RadarDelegate` on [iOS](/sdk/ios#listening-for-events-with-a-delegate), `RadarReceiver` on [Android](/sdk/android#listening-for-events-with-a-receiver)) or use Radar's server-side [integrations](/integrations).
+Add each listener once, before tracking begins. Add listeners outside your view lifecycle if you want them to keep firing while the app is in the background. Capacitor listeners fire only while the Capacitor web view and JavaScript engine are alive. When the Android activity is destroyed, for example when the user swipes the app away, they stop. To process locations after that, implement the native `RadarDelegate` on iOS or `RadarReceiver` on Android, described in the [iOS SDK reference](/sdk/ios) and [Android SDK reference](/sdk/android), or send events to your backend with [webhooks](/integrations/webhooks).
 
 ### Mock tracking
 
-On iOS and Android, you can simulate a sequence of location updates for testing. For example, to simulate a sequence of 10 location updates every 3 seconds by car from an `origin` to a `destination`, we can call:
+To simulate a sequence of location updates for testing, call `mockTracking()`. This example simulates 10 updates, 3 seconds apart, by car:
 
 ```javascript
 Radar.mockTracking({ 
@@ -333,16 +401,16 @@ Radar.mockTracking({
 
 ### Trip tracking
 
-To start a trip to a destination, call:
+Start a trip to a destination geofence. Pass `tripOptions` and optional `trackingOptions` under the `options` key. `trackingOptions` applies while the trip is active.
 
 ```javascript
-Radar.startTrip({
+const result = await Radar.startTrip({
     options: { 
         tripOptions: { 
-            externalId: '299',
+            externalId: 'order-299',
             destinationGeofenceTag: 'store', 
-            destinationGeofenceExternalId: '123', 
-            mode: 'car' as RadarRouteMode 
+            destinationGeofenceExternalId: 'store-42', 
+            mode: 'car'
         }, 
         trackingOptions: {
             desiredStoppedUpdateInterval: 30, 
@@ -350,11 +418,11 @@ Radar.startTrip({
             desiredMovingUpdateInterval: 30, 
             fastestMovingUpdateInterval: 30,
             desiredSyncInterval: 20, 
-            desiredAccuracy: 'high' as RadarTrackingOptionsDesiredAccuracy, 
+            desiredAccuracy: 'high', 
             stopDuration: 0, 
             stopDistance: 0,
-            replay: "none", 
-            sync: "all", 
+            replay: 'none', 
+            sync: 'all', 
             showBlueBar: true, 
             syncGeofences: false, 
             syncGeofencesLimit: 0, 
@@ -362,115 +430,166 @@ Radar.startTrip({
             foregroundServiceEnabled: true
         }
     }
-}).then((result) => { 
-    // do something with result.status
 });
+// result.status, result.trip, result.events
 ```
 
-Later, complete the trip by calling:
+In TypeScript, `mode` is typed as `RadarRouteMode` and `desiredAccuracy` as `RadarTrackingOptionsDesiredAccuracy`. Both types are exported by the package.
+
+Trip options accept `externalId` (required), `destinationGeofenceTag`, `destinationGeofenceExternalId`, `mode`, `metadata`, `scheduledArrivalAt`, and `approachingThreshold`.
+
+Update the trip. `status` is optional.
 
 ```javascript
-Radar.completeTrip().then((result) => { 
-    // do something with result.status
+const result = await Radar.updateTrip({
+    options: {
+        externalId: 'order-299',
+        metadata: { parkingSpot: '5' }
+    },
+    status: 'arrived'
 });
 ```
 
-Or cancel the trip by calling:
+Complete or cancel the trip:
 
 ```javascript
-Radar.cancelTrip().then((result) => { 
-    // do something with result.status
-});
+await Radar.completeTrip();
+await Radar.cancelTrip();
 ```
 
-If tracking was disabled before the trip started, it will stop after the trip ends. Otherwise, it will revert to the tracking options in use before the trip started.
+Trip methods resolve to `{ status, trip, events }`. Unlike other methods, they resolve even when the request fails, so check `result.status`.
 
-Learn more about [trip tracking](/geofencing/trips).
+If tracking was off before the trip started, it stops when the trip ends. Otherwise it reverts to the tracking options in use before the trip.
+
+`Radar.getTripOptions()` resolves to the current trip options.
+
+For multi-leg trips, `updateTripLeg({ legId, status, tripId? })` updates one leg, `updateCurrentTripLeg({ status })` updates the current leg, and `reorderTripLegs({ legIds, tripId? })` reorders legs.
+
+For the full workflow, see [Track pickups, deliveries, and workers](/geofencing/trips).
 
 ### Manual tracking
 
-You can manually update the user's location by calling:
+To send a location you already have, pass `latitude`, `longitude`, and `accuracy` at the top level:
 
 ```javascript
-Radar.trackOnce({ 
+const result = await Radar.trackOnce({ 
     latitude: 39.2904, 
     longitude: -76.6122, 
     accuracy: 65
-}, (result) => { 
-    // do something with result.status, result.location, result.events, result.user
 });
+// result.status, result.location, result.events, result.user
 ```
 
-Learn about platform-specific implementation of this function in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+### Verified location
+
+The plugin includes the fraud plugin on iOS and Android. For attestation setup and dashboard configuration, see [Fraud plugin setup](/sdk/fraud).
+
+Run a verified location check and send the token to your backend:
+
+```javascript
+try {
+  const result = await Radar.trackVerified({ reason: 'login' });
+  const token = result.token;
+  // Send token.token to your backend and validate it there.
+} catch (err) {
+  console.warn('trackVerified failed', err.message);
+}
+```
+
+| Method | Description |
+| --- | --- |
+| `trackVerified(options?)` | Runs a verified location check. Options: `beacons`, `desiredAccuracy`, `reason`, `transactionId`. Resolves to `{ status, token }`. |
+| `getVerifiedLocationToken(options?)` | Options: `beacons`, `desiredAccuracy`. Resolves to `{ status, token }`. |
+| `clearVerifiedLocationToken()` | Clears the cached token. |
+| `startTrackingVerified({ interval, beacons })` | Starts periodic verified checks. `interval` is in seconds. |
+| `stopTrackingVerified()` | Stops periodic verified checks. |
+| `isTrackingVerified()` | Resolves to `{ isTrackingVerified }`. |
+| `setExpectedJurisdiction({ countryCode, stateCode })` | Sets the expected country and state. |
+| `revealRisk()` | Resolves to `{ status, token }` with a risk token. |
+| `isSharing()`, `clearSharing()` | Read and reset screen sharing state. `isSharing()` resolves to `{ isSharing }`. |
+
+The `token` listener fires when a new token is available.
+
+Reading the result in the app isn't validation. Send `token.token` to your backend and validate it there. See [Geolocation token schema](/api/geolocation-tokens) and the [Geo-compliance overview](/geo-compliance/overview).
+
+### Beacons
+
+To range beacons on a single call, pass `beacons: true` to `trackOnce()` or `trackVerified()`. To range during background tracking, set `beacons: true` in your tracking options.
+
+Beacon ranging needs Bluetooth permission and native setup. See [Track indoor location with beacons](/geofencing/beacons).
 
 ### Other APIs
 
-The Capacitor plugin also exposes APIs for geocoding, search, and distance.
+The plugin also exposes context, geocoding, search, routing, and conversion APIs. Each returns a promise and rejects with a status string on failure.
+
+#### Context
+
+`Radar.getContext()` resolves to `{ status, location, context }` for the device location. Pass `{ latitude, longitude }` to use a location you already have.
 
 #### Geocoding
 
-With the [forward geocoding API](/api#forward-geocode), geocode an address, converting address to coordinates:
+Forward geocode an address with the [geocoding API](/api/geocoding). `query` is required. `layers` and `countries` are optional arrays.
 
 ```javascript
-Radar.geocode({ 
+const result = await Radar.geocode({ 
     query: '20 jay st brooklyn ny'
-}, (result) => { 
-    // do something with result.status, result.addresses
 });
+// result.status, result.addresses
 ```
 
-With the [reverse geocoding API](/api#reverse-geocode), reverse geocode a location, converting coordinates to address:
+Reverse geocode a location. Omit `location` to use the device location. `layers` is optional.
 
 ```javascript
-Radar.reverseGeocode({ 
-    latitude: 40.783826, 
-    longitude: -73.975363
-}, (result) => { 
-    // do something with result.status, result.addresses
+const result = await Radar.reverseGeocode({ 
+    location: {
+        latitude: 40.783826, 
+        longitude: -73.975363
+    }
 });
+// result.status, result.addresses
 ```
 
-With the [IP geocoding API](/api#ip-geocode), geocode the device's current IP address, converting IP address to city, state, and country:
+Geocode the device's IP address to a city, state, and country:
 
 ```javascript
-Radar.ipGeocode((result) => { 
-    // do something with result.status, result.address
-});
+const result = await Radar.ipGeocode();
+// result.status, result.address
 ```
+
+`Radar.validateAddress({ address })` validates a structured address object. It resolves to `{ status, address, verificationStatus }`.
 
 #### Search
 
-With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance:
+Autocomplete partial addresses and place names with the [search API](/api/search). `query` is required. Pass `near` as well: the iOS implementation rejects the call without it. `layers`, `country`, and `mailable` are optional.
 
 ```javascript
-Radar.autocomplete({ 
+const result = await Radar.autocomplete({ 
     query: 'brooklyn roasting', 
     near: { 
         latitude: 40.783826, 
         longitude: -73.975363 
     }, 
     limit: 10
-}, (result) => { 
-    // do something with result.status, result.addresses
 });
+// result.status, result.addresses
 ```
 
-With the [geofence search API](/api#search-geofences), search for geofences near a location, sorted by distance:
+Search for geofences near a location, sorted by distance. Omit `near` to search near the device location. `radius` is in meters.
 
 ```javascript
-Radar.searchGeofences({ 
+const result = await Radar.searchGeofences({ 
     radius: 1000, 
     tags: ['venue'], 
-    limit: 10
-}, (result) => { 
-    // do something with result.status, result.geofences
+    limit: 10,
+    includeGeometry: false
 });
+// result.status, result.geofences
 ```
 
-With the [places search API](/api#search-places), search for places near a location, sorted by distance:
+Search for places near a location, sorted by distance. Filter with `chains`, `chainMetadata`, `categories`, `groups`, or `countryCodes`.
 
 ```javascript
-Radar.searchPlaces({ 
+const result = await Radar.searchPlaces({ 
     near: { 
         latitude: 40.783826, 
         longitude: -73.975363 
@@ -478,17 +597,16 @@ Radar.searchPlaces({
     radius: 1000, 
     chains: ['starbucks'], 
     limit: 10
-}, (result) => { 
-    // do something with result.status, result.places
 });
+// result.status, result.places
 ```
 
 #### Distance
 
-With the [distance API](/api#distance), calculate the travel distance and duration from an origin to a destination:
+Calculate travel distance and duration from an origin to a destination with the [routing API](/api/routing). `destination`, `modes`, and `units` are required. Omit `origin` to use the device location.
 
 ```javascript
-Radar.getDistance({ 
+const result = await Radar.getDistance({ 
     origin: { 
         latitude: 40.78382, 
         longitude: -73.97536 
@@ -499,11 +617,72 @@ Radar.getDistance({
     }, 
     modes: [ 'foot', 'car' ], 
     units: 'imperial'
-}, (result) => { 
-    // do something with result.status, result.routes
+});
+// result.status, result.routes
+```
+
+#### Matrix
+
+Calculate travel distance and duration between multiple origins and destinations. `mode` and `units` are required.
+
+```javascript
+const result = await Radar.getMatrix({
+    origins: [
+        { latitude: 40.78382, longitude: -73.97536 },
+        { latitude: 40.70390, longitude: -73.98670 }
+    ],
+    destinations: [
+        { latitude: 40.64189, longitude: -73.78779 },
+        { latitude: 35.99801, longitude: -78.94294 }
+    ],
+    mode: 'car',
+    units: 'imperial'
+});
+// result.status, result.matrix
+```
+
+#### Conversions
+
+Log a conversion, such as a purchase or signup, to analyze alongside location activity. `name` is required. `revenue` and `metadata` are optional. `revenue` is a number and is sent on Android only: on iOS, the plugin reads `revenue` as a string, so it ignores a number and logs the conversion without revenue.
+
+```javascript
+const result = await Radar.logConversion({
+    name: 'purchase',
+    metadata: { sku: 'example-sku' }
+});
+// result.status, result.event
+```
+
+`Radar.acceptEvent({ eventId, verifiedPlaceId })` and `Radar.rejectEvent({ eventId })` send feedback on an event.
+
+#### User tags
+
+Set, add, remove, and read user tags:
+
+```javascript
+Radar.setTags({ tags: ['tag1', 'tag2'] });
+Radar.addTags({ tags: ['tag3'] });
+Radar.removeTags({ tags: ['tag1'] });
+
+const result = await Radar.getTags();
+// result.tags
+```
+
+### Notification options
+
+On Android, `setNotificationOptions()` sets the icon and color of the foreground service notification and event notifications. Values are resource names in your Android project. This method takes the fields at the top level.
+
+```javascript
+Radar.setNotificationOptions({
+    iconString: 'icon_1',
+    iconColor: 'color_1'
 });
 ```
 
+To set them separately, use `foregroundServiceIconString`, `foregroundServiceIconColor`, `eventIconString`, and `eventIconColor`. This method does nothing on iOS.
+
+`setPushNotificationToken({ token })` and `didReceivePushNotificationPayload({ payload })` pass push notification data to the SDK.
+
 ## Support
 
-Have questions? We're here to help! Contact us at [radar.com/support](https://radar.com/support).
+Have questions? Contact [Radar support](https://radar.com/support).

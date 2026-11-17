@@ -1,30 +1,38 @@
 ---
 title: "Web SDK"
-description: "Install and integrate the Radar Web SDK to add location tracking, geocoding, maps, and address autocomplete to your website."
+description: "Reference for the Radar Web SDK: installation, initialization options, browser requirements, tracking, trips, geocoding, search, routing, errors, and plugins."
 ---
 
-This is the documentation for the Radar Web SDK.
+The Web SDK (`radar-sdk-js`) calls Radar from the browser with a publishable key. At the end of the setup sections, a page initializes the SDK and a `Radar.trackOnce()` call resolves with the user's location, the Radar user, and any events.
 
-The source can be found on GitHub [here](https://github.com/radarlabs/radar-sdk-js). Or, see the `radar-sdk-js` package on npm [here](https://www.npmjs.com/package/radar-sdk-js).
+This page documents Web SDK 5.3.0. The source is on [GitHub](https://github.com/radarlabs/radar-sdk-js) and the package is on [npm](https://www.npmjs.com/package/radar-sdk-js).
+
+## Requirements
+
+- A Radar publishable key from the [Settings](https://dashboard.radar.com/settings) page of the Radar dashboard: `prj_test_pk_...` for the Test environment and `prj_live_pk_...` for the Live environment. The SDK throws `RadarPublishableKeyError` if you pass a secret key.
+- A browser environment. The SDK uses `fetch`, `localStorage`, and, for device location, the [Geolocation API](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation_API). Browsers only expose the Geolocation API on secure origins (HTTPS or `localhost`).
+- The npm package is an ES module with TypeScript types. In Web SDK 5.0.0 and later, Maps, Autocomplete UI, and Fraud are separate plugins. If you are on 4.x, see the [migration guide](https://github.com/radarlabs/radar-sdk-js/blob/master/MIGRATION.md).
+
+The Web SDK tracks only while your page is open. It has no background tracking and no silent push.
 
 ## Install
 
 In an HTML page, add the SDK script:
 
 ```html
-<script src="https://js.radar.com/v5.1.0/radar.min.js"></script>
+<script src="https://js.radar.com/v5.3.0/radar.min.js"></script>
 ```
 
-If you use Maps or Autocomplete UI, add the corresponding plugin scripts:
+If you use Maps or Autocomplete UI, add the corresponding plugin scripts after the SDK script:
 
 ```html
-{/*  maps plugin (auto-registers)  */}
-<link href="https://js.radar.com/maps/v1.0.0/radar-maps.css" rel="stylesheet">
-<script src="https://js.radar.com/maps/v1.0.0/radar-maps.min.js"></script>
+<!-- maps plugin (auto-registers) -->
+<link href="https://js.radar.com/maps/v1.2.0/radar-maps.css" rel="stylesheet">
+<script src="https://js.radar.com/maps/v1.2.0/radar-maps.min.js"></script>
 
-{/*  autocomplete plugin (auto-registers)  */}
-<link href="https://js.radar.com/autocomplete/v1.0.0/radar-autocomplete.css" rel="stylesheet">
-<script src="https://js.radar.com/autocomplete/v1.0.0/radar-autocomplete.min.js"></script>
+<!-- autocomplete plugin (auto-registers) -->
+<link href="https://js.radar.com/autocomplete/v1.2.0/radar-autocomplete.css" rel="stylesheet">
+<script src="https://js.radar.com/autocomplete/v1.2.0/radar-autocomplete.min.js"></script>
 ```
 
 In a web app, install the package from npm:
@@ -36,14 +44,14 @@ npm install radar-sdk-js
 If you use Maps or Autocomplete UI, install the corresponding plugins:
 
 ```bash
-# maps (requires maplibre-gl as a peer dep)
+# maps (requires maplibre-gl as a peer dependency)
 npm install @radarlabs/plugin-maps maplibre-gl
 
 # autocomplete
 npm install @radarlabs/plugin-autocomplete
 ```
 
-Then, import the library and register any plugins:
+Then import the library and register any plugins before you use them:
 
 ```javascript
 import Radar from 'radar-sdk-js';
@@ -59,80 +67,117 @@ import '@radarlabs/plugin-autocomplete/dist/radar-autocomplete.css';
 Radar.registerPlugin(createAutocompletePlugin());
 ```
 
+`Radar.registerPlugin(...plugins)` accepts one or more plugins. Registering a plugin with a name that is already registered logs a warning and does nothing.
+
 ## Setup
 
 ### Initialize
 
-Initialize the library with your publishable API key, found on the [Settings page](https://dashboard.radar.com/settings):
+Initialize the library with your publishable key before you call any other function:
 
 ```javascript
-Radar.initialize('prj_live_pk_...');
+Radar.initialize('prj_test_pk_...');
 ```
 
-<Info>
-  You must initialize the library before calling any other functions.
-</Info>
+<Warning>
+  Use publishable keys in client code. Never put a secret key in an app or web page.
+</Warning>
 
-Optionally, you can specify configuration options:
+`Radar.initialize` has two forms:
 
-The initialize call takes an optional second argument that is an object with additional configuration options.
+```typescript
+Radar.initialize(publishableKey: string, options?: RadarOptions): void
+Radar.initialize(options: RadarInitOptions): void
+```
+
+In the second form, pass the key as `publishableKey` in the options object:
 
 ```javascript
-Radar.initialize('prj_live_pk_...', { /* custom options here */});
+Radar.initialize({ publishableKey: 'prj_test_pk_...', logLevel: 'warn' });
 ```
 
-Available options include:
+To initialize with an auth token in place of a publishable key, pass `authToken` in the options object and omit `publishableKey`. See [Authenticate the SDK with auth tokens](/sdk/fraud#authenticate-the-sdk-with-auth-tokens).
 
-| Name | Default | Possible values | Description |
+`Radar.initialize` throws `RadarPublishableKeyError` if the key is missing or is a secret key, if `authToken` isn't a JWT, or if you pass both `publishableKey` and `authToken`.
+
+Available options:
+
+| Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `logLevel` | `error` | `none`, `info`, `warn`, `error` | Determines the log level for console logging. Defaults to `error` when using a test publishable key. |
-| `cacheLocationMinutes` | `null` | number | Determines whether to reuse previous location updates. A cache ttl in minutes. If `null` or `0`, will always request a new location. |
-| `locationMaximumAge` | `null` | number | Determines whether to use old browser locations. A maximum age in milliseconds. If `null` or `0`, will always request a new location. See [getCurrentPosition options()](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition). |
-| `locationTimeout` | `30000` | number | The number of milliseconds to wait for a location update before an error is thrown. Defaults to 30 seconds. |
-| `networkTimeoutInterval` | `10` | number | The number of seconds to wait for a network request before an error is thrown. |
-| `trackVerifiedAutoFailover` | `false` | `true`, `false` | Determines whether `Radar.trackVerified()` should automatically retry on the secondary verified host when the primary verified host fails. Requires `@radarlabs/plugin-fraud`. |
-| `desiredAccuracy` | `high` | `high`, `medium`, `low` | Determines the desired accuracy of location updates. Note that higher accuracy can result in slower response times. |
-| `debug` | `false` | `true`, `false` | Determines whether to include the raw API response body on results, as `response`. Defaults to `true` when using a test publishable key. |
+| `logLevel` | `'none'`, `'error'`, `'warn'`, `'info'`, `'debug'` | `'debug'` when `debug` is on, otherwise `'error'` | Log level for console logging. |
+| `debug` | boolean | `true` with a test publishable key, `false` with a live publishable key | Adds the raw API response body to results, as `response`. |
+| `desiredAccuracy` | `'high'`, `'medium'`, `'low'` | None | Accuracy hint for device location. `'high'` requests high accuracy from the browser (`enableHighAccuracy`), and so does leaving the option unset. `'medium'` and `'low'` don't. Higher accuracy can take longer. |
+| `locationTimeout` | number, milliseconds | `10000` | How long to wait for the browser to return a location before the request fails with `RadarLocationError`. |
+| `locationMaximumAge` | number, milliseconds | `0` | Maximum age of a browser location the SDK accepts. `0` always requests a new location. See [`getCurrentPosition()` options](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition). |
+| `cacheLocationMinutes` | number, minutes | None | If set, the SDK reuses the last device location for this many minutes instead of asking the browser again. If not set or `0`, the SDK always requests a new location. |
+| `networkTimeoutInterval` | number, seconds | `10` | How long to wait for a network request. Values are clamped to the range 1 to 300. A request that times out fails with `RadarNetworkError`. |
+| `getRequestHeaders` | function returning an object of header names and values | None | Called for every request. The headers it returns are added to the request. |
+| `host` | string | `'https://api.radar.io'` | Overrides the Radar API host. |
+| `version` | string | `'v1'` | API version. |
+| `trackVerifiedAutoFailover` | boolean | `false` | Read only by the fraud plugin. Retries verified requests on a secondary host when the primary host doesn't return a response from Radar. See [Fraud plugin setup](/sdk/fraud). |
+
+The `live` option is deprecated. The SDK infers the environment from the publishable key.
+
+### Other setup methods
+
+| Method | Description |
+| --- | --- |
+| `Radar.VERSION` | The SDK version string, such as `'5.3.0'`. |
+| `Radar.onError(callback: (error: RadarError) => void)` | Registers one global callback that receives SDK errors. |
+| `Radar.clear()` | Clears the SDK options and the error callback. Call `Radar.initialize` again before you make more requests. |
+| `Radar.setProduct(product?: string)` | Sets an optional product name sent with tracking requests, displayed in the dashboard and reports. Pass `undefined` to clear. |
 
 ## Geofencing
 
 ### Identify user
 
-To identify the user when logged in, call:
+The SDK generates a device ID and an install ID and stores them in `localStorage`.
+
+To identify the user when logged in, call `Radar.setUserId()` with a stable unique ID for the user:
 
 ```javascript
-Radar.setUserId(userId);
+Radar.setUserId('user-123');
 ```
 
-where `userId` is a stable unique ID for the user.
+<Warning>
+  Don't send personal information, such as names, email addresses, or publicly available IDs, for `userId`.
+</Warning>
 
-To set an optional dictionary of custom metadata for the user, call:
+To set custom metadata for the user, call `Radar.setMetadata()` with an object that has up to 16 keys and values of type string, boolean, or number:
 
 ```javascript
-Radar.setMetadata(metadata);
+Radar.setMetadata({ plan: 'pro', beta: true });
 ```
 
-where `metadata` is a JSON object with up to 16 keys and values of type string, boolean, or number.
-
-Finally, to set an optional description for the user, displayed in the dashboard, call:
+To set an optional description for the user, displayed in the dashboard, call:
 
 ```javascript
-Radar.setDescription(description);
+Radar.setDescription('Test user');
 ```
 
-where `description` is a string.
+All three methods take an optional argument. Pass `undefined`, or call the method with no argument, to clear the stored value. Call these when the user logs out or changes, for example:
 
-You only need to call these functions once, as these settings will be persisted across browser sessions.
+```javascript
+function onLogout() {
+  Radar.setUserId();
+  Radar.setMetadata();
+  Radar.setDescription();
+}
+```
 
-Learn more about when Radar creates new user records [here](/faqs#what-is-a-unique-user-when-does-radar-create-a-new-user-record).
+The values are stored in `localStorage` and persist across browser sessions, so you only need to set them when they change.
+
+For how Radar creates and matches user records, see [Accounts and authentication](/fundamentals/authentication-and-access).
 
 ### Foreground tracking
 
-Once you have initialized the SDK and the user has granted permissions, you can track the user's location.
+Once you have initialized the SDK and the user has granted location permission in the browser, you can track the user's location.
 
-The SDK uses the [HTML5 geolocation API](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/Using_geolocation) to determine the user's location.
+```typescript
+Radar.trackOnce(params?: RadarTrackParams): Promise<RadarTrackResponse>
+```
 
-To track the user's location, call:
+To track the user's location with the device location, call:
 
 ```javascript
 Radar.trackOnce()
@@ -145,31 +190,32 @@ Radar.trackOnce()
   });
 ```
 
-If the request fails, `err` will be one of:
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `latitude`, `longitude` | number | No | If both are set, the SDK uses them and doesn't ask the browser for a location. See [Manual tracking](#manual-tracking). |
+| `accuracy` | number, meters | No | Accuracy of the supplied location. |
+| `desiredAccuracy` | `'high'`, `'medium'`, `'low'` | No | Overrides the `desiredAccuracy` initialization option for this call. |
+| `userId`, `description`, `metadata` | string, string, object | No | Overrides for the stored values, for this call only. |
+| `tripOptions` | `RadarTripOptions` | No | Overrides the saved [trip options](#trips) for this call. |
 
-- **`RadarPublishableKeyError`**: SDK not initialized
-- **`RadarLocationPermissionsError`**: location permissions not granted
-- **`RadarLocationError`**: location services error or timeout (10 seconds)
-- **`RadarTimeoutError`**: network timeout (10 seconds)
-- **`RadarBadRequestError`**: bad request (missing or invalid params)
-- **`RadarUnknownError`**: unauthorized (invalid API key)
-- **`RadarPaymentRequiredError`**: payment required (organization disabled or usage exceeded)
-- **`RadarForbiddenError`**: forbidden (insufficient permissions or no beta access)
-- **`RadarNotFoundError`**: not found
-- **`RadarRateLimitError`**: too many requests ([rate limit](/api#track) exceeded)
-- **`RadarServerError`**: internal server error
-- **`RadarUnknownError`**: unknown error
+The promise resolves with:
 
-If the error is the result of a failed API call, `err` will include an HTTP response code and the API response body:
+| Field | Type | Description |
+| --- | --- | --- |
+| `location` | `{ latitude, longitude, accuracy }` | The location that was sent. `accuracy` is in meters. |
+| `user` | `RadarUser` | The user, including `geofences`, `place`, `country`, `state`, `dma`, `postalCode`, `trip`, and `fraud` where available. |
+| `events` | `RadarEvent[]` | The events generated, if any. |
+| `response` | object | The raw API response body. Present only when `debug` is on. |
 
-```javascript
-err.code; // HTTP response code
-err.response; // API response body
-```
+These calls are subject to [rate limits](/api/fundamentals).
+
+To get the device location without sending it to Radar, call `Radar.getLocation()`. It resolves with `{ latitude, longitude, accuracy }`.
+
+To check that tracking works, call `Radar.trackOnce()` in your page, then find your user on the [Users](https://dashboard.radar.com/geofencing/users) page. To generate an event, first create a geofence around your location on the [Geofences](https://dashboard.radar.com/geofencing/geofences) page.
 
 ### Manual tracking
 
-Alternatively, you can manually update the user's location with any location by calling:
+To update the user's location with a location you supply, call:
 
 ```javascript
 Radar.trackOnce({
@@ -184,11 +230,131 @@ Radar.trackOnce({
 });
 ```
 
+### Context
+
+To get the geofences, place, and regions for a location without tracking the user, call:
+
+```typescript
+Radar.getContext(params: { latitude: number; longitude: number }): Promise<RadarContextResponse>
+```
+
+For example:
+
+```javascript
+Radar.getContext({ latitude: 40.783826, longitude: -73.975363 })
+  .then((result) => {
+    const { geofences, place, country, state, dma, postalCode } = result;
+    // do something with context
+  })
+  .catch((err) => {
+    // handle error
+  });
+```
+
+### Trips
+
+Use trips to track a user to a destination geofence and get ETAs. For the full workflow, see [Track pickups, deliveries, and workers](/geofencing/trips).
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `Radar.startTrip(tripOptions)` | `Promise<RadarTripResponse>` | Starts a trip and saves the trip options in `localStorage`. If `tripOptions.userId` is set, it also becomes the stored user ID. |
+| `Radar.updateTrip(tripOptions)` | `Promise<RadarTripResponse>` | Updates the trip identified by `tripOptions.externalId`. |
+| `Radar.completeTrip()` | `Promise<RadarTripResponse>` | Completes the current trip and clears the saved trip options. |
+| `Radar.cancelTrip()` | `Promise<RadarTripResponse>` | Cancels the current trip and clears the saved trip options. |
+| `Radar.getTripOptions()` | `RadarTripOptions` | Returns the saved trip options, if any. |
+| `Radar.setTripOptions(tripOptions?)` | `void` | Saves trip options without starting a trip. Pass `undefined` to clear. |
+| `Radar.clearTripOptions()` | `void` | Clears the saved trip options. |
+
+`RadarTripOptions` fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `externalId` | string | A stable unique ID for the trip. |
+| `destinationGeofenceTag` | string | The tag of the destination geofence. |
+| `destinationGeofenceExternalId` | string | The external ID of the destination geofence. |
+| `mode` | `'car'`, `'foot'`, `'bike'`, `'motorbike'`, `'truck'` | The travel mode. |
+| `scheduledArrivalAt` | `Date` | The scheduled arrival time. Must be a valid `Date` object. Other values are ignored with a warning. |
+| `approachingThreshold` | number | The approaching threshold for the trip. |
+| `metadata` | object | Custom key-value pairs for the trip. |
+| `userId` | string | A user ID for the trip. |
+
+The response has `trip` (the `RadarTrip`) and `events` (the events generated).
+
+While trip options are saved, each `Radar.trackOnce()` call includes them, which updates the trip. The Web SDK doesn't track on its own during a trip. Call `Radar.trackOnce()` on the schedule your use case needs. For example:
+
+```javascript
+const { trip } = await Radar.startTrip({
+  externalId: 'order-299',
+  destinationGeofenceTag: 'store',
+  destinationGeofenceExternalId: 'store-42',
+  mode: 'car'
+});
+
+// update the user's location and the trip ETA
+const { user } = await Radar.trackOnce();
+console.log(user?.trip?.status);
+
+// when the order is picked up
+await Radar.completeTrip();
+```
+
+### Conversions
+
+To log a conversion, such as a purchase or signup, call:
+
+```typescript
+Radar.logConversion(params: RadarConversionParams): Promise<RadarConversionResponse>
+```
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `name` | string | Yes | The name of the conversion. |
+| `metadata` | object | No | Custom key-value pairs for the conversion. |
+| `revenue` | number | No | Revenue for the conversion. The SDK sends it as `metadata.revenue`. |
+| `createdAt` | `Date` or ISO 8601 string | No | Defaults to the current time. |
+| `userId` | string | No | Defaults to the stored user ID. |
+
+For example:
+
+```javascript
+Radar.logConversion({
+  name: 'order_placed',
+  revenue: 24.5,
+  metadata: { orderId: 'order-299' }
+}).then((result) => {
+  const { event } = result;
+  // do something with the conversion event
+}).catch((err) => {
+  // handle error
+});
+```
+
+See [Events API](/api/events).
+
+## Verified location
+
+`Radar.trackVerified()` and the other verified location and risk methods aren't part of the core Web SDK. They are provided by the fraud plugin, `@radarlabs/plugin-fraud`, on the `Radar.fraud` namespace, for example `Radar.fraud.trackVerified()`.
+
+For installation, the supported browser and desktop paths, and the method reference, see [Fraud plugin setup](/sdk/fraud). For the end-to-end workflow, including validating the token on your backend, see the [Geo-compliance overview](/geo-compliance/overview).
+
 ## Maps
 
 ### Geocoding
 
-With the [forward geocoding API](/api#forward-geocode), geocode an address, converting address to coordinates:
+With the [forward geocoding API](/api/geocoding), geocode an address, converting address to coordinates:
+
+```typescript
+Radar.forwardGeocode(params: RadarForwardGeocodeParams): Promise<RadarGeocodeResponse>
+```
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `query` | string | Yes | The address or place name to geocode. |
+| `layers` | string[] | No | Layer filters. |
+| `country` | string | No | Country code filter. |
+| `lang` | string | No | Language code for results. |
+
+For example:
 
 ```javascript
 Radar.forwardGeocode({
@@ -203,7 +369,7 @@ Radar.forwardGeocode({
   });
 ```
 
-With the [reverse geocoding API](/api#reverse-geocode), reverse geocode a location, converting coordinates to address:
+With the [reverse geocoding API](/api/geocoding), reverse geocode a location, converting coordinates to address. If you omit `latitude` and `longitude`, the SDK uses the device location. `layers` is an optional array of layer filters.
 
 ```javascript
 Radar.reverseGeocode({
@@ -219,7 +385,7 @@ Radar.reverseGeocode({
   });
 ```
 
-With the [IP geocoding API](/api#ip-geocode), geocode the device's current IP address, converting IP address to city, state, and country:
+With the [IP geocoding API](/api/geocoding), geocode the device's current IP address, converting IP address to city, state, and country. `Radar.ipGeocode()` takes no parameters and doesn't use device location.
 
 ```javascript
 Radar.ipGeocode()
@@ -234,7 +400,20 @@ Radar.ipGeocode()
 
 ### Search
 
-With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance. Report the result the user chooses; selections are how autocomplete quality is measured and improved. If your project has [address enrichment](/maps/search#address-autocomplete) enabled, selecting also returns the enriched address.
+With the [autocomplete API](/api/search), autocomplete partial addresses and place names, sorted by relevance. Open one `Radar.AutocompleteSession` per search field, and report the result the user chooses with `session.select()`. Selections are how autocomplete quality is measured and improved. If your project has [address enrichment](/maps/addresses) enabled, selecting also returns the enriched address. `Radar.AutocompleteSession` requires Web SDK 5.3.0 or later.
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `query` | string | Yes | The partial address or place name. |
+| `near` | `{ latitude, longitude }` or `'lat,lng'` string | No | Biases results toward a location. If omitted, the API uses the location of the request's IP address. |
+| `limit` | number | No | Maximum number of results. |
+| `layers` | string[] | No | Layer filters. |
+| `countryCode` | string | No | Country code filter. |
+| `postalCode` | string | No | Postal code filter. |
+| `mailable` | boolean | No | Only return mailable addresses. |
+| `lang` | string | No | Language code for results. |
+
+For example, to autocomplete a query and select the first result:
 
 ```javascript
 const session = new Radar.AutocompleteSession();
@@ -255,7 +434,22 @@ const { address } = await session.select(addresses[0]);
 await session.select(addresses[0]);
 ```
 
-With the [geofence search API](/api#search-geofences), search for geofences near a location, sorted by distance:
+`session.select()` throws `RadarBadRequestError` if the address didn't come from a session's `autocomplete()` call.
+
+`Radar.autocomplete(params)` takes the same parameters without a session. Its results can't be passed to `select()`. The `sessionToken` and `expandUnits` parameters are deprecated.
+
+With the [geofence search API](/api/search), search for geofences near a location, sorted by distance. If you omit `near`, the SDK uses the device location.
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `near` | `{ latitude, longitude }` or `'lat,lng'` string | No | The location to search. |
+| `radius` | number, meters | No | The radius to search. |
+| `tags` | string[] or comma-separated string | No | Tag filters. |
+| `metadata` | object | No | Metadata filters. |
+| `limit` | number | No | Maximum number of results. |
+| `includeGeometry` | boolean | No | Whether to include geofence geometries in the response. |
+
+For example:
 
 ```javascript
 Radar.searchGeofences({
@@ -270,7 +464,7 @@ Radar.searchGeofences({
 });
 ```
 
-With the [places search API](/api#search-places), search for places near a location, sorted by distance:
+With the [places search API](/api/search), search for places near a location, sorted by distance. If you omit `near`, the SDK uses the device location. `chains`, `categories`, and `groups` each accept an array or a comma-separated string.
 
 ```javascript
 Radar.searchPlaces({
@@ -289,7 +483,7 @@ Radar.searchPlaces({
 });
 ```
 
-With the [address validation API](/api#validate-an-address), validate a structured address in the US or Canada:
+With the [address validation API](/api/geocoding), validate a structured address in the US or Canada. `city`, `stateCode`, `postalCode`, and `countryCode` are required. Pass either `number` and `street`, or a single-line `addressLabel`. `unit` is optional.
 
 ```javascript
 Radar.validateAddress({
@@ -300,7 +494,7 @@ Radar.validateAddress({
   countryCode: 'US',
 }).then((response) => {
   const { address, result } = response;
-  // do something with validated address result
+  // result.verificationStatus is 'verified', 'partially verified', 'ambiguous', or 'unverified'
 }).catch((err) => {
   // handle error
 });
@@ -308,7 +502,23 @@ Radar.validateAddress({
 
 ### Distance
 
-With the [distance API](/api#distance), calculate the travel distance and duration between two locations:
+With the [distance API](/api/routing), calculate the travel distance and duration between two locations:
+
+```typescript
+Radar.distance(params: RadarDistanceParams): Promise<RadarRouteResponse>
+```
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `origin` | `{ latitude, longitude }` or `'lat,lng'` string | No | The origin. Defaults to the device location. |
+| `destination` | `{ latitude, longitude }` or `'lat,lng'` string | Yes | The destination. |
+| `modes` | array of `'car'`, `'foot'`, `'bike'`, `'motorbike'`, `'truck'`, or a comma-separated string | Yes | The travel modes. |
+| `units` | `'metric'` or `'imperial'` | No | The distance units. |
+| `geometry` | `'polyline'`, `'polyline5'`, `'polyline6'`, or `'linestring'` | No | The route geometry encoding. |
+| `geometryPoints` | number | No | The number of points in the route geometry. |
+| `avoid` | array of `'tolls'`, `'highways'`, `'ferries'`, `'borderCrossings'`, or a comma-separated string | No | Road features to avoid. |
+
+Each route has `distance` and `duration`, each with a numeric `value` and a display `text`. `distance.value` is in meters for metric units and feet for imperial units. `duration.value` is in minutes. For example:
 
 ```javascript
 Radar.distance({
@@ -320,11 +530,11 @@ Radar.distance({
     latitude: 40.70390,
     longitude: -73.98670
   },
-  modes: [ 'foot', 'car' ],
+  modes: ['foot', 'car'],
   units: 'imperial'
 }).then((result) => {
   const { routes } = result;
-  const { geodesic, foot, bike, car } = routes;
+  const { geodesic, foot, car } = routes;
   // do something with distance result
 }).catch((err) => {
   // handle error
@@ -333,7 +543,7 @@ Radar.distance({
 
 ### Matrix
 
-With the [matrix API](/api#matrix), calculate the travel distances and durations between multiple origins and destinations for up to 25 routes:
+With the [matrix API](/api/routing), calculate the travel distances and durations between multiple origins and destinations for up to 25 routes. `origins` defaults to the device location, `destinations` and `mode` are required, and `units` and `avoid` are optional.
 
 ```javascript
 Radar.matrix({
@@ -352,18 +562,64 @@ Radar.matrix({
   units: 'imperial'
 }).then((result) => {
   const { origins, destinations, matrix } = result;
-  matrix.forEach((matrixResult) => {
-    const { distance, duration, originIndex, destinationIndex } = matrixResult;
-    // do something with matrix result
+  matrix.forEach((row) => {
+    row.forEach((route) => {
+      const { distance, duration, originIndex, destinationIndex } = route;
+      // do something with each route
+    });
   });
 }).catch((err) => {
   // handle error
 });
 ```
 
+`matrix` is a two-dimensional array indexed by origin and then destination.
+
 ## Maps and UI kits
 
-The React Native SDK also has UI components for maps and address autocomplete. Learn more in the [Maps Platform documentation](/maps/overview).
+The maps and autocomplete plugins add UI components under `Radar.ui`. `Radar.ui` exists only after you register a plugin that provides it.
+
+| Plugin | Package | Adds |
+| --- | --- | --- |
+| Maps | `@radarlabs/plugin-maps` (requires `maplibre-gl`) | `Radar.ui.map()`, `Radar.ui.marker()`, `Radar.ui.popup()`, and `Radar.ui.maplibregl` |
+| Autocomplete | `@radarlabs/plugin-autocomplete` | `Radar.ui.autocomplete()` |
+
+For options, styling, and examples, see [Display maps](/maps/maps) and [Autocomplete, geocode, and validate addresses](/maps/addresses).
+
+## Errors
+
+Every method that returns a promise rejects with a subclass of `RadarError`. Each error has a `name`, a `message`, and a `status` string. The error classes are available on `Radar.errors`.
+
+| Error | `status` | HTTP code | Cause |
+| --- | --- | --- | --- |
+| `RadarPublishableKeyError` | `ERROR_PUBLISHABLE_KEY` | None | The SDK isn't initialized, or the key is missing or is a secret key. |
+| `RadarPermissionsError` | `ERROR_PERMISSIONS` | None | The user denied location permission in the browser. |
+| `RadarLocationError` | `ERROR_LOCATION` | None | The browser couldn't determine a location, the location request timed out (10 seconds by default), or the Geolocation API isn't available. |
+| `RadarNetworkError` | `ERROR_NETWORK` | None | The network is unavailable or the request timed out (10 seconds by default). |
+| `RadarBadRequestError` | `ERROR_BAD_REQUEST` | 400 | Missing or invalid parameters. |
+| `RadarUnauthorizedError` | `ERROR_UNAUTHORIZED` | 401 | Invalid API key. |
+| `RadarPaymentRequiredError` | `ERROR_PAYMENT_REQUIRED` | 402 | Organization disabled or usage exceeded. |
+| `RadarForbiddenError` | `ERROR_FORBIDDEN` | 403 | Insufficient permissions or no access to the feature. |
+| `RadarNotFoundError` | `ERROR_NOT_FOUND` | 404 | Not found. |
+| `RadarRateLimitError` | `ERROR_RATE_LIMIT` | 429 | Too many requests. See [rate limits](/api/fundamentals). The error also has a `type` field with the rate limit type from the API. |
+| `RadarServerError` | `ERROR_SERVER` | 5xx | Internal server error. |
+| `RadarUnknownError` | `ERROR_UNKNOWN` | Other | An unexpected response. |
+
+Errors that come from an API response include the API response body as `response`. The 400, 401, 402, 403, 404, and 429 errors also include the HTTP response code as `code`:
+
+```javascript
+Radar.trackOnce()
+  .catch((err) => {
+    if (err instanceof Radar.errors.RadarPermissionsError) {
+      // ask the user to allow location access for this site
+    } else if (err instanceof Radar.errors.RadarRateLimitError) {
+      // back off before retrying
+    }
+    console.error(err.name, err.status, err.code, err.response?.meta?.message);
+  });
+```
+
+To observe every SDK error in one place, register a callback with `Radar.onError()`.
 
 ## Request IDs
 
@@ -378,7 +634,7 @@ Radar.trackOnce()
   });
 ```
 
-When the SDK is initialized with the `debug` option enabled, the API response body is also included on successful results, as `response`:
+When the `debug` option is on, the API response body is also included on successful results, as `response`:
 
 ```javascript
 Radar.initialize('prj_live_pk_...', { debug: true });
@@ -389,8 +645,8 @@ Radar.trackOnce()
   });
 ```
 
-If you contact support about a specific API call, include the request ID. The request ID allows us to quickly find and debug the exact request.
+If you contact [Radar support](https://radar.com/support) about a specific API call, include the request ID.
 
 ## Support
 
-Have questions? We're here to help! Contact us at [radar.com/support](https://radar.com/support).
+For help, contact [Radar support](https://radar.com/support).

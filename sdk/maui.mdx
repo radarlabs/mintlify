@@ -1,29 +1,102 @@
 ---
-title: "MAUI SDK"
-description: "Install and integrate the Radar MAUI and Xamarin package to add location tracking, geofencing, and trip tracking to your .NET app."
+title: ".NET MAUI SDK"
+description: "Install, configure, and call the RadarIO.Xamarin package in .NET MAUI and Xamarin apps, with version pairing and feature availability."
 ---
 
-This is the documentation for the MAUI package. Before integrating, read the [native SDK documentation](/sdk/sdk) to familiarize yourself with the platform.
+At the end of this page you have the `RadarIO.Xamarin` package installed in your .NET MAUI or Xamarin app, the platform projects configured, and a reference for every method and event the package exposes.
+
+This page documents `RadarIO.Xamarin` 3.9.3, the latest stable version on [NuGet](https://www.nuget.org/packages/RadarIO.Xamarin/). The source is on [GitHub](https://github.com/radarlabs/radar-sdk-xamarin).
+
+## Versions and feature availability
+
+One package, `RadarIO.Xamarin`, carries both the .NET MAUI and the Xamarin bindings. There is no separate MAUI package.
+
+| Item | `RadarIO.Xamarin` 3.9.3 |
+| --- | --- |
+| .NET MAUI targets | `net8.0-android21.0` and `net8.0-ios14.2`. |
+| Xamarin targets | `MonoAndroid12.0` and `Xamarin.iOS`. |
+| Shared code target | `netstandard2.0` (interfaces and models only). |
+| iOS SDK | Radar iOS SDK 3.9.6, bound in the package. |
+| Android SDK | Radar Android SDK 3.9.8, bound in the package. |
+
+The package pairs with the 3.9 native SDKs. Methods and options added to the native SDKs after those versions aren't available through it.
+
+| Feature | Available | Notes |
+| --- | --- | --- |
+| Foreground and background tracking | Yes | Presets, custom options, mock tracking, events. |
+| Trips | Yes | `StartTrip()`, `UpdateTrip()`, `CompleteTrip()`, `CancelTrip()`. No multi-leg methods. |
+| Verified location (Geo-compliance and Fraud) | Partial | `TrackVerified()`, `TrackVerifiedToken()`, and `StartTrackingVerified()` from the 3.9 SDKs are exposed. See [Verified location](#verified-location). |
+| Beacons | Yes | `beacons` argument on `TrackOnce()` and `TrackVerified()`, and `Beacons` in tracking options. |
+| Maps and address UI | No | The package has no map or autocomplete control. |
+| In-app messages | No | Not exposed in 3.9.3. |
+
+The package doesn't expose user tags or product, and it doesn't request permissions. Use the .NET MAUI permissions API, as described in [Request permissions](#request-permissions). For how the wrappers compare, see [SDK overview and compatibility](/sdk/sdk).
+
+### Migrate from older versions
+
+- **3.7.8**: The `RadarIO.Xamarin` namespace became `RadarIO`, and `Xamarin.Essentials.Location` was replaced by `RadarIO.RadarLocation`. The NuGet package ID didn't change.
+- **3.5.3**: You must call `RadarSingleton.Initialize(new RadarSDKImpl())` before you use `Radar`, and foreground service settings moved from tracking options to `Radar.SetForegroundServiceOptions()`.
+
+For details, see [MIGRATION.md](https://github.com/radarlabs/radar-sdk-xamarin/blob/master/MIGRATION.md).
 
 ## Install
 
 Install the package from [NuGet](https://www.nuget.org/packages/RadarIO.Xamarin/):
 
-```bash
+```powershell
 Install-Package RadarIO.Xamarin
 ```
 
-<Info>
-  RadarIO.Xamarin supports both Xamarin and MAUI bindings.
-</Info>
+Or with the .NET CLI:
 
-If you have an iOS and an Android project, add the package to each project.
+```bash
+dotnet add package RadarIO.Xamarin
+```
+
+In a Xamarin solution with separate iOS and Android projects, add the package to each project.
+
+### iOS
+
+Add location usage descriptions to `Platforms/iOS/Info.plist`. These strings appear in the permission prompts.
+
+| Key | When it is required |
+| --- | --- |
+| `NSLocationWhenInUseUsageDescription` | Always. Needed for foreground permission. |
+| `NSLocationAlwaysAndWhenInUseUsageDescription` | When you request background permission. |
+
+For background tracking with the responsive or continuous preset, add `location` and `fetch` to `UIBackgroundModes` in `Info.plist`:
+
+```xml
+<key>UIBackgroundModes</key>
+<array>
+  <string>fetch</string>
+  <string>location</string>
+</array>
+```
+
+### Android
+
+Declare the permissions for the features you use in `Platforms/Android/AndroidManifest.xml`:
+
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+```
+
+`ACCESS_BACKGROUND_LOCATION` is needed only for background tracking without a foreground service, when you target API level 29 or later. `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_LOCATION` are needed only when you track with a foreground service.
+
+The package brings in Google Play Services Location as a NuGet dependency.
 
 ## Integrate
 
 ### Initialize
 
-First, initialize the SDK:
+`RadarSDKImpl` is the platform implementation. It exists only in the iOS and Android targets, so construct it from platform code or from a MAUI app project, not from a `netstandard2.0` library. Register it with `RadarSingleton` once, then initialize with your publishable key:
 
 ```csharp
 using RadarIO;
@@ -36,73 +109,121 @@ namespace MyProject
     void Example () 
     {
       RadarSingleton.Initialize(new RadarSDKImpl());
-      Radar.Initialize(publishableKey); 
+      Radar.Initialize("prj_test_pk_..."); 
     } 
   }
 }
 ```
 
+Use your test publishable key (`prj_test_pk_...`) in development and your live publishable key (`prj_live_pk_...`) in production.
+
+<Warning>
+  Use publishable keys in client code. Never put a secret key in an app or web page.
+</Warning>
+
+`RadarSingleton.Initialize()` throws if you call it twice. `Radar` throws if you use it before `RadarSingleton.Initialize()`.
+
+The full signature is `Radar.Initialize(string publishableKey, bool fraud = false)`. Pass `true` for `fraud` when you use verified location. The package passes the value to the native SDK on Android. On iOS, the argument has no effect.
+
+The examples on the rest of this page assume `using RadarIO;` and `using static RadarIO.RadarSingleton;`.
+
 ### Identify user
 
-To identify the user when logged in, call:
+Identify the user with an ID, metadata, and a description:
 
 ```csharp
-Radar.UserId = userId;
+Radar.UserId = "user-123";
+Radar.Metadata = new JSONObject
+{
+  { "tier", "gold" },
+  { "orders", 12 },
+  { "optedIn", true }
+};
+Radar.Description = "Example user";
 ```
 
-where `userId` is a stable unique ID for the user.
+| Property | Value |
+| --- | --- |
+| `Radar.UserId` | A stable unique ID for the user. |
+| `Radar.Metadata` | A `JSONObject` (a `Dictionary<string, object>`) with string, number, or boolean values. Radar accepts up to 16 keys. |
+| `Radar.Description` | A string shown in the Radar dashboard. |
 
-To set an optional dictionary of custom metadata for the user, call:
+These values persist across app sessions, so set each one once, for example after login.
+
+`Radar.AnonymousTrackingEnabled` is a write-only property that turns anonymous tracking on or off. `Radar.SdkVersion` returns the SDK version string.
+
+### Debug logging
+
+By default, only critical errors are logged to the console. To change the level, call:
 
 ```csharp
-Radar.Metadata = metadata;
+Radar.SetLogLevel(RadarLogLevel.Debug);
 ```
 
-where `metadata` is a `JSONObject` with up to 16 keys and values of type string, boolean, or number.
-
-Finally, to set an optional description for the user, displayed in the dashboard, call:
-
-```csharp
-Radar.Description = description;
-```
-
-where `description` is a string.
-
-You only need to call these functions once, as these settings will be persisted across app sessions.
-
-Learn about platform-specific implementations of these functions in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+Levels are `None`, `Error`, `Warning`, `Info`, and `Debug`. To receive log lines in your app, subscribe to `Radar.Log`.
 
 ### Request permissions
 
-Before tracking the user's location, the user must have granted location permissions for the app.
+The user must grant location permission before you track. The package doesn't request permissions or report permission status. Use the [.NET MAUI permissions API](https://learn.microsoft.com/en-us/dotnet/maui/platform-integration/appmodel/permissions):
 
-See the [MAUI Permissions docs](https://learn.microsoft.com/en-us/dotnet/maui/platform-integration/appmodel/permissions) to learn how to check and request permissions.
+```csharp
+var foreground = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+if (foreground == PermissionStatus.Granted)
+{
+  var background = await Permissions.RequestAsync<Permissions.LocationAlways>();
+}
+```
+
+To verify, build and run the app on a device and confirm the prompts appear. For when to ask for each level, see [Understand foreground and background location permissions](/fundamentals/location-permissions).
 
 ### Foreground tracking
 
-Once you have initialized the SDK and the user has granted permissions, you can track the user's location.
-
-To track the user's location in the foreground, call:
+After you initialize the SDK and the user grants permission, track the user's location once:
 
 ```csharp
 var (status, location, events, user) = await Radar.TrackOnce();
+if (status == RadarStatus.Success)
+{
+  // use location, events, user
+}
 ```
 
-Learn about platform-specific implementations of this function in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+`TrackOnce()` has three overloads:
+
+| Overload | Description |
+| --- | --- |
+| `TrackOnce()` | Tracks the device location with default settings. |
+| `TrackOnce(RadarTrackingOptionsDesiredAccuracy desiredAccuracy, bool beacons)` | Sets accuracy and whether to range beacons. |
+| `TrackOnce(RadarLocation location)` | Sends a location you already have. See [Manual tracking](#manual-tracking). |
+
+Async methods return a result you can deconstruct. The first element is always a `RadarStatus`:
+
+- **`Success`**: success
+- **`ErrorPublishableKey`**: SDK not initialized
+- **`ErrorPermissions`**: location permissions not granted
+- **`ErrorLocation`**: location services error or timeout
+- **`ErrorBluetooth`**: beacon ranging error or timeout
+- **`ErrorNetwork`**: network error or timeout
+- **`ErrorBadRequest`**: bad request (missing or invalid params)
+- **`ErrorUnauthorized`**: unauthorized (invalid API key)
+- **`ErrorPaymentRequired`**: payment required (organization disabled or usage exceeded)
+- **`ErrorForbidden`**: forbidden (insufficient permissions or no beta access)
+- **`ErrorNotFound`**: not found
+- **`ErrorRateLimit`**: too many requests (rate limit exceeded)
+- **`ErrorServer`**: internal server error
+- **`ErrorUnknown`**: unknown error
+
+`Radar.GetLocation()` reads the device location without sending it to Radar. It returns `(status, location, stopped)` and has an overload that takes a desired accuracy.
 
 ### Background tracking
 
-On iOS and Android, once you have initialized the SDK and the user has granted permissions, you can start tracking the user's location in the background.
+After you initialize the SDK and the user grants permission, start tracking in the background. The SDK supports custom tracking options and three presets:
 
-For background tracking, the SDK supports custom tracking options as well as three presets:
-
-- **`TrackingOptionsEfficient`**: A low frequency of location updates and lowest battery usage. On Android, avoids Android vitals bad behavior thresholds.
+- **`TrackingOptionsEfficient`**: A low frequency of location updates and the lowest battery usage. On Android, avoids Android vitals bad behavior thresholds.
 - **`TrackingOptionsResponsive`**: A medium frequency of location updates and low battery usage. Suitable for most consumer use cases.
-- **`TrackingOptionsContinuous`**: A high frequency of location updates and higher battery usage. Suitable for on-demand use cases (e.g., delivery tracking) and some consumer use cases (e.g., order ahead, "mall mode").
+- **`TrackingOptionsContinuous`**: A high frequency of location updates and higher battery usage. Suitable for on-demand use cases such as delivery tracking.
 
-Learn about platform-specific implementations of these presets in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
-
-To start tracking the user's location in the background, call one of:
+Start tracking with one of the presets:
 
 ```csharp
 Radar.StartTracking(Radar.TrackingOptionsEfficient);
@@ -112,14 +233,14 @@ Radar.StartTracking(Radar.TrackingOptionsResponsive);
 Radar.StartTracking(Radar.TrackingOptionsContinuous);
 ```
 
-You only need to call these methods once, as these settings will be persisted across app sessions.
+Call one of these once. Tracking options persist across app sessions.
 
-Though we recommend using presets for most use cases, you can customize the tracking options. See the [tracking options reference](/sdk/tracking).
+Presets cover most use cases. To customize, start from a preset and change the fields you need. For field meanings, units, and defaults, see the [tracking options reference](/sdk/tracking). This package pairs with the 3.9 SDKs, so options added later aren't available.
 
 ```csharp
 RadarTrackingOptions trackingOptions = Radar.TrackingOptionsContinuous;
 trackingOptions.DesiredStoppedUpdateInterval = 180;
-trackingOptions.DesiredStoppedUpdateInterval = 60;
+trackingOptions.DesiredMovingUpdateInterval = 60;
 trackingOptions.DesiredSyncInterval = 50;
 trackingOptions.DesiredAccuracy = RadarTrackingOptionsDesiredAccuracy.High;
 trackingOptions.StopDuration = 140;
@@ -130,51 +251,71 @@ trackingOptions.Replay = RadarTrackingOptionsReplay.None;
 Radar.StartTracking(trackingOptions);
 ```
 
-To determine whether tracking has been started, call:
+On Android, to track with a foreground service, set `trackingOptions.ForegroundServiceEnabled = true` and configure the notification before you start tracking:
 
 ```csharp
-Radar.IsTracking;
+Radar.SetForegroundServiceOptions(new RadarTrackingOptionsForegroundService
+{
+  Title = "Location updates",
+  Text = "Location tracking started",
+  UpdatesOnly = false,
+  Importance = 2,
+  Activity = "com.example.app.MainActivity"
+});
 ```
 
-To stop tracking the user's location in the background (e.g., when the user logs out), call:
+`SetForegroundServiceOptions()` does nothing on iOS.
+
+To check and stop tracking:
 
 ```csharp
+bool tracking = Radar.IsTracking;
+
 Radar.StopTracking();
 ```
 
-Learn about platform-specific implementations of these functions in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+`Radar.TrackingOptions` returns the options in use. `Radar.IsUsingRemoteTrackingOptions` is `true` when [remote configuration](/sdk/remote-configuration) controls them.
 
-To listen for events, location updates, and errors, you can add event listeners:
+#### Listen for events
+
+Subscribe to events on `Radar`:
 
 ```csharp
 Radar.ClientLocationUpdated += (result) =>
 { 
-  // do something with result.location, result.stopped, result.source
+  // result.Location, result.Stopped, result.Source
 };
 
 Radar.LocationUpdated += (result) =>
 { 
-  // do something with result.location, result.user
+  // result.Location, result.User
 };
 
 Radar.EventsReceived += (result) =>
 { 
-  // do something with result.events, result.user
+  // result.Events, result.User
 };
 
-Radar.Error += (err) => 
+Radar.Error += (status) => 
 { 
-  // do something with err
+  // status is a RadarStatus
 };
 ```
 
-<Warning>
-  Listeners should be set only once and before tracking begins.
-</Warning>
+| Event | Handler argument |
+| --- | --- |
+| `ClientLocationUpdated` | `ClientLocationUpdatedData` with `Location`, `Stopped`, `Source` |
+| `LocationUpdated` | `LocationUpdatedData` with `Location`, `User` |
+| `EventsReceived` | `EventsData` with `Events`, `User` |
+| `Error` | `RadarStatus` |
+| `Log` | `string` |
+| `TokenUpdated` | `string`. See [Verified location](#verified-location). |
+
+Subscribe once, before tracking begins.
 
 ### Mock tracking
 
-On iOS and Android, you can simulate a sequence of location updates for testing. For example, to simulate a sequence of 10 location updates every 3 seconds by car from an `origin` to a `destination`, we can call:
+To simulate a sequence of location updates for testing, call `MockTracking()`. This example simulates 10 updates, 3 seconds apart, by car:
 
 ```csharp
 RadarLocation origin = new() { Latitude = 40.714708, Longitude = -74.035807 };
@@ -182,46 +323,53 @@ RadarLocation destination = new() { Latitude = 40.717410, Longitude = -74.053334
 
 Radar.MockTracking(origin, destination, RadarRouteMode.Car, 10, 3, data =>
 { 
-  System.Console.WriteLine($"{data.Location.Latitude} {data.Location.Longitude}");
+  System.Console.WriteLine($"Mock update status: {data.Status}");
 });
 ```
 
 ### Trip tracking
 
-On iOS and Android, to start a trip to a destination, call:
+Start a trip to a destination geofence. To apply tracking options while the trip is active, pass them as the second argument.
 
 ```csharp
 RadarTripOptions tripOptions = new()
 { 
-  ExternalId = "299",
+  ExternalId = "order-299",
   DestinationGeofenceTag = "store", 
-  DestinationGeofenceExternalId = "123", 
+  DestinationGeofenceExternalId = "store-42", 
   Mode = RadarRouteMode.Car
 };
 
-await Radar.StartTrip(tripOptions);
-Radar.StartTracking(Radar.TrackingOptionsContinuous);
+var (status, trip, events) = await Radar.StartTrip(tripOptions, Radar.TrackingOptionsContinuous);
 ```
 
-Later, to complete the trip and stop tracking, call:
+`RadarTripOptions` also has `Metadata`, `ScheduledArrivalAt`, and `ApproachingThreshold`.
+
+You can also call `Radar.StartTrip(tripOptions)` with one argument and start tracking yourself with `Radar.StartTracking()`.
+
+Update the trip. The second argument defaults to `RadarTripStatus.Unknown`, which keeps the current status.
+
+```csharp
+await Radar.UpdateTrip(tripOptions, RadarTripStatus.Arrived);
+```
+
+Complete or cancel the trip:
 
 ```csharp
 await Radar.CompleteTrip();
-Radar.StopTracking();
-```
 
-Or, to cancel the trip and stop tracking, call:
-
-```csharp
 await Radar.CancelTrip();
-Radar.StopTracking();
 ```
 
-Learn more about [trip tracking](/geofencing/trips).
+If you started tracking yourself, call `Radar.StopTracking()` when the trip ends.
+
+`Radar.TripOptions` returns the current trip options.
+
+For the full workflow, see [Track pickups, deliveries, and workers](/geofencing/trips).
 
 ### Manual tracking
 
-You can manually update the user's location by calling:
+To send a location you already have, pass a `RadarLocation`:
 
 ```csharp
 RadarLocation loc = new() { Latitude = 40.714708, Longitude = -74.035807, Accuracy = 65 };
@@ -229,21 +377,62 @@ RadarLocation loc = new() { Latitude = 40.714708, Longitude = -74.035807, Accura
 var (status, location, events, user) = await Radar.TrackOnce(loc);
 ```
 
-Learn about platform-specific implementation of this function in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+### Verified location
+
+The package exposes the verified location methods of the 3.9 native SDKs. Pass `true` for `fraud` in `Radar.Initialize()` first. The argument takes effect on Android only.
+
+| Method | Description |
+| --- | --- |
+| `TrackVerified(bool beacons = false)` | Runs a verified location check. Returns `(status, location, events, user)`. |
+| `TrackVerifiedToken(bool beacons = false)` | Runs a verified location check and returns a token. Returns `(status, token)`. |
+| `StartTrackingVerified(bool token = false, int interval = 1, bool beacons = false)` | Starts periodic verified checks. |
+| `TokenUpdated` event | Fires when a new token is available. |
+
+Run a verified location check and send the token to your backend:
+
+```csharp
+Radar.Initialize("prj_test_pk_...", true);
+
+var (status, token) = await Radar.TrackVerifiedToken();
+if (status == RadarStatus.Success)
+{
+  // Send the token to your backend and validate it there.
+}
+```
+
+Reading the result in the app isn't validation. Send the token to your backend and validate it there. See [Geolocation token schema](/api/geolocation-tokens).
+
+These methods predate the current fraud plugin and token APIs on the native SDKs. Before you build a Geo-compliance or Fraud integration on .NET MAUI, read [Fraud plugin setup](/sdk/fraud) and confirm support for your use case with your Radar account team.
+
+### Beacons
+
+To range beacons on a single call, use `Radar.TrackOnce(desiredAccuracy, true)` or `Radar.TrackVerified(true)`. To range during background tracking, set `Beacons = true` in your tracking options.
+
+Beacon ranging needs Bluetooth permission and native setup. See [Track indoor location with beacons](/geofencing/beacons).
 
 ### Other APIs
 
-The MAUI SDK also exposes APIs for geocoding, search, and distance.
+The package also exposes context, geocoding, search, routing, and conversion APIs.
+
+#### Context
+
+Get context for the device location:
+
+```csharp
+var (status, location, context) = await Radar.GetContext();
+```
+
+Pass a `RadarLocation` to use a location you already have. `context` has `Geofences`, `Place`, `Country`, `State`, `Dma`, and `PostalCode`.
 
 #### Geocoding
 
-With the [forward geocoding API](/api#forward-geocode), geocode an address, converting address to coordinates:
+Forward geocode an address with the [geocoding API](/api/geocoding):
 
 ```csharp
 var (status, addresses) = await Radar.Geocode("20 jay st brooklyn ny");
 ```
 
-With the [reverse geocoding API](/api#reverse-geocode), reverse geocode a location, converting coordinates to address:
+Reverse geocode a location. Call `ReverseGeocode()` with no argument to use the device location.
 
 ```csharp
 RadarLocation loc = new() { Latitude = 40.714708, Longitude = -74.035807 };
@@ -251,7 +440,7 @@ RadarLocation loc = new() { Latitude = 40.714708, Longitude = -74.035807 };
 var (status, addresses) = await Radar.ReverseGeocode(loc);
 ```
 
-With the [IP geocoding API](/api#ip-geocode), geocode the device's current IP address, converting IP address to city, state, and country:
+Geocode the device's IP address to a city, state, and country:
 
 ```csharp
 var (status, address, proxy) = await Radar.IpGeocode();
@@ -259,7 +448,7 @@ var (status, address, proxy) = await Radar.IpGeocode();
 
 #### Search
 
-With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance:
+Autocomplete partial addresses and place names with the [search API](/api/search):
 
 ```csharp
 RadarLocation near = new() { Latitude = 40.714708, Longitude = -74.035807 };
@@ -267,7 +456,9 @@ RadarLocation near = new() { Latitude = 40.714708, Longitude = -74.035807 };
 var (status, addresses) = await Radar.Autocomplete("brooklyn roasting", near, 10);
 ```
 
-With the [geofence search API](/api#search-geofences), search for geofences near a location, sorted by distance:
+A second overload also takes `layers`, `country`, `expandUnits`, and `mailable`.
+
+Search for geofences near a location, sorted by distance. The radius is in meters. Omit `near` to search near the device location.
 
 ```csharp
 RadarLocation near = new() { Latitude = 40.714708, Longitude = -74.035807 };
@@ -275,7 +466,7 @@ RadarLocation near = new() { Latitude = 40.714708, Longitude = -74.035807 };
 var (status, location, geofences) = await Radar.SearchGeofences(near, 1000, new string[] { "venue" }, limit: 10);
 ```
 
-With the [places search API](/api#search-places), search for places near a location, sorted by distance:
+Search for places near a location, sorted by distance. The arguments after the radius are `chains`, `categories`, `groups`, `limit`, and `chainMetadata`.
 
 ```csharp
 RadarLocation near = new() { Latitude = 40.714708, Longitude = -74.035807 };
@@ -285,7 +476,7 @@ var (status, location, places) = await Radar.SearchPlaces(near, 1000, new string
 
 #### Distance
 
-With the [distance API](/api#distance), calculate the travel distance and duration from an origin to a destination:
+Calculate travel distance and duration from an origin to a destination with the [routing API](/api/routing). Omit the origin to use the device location.
 
 ```csharp
 RadarLocation origin = new() { Latitude = 40.78382, Longitude = -73.97536 };
@@ -296,12 +487,53 @@ var (status, routes) = await Radar.GetDistance(origin, destination, new[] { Rada
 
 #### Matrix
 
-With the [matrix API](/api#matrix), calculate the travel distances and durations between multiple origins and destinations for up to 25 routes:
+Calculate travel distances and durations between multiple origins and destinations, for up to 25 routes. `GetMatrix()` takes a single mode.
 
 ```csharp
-var (status, routes) = await Radar.GetDistance(origins, destinations, new[] { RadarRouteMode.Car }, RadarRouteUnits.Imperial);
+RadarLocation[] origins =
+{
+  new() { Latitude = 40.78382, Longitude = -73.97536 },
+  new() { Latitude = 40.70390, Longitude = -73.98670 }
+};
+RadarLocation[] destinations =
+{
+  new() { Latitude = 40.64189, Longitude = -73.78779 },
+  new() { Latitude = 35.99801, Longitude = -78.94294 }
+};
+
+var (status, matrix) = await Radar.GetMatrix(origins, destinations, RadarRouteMode.Car, RadarRouteUnits.Imperial);
+RadarRoute route = matrix.RouteBetween(0, 0);
 ```
+
+#### Conversions
+
+Log a conversion, such as a purchase or signup, to analyze alongside location activity:
+
+```csharp
+var metadata = new JSONObject { { "sku", "example-sku" } };
+
+var (status, conversionEvent) = await Radar.LogConversion("purchase", metadata);
+
+// With revenue
+var (revenueStatus, revenueEvent) = await Radar.LogConversion("purchase", 12.5, metadata);
+```
+
+`Radar.AcceptEventId(eventId, verifiedPlaceId)` and `Radar.RejectEventId(eventId)` send feedback on an event.
+
+### Notification options
+
+On Android, `SetNotificationOptions()` sets the icon and color of the foreground service notification and event notifications. Values are resource names in your Android project.
+
+```csharp
+Radar.SetNotificationOptions(new RadarNotificationOptions
+{
+  IconString = "icon_1",
+  IconColor = "color_1"
+});
+```
+
+To set them separately, use `ForegroundServiceIconString`, `ForegroundServiceIconColor`, `EventIconString`, and `EventIconColor`. This method is Android only.
 
 ## Support
 
-Have questions? We're here to help! Contact us at [radar.com/support](https://radar.com/support).
+Have questions? Contact [Radar support](https://radar.com/support).

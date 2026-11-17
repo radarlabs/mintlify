@@ -1,0 +1,458 @@
+---
+title: "Fraud plugin setup"
+description: "Install and configure the Radar fraud plugin on iOS, Android, web, and React Native so that verified location checks and device risk checks can run."
+---
+
+Verified location checks (`Radar.trackVerified()`) and device risk checks (`Radar.revealRisk()`) need a fraud plugin in addition to the core SDK. At the end of this page, the plugin is installed for your platform, device attestation is configured, and a verified location check returns a token instead of `ERROR_PLUGIN`.
+
+<Info>
+  Fraud is available on the [Enterprise plan](https://radar.com/pricing).
+</Info>
+
+Before you test, enable Fraud for your project under **Fraud** on the [Settings](https://dashboard.radar.com/settings#fraud-settings) page of the Radar dashboard.
+
+## Compatibility
+
+Use a core SDK version and a plugin version from the same row. A missing or incompatible plugin makes `Radar.trackVerified()` return `ERROR_PLUGIN`. The iOS plugin requires iOS 15 or later.
+
+| Platform | Core SDK | Fraud plugin |
+| --- | --- | --- |
+| iOS | `RadarSDK` 3.44.0 to 3.46.x | `RadarSDKFraud` 1.6.x |
+| Android | `io.radar:sdk` 3.39.0 to 4.3.x | `io.radar:sdk-fraud` 1.3.x |
+| Web | `radar-sdk-js` 5.1.0 or later | `@radarlabs/plugin-fraud` 1.6.x |
+| React Native | `react-native-radar` 4.x | Bundled iOS plugin. Android plugin from the Android row. |
+
+What each platform supports:
+
+| Capability | iOS | Android | Web | React Native |
+| --- | --- | --- | --- | --- |
+| Verified location checks | Yes | Yes | Yes | Yes |
+| Device risk checks with `revealRisk()` | Yes | Yes | Yes | Yes |
+| Device attestation | Yes, with App Attest | Yes, with the Play Integrity API | No | Yes, per platform |
+| Companion app path | No | No | Yes, with Radar Verify for Mac and Windows | No |
+
+The Cordova plugin (3.9.1) and the .NET MAUI package (`RadarIO.Xamarin` 3.9.3) pair with the 3.9 native SDKs, which predate the fraud plugins on this page. They expose the `trackVerified()`, `trackVerifiedToken()`, and `startTrackingVerified()` methods of those SDKs, and they don't expose `revealRisk()`. See the verified location section of the [Cordova SDK](/sdk/cordova#verified-location) or [.NET MAUI SDK](/sdk/maui#verified-location) reference.
+
+The Capacitor plugin (`capacitor-radar` 4.1.1) includes its own fraud plugins for iOS and Android, so you don't install the plugins on this page. Their versions are outside the ranges in the compatibility table. See the verified location section of the [Capacitor SDK](/sdk/capacitor#verified-location) reference.
+
+## iOS
+
+### Install the iOS plugin
+
+Add both packages with Swift Package Manager. In Xcode, add a package dependency for each repository URL, or declare them in `Package.swift`:
+
+```swift Package.swift
+.package(url: "https://github.com/radarlabs/radar-sdk-ios-spm.git", "3.46.0"..<"3.47.0"),
+.package(url: "https://github.com/radarlabs/radar-sdk-ios-fraud-spm.git", "1.6.0"..<"1.7.0"),
+```
+
+Starting with iOS SDK 3.44.0, verified requests encrypt the complete request body, and the core SDK and plugin must be updated together. If payload preparation or encryption fails, the request stops and isn't sent unencrypted.
+
+### Initialize the SDK on iOS
+
+Initialize the core SDK as usual. The plugin needs no separate initialization.
+
+```swift
+import RadarSDK
+
+Radar.initialize(publishableKey: "prj_test_pk_...")
+```
+
+Starting with iOS SDK 3.45.0, `Radar.trackVerified()` retries against a secondary host when the primary host doesn't return a response from Radar. To turn this off, set `trackVerifiedAutoFailover` to `false`:
+
+```swift
+let options = RadarInitializeOptions()
+options.trackVerifiedAutoFailover = false
+Radar.initialize(publishableKey: "prj_test_pk_...", options: options)
+```
+
+In earlier versions the default is `false`, and you set it to `true` to turn failover on.
+
+### Configure App Attest
+
+App Attest supports the `compromised` flag on iOS.
+
+1. Enable [App Attest](https://developer.apple.com/documentation/devicecheck/preparing-to-use-the-app-attest-service) for your app.
+2. Under **Fraud** on the [Settings](https://dashboard.radar.com/settings#fraud-settings) page, enter your valid App IDs as a comma-separated list, for example `A1B2C3D4E5.com.example.app1,A1B2C3D4E5.com.example.app2`.
+
+If App Attest indicates that the device or app is compromised, `user.fraud.compromised` is `true`. If `Radar.trackVerified()` returns `ERROR_FORBIDDEN`, check the SDK logs.
+
+### Configure SSL pinning on iOS
+
+To pin the certificates for Radar's verified hosts, add the following to your `Info.plist`. Include the `api-verified.radar.com` entry when automatic failover is on.
+
+```xml Info.plist
+<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <false/>
+    <key>NSPinnedDomains</key>
+    <dict>
+        <key>api-verified.radar.io</key>
+        <dict>
+            <key>NSIncludesSubdomains</key>
+            <true/>
+            <key>NSPinnedLeafIdentities</key>
+            <array>
+                <dict>
+                    <key>SPKI-SHA256-BASE64</key>
+                    <string>15ktYXSSU2llpy7YyCgeqUKDBkjcimK/weUcec960sI=</string>
+                </dict>
+                <dict>
+                    <key>SPKI-SHA256-BASE64</key>
+                    <string>15ktYXSSU2llpy7YyCgeqUKDBkjcimK/weUcec960sI=</string>
+                </dict>
+            </array>
+        </dict>
+        <key>api-verified.radar.com</key>
+        <dict>
+            <key>NSIncludesSubdomains</key>
+            <true/>
+            <key>NSPinnedCAIdentities</key>
+            <array>
+                <dict>
+                    <key>SPKI-SHA256-BASE64</key>
+                    <string>++MBgDH5WGvL9Bcn5Be30cRcL0f5O+NyoXuWtQdX1aI=</string>
+                </dict>
+                <dict>
+                    <key>SPKI-SHA256-BASE64</key>
+                    <string>f0KW/FtqTjs108NpYj42SrGvOB2PpxIVM8nWxjPqJGE=</string>
+                </dict>
+                <dict>
+                    <key>SPKI-SHA256-BASE64</key>
+                    <string>NqvDJlas/GRcYbcWE8S/IceH9cq77kg0jVhZeAPXq8k=</string>
+                </dict>
+                <dict>
+                    <key>SPKI-SHA256-BASE64</key>
+                    <string>9+ze1cZgR9KO1kZrVDxA4HQ6voHRCSVNz4RdTCx4U8U=</string>
+                </dict>
+                <dict>
+                    <key>SPKI-SHA256-BASE64</key>
+                    <string>KwccWaCgrnaw6tsrrSO61FgLacNgG2MMLq8GE6+oP5I=</string>
+                </dict>
+            </array>
+        </dict>
+    </dict>
+</dict>
+```
+
+See [identity pinning on iOS](https://developer.apple.com/news/?id=g9ejcf8y).
+
+## Android
+
+### Install the Android plugin
+
+Add the core SDK, the plugin, and the Play Integrity API to the `dependencies` section of your app's `build.gradle` file:
+
+```gradle build.gradle
+dependencies {
+  implementation 'io.radar:sdk:4.3.+'
+  implementation 'io.radar:sdk-fraud:1.3.1'
+  implementation 'com.google.android.play:integrity:1.6.0'
+}
+```
+
+The plugin compiles against the Play Integrity API and doesn't bundle it, so add that dependency before you call `Radar.trackVerified()`.
+
+### Initialize the SDK on Android
+
+Pass `fraud = true` in `RadarInitializeOptions`. This is required for the `sharing` flag on Android.
+
+```kotlin
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarInitializeOptions
+
+// In Application.onCreate()
+Radar.initialize(
+  context = this,
+  publishableKey = "prj_test_pk_...",
+  options = RadarInitializeOptions(fraud = true)
+)
+```
+
+Starting with Android SDK 4.2.0, `Radar.trackVerified()` retries against a secondary host when the primary host doesn't return a response from Radar. To turn this off, pass `trackVerifiedAutoFailover = false` in `RadarInitializeOptions`. In earlier versions, pass `trackVerifiedAutoFailover = true` to turn failover on.
+
+### Configure the Play Integrity API
+
+The Play Integrity API supports the `compromised` flag on Android. Enable the [Play Integrity API](https://developer.android.com/google/play/integrity) under **Fraud** on the [Settings](https://dashboard.radar.com/settings#fraud-settings) page.
+
+If the device or app doesn't meet [basic integrity checks](https://developer.android.com/google/play/integrity/verdict#device-integrity-field), `user.fraud.compromised` is `true`. If `Radar.trackVerified()` returns `ERROR_FORBIDDEN`, check the SDK logs. The Google Play services version on the device may be out of date.
+
+### Configure SSL pinning on Android
+
+To pin the certificates for Radar's verified hosts, add a `res/xml/network_security_config.xml` file. Include the `api-verified.radar.com` entry when automatic failover is on.
+
+```xml network_security_config.xml
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api-verified.radar.io</domain>
+        <pin-set>
+            <pin digest="SHA-256">15ktYXSSU2llpy7YyCgeqUKDBkjcimK/weUcec960sI=</pin>
+            <pin digest="SHA-256">15ktYXSSU2llpy7YyCgeqUKDBkjcimK/weUcec960sI=</pin>
+        </pin-set>
+    </domain-config>
+
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api-verified.radar.com</domain>
+        <pin-set>
+            <pin digest="SHA-256">++MBgDH5WGvL9Bcn5Be30cRcL0f5O+NyoXuWtQdX1aI=</pin>
+            <pin digest="SHA-256">f0KW/FtqTjs108NpYj42SrGvOB2PpxIVM8nWxjPqJGE=</pin>
+            <pin digest="SHA-256">NqvDJlas/GRcYbcWE8S/IceH9cq77kg0jVhZeAPXq8k=</pin>
+            <pin digest="SHA-256">9+ze1cZgR9KO1kZrVDxA4HQ6voHRCSVNz4RdTCx4U8U=</pin>
+            <pin digest="SHA-256">KwccWaCgrnaw6tsrrSO61FgLacNgG2MMLq8GE6+oP5I=</pin>
+        </pin-set>
+    </domain-config>
+</network-security-config>
+```
+
+Then reference the file from the `application` element in your manifest:
+
+```xml AndroidManifest.xml
+<application
+    android:networkSecurityConfig="@xml/network_security_config">
+</application>
+```
+
+If your debug builds load JavaScript from a local development server, as React Native does, add a separate `domain-config` that permits cleartext traffic to `localhost`. See [Network Security Configuration on Android](https://developer.android.com/training/articles/security-config).
+
+## Web
+
+### Install the web plugin
+
+With npm, install the core SDK and the plugin:
+
+```bash
+npm install radar-sdk-js @radarlabs/plugin-fraud
+```
+
+Then register the plugin before you initialize:
+
+```javascript
+import Radar from 'radar-sdk-js';
+import { createFraudPlugin } from '@radarlabs/plugin-fraud';
+
+Radar.registerPlugin(createFraudPlugin());
+Radar.initialize('prj_test_pk_...');
+```
+
+With script tags, load the plugin after the core SDK. The plugin bundle registers itself.
+
+```html
+<script src="https://js.radar.com/v5.3.0/radar.min.js"></script>
+<script src="https://js.radar.com/fraud/v1.6.1/radar-fraud.min.js"></script>
+```
+
+The plugin's methods are on `Radar.fraud`, for example `Radar.fraud.trackVerified()`. The same methods on `Radar`, such as `Radar.trackVerified()`, still work and are deprecated.
+
+### Choose the companion app or the no-download path
+
+The web plugin supports two paths.
+
+| | Companion app | No-download |
+| --- | --- | --- |
+| How it runs | The page talks to the Radar Verify app running on the user's computer. | The check runs in the browser. |
+| What the user installs | [Radar Verify for Mac](https://app.radar-verify.com/mac/latest) or [Radar Verify for Windows](https://app.radar-verify.com/windows/latest) | Nothing |
+| Signals | Adds remote desktop detection for the `sharing` flag, more advanced `mocked` and `proxy` detection, and more stable device IDs. | Browser signals only. |
+| How to select it | Default. `skipVerifyApp` is `false`. | Pass `skipVerifyApp: true`. |
+| When the app is missing | The call fails with `ERROR_VERIFY_APP` (`RadarVerifyAppError`). | Not applicable |
+
+Pass `skipVerifyApp` to `Radar.fraud.trackVerified()`, `Radar.fraud.startTrackingVerified()`, and `Radar.fraud.getVerifiedLocationToken()`. Use the same value in all three.
+
+To customize the Radar Verify installer or branding, contact your Radar account team.
+
+## Desktop
+
+For desktop web apps, use the web plugin with the Radar Verify companion app described in [Web](#web).
+
+For native desktop apps, a Mac SDK (macOS 12.4 or later), a Windows SDK (Windows 10 or later with .NET 8 or later), and an Electron plugin are available on request. Contact your Radar account team for access.
+
+## React Native
+
+### Install the React Native plugin
+
+`react-native-radar` bundles a compatible iOS plugin. On Android, add the plugin version from the [compatibility table](#compatibility).
+
+<Tabs>
+  <Tab title="Expo">
+    Set `iosFraud` and `androidFraud` in the `react-native-radar` plugin options in `app.json`, then run `npx expo prebuild --clean`.
+
+    ```json app.json
+    {
+      "expo": {
+        "plugins": [
+          [
+            "react-native-radar",
+            {
+              "iosFraud": true,
+              "androidFraud": true
+            }
+          ]
+        ]
+      }
+    }
+    ```
+
+    The Expo plugin adds `io.radar:sdk-fraud` and the Play Integrity API dependency to `android/app/build.gradle` only when they aren't already there, and it configures SSL pinning for `api-verified.radar.io` only. It doesn't add the `api-verified.radar.com` entry used for automatic failover. After prebuild, open `android/app/build.gradle` and confirm that the `io.radar:sdk-fraud` version matches the [compatibility table](#compatibility). Update it if it is older.
+  </Tab>
+  <Tab title="Without Expo">
+    Add the iOS plugin to the app target in `ios/Podfile`, then run `pod install`:
+
+    ```ruby Podfile
+    pod 'RadarSDKFraud', :path => '../node_modules/react-native-radar'
+    ```
+
+    Add the Android plugin and the Play Integrity API to the `dependencies` section of `android/app/build.gradle`:
+
+    ```gradle build.gradle
+    dependencies {
+      implementation 'io.radar:sdk-fraud:1.3.1'
+      implementation 'com.google.android.play:integrity:1.6.0'
+    }
+    ```
+
+    Configure SSL pinning as described in the [iOS](#configure-ssl-pinning-on-ios) and [Android](#configure-ssl-pinning-on-android) sections.
+  </Tab>
+</Tabs>
+
+### Initialize the SDK on React Native
+
+Pass `true` as the second argument to `Radar.initialize()` to turn on fraud detection. This is required for the `sharing` flag on Android.
+
+```javascript
+import Radar from 'react-native-radar';
+
+Radar.initialize('prj_test_pk_...', true);
+```
+
+To set automatic failover explicitly, pass `trackVerifiedAutoFailover` in the options argument (React Native SDK 4.38.0 or later):
+
+```javascript
+Radar.initialize('prj_test_pk_...', true, {
+  trackVerifiedAutoFailover: true,
+});
+```
+
+Complete the [App Attest](#configure-app-attest) and [Play Integrity API](#configure-the-play-integrity-api) steps for the native platforms.
+
+## Authenticate the SDK with auth tokens
+
+<Info>
+  Auth tokens must be enabled for your project. Contact your Radar account team.
+</Info>
+
+Instead of a publishable key, you can initialize the SDK with a short-lived auth token. An auth token is a JSON Web Token (JWT) that your backend signs with a private key that only you hold. Radar verifies each request against the matching public key, which you register in the dashboard. For who can manage public keys, see [Use auth tokens instead of a publishable key](/fundamentals/authentication-and-access#use-auth-tokens-instead-of-a-publishable-key).
+
+Auth tokens need iOS SDK 3.28.0 or later, Android SDK 3.27.0 or later, or web SDK 5.1.0 or later.
+
+<Steps>
+  <Step title="Create a key pair">
+    On your backend, create an EC P-256 key pair:
+
+    ```bash
+    openssl ecparam -genkey -name prime256v1 -noout -out private-key.pem
+    openssl ec -in private-key.pem -pubout -out public-key.pem
+    ```
+
+    Store `private-key.pem` in your secret manager. Radar also accepts an RSA public key of 2048 bits or more, and tokens for that key are signed with RS256.
+  </Step>
+  <Step title="Register the public key">
+    On the [Settings](https://dashboard.radar.com/settings) page, under **Auth tokens**, click **Add**. Enter a **Name**, select the **Environment** (**Test** or **Live**), paste the full contents of `public-key.pem` into **Public key**, including the `BEGIN` and `END` lines, and click **Add**.
+
+    The key appears in the list with the status **Enabled**. Copy its **Key ID**. Tokens signed for this key authenticate to the environment you selected.
+  </Step>
+  <Step title="Sign a token on your backend">
+    Sign a JWT with the private key, and put the Key ID in the `kid` header. This Node.js example uses the [`jose`](https://github.com/panva/jose) package and reads the private key PEM and the Key ID from environment variables:
+
+    ```javascript Node.js
+    import { createPrivateKey } from 'node:crypto';
+    import { SignJWT } from 'jose';
+
+    const privateKey = createPrivateKey(process.env.RADAR_AUTH_TOKEN_PRIVATE_KEY);
+    const keyId = process.env.RADAR_AUTH_TOKEN_KEY_ID;
+
+    export async function createRadarAuthToken(userId) {
+      return new SignJWT({ constraints: { userId } })
+        .setProtectedHeader({ alg: 'ES256', typ: 'JWT', kid: keyId })
+        .setIssuedAt()
+        .setExpirationTime('10m')
+        .sign(privateKey);
+    }
+    ```
+
+    Return the token to your app from an endpoint that requires your own user session.
+  </Step>
+  <Step title="Initialize the SDK with the token">
+    Pass the token in place of the publishable key:
+
+    <CodeGroup>
+
+    ```swift Swift
+    Radar.initialize(authToken: authToken)
+    ```
+
+    ```kotlin Kotlin
+    Radar.initialize(context, RadarInitializeOptions(authToken = authToken, fraud = true))
+    ```
+
+    ```javascript JavaScript
+    Radar.initialize({ authToken });
+    ```
+
+    ```javascript React Native
+    Radar.initializeWithAuthToken(authToken, true);
+    ```
+
+    </CodeGroup>
+
+    To check the setup, call `Radar.trackVerified()` (`Radar.fraud.trackVerified()` on web) and confirm that it returns a success status.
+  </Step>
+</Steps>
+
+### Token format
+
+| Field | Location | Required | Description |
+| --- | --- | --- | --- |
+| `alg` | Header | Yes | `ES256` for an EC P-256 key, or `RS256` for an RSA key. It must match the registered public key. |
+| `typ` | Header | Yes | `JWT`. |
+| `kid` | Header | Yes | The Key ID of the registered public key. |
+| `iat` | Payload | Yes | Issue time, in seconds since the Unix epoch. Radar rejects a token more than 24 hours after `iat`. |
+| `exp` | Payload | Yes | Expiration time, in seconds since the Unix epoch. |
+| `constraints` | Payload | No | An object that limits what the token can be used for. See the next table. |
+
+Each constraint you set must match the value the SDK sends with a location update:
+
+| Constraint | Type | Must match |
+| --- | --- | --- |
+| `userId` | string | The user ID set with `Radar.setUserId()`. |
+| `expectedCountryCode` | string | The country code set with `Radar.setExpectedJurisdiction()`. |
+| `expectedStateCode` | string | The state code set with `Radar.setExpectedJurisdiction()`. |
+| `product` | string | The product name set with `Radar.setProduct()`. |
+| `metadata` | object | Every key and value in the constraint must be present in the metadata set with `Radar.setMetadata()`. |
+
+### Auth token errors
+
+| Code | Meaning | What to do |
+| --- | --- | --- |
+| `ERROR_UNAUTHORIZED` | The token is malformed or expired, its signature or header is invalid, the public key is disabled or not found, or auth tokens aren't enabled for the project. | Check the `alg`, `typ`, and `kid` headers and your backend's clock. When a token expires, get a new one from your backend and initialize the SDK again. |
+| `ERROR_FORBIDDEN` | A constraint in the token doesn't match the request. | Set the user ID, expected jurisdiction, product, or metadata in the SDK to the values in the token before you call `Radar.trackVerified()`. |
+
+## Verify the setup
+
+1. Build and run the app on a physical device, or open the page in a browser, using a test publishable key.
+2. Grant location permission.
+3. Call `Radar.trackVerified()` (`Radar.fraud.trackVerified()` on web).
+4. Confirm that the call returns a success status and a token whose `token` field is a non-empty string.
+
+| Result | Likely cause |
+| --- | --- |
+| `ERROR_PLUGIN` | The plugin is missing, or its version isn't compatible with the core SDK. Check the [compatibility table](#compatibility). |
+| `ERROR_FORBIDDEN` | Device attestation couldn't run. Check the SDK logs, the OS version, and Google Play services. |
+| `ERROR_VERIFY_APP` | Web companion app path: Radar Verify isn't installed or not running. |
+
+## See also
+
+- [Geo-compliance overview and quickstart](/geo-compliance/overview)
+- [Fraud overview and quickstart](/fraud/overview)
+- [Geolocation token schema](/api/geolocation-tokens)
+- [iOS SDK](/sdk/ios), [Android SDK](/sdk/android), [Web SDK](/sdk/web), [React Native SDK](/sdk/react-native)

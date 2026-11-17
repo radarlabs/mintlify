@@ -1,31 +1,111 @@
 ---
-title: "Remote SDK configuration"
-description: "Configure Radar SDK tracking remotely from the dashboard by OS and environment, without shipping an app update."
+title: "Remote configuration"
+description: "Control Radar SDK tracking, tracking options, and log level from the dashboard by operating system and environment, without shipping an app update."
 ---
 
-Starting in SDK versions `3.16.0`, the SDK can be remotely configured through the [dashboard](https://dashboard.radar.com/settings#sdk-configuration). Configurations are targeted by OS and environment. With these configuration options, a typical tracking implementation requires only calling `Radar.initialize()` and, optionally, `Radar.setUserId()`.
+With remote configuration, you change how the iOS and Android SDKs track from the Radar dashboard instead of from code. After you set it up, a typical tracking integration calls `Radar.initialize()` and, optionally, `Radar.setUserId()`, and the dashboard decides whether and how the SDK tracks.
+
+Remote configuration is available in iOS and Android SDK 3.16.0 and later. This page documents iOS SDK 3.46.0 and Android SDK 4.3.0.
+
+## How it works
+
+1. You save an SDK configuration on the [Settings](https://dashboard.radar.com/settings#sdk-configuration) page. Each configuration targets one operating system (iOS or Android) and one environment (Test or Live).
+2. The SDK requests its configuration from Radar and stores it on the device.
+3. Radar also returns the tracking options that apply to the user with each location update, so tracking options can change while the app is running.
+
+| Responsibility | Where it lives |
+| --- | --- |
+| Initialize the SDK, identify the user, request location permissions | Your app |
+| Whether to track on app open, whether to start tracking, which tracking options to use, log level | Dashboard |
+| Choosing between default, on-trip, and in-geofence tracking options for a user | Radar, on each configuration request and location update |
+
+Remote configuration doesn't grant location permissions and doesn't wake a terminated app. The app still needs the permission that the selected tracking options require. See [Location permissions](/fundamentals/location-permissions). To request a location from a device that isn't running your app in the foreground, see [Silent push](/sdk/silent-push).
+
+## Scope by operating system and environment
+
+A configuration applies only to the operating system and environment it targets. The Test environment is the one your `prj_test_pk_...` publishable key uses, and the Live environment is the one your `prj_live_pk_...` key uses. To change behavior in production, edit the configuration for the Live environment. To change both platforms, edit the iOS and Android configurations.
+
+## When the SDK refreshes its configuration
+
+The SDK requests its configuration:
+
+- When you call `Radar.initialize()`.
+- When the app returns to the foreground and starts a new session. The SDK starts a new session when more than 5 minutes have passed since the previous session started.
+
+Tracking options are also refreshed with the response to each location update.
+
+This means a change you save in the dashboard reaches a device the next time the app launches, the next time the app is foregrounded in a new session, or, for tracking options, the next time the device sends a location update. A device that isn't sending location updates and whose app isn't opened doesn't pick up the change.
+
+## Configuration controls
 
 ### Track once on initialize
 
-When enabled, the SDK will automatically perform a `Radar.trackOnce()` call when the app is launched or foregrounded.
+When this setting is on, the SDK calls `Radar.trackOnce()` when the SDK is initialized and each time the app enters the foreground. The request uses medium desired accuracy, and ranges beacons if the current tracking options have `beacons` enabled.
+
+The setting is `trackOnceOnAppOpen` in the SDK configuration.
 
 ### Start tracking on initialize
 
-When enabled, the SDK will automatically start tracking with `Radar.startTracking()` when the app is launched.
+When this setting is on, the SDK calls `Radar.startTracking()` with the current tracking options when the SDK is initialized, if tracking hasn't already been started. Pair this setting with [remote tracking options](#remotely-set-tracking-options) so that the dashboard controls both whether the SDK tracks and how.
+
+The setting is `startTrackingOnInitialize` in the SDK configuration.
 
 ### Log level
 
-Set the SDK log level. Overrides any log level set client side.
+Sets the SDK log level, one of `none`, `error`, `warning`, `info`, or `debug`. A remote log level overrides the level you set in code with `Radar.setLogLevel()`.
 
 ## Remotely set tracking options
 
-You can remotely set SDK [tracking options](/sdk/tracking) with either the default presets or a custom configuration. Remotely setting tracking options overrides any client-side specified tracking options.
+You can remotely set SDK [tracking options](/sdk/tracking) to one of the presets or to a custom configuration.
 
-In addition to the general tracking options, on-trip tracking options apply when a user is on a trip and in-geofence tracking options allow you to dictate different tracking options for when users are in geofences with the tags specified.
+There are three sets of remote tracking options:
+
+| Set | Applies when |
+| --- | --- |
+| Default | No other set applies. |
+| On-trip | The user is on a trip. |
+| In-geofence | The user is in a geofence that has one of the tags you specify for this set. |
+
+### Local and remote precedence
+
+Radar picks one set for each user in this order: in-geofence, then on-trip, then default.
+
+When remote tracking options apply to a device, they override the tracking options you pass in code, including options passed to `Radar.startTracking()` and to `Radar.startTrip()`. When you remove remote tracking options in the dashboard, the SDK goes back to the options set in code.
+
+To check what is in effect on a device:
+
+<CodeGroup>
+
+```swift Swift
+import RadarSDK
+
+let usingRemote = Radar.isUsingRemoteTrackingOptions()
+let options = Radar.getTrackingOptions()
+print("remote: \(usingRemote), options: \(options.dictionaryValue())")
+```
+
+```kotlin Kotlin
+import android.util.Log
+import io.radar.sdk.Radar
+
+val usingRemote = Radar.isUsingRemoteTrackingOptions()
+val options = Radar.getTrackingOptions()
+Log.d("Radar", "remote: $usingRemote, options: ${options.toJson()}")
+```
+
+</CodeGroup>
+
+`Radar.getTrackingOptions()` returns the remote tracking options when they apply, and otherwise the options set in code.
+
+### On-trip tracking options
+
+Use on-trip tracking options to track more frequently during a trip than outside one, for example a continuous preset during a pickup or delivery and a responsive preset otherwise. Radar returns the on-trip set while the user has an active trip, and returns the default set again after the trip is completed or canceled.
+
+On Android, on-trip options that enable `foregroundServiceEnabled` need `RadarForegroundService` declared in your app manifest in Android SDK 4.0.0 and later. If the service isn't declared, the SDK logs an error and tracks without a foreground service. See [Foreground services and Google Play policy](/sdk/android#foreground-services-and-google-play-policy).
 
 ### Custom tracking options
 
-Custom configurations should declare all tracking options in JSON. Example custom tracking options are below.
+A custom configuration declares all tracking options in JSON. The keys match the option names in [Tracking options](/sdk/tracking), with one difference on iOS: the `syncLocations` option uses the key `sync`.
 
 <CodeGroup>
 
@@ -51,7 +131,6 @@ Custom configurations should declare all tracking options in JSON. Example custo
 }
 ```
 
-
 ```json Android
 {
   "desiredStoppedUpdateInterval": 3600,
@@ -59,11 +138,11 @@ Custom configurations should declare all tracking options in JSON. Example custo
   "desiredMovingUpdateInterval": 150,
   "fastestMovingUpdateInterval": 20,
   "desiredSyncInterval": 10,
-  "desiredAccuracy": 2,
+  "desiredAccuracy": "high",
   "stopDuration": 140,
   "stopDistance": 70,
-  "sync": 2,
-  "replay": 0,
+  "sync": "all",
+  "replay": "none",
   "useStoppedGeofence": true,
   "stoppedGeofenceRadius": 100,
   "useMovingGeofence": true,
@@ -77,3 +156,31 @@ Custom configurations should declare all tracking options in JSON. Example custo
 
 </CodeGroup>
 
+Accepted values for the enumerated options:
+
+| Key | Values |
+| --- | --- |
+| `desiredAccuracy` | `"high"`, `"medium"`, `"low"`. Android also accepts `"none"`. |
+| `sync` | `"all"`, `"stopsAndExits"`, `"events"`, `"none"` |
+| `replay` | `"all"`, `"stops"`, `"none"` |
+| `syncGeofences` | `true` or `false`. On Android, `true` maps to `NEAREST` and `false` maps to `NONE`. |
+
+Intervals and durations are in seconds, and distances and radii are in meters.
+
+The Android SDK also accepts the integer forms of `desiredAccuracy` (`3` high, `2` medium, `1` low, `0` none), `sync` (`2` all, `1` stops and exits, `3` events, `0` none), and `replay` (`2` all, `1` stops, `0` none). The iOS SDK reads these three keys as strings only.
+
+## Verify your configuration
+
+1. Save a configuration for the Test environment and the operating system of your test device.
+2. Launch a build that initializes the SDK with your `prj_test_pk_...` key.
+3. Call `Radar.isUsingRemoteTrackingOptions()` and `Radar.getTrackingOptions()` as in [Local and remote precedence](#local-and-remote-precedence). They return `true` and the options you saved.
+4. If you turned on start tracking on initialize, `Radar.isTracking()` returns `true` without a `Radar.startTracking()` call in your code.
+5. Find your user on the [Users](https://dashboard.radar.com/geofencing/users) page to confirm location updates arrive.
+
+If the device still uses the options set in code, confirm that the configuration targets the same operating system and environment as the build, then relaunch the app or foreground it after more than 5 minutes.
+
+## See also
+
+- [Tracking options](/sdk/tracking)
+- [iOS SDK](/sdk/ios) and [Android SDK](/sdk/android)
+- [Track pickups, deliveries, and workers](/geofencing/trips)

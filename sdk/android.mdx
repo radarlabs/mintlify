@@ -1,21 +1,17 @@
 ---
 title: "Android SDK"
-description: "Install and integrate the Radar Android SDK to add geofencing, location tracking, trip tracking, and geocoding to your Android app."
+description: "Reference for the Radar Android SDK: installation, manifest and service configuration, initialization, tracking, trips, receivers, search and geocoding methods, models, status codes, and upgrade notes."
 ---
 
-The Radar SDK abstracts away cross-platform differences between location services, allowing you to add geofencing, location tracking, trip tracking, geocoding, and search to your apps with just a few lines of code.
+The Radar Android SDK adds location tracking, geofencing, trip tracking, verified location, geocoding, search, and routing to your Android app. At the end of the setup sections, your app initializes the SDK, and a `Radar.trackOnce()` call returns `RadarStatus.SUCCESS` with a location and a user that you can find in the Radar dashboard.
 
-Learn how to integrate the Android SDK below. You can also see the [source](https://github.com/radarlabs/radar-sdk-android) and a [detailed SDK reference](https://radarlabs.github.io/radar-sdk-android/) on GitHub.
+This page documents Android SDK 4.3.0. The [source](https://github.com/radarlabs/radar-sdk-android) and the [releases](https://github.com/radarlabs/radar-sdk-android/releases) are on GitHub.
+
+Most examples are in Kotlin. Every method is also callable from Java through a callback interface, and the core setup examples show both.
 
 ## Install SDK
 
-The best way to add the SDK to your project is via Gradle in Android Studio.
-
-<Info>
-  For details on the latest SDK releases, see the [releases page](https://github.com/radarlabs/radar-sdk-android/releases) on GitHub. You can also star ⭐️ and watch 👀 the repo.
-</Info>
-
-The SDK is small and typically adds less than 500 KB to your compiled app.
+We recommend adding the SDK to your project with Gradle in Android Studio.
 
 ### Gradle (recommended)
 
@@ -31,30 +27,33 @@ dependencies {
 
 ### Add manually
 
-You can also add the SDK to your project manually. Download [the current release](https://github.com/radarlabs/radar-sdk-android/releases) and unzip the package. The package contains an `aar` file. In Android Studio, add the SDK as a module using _File_ \> _New Module_ \> _Import .JAR/.AAR Package_.
+You can also add the SDK to your project manually. Download [the current release](https://github.com/radarlabs/radar-sdk-android/releases) and unzip the package. The package contains an `aar` file. Add the `aar` file to your app module as a local dependency.
 
 ## Dependencies
 
-The SDK depends on [Google Play Services Location](https://developer.android.com/training/location) version `21.0.1` and higher, which will be automatically included as a transitive dependency by Gradle. Learn more about managing dependencies in Gradle [here](https://docs.gradle.org/current/userguide/core_dependency_management.html).
+| Requirement | Value |
+| --- | --- |
+| Minimum Android version | API level 23 (Android 6.0), from Android SDK 4.0.0. Earlier SDK versions support lower API levels. |
+| Build tooling | Android Gradle Plugin 7.0 or later, from Android SDK 4.0.0. The SDK is compiled to Java 11 bytecode. You don't need to change your own `compileOptions`. |
+| Location services | [Google Play Services Location](https://developer.android.com/training/location) 21.0.1 or later, added automatically as a transitive dependency. |
 
-If you haven't already configured your project for Google Play Services, follow the instructions [here](https://developers.google.com/android/guides/google-services-plugin).
+If you haven't already configured your project for Google Play Services, follow the [Google services setup instructions](https://developers.google.com/android/guides/google-services-plugin).
 
-As of version `3.8.0`, the SDK uses `play-services-location:21.0.1`. If another dependency that depends on `play-services-location` is causing version conflicts, you can exclude the transitive dependencies and include the `play-services-location` dependency at the project level instead. We strongly recommend using `21.0.1` or higher.
+If another dependency that depends on `play-services-location` causes version conflicts, you can exclude the transitive dependency and include `play-services-location` at the project level instead. Use 21.0.1 or later.
 
-As an alternative to Google Play Services, the SDK also optionally supports [Huawei Mobile Services](#huawei).
-
-The SDK currently supports API level `23` or above.
+As an alternative to Google Play Services, the SDK optionally supports [Huawei Mobile Services](#huawei).
 
 ### Optional dependencies
 
-Some SDK features need a library that the SDK does not add for you. Add the library only if you use the feature:
+Some SDK features need a library that the SDK doesn't add for you. Add the library only if you use the feature:
 
 | Feature | Library |
 | --- | --- |
 | [Huawei Mobile Services](#huawei) | `com.huawei.hms:location` |
 | [Silent push](/sdk/silent-push) | `com.google.firebase:firebase-messaging` |
+| [Verified location](#verified-location) | The Radar fraud plugin. See [Fraud plugin setup](/sdk/fraud). |
 
-As of version `4.3.0`, the SDK includes R8 rules for these libraries. You do not need to add `-dontwarn` rules to your `proguard-rules.pro` file when you minify your app. If you added these rules for an earlier SDK version, you can remove them:
+From Android SDK 4.3.0, the SDK includes R8 rules for the Huawei and Firebase libraries. You don't need to add `-dontwarn` rules to your `proguard-rules.pro` file when you minify your app. If you added these rules for an earlier SDK version, you can remove them:
 
 ```proguard
 -dontwarn com.huawei.hmf.tasks.**
@@ -65,17 +64,40 @@ As of version `4.3.0`, the SDK includes R8 rules for these libraries. You do not
 
 ## Initialize SDK
 
-When your app starts, in application `onCreate()`, initialize the SDK with your publishable API key, found on the [Settings page](https://dashboard.radar.com/settings).
+When your app starts, initialize the SDK with your publishable key from the [Settings](https://dashboard.radar.com/settings) page. Call `Radar.initialize()` on the main thread in `Application.onCreate()`, before you call any other Radar method.
 
-Use your `Test Publishable` key for testing and non-production environments. Use your `Live Publishable` key for production environments.
+Use your test publishable key (`prj_test_pk_...`) for the Test environment and your live publishable key (`prj_live_pk_...`) for the Live environment.
 
 <Warning>
-  Note that you should always use your publishable API keys, which are restricted in scope, in the SDK. Do not use your secret API keys, which are unrestricted in scope, in any client-side code.
+  Use publishable keys in client code. Never put a secret key in an app or web page.
 </Warning>
+
+`Radar.initialize()` has three forms:
+
+```kotlin
+Radar.initialize(context: Context?, publishableKey: String? = null)
+Radar.initialize(context: Context, publishableKey: String?, options: RadarInitializeOptions = RadarInitializeOptions())
+Radar.initialize(context: Context, options: RadarInitializeOptions)
+```
+
+For example, in your `Application` class:
 
 <CodeGroup>
 
+```kotlin Kotlin
+import android.app.Application
+import io.radar.sdk.Radar
+
+class MyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        Radar.initialize(this, "prj_test_pk_...")
+    }
+}
+```
+
 ```java Java
+import android.app.Application;
 import io.radar.sdk.Radar;
 
 public class MyApplication extends Application {
@@ -87,24 +109,68 @@ public class MyApplication extends Application {
 }
 ```
 
+</CodeGroup>
+
+Register your `Application` class in the manifest with `android:name` on the `<application>` element.
+
+`Radar.isInitialized()` returns `true` after initialization. `Radar.sdkVersion()` returns the SDK version string.
+
+### Initialization options
+
+`RadarInitializeOptions` is a Kotlin data class. From Java, use `RadarInitializeOptions.Builder`.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `radarReceiver` | `RadarReceiver?` | `null` | A receiver for client-side delivery of events. See [Listening for events with a receiver](#listening-for-events-with-a-receiver). |
+| `locationProvider` | `Radar.RadarLocationServicesProvider` | `GOOGLE` | The location services provider, `GOOGLE` or `HUAWEI`. See [Huawei](#huawei). |
+| `fraud` | `Boolean` | `false` | Whether to enable additional fraud detection signals for location verification. See [Fraud plugin setup](/sdk/fraud). |
+| `customForegroundNotification` | `Notification?` | `null` | A custom notification for the foreground service. |
+| `inAppMessageReceiver` | `RadarInAppMessageReceiver?` | `null` | A receiver for in-app message events. See [In-app messages](#in-app-messages). |
+| `silentPush` | `Boolean` | `false` | Whether to configure silent push. See [Silent push](/sdk/silent-push). |
+| `publishableKey` | `String?` | `null` | The publishable key, when you use `Radar.initialize(context, options)`. |
+| `authToken` | `String?` | `null` | An auth token to use in place of a publishable key, when you use `Radar.initialize(context, options)`. Don't set both. See [Authenticate the SDK with auth tokens](/sdk/fraud#authenticate-the-sdk-with-auth-tokens). |
+| `activity` | `Activity?` | `null` | An activity that overrides the activity from the context. |
+| `networkTimeout` | `kotlin.time.Duration?` | `null` (10 seconds) | Connect and base read timeout for Radar API requests. See [Network timeout](#network-timeout). |
+| `trackVerifiedAutoFailover` | `Boolean` | `true` | Whether `trackVerified()` retries against a secondary host when the primary host doesn't return a response from Radar. Added in 3.32.0. Enabled by default from 4.2.0. |
+| `ipChangeDebounceInterval` | `kotlin.time.Duration?` | `null` (10 seconds) | Minimum interval between deliveries of `RadarVerifiedReceiver.onIpChanged`. Pass `Duration.ZERO` to deliver every detected change. |
+
+`networkTimeout` and `ipChangeDebounceInterval` are persisted when you set them. If you pass `null`, the SDK uses the previously saved value, or the default.
+
+For example, to pass options when you initialize the SDK:
+
+<CodeGroup>
+
 ```kotlin Kotlin
 import io.radar.sdk.Radar
+import io.radar.sdk.RadarInitializeOptions
 
-class MyApplication : Application() {
-    override fun onCreate() {
-        super.onCreate()
-        Radar.initialize(this, "prj_test_pk_...")
-    }
-}
+val options = RadarInitializeOptions(
+    radarReceiver = MyRadarReceiver(),
+    silentPush = false,
+)
+Radar.initialize(this, "prj_test_pk_...", options)
+```
+
+```java Java
+import io.radar.sdk.Radar;
+import io.radar.sdk.RadarInitializeOptions;
+
+RadarInitializeOptions options = new RadarInitializeOptions.Builder()
+    .radarReceiver(new MyRadarReceiver())
+    .silentPush(false)
+    .build();
+Radar.initialize(this, "prj_test_pk_...", options);
 ```
 
 </CodeGroup>
 
+In Kotlin, an older overload also accepts `receiver`, `provider`, and `fraud` as arguments: `Radar.initialize(context, publishableKey, receiver, provider, fraud)`. Its parameters have Kotlin default values and no Java overloads, so from Java use `RadarInitializeOptions.Builder`.
+
 ### Network timeout
 
-To override the default network timeout, set `networkTimeout` on `RadarInitializeOptions` as a Kotlin `Duration`. The extended timeout used for longer-running requests is automatically set to 2.5x this value. Values are clamped to `[1, 300]` seconds.
+To override the default network timeout, set `networkTimeout` on `RadarInitializeOptions` as a Kotlin `Duration`. The extended timeout used for longer-running requests is automatically set to 2.5 times this value. Values are clamped to the range 1 to 300 seconds. For example, to set a 30-second timeout:
 
-```kotlin Kotlin
+```kotlin
 import io.radar.sdk.Radar
 import io.radar.sdk.RadarInitializeOptions
 import kotlin.time.Duration.Companion.seconds
@@ -115,14 +181,34 @@ Radar.initialize(this, "prj_test_pk_...", options)
 
 ## Request permissions
 
-Radar respects [standard Android location permissions](https://developer.android.com/training/permissions/requesting.html).
+Radar respects [standard Android location permissions](https://developer.android.com/training/permissions/requesting.html). The SDK doesn't show permission prompts. Your app requests runtime permissions.
 
-For foreground tracking or trip tracking with continuous mode, Radar requires the `ACCESS_FINE_LOCATION` permission for precise location and/or the `ACCESS_COARSE_LOCATION` permission for [approximate location](https://developer.android.com/about/versions/12/approximate-location). These permissions are automatically added by the SDK manifest along with the `INTERNET`, `ACCESS_NETWORK_STATE`, `FOREGROUND_SERVICE`, and `RECEIVE_BOOT_COMPLETED` permissions.
+### Manifest requirements
 
-For background tracking or geofencing with responsive mode, and if targeting API level `29` or above, Radar also requires the new `ACCESS_BACKGROUND_LOCATION` permission. You must add the `ACCESS_BACKGROUND_LOCATION` permission to your manifest manually. To start a [foreground service](https://developer.android.com/training/location/permissions#foreground) or use the `continuous` tracking preset, you must add the `FOREGROUND_SERVICE_LOCATION` permission. In Android SDK 4.0.0 and later, you must also [declare `RadarForegroundService`](#foreground-services-and-google-play-policy). Add the permissions to your manifest:
+The SDK manifest merges these permissions into your app automatically:
+
+- `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION`
+- `INTERNET` and `ACCESS_NETWORK_STATE`
+- `RECEIVE_BOOT_COMPLETED`
+- `FOREGROUND_SERVICE`
+
+It also declares the SDK's own components: `RadarLocationReceiver`, `RadarBootReceiver` (which restores tracking after a reboot or an app update), and the `RadarJobScheduler` job service. You don't declare these yourself.
+
+Add these to your app manifest yourself, only when you use the feature:
+
+| Feature | What to add |
+| --- | --- |
+| Background tracking (`RESPONSIVE` or `EFFICIENT`) on API level 29 and later | `ACCESS_BACKGROUND_LOCATION` permission |
+| Foreground service (`CONTINUOUS` or `foregroundServiceEnabled`) | `FOREGROUND_SERVICE_LOCATION` permission and, in Android SDK 4.0.0 and later, the `RadarForegroundService` declaration. See [Foreground services and Google Play policy](#foreground-services-and-google-play-policy). |
+| [Beacons](#beacons) | Bluetooth permissions |
+| [Location metadata](#location-metadata) | `ACTIVITY_RECOGNITION` permissions |
+| [Silent push](/sdk/silent-push) | `RadarFirebaseMessagingService` declaration |
+
+A manifest for background tracking and a foreground service:
 
 ```xml
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -131,206 +217,142 @@ For background tracking or geofencing with responsive mode, and if targeting API
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <application>
+        <service
+            android:name="io.radar.sdk.RadarForegroundService"
+            android:foregroundServiceType="location"
+            tools:targetApi="26" />
+    </application>
 </manifest>
 ```
 
-To request foreground and background permissions:
+### Runtime permissions
 
-<CodeGroup>
+| What you call | Required runtime permission |
+| --- | --- |
+| `Radar.trackOnce()`, `Radar.trackVerified()`, and other foreground calls | `ACCESS_FINE_LOCATION` for precise location, or `ACCESS_COARSE_LOCATION` for [approximate location](https://developer.android.com/about/versions/12/approximate-location) |
+| `Radar.startTracking()` or a trip with `CONTINUOUS`, while the foreground service notification is shown | Foreground location permission |
+| `Radar.startTracking()` with `RESPONSIVE` or `EFFICIENT` | `ACCESS_BACKGROUND_LOCATION` as well, on API level 29 and later |
 
-```java Java
-import android.Manifest;
-import android.app.AlertDialog;
-import android.content.DialogInterface;
-import android.content.pm.PackageManager;
-import android.os.Build;
+Request foreground location permission first. On Android 11 (API level 30) and later, request `ACCESS_BACKGROUND_LOCATION` in a separate request after the user grants foreground permission. The system sends the user to a settings screen to choose **Allow all the time**.
 
-import androidx.core.app.ActivityCompat;
+For when to ask, how to explain each prompt, and how to handle denial and approximate location, see [Location permissions](/fundamentals/location-permissions).
 
-import io.radar.sdk.Radar;
-
-public class MainActivity extends AppCompatActivity {
-  private final int FOREGROUND_LOCATION_PERMISSION_CODE = 1;
-  private final int BACKGROUND_LOCATION_PERMISSION_CODE = 2;
-
-  protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    Radar.initialize(this, "prj_test_pk_..");
-    requestLocationPermissions();
-  }
-
-  private void requestLocationPermissions() {
-    if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-      if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
-        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_BACKGROUND_LOCATION}, BACKGROUND_LOCATION_PERMISSION_CODE);
-      } else {
-        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, FOREGROUND_LOCATION_PERMISSION_CODE);
-      }
-    }
-  }
-
-  @Override
-  public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-    if (requestCode == FOREGROUND_LOCATION_PERMISSION_CODE) {
-      if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        askPermissionForBackgroundUsage();
-      }
-      return;
-    }
-  }
-
-  private void askPermissionForBackgroundUsage() {
-    if (ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
-      new AlertDialog.Builder(this)
-        .setTitle("Background location permissions needed")
-        .setMessage("Background location permissions needed, tap \"Allow all the time\" on the next screen")
-        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
-          @Override
-          public void onClick(DialogInterface dialog, int which) {
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION}, BACKGROUND_LOCATION_PERMISSION_CODE);
-          }
-        })
-        .create()
-        .show();
-    }
-  }
-}
-```
-
-```kotlin Kotlin
-import android.Manifest
-import android.app.AlertDialog
-import android.content.pm.PackageManager
-import android.os.Build
-
-import androidx.core.app.ActivityCompat
-
-import io.radar.sdk.Radar
-
-class MainActivity : AppCompatActivity() {
-  private val foregroundLocationPermissionsRequestCode = 1
-  private val backgroundLocationPermissionsRequestCode = 2
-
-  override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
-    Radar.initialize(this, "prj_test_pk_...")
-    requestLocationPermissions()
-  }
-
-  private fun requestLocationPermissions() {
-    if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-      if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
-        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_BACKGROUND_LOCATION), backgroundLocationPermissionsRequestCode)
-      } else {
-        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION), foregroundLocationPermissionsRequestCode)
-      }
-    }
-  }
-
-  override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-    super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-    if (requestCode == foregroundLocationPermissionsRequestCode && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-      if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
-        AlertDialog.Builder(this)
-          .setTitle("Background location permissions needed")
-          .setMessage("Background location permission needed, tap \"Allow all the time\" on the next screen")
-          .setPositiveButton(
-            "OK"
-          ) { _, _ ->
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION), backgroundLocationPermissionsRequestCode)
-          }
-          .create()
-          .show()
-      }
-    }
-  }
-}
-```
-
-</CodeGroup>
-
-<Info>
-  Build and run the app to make sure permissions prompts are displayed!
-</Info>
-
-<Info>
-  Not seeing permissions prompts? First, make sure you've added permissions to your manifest. Second, check your device settings to make sure you haven't already granted location permissions.
-</Info>
+If a permission prompt doesn't appear, check that the permission is in your merged manifest and that the device hasn't already recorded a choice for your app in Settings.
 
 ## Foreground tracking
 
-Once the user has granted foreground permissions, you can track the user's location in the foreground.
+Once the user has granted foreground permission, you can track the user's location in the foreground.
+
+```kotlin
+Radar.trackOnce(callback: RadarTrackCallback? = null)
+Radar.trackOnce(desiredAccuracy: RadarTrackingOptionsDesiredAccuracy, beacons: Boolean, callback: RadarTrackCallback? = null)
+```
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `desiredAccuracy` | `RadarTrackingOptions.RadarTrackingOptionsDesiredAccuracy` | `HIGH`, `MEDIUM`, `LOW`, or `NONE`. `trackOnce(callback)` uses `MEDIUM`, or `HIGH` on an emulator. |
+| `beacons` | `Boolean` | Whether to range beacons. `trackOnce(callback)` uses `false`. |
+| `callback` | `RadarTrackCallback?` | Optional. `onComplete` receives `(status: RadarStatus, location: Location?, events: Array<RadarEvent>?, user: RadarUser?)`. In Kotlin, you can pass a lambda instead. |
 
 To track the user's location in the foreground, call:
 
 <CodeGroup>
 
+```kotlin Kotlin
+Radar.trackOnce { status, location, events, user ->
+    if (status == Radar.RadarStatus.SUCCESS) {
+        // do something with location, events, user
+    } else {
+        Log.w("Radar", "trackOnce failed: $status")
+    }
+}
+```
+
 ```java Java
-Radar.trackOnce(new RadarTrackCallback() {
+Radar.trackOnce(new Radar.RadarTrackCallback() {
     @Override
-    public void onComplete(RadarStatus status, Location location, RadarEvent[] events, RadarUser user) {
+    public void onComplete(@NonNull Radar.RadarStatus status, @Nullable Location location, @Nullable RadarEvent[] events, @Nullable RadarUser user) {
         // do something with location, events, user
     }
 });
 ```
 
-```kotlin Kotlin
-Radar.trackOnce { status, location, events, user ->
-    // do something with location, events, user
+</CodeGroup>
+
+These calls are subject to [rate limits](/api/fundamentals).
+
+The request status can be:
+
+| Status | Meaning |
+| --- | --- |
+| `RadarStatus.SUCCESS` | Success |
+| `RadarStatus.ERROR_PUBLISHABLE_KEY` | SDK not initialized |
+| `RadarStatus.ERROR_PERMISSIONS` | Location permissions not granted |
+| `RadarStatus.ERROR_LOCATION` | Location services error or timeout (20 seconds) |
+| `RadarStatus.ERROR_BLUETOOTH` | Beacon ranging error or timeout (5 seconds) |
+| `RadarStatus.ERROR_NETWORK` | Network error or timeout (10 seconds by default; see [network timeout](#network-timeout)) |
+| `RadarStatus.ERROR_BAD_REQUEST` | Bad request (missing or invalid params) |
+| `RadarStatus.ERROR_UNAUTHORIZED` | Unauthorized (invalid API key) |
+| `RadarStatus.ERROR_PAYMENT_REQUIRED` | Payment required (organization disabled or usage exceeded) |
+| `RadarStatus.ERROR_FORBIDDEN` | Forbidden (insufficient permissions or no beta access) |
+| `RadarStatus.ERROR_NOT_FOUND` | Not found |
+| `RadarStatus.ERROR_PLUGIN` | Missing or incompatible plugin, such as the fraud plugin for `trackVerified()` |
+| `RadarStatus.ERROR_RATE_LIMIT` | Too many requests (rate limit exceeded) |
+| `RadarStatus.ERROR_SERVER` | Internal server error |
+| `RadarStatus.ERROR_UNKNOWN` | Unknown error |
+
+To check your integration, build and run the app, then find your user on the [Users](https://dashboard.radar.com/geofencing/users) page. To generate an event, first create a geofence around your location on the [Geofences](https://dashboard.radar.com/geofencing/geofences) page. If the user doesn't appear, check `status` in the callback.
+
+### Get location
+
+To get the device's current location without sending it to Radar, call:
+
+```kotlin
+Radar.getLocation(callback: RadarLocationCallback? = null)
+Radar.getLocation(desiredAccuracy: RadarTrackingOptionsDesiredAccuracy, callback: RadarLocationCallback? = null)
+```
+
+`onComplete` receives `(status: RadarStatus, location: Location?, stopped: Boolean)`. For example:
+
+```kotlin
+Radar.getLocation(RadarTrackingOptions.RadarTrackingOptionsDesiredAccuracy.HIGH) { status, location, stopped ->
+    // do something with location
 }
 ```
 
-</CodeGroup>
-
-You may provide an optional instance of `RadarTrackCallback` with an implementation of `onComplete()` that receives the request status, the user's location, the events generated, if any, and the user. The request status can be:
-
-- **`RadarStatus.SUCCESS`**: success
-- **`RadarStatus.ERROR_PUBLISHABLE_KEY`**: SDK not initialized
-- **`RadarStatus.ERROR_PERMISSIONS`**: location permissions not granted
-- **`RadarStatus.ERROR_LOCATION`**: location services error or timeout (10 seconds)
-- **`RadarStatus.ERROR_NETWORK`**: network error or timeout (10 seconds)
-- **`RadarStatus.ERROR_BAD_REQUEST`**: bad request (missing or invalid params)
-- **`RadarStatus.ERROR_UNAUTHORIZED`**: unauthorized (invalid API key)
-- **`RadarStatus.ERROR_PAYMENT_REQUIRED`**: payment required (organization disabled or usage exceeded)
-- **`RadarStatus.ERROR_FORBIDDEN`**: forbidden (insufficient permissions)
-- **`RadarStatus.ERROR_NOT_FOUND`**: not found
-- **`RadarStatus.ERROR_RATE_LIMIT`**: too many requests ([rate limit](/api#track) exceeded)
-- **`RadarStatus.ERROR_SERVER`**: internal server error
-- **`RadarStatus.ERROR_UNKNOWN`**: unknown error
-
-<Warning>
-  Build and run the app, then find your user on the [Users page](https://dashboard.radar.com/geofencing/users)! To trigger an event, you'll need to [create a geofence](https://dashboard.radar.com/geofencing/geofences) if you haven't already. Not seeing your user on the Users page? Check `status` in the callback to see what went wrong.
-</Warning>
-
 ## Background tracking for geofencing
 
-Once you have initialized the SDK and the user has authorized background permissions, you can start tracking the user's location in the background.
+Once you have initialized the SDK and the user has authorized background permission, you can start tracking the user's location in the background.
 
-The SDK supports custom tracking options as well as three presets.
+The SDK supports custom tracking options as well as three presets. See [Tracking options](/sdk/tracking).
 
-For geofencing, we recommend using `RadarTrackingOptions.RESPONSIVE`. This preset detects whether the device is stopped or moving. When moving, it tells the SDK to send location updates to the server every 2-3 minutes. When stopped, it tells the SDK to shut down to save battery. Once stopped, the device will need to move more than 100 meters to wake up and start moving again.
+For geofencing, use `RadarTrackingOptions.RESPONSIVE`. This preset detects whether the device is stopped or moving. When moving, it tells the SDK to send location updates to the server about every 2.5 minutes. When stopped, it tells the SDK to shut down to save battery. Once stopped, the device needs to move more than 100 meters to wake up and start moving again.
 
-Assuming the user has authorized background permissions, background tracking will work even if the app has been backgrounded or killed, as Android location services will wake up the app to deliver events and the SDK uses `JobScheduler` to schedule network requests.
+With background permission, background tracking works even if the app has been backgrounded or terminated by the system, because Android location services wake up the app to deliver location updates, and the SDK uses `JobScheduler` to schedule network requests.
 
-<Warning>
-  Note that location updates may be delayed significantly by [Doze Mode](https://developer.android.com/training/monitoring-device-state/doze-standby), [App Standby](https://developer.android.com/training/monitoring-device-state/doze-standby), and [Background Location Limits](https://developer.android.com/about/versions/oreo/background-location-limits), or if the device has connectivity issues, low battery, or wi-fi disabled.**_In practice, location updates may be sent to the server every 5-10 minutes while moving, faster if you power on the screen or if other apps are requesting location, and slower otherwise._** These restrictions apply to all apps using location services, not just Radar.
-</Warning>
+Android can delay location updates significantly because of [Doze and App Standby](https://developer.android.com/training/monitoring-device-state/doze-standby) and [background location limits](https://developer.android.com/about/versions/oreo/background-location-limits), or if the device has connectivity issues, low battery, or Wi-Fi turned off. In practice, location updates may be sent to the server every 5 to 10 minutes while moving, faster if the screen is on or if other apps are requesting location, and slower otherwise. These restrictions apply to all apps that use location services.
 
-<Info>
-  Though we recommend using presets for most use cases, you can modify the presets. See the [tracking options reference](/sdk/tracking).
-</Info>
+The tracking methods are:
+
+```kotlin
+Radar.startTracking(options: RadarTrackingOptions)
+Radar.stopTracking()
+Radar.isTracking(): Boolean
+Radar.getTrackingOptions(): RadarTrackingOptions
+Radar.isUsingRemoteTrackingOptions(): Boolean
+```
 
 To start tracking for geofencing, call:
 
 <CodeGroup>
 
-```java Java
-Radar.startTracking(RadarTrackingOptions.RESPONSIVE);
-```
-
 ```kotlin Kotlin
 Radar.startTracking(RadarTrackingOptions.RESPONSIVE)
+```
+
+```java Java
+Radar.startTracking(RadarTrackingOptions.RESPONSIVE);
 ```
 
 </CodeGroup>
@@ -339,47 +361,43 @@ To determine whether tracking has been started, call:
 
 <CodeGroup>
 
-```java Java
-Radar.isTracking();
-```
-
 ```kotlin Kotlin
 Radar.isTracking()
 ```
 
+```java Java
+Radar.isTracking();
+```
+
 </CodeGroup>
 
-To stop tracking (e.g., when the user logs out), call:
+To stop tracking, for example when the user logs out, call:
 
 <CodeGroup>
-
-```java Java
-Radar.stopTracking();
-```
 
 ```kotlin Kotlin
 Radar.stopTracking()
 ```
 
+```java Java
+Radar.stopTracking();
+```
+
 </CodeGroup>
 
-You only need to call these methods once, as these settings will be persisted across app sessions.
+You only need to call these methods once. The tracking state and options persist across app sessions.
 
-<warning>
-  To test, go for a walk or a drive! Not seeing location updates or events? Remember that, once stopped, the device will need to move more than 100 meters to wake up and start moving again. Also, check your device settings to make sure you've granted background location permissions.
-</warning>
+`Radar.getTrackingOptions()` returns the options in effect. If you set [remote tracking options](/sdk/remote-configuration#remotely-set-tracking-options) in the dashboard, they override the options you pass to `startTracking`, and `Radar.isUsingRemoteTrackingOptions()` returns `true`.
 
-<info>
-  Don't forget! You can always find your user on the [Users page](https://dashboard.radar.com/geofencing/users) or events on the [Events page](https://dashboard.radar.com/geofencing/events). To trigger an event, you'll need to [create a geofence](https://dashboard.radar.com/geofencing/geofences) if you haven't already.
-</info>
+To test, go for a walk or a drive. If you don't see location updates or events, check two things: once stopped, the device needs to move more than 100 meters to wake up, and the app needs background location permission in the device settings. Find your user on the [Users](https://dashboard.radar.com/geofencing/users) page and events on the [Events](https://dashboard.radar.com/geofencing/events) page.
 
 ### Foreground services and Google Play policy
 
-Geofencing does not require a [foreground service](https://developer.android.com/guide/components/foreground-services). The SDK registers nearby geofences with the Android [Geofence API](https://developer.android.com/develop/sensors-and-location/location/geofencing), and Android wakes up the app to deliver geofence transitions. The `RESPONSIVE` and `EFFICIENT` presets never start a foreground service.
+Geofencing doesn't require a [foreground service](https://developer.android.com/guide/components/foreground-services). The SDK registers nearby geofences with the Android [Geofence API](https://developer.android.com/develop/sensors-and-location/location/geofencing), and Android wakes up the app to deliver geofence transitions. The `RESPONSIVE` and `EFFICIENT` presets never start a foreground service.
 
 Google Play's [updated location permissions policy](https://support.google.com/googleplay/android-developer/answer/16926792) no longer accepts geofencing as a use case for foreground services. Only enable a foreground service, with the `CONTINUOUS` preset or `foregroundServiceEnabled`, for use cases that Google Play still allows, such as [trips](#background-tracking-for-trips), navigation, or user-initiated location sharing. You must declare foreground service usage in the Play Console.
 
-Starting in Android SDK 4.0.0, the SDK manifest does not declare `RadarForegroundService`. To use the `CONTINUOUS` preset or `foregroundServiceEnabled`, declare the service and the `FOREGROUND_SERVICE_LOCATION` permission in your app manifest:
+Starting in Android SDK 4.0.0, the SDK manifest doesn't declare `RadarForegroundService`. To use the `CONTINUOUS` preset or `foregroundServiceEnabled`, declare the service and the `FOREGROUND_SERVICE_LOCATION` permission in your app manifest:
 
 ```xml
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -394,7 +412,7 @@ Starting in Android SDK 4.0.0, the SDK manifest does not declare `RadarForegroun
 </manifest>
 ```
 
-If the service is not declared, the SDK logs an error and tracks without a foreground service. This also applies when [remote tracking options](/sdk/remote-configuration) enable the foreground service.
+If the service isn't declared, the SDK logs an error and tracks without a foreground service. This also applies when [remote tracking options](/sdk/remote-configuration) enable the foreground service.
 
 In Android SDK versions before 4.0.0, the SDK manifest declares `RadarForegroundService`. If your app never uses the foreground service, remove it from your merged manifest:
 
@@ -411,111 +429,94 @@ In Android SDK versions before 4.0.0, the SDK manifest declares `RadarForeground
 
 ## Background tracking for trips
 
-For trips, we recommend using `RadarTrackingOptions.continuous`. This preset tells the SDK to send location updates to the server every 30 seconds, regardless of whether the device is moving.
+For trips, use `RadarTrackingOptions.CONTINUOUS`. This preset tells the SDK to send location updates to the server every 30 seconds, regardless of whether the device is moving.
 
-To avoid [Background Location Limits](https://developer.android.com/about/versions/oreo/background-location-limits), the continuous preset starts a [foreground service](https://developer.android.com/guide/components/foreground-services) with a notification while tracking. When the foreground service with a notification is running, only foreground permissions are required for tracking. See the [tracking options reference](/sdk/tracking#android-foreground-service-options) to adjust the foreground service notification copy and behavior. In Android SDK 4.0.0 and later, you must [declare `RadarForegroundService`](#foreground-services-and-google-play-policy) in your app manifest. If you publish on Google Play, declare foreground service usage in the Play Console.
+To avoid [background location limits](https://developer.android.com/about/versions/oreo/background-location-limits), the continuous preset starts a [foreground service](https://developer.android.com/guide/components/foreground-services) with a notification while tracking. While the foreground service notification is shown, only foreground permission is required for tracking. To adjust the foreground service notification copy and behavior, see [Android foreground service options](/sdk/tracking#android-foreground-service-options). In Android SDK 4.0.0 and later, you must [declare `RadarForegroundService`](#foreground-services-and-google-play-policy) in your app manifest. If you publish on Google Play, declare foreground service usage in the Play Console.
 
-Tracking for the duration of a trip is started or updated by including tracking options in the `startTrip` call:
+To start or update tracking for the duration of a trip, pass tracking options to `Radar.startTrip()`:
 
 <CodeGroup>
 
-```java Java
-Radar.startTrip(tripOptions, RadarTrackingOptions.CONTINUOUS, new Radar.RadarTripCallback() {
-  @Override
-    public void onComplete(@NonNull Radar.RadarStatus status, @Nullable RadarTrip trip, @Nullable RadarEvent[] events) {
-      if (status == Radar.RadarStatus.SUCCESS) {
+```kotlin Kotlin
+val tripOptions = RadarTripOptions(
+    externalId = "order-299",
+    destinationGeofenceTag = "store",
+    destinationGeofenceExternalId = "store-42",
+    mode = Radar.RadarRouteMode.CAR,
+)
+
+Radar.startTrip(tripOptions, RadarTrackingOptions.CONTINUOUS) { status, trip, events ->
+    if (status == Radar.RadarStatus.SUCCESS) {
         // do something
-      } else {
+    } else {
         // handle error
-      }
     }
-  });
+}
 ```
 
-```kotlin Kotlin
-Radar.startTrip(tripOptions, RadarTrackingOptions.CONTINUOUS) { status, trip, events ->
-  if (status == Radar.RadarStatus.SUCCESS) {
-    // do something
-  } else {
-    // handle error
-  }
-}
+```java Java
+RadarTripOptions tripOptions = new RadarTripOptions(
+    "order-299", // externalId
+    null, // metadata
+    "store", // destinationGeofenceTag
+    "store-42", // destinationGeofenceExternalId
+    Radar.RadarRouteMode.CAR, // mode
+    null, // scheduledArrivalAt
+    0, // approachingThreshold
+    true, // startTracking
+    null // legs
+);
+
+Radar.startTrip(tripOptions, RadarTrackingOptions.CONTINUOUS, new Radar.RadarTripCallback() {
+    @Override
+    public void onComplete(@NonNull Radar.RadarStatus status, @Nullable RadarTrip trip, @Nullable RadarEvent[] events) {
+        if (status == Radar.RadarStatus.SUCCESS) {
+            // do something
+        } else {
+            // handle error
+        }
+    }
+});
 ```
 
 </CodeGroup>
 
-If tracking was disabled before the trip started, it will stop after the trip ends. Otherwise, it will revert to the tracking options in use before the trip started:
+If tracking wasn't started before the trip started, it stops after the trip ends. Otherwise, it reverts to the tracking options in use before the trip started:
 
-<CodeGroup>
-
-```java Java
-// Complete trip
-Radar.completeTrip(new Radar.RadarTripCallback() {
-    @Override
-    public void onComplete(Radar.RadarStatus radarStatus, RadarTrip radarTrip, RadarEvent[] radarEvents) {
-        // do something
-    }
-});
-
-// Cancel trip
-Radar.cancelTrip(new Radar.RadarTripCallback() {
-    @Override
-    public void onComplete(Radar.RadarStatus radarStatus, RadarTrip radarTrip, RadarEvent[] radarEvents) {
-        // do something
-    }
-});
-```
-
-```kotlin Kotlin
-// Complete trip
+```kotlin
+// complete trip
 Radar.completeTrip { status, trip, events ->
     // do something
 }
 
-// Cancel trip
+// cancel trip
 Radar.cancelTrip { status, trip, events ->
     // do something
 }
 ```
 
-</CodeGroup>
-
-Learn more about starting, completing, and canceling trips in the [trip tracking documentation](/geofencing/trips).
-
-<info>
-  Don't forget! You can always find your user on the [Users page](https://dashboard.radar.com/geofencing/users) or events on the [Events page](https://dashboard.radar.com/geofencing/events). To trigger an event, you'll need to [create a geofence](https://dashboard.radar.com/geofencing/geofences) or [start a trip](/geofencing/trips) if you haven't already.
-</info>
+For every trip method, see [Trips](#trips). For the workflow, see [Track pickups, deliveries, and workers](/geofencing/trips).
 
 ## Mock tracking for testing
 
-Can't go for a walk or a drive? You can simulate a sequence of location updates. For example, to simulate a sequence of 10 location updates every 3 seconds by car from an origin to a destination, call:
+You can simulate a sequence of location updates without moving the device.
 
-<CodeGroup>
-
-```java Java
-Location origin = new Location("mock");
-origin.setLatitude(40.78382);
-origin.setLongitude(-73.97536);
-
-Location destination = new Location("mock");
-destination.setLatitude(40.70390);
-destination.setLongitude(-73.98670);
-
-Radar.mockTracking(
-    origin,
-    destination,
-    Radar.RadarRouteMode.CAR,
-    10,
-    3,
-    new RadarTrackCallback() {
-        @Override
-        public void onComplete(RadarStatus status, Location location, RadarEvent[] events, RadarUser user) {
-            // do something with location, events, user
-        }
-    });
+```kotlin
+Radar.mockTracking(origin: Location, destination: Location, mode: RadarRouteMode, steps: Int, interval: Int, callback: RadarTrackCallback?)
 ```
 
-```kotlin Kotlin
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `origin` | `Location` | The origin. |
+| `destination` | `Location` | The destination. |
+| `mode` | `Radar.RadarRouteMode` | The travel mode: `FOOT`, `BIKE`, `CAR`, `TRUCK`, or `MOTORBIKE`. |
+| `steps` | `Int` | The number of mock location updates. |
+| `interval` | `Int`, seconds | The interval between mock location updates. A number between 1 and 60. |
+| `callback` | `RadarTrackCallback?` | Optional. Called for each mock location update. |
+
+For example, to simulate a sequence of 10 location updates every 3 seconds by car from an origin to a destination, call:
+
+```kotlin
 val origin = Location("mock")
 origin.latitude = 40.78382
 origin.longitude = -73.97536
@@ -529,20 +530,19 @@ Radar.mockTracking(
     destination,
     Radar.RadarRouteMode.CAR,
     10,
-    3) { status, location, events, user ->
+    3
+) { status, location, events, user ->
     // do something with location, events, user
 }
 ```
 
-</CodeGroup>
-
-<info>
-  Don't forget! You can always find your user on the [Users page](https://dashboard.radar.com/geofencing/users) or events on the [Events page](https://dashboard.radar.com/geofencing/events). To trigger an event, you'll need to [create a geofence](https://dashboard.radar.com/geofencing/geofences) if you haven't already.
-</info>
+See [Test, troubleshoot, and go live](/fundamentals/testing-and-launch).
 
 ## Location metadata
 
-The SDK can also pass along information like motion activity detection, speed and heading via the location metadata field. Turn on `useMotion` in your `sdkConfiguration` to enable this feature. Include permissions for motion activity detection in your manifest
+The SDK can send motion activity, speed, heading, and pressure with location updates. Turn on the `useMotion` or `usePressure` [tracking option](/sdk/tracking#android-options), in code or with [remote tracking options](/sdk/remote-configuration#remotely-set-tracking-options).
+
+To collect motion activity, add the activity recognition permissions to your manifest:
 
 ```xml
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -551,101 +551,47 @@ The SDK can also pass along information like motion activity detection, speed an
 </manifest>
 ```
 
-You will need to manually prompt for motion permissions with
+Then request the runtime permission from your activity. The SDK doesn't prompt for it.
 
-<CodeGroup>
-
-```java Java
-ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, ACTIVITY_RECOGNITION_PERMISSION_CODE);
-```
-
-```kotlin Kotlin
+```kotlin
 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACTIVITY_RECOGNITION), ACTIVITY_RECOGNITION_PERMISSION_CODE)
 ```
 
-</CodeGroup>
+The detected activity is available as `user.activityType`, one of `UNKNOWN`, `STATIONARY`, `FOOT`, `RUN`, `BIKE`, or `CAR`.
 
 ## Listening for events with a receiver
 
-To listen for events, location updates, and errors client-side, create a class that extends `RadarReceiver`. Then, pass in an instance of your receiver when initializing the SDK in application `onCreate()`.
+To listen for events, location updates, and errors client-side, create a class that extends `RadarReceiver`. Then pass an instance of your receiver when you initialize the SDK in `Application.onCreate()`, or call `Radar.setReceiver()`.
+
+```kotlin
+Radar.setReceiver(receiver: RadarReceiver?)
+```
+
+`RadarReceiver` is an abstract class. You must implement all five methods:
+
+| Method | Called when |
+| --- | --- |
+| `onEventsReceived(context: Context, events: Array<RadarEvent>, user: RadarUser?)` | Events were received. |
+| `onLocationUpdated(context: Context, location: Location, user: RadarUser)` | The user's location was updated and synced to the server. |
+| `onClientLocationUpdated(context: Context, location: Location, stopped: Boolean, source: Radar.RadarLocationSource)` | The client's location was updated but not necessarily synced to the server. |
+| `onError(context: Context, status: Radar.RadarStatus)` | A request failed. |
+| `onLog(context: Context, message: String)` | A debug log message was received. |
+
+For example, to set a receiver when you initialize the SDK:
 
 <CodeGroup>
 
-```java Java
-import io.radar.sdk.Radar;
-
-public class MyApplication extends Application {
-
-    @Override
-    public void onCreate() {
-        super.onCreate();
-
-        MyRadarReceiver receiver = new MyRadarReceiver();
-        Radar.initialize(this, "prj_test_pk_...", receiver, Radar.RadarLocationServicesProvider.GOOGLE);
-    }
-}
-```
-
 ```kotlin Kotlin
+import android.app.Application
+import android.content.Context
+import android.location.Location
 import io.radar.sdk.Radar
+import io.radar.sdk.RadarInitializeOptions
+import io.radar.sdk.RadarReceiver
+import io.radar.sdk.model.RadarEvent
+import io.radar.sdk.model.RadarUser
 
-class MyApplication : Application() {
-    override fun onCreate() {
-        super.onCreate()
-
-        val receiver = MyRadarReceiver()
-        Radar.initialize(this, "prj_test_pk_...", receiver, Radar.RadarLocationServicesProvider.GOOGLE)
-    }
-}
-```
-
-</CodeGroup>
-
-<warning>
-  The receiver should be instantiated only once and set before tracking begins.
-</warning>
-
-Your receiver should implement the following:
-
-<CodeGroup>
-
-```java Java
-public class MyRadarReceiver extends RadarReceiver {
-
-    @Override
-    public void onEventsReceived(Context context, RadarEvent[] events, RadarUser user) {
-        // do something with events, user
-    }
-
-    @Override
-    public void onLocationUpdated(Context context, Location location, RadarUser user) {
-        // do something with location, user
-    }
-
-    @Override
-    public void onClientLocationUpdated(Context context, Location location, boolean stopped, RadarLocationSource source) {
-        // do something with location, stopped, source
-    }
-
-    @Override
-    public void onError(Context context, RadarStatus status) {
-        // do something with status
-    }
-
-    @Override
-    public void onLog(Context context, String message) {
-        // print message for debug logs
-    }
-
-    @Override
-    public void onLocationPermissionStatusUpdated(context: Context,status: RadarLocationPermissionStatus) {
-      // do something with location permission status
-    }
-}
-```
-
-```kotlin Kotlin
-class MyRadarReceiver: RadarReceiver() {
+class MyRadarReceiver : RadarReceiver() {
 
     override fun onEventsReceived(context: Context, events: Array<RadarEvent>, user: RadarUser?) {
         // do something with events, user
@@ -655,11 +601,11 @@ class MyRadarReceiver: RadarReceiver() {
         // do something with location, user
     }
 
-    override fun onClientLocationUpdated(context: Context, location: Location, stopped: Boolean, source: RadarLocationSource) {
+    override fun onClientLocationUpdated(context: Context, location: Location, stopped: Boolean, source: Radar.RadarLocationSource) {
         // do something with location, stopped, source
     }
 
-    override fun onError(context: Context, status: RadarStatus) {
+    override fun onError(context: Context, status: Radar.RadarStatus) {
         // do something with status
     }
 
@@ -667,34 +613,96 @@ class MyRadarReceiver: RadarReceiver() {
         // print message for debug logs
     }
 
-    overide fun onLocationPermissionStatusUpdated(context: Context,status: RadarLocationPermissionStatus) {
-      // do something with location permission status
+}
+
+class MyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+
+        val options = RadarInitializeOptions(radarReceiver = MyRadarReceiver())
+        Radar.initialize(this, "prj_test_pk_...", options)
+    }
+}
+```
+
+```java Java
+import android.app.Application;
+import android.content.Context;
+import android.location.Location;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import io.radar.sdk.Radar;
+import io.radar.sdk.RadarInitializeOptions;
+import io.radar.sdk.RadarReceiver;
+import io.radar.sdk.model.RadarEvent;
+import io.radar.sdk.model.RadarUser;
+
+public class MyRadarReceiver extends RadarReceiver {
+
+    @Override
+    public void onEventsReceived(@NonNull Context context, @NonNull RadarEvent[] events, @Nullable RadarUser user) {
+        // do something with events, user
+    }
+
+    @Override
+    public void onLocationUpdated(@NonNull Context context, @NonNull Location location, @NonNull RadarUser user) {
+        // do something with location, user
+    }
+
+    @Override
+    public void onClientLocationUpdated(@NonNull Context context, @NonNull Location location, boolean stopped, @NonNull Radar.RadarLocationSource source) {
+        // do something with location, stopped, source
+    }
+
+    @Override
+    public void onError(@NonNull Context context, @NonNull Radar.RadarStatus status) {
+        // do something with status
+    }
+
+    @Override
+    public void onLog(@NonNull Context context, @NonNull String message) {
+        // print message for debug logs
+    }
+
+}
+
+public class MyApplication extends Application {
+    @Override
+    public void onCreate() {
+        super.onCreate();
+
+        RadarInitializeOptions options = new RadarInitializeOptions.Builder()
+            .radarReceiver(new MyRadarReceiver())
+            .build();
+        Radar.initialize(this, "prj_test_pk_...", options);
     }
 }
 ```
 
 </CodeGroup>
 
-<info>
-  To listen for events server-side instead, add a [webhook](/integrations/webhooks) or enable an [integration](/integrations/integrations).
-</info>
+### Receiver lifecycle
+
+- Create the receiver once and set it before tracking begins.
+- Set the receiver in `Application.onCreate()`, not in an activity. When Android starts your app process in the background to deliver a location update or geofence transition, `Application.onCreate()` runs and no activity is created.
+- `Radar.setReceiver()` may be called before `Radar.initialize()`. The SDK keeps the receiver and uses it when it initializes. Pass `null` to clear the receiver.
+- Every callback receives a `Context`. Use it instead of holding a reference to an activity.
+
+`RadarLocationSource` is one of `FOREGROUND_LOCATION`, `BACKGROUND_LOCATION`, `MANUAL_LOCATION`, `GEOFENCE_ENTER`, `GEOFENCE_DWELL`, `GEOFENCE_EXIT`, `MOCK_LOCATION`, `BEACON_ENTER`, `BEACON_EXIT`, or `UNKNOWN`.
+
+To listen for events server-side instead, add a [webhook](/integrations/webhooks) or enable an [integration](/integrations/integrations).
 
 ## Manual tracking
 
-If you want to manage location services yourself, you can manually update the user's location instead by calling:
+If you manage location services yourself, you can update the user's location manually. Pass a `Location` instance with a valid latitude, longitude, and accuracy to:
+
+```kotlin
+Radar.trackOnce(location: Location, callback: RadarTrackCallback?)
+```
+
+For example:
 
 <CodeGroup>
-
-```java Java
-Radar.trackOnce(
-    location,
-    new RadarTrackCallback() {
-        @Override
-        public void onComplete(RadarStatus status, Location location, RadarEvent[] events, RadarUser user) {
-            // do something with location, events, user
-        }
-    });
-```
 
 ```kotlin Kotlin
 Radar.trackOnce(location) { status, location, events, user ->
@@ -702,67 +710,142 @@ Radar.trackOnce(location) { status, location, events, user ->
 }
 ```
 
-</CodeGroup>
+```java Java
+Radar.trackOnce(location, new Radar.RadarTrackCallback() {
+    @Override
+    public void onComplete(@NonNull Radar.RadarStatus status, @Nullable Location location, @Nullable RadarEvent[] events, @Nullable RadarUser user) {
+        // do something with location, events, user
+    }
+});
+```
 
-where `location` is a `Location` instance with a valid latitude, longitude, and accuracy.
+</CodeGroup>
 
 ## Identify user
 
 The SDK automatically collects `installId` (a GUID generated on fresh install) and `deviceId` ([Android ID](https://developer.android.com/reference/android/provider/Settings.Secure.html#ANDROID_ID)).
 
-You can also assign a custom `userId`, also called _External ID_ in the dashboard. To set a custom `userId`, call:
+| Method | Description |
+| --- | --- |
+| `Radar.setUserId(userId: String?)` | Sets a stable unique ID for the user, called **External ID** in the dashboard. Pass `null` to clear. |
+| `Radar.getUserId(): String?` | Returns the current `userId`. |
+| `Radar.setMetadata(metadata: JSONObject?)` | Sets custom key-value pairs for the user. Up to 16 keys, with values of type string, boolean, or number. Pass `null` to clear. |
+| `Radar.getMetadata(): JSONObject?` | Returns the current metadata. |
+| `Radar.setDescription(description: String?)` | Sets an optional description for the user, displayed in the dashboard. Pass `null` to clear. |
+| `Radar.getDescription(): String?` | Returns the current description. |
+| `Radar.setUserLanguage(userLanguage: String?)` | Sets the user's preferred language as a BCP 47 language tag, such as `"en"` or `"es-PR"`. Pass `null` to clear. Added in 3.33.0. |
+| `Radar.getUserLanguage(): String?` | Returns the current user language. |
+| `Radar.setProduct(product: String?)` | Sets an optional product name, displayed in the dashboard and reports. Pass `null` to clear. |
+| `Radar.getProduct(): String?` | Returns the current product. |
+| `Radar.setAnonymousTrackingEnabled(enabled: Boolean)` | When enabled, `trackOnce()` and `startTracking()` don't create user records on the server and don't send stable device IDs, user IDs, or user metadata. Disabled by default. |
+
+For example, to identify a user:
 
 <CodeGroup>
 
-```java Java
-Radar.setUserId(userId);
+```kotlin Kotlin
+Radar.setUserId("user-123")
+Radar.setMetadata(JSONObject().put("plan", "pro").put("beta", true))
+Radar.setDescription("Test user")
 ```
 
-```kotlin Kotlin
-Radar.setUserId(userId)
+```java Java
+Radar.setUserId("user-123");
+try {
+    Radar.setMetadata(new JSONObject().put("plan", "pro").put("beta", true));
+} catch (JSONException e) {
+    // handle error
+}
+Radar.setDescription("Test user");
 ```
 
 </CodeGroup>
 
-where `userId` is a stable unique ID for the user.
+<Warning>
+  Don't send personal information, such as names, email addresses, or publicly available IDs, for `userId`.
+</Warning>
 
-<warning>
-  Do not send any PII, like names, email addresses, or publicly available IDs, for `userId`. See [privacy best practices](/faqs#what-are-privacy-best-practices-for-radar) for more information.
-</warning>
+You only need to call these methods when a value changes. The values persist across app sessions. Decide what happens at logout and when a different user signs in on the same device. For example, to stop associating location updates with the previous user:
 
-To set a dictionary of custom metadata for the user, call:
-
-<CodeGroup>
-
-```java Java
-Radar.setMetadata(metadata);
+```kotlin
+fun onLogout() {
+    Radar.stopTracking()
+    Radar.setUserId(null)
+    Radar.setMetadata(null)
+    Radar.setDescription(null)
+}
 ```
 
-```kotlin Kotlin
-Radar.setMetadata(metadata)
+For how Radar creates and matches user records, see [Accounts and authentication](/fundamentals/authentication-and-access).
+
+## Verified location
+
+`Radar.trackVerified()` tracks the user's location with device integrity information and returns a signed `RadarVerifiedLocationToken` that your backend validates. The verified location and risk methods require the Radar fraud plugin (`io.radar:sdk-fraud`) in addition to `io.radar:sdk`. Without a compatible plugin, they return `RadarStatus.ERROR_PLUGIN`.
+
+Before you call these methods, install and configure the plugin. See [Fraud plugin setup](/sdk/fraud). For the end-to-end workflow, including backend token validation, see the [Geo-compliance overview](/geo-compliance/overview).
+
+| Method | Description |
+| --- | --- |
+| `Radar.trackVerified(callback)` | Performs a location check with `beacons = false` and `desiredAccuracy = MEDIUM`. |
+| `Radar.trackVerified(beacons, desiredAccuracy, callback)` | Performs a location check, optionally ranging beacons. `beacons` defaults to `false` and `desiredAccuracy` to `MEDIUM`. |
+| `Radar.trackVerified(beacons, desiredAccuracy, reason, transactionId, callback)` | Performs a location check with an optional `reason` and `transactionId`, both displayed in the dashboard and reports. |
+| `Radar.startTrackingVerified(interval: Int, beacons: Boolean)` | Starts repeated location checks. `interval` is the interval between checks, in seconds. |
+| `Radar.stopTrackingVerified()` | Stops repeated location checks. |
+| `Radar.isTrackingVerified(): Boolean` | Whether repeated location checks have been started. |
+| `Radar.getVerifiedLocationToken(callback)` | Returns the last token if it is still valid, or requests a fresh token if not. |
+| `Radar.getVerifiedLocationToken(beacons, desiredAccuracy, callback)` | The same, with beacon and accuracy options for a fresh request. |
+| `Radar.clearVerifiedLocationToken()` | Clears the last token. |
+| `Radar.setExpectedJurisdiction(countryCode: String?, stateCode: String?)` | Optionally sets the user's expected country code and state code for jurisdiction checks. |
+| `Radar.setExpectedAddress(address: String?)` | Optionally sets the user's expected address. |
+| `Radar.isSharing(): Boolean` | The current screen sharing state. |
+| `Radar.clearSharing()` | Clears the last screen sharing state. |
+| `Radar.revealRisk(callback)` | Reveals device and network risk signals for the device. Doesn't require location permissions. Added in 3.35.0. |
+| `Radar.clearRevealRiskId()` | Clears the user's last reveal risk ID. |
+| `Radar.setVerifiedReceiver(verifiedReceiver: RadarVerifiedReceiver?)` | Sets a receiver for token updates and for IP address and screen sharing changes. May be called before `Radar.initialize()`. |
+
+`RadarTrackVerifiedCallback.onComplete` receives `(status: RadarStatus, token: RadarVerifiedLocationToken?)`. `RadarRevealRiskCallback.onComplete` receives `(status: RadarStatus, token: RadarRevealRiskToken?)`.
+
+For example, to run a location check at login:
+
+```kotlin
+Radar.trackVerified(
+    beacons = false,
+    desiredAccuracy = RadarTrackingOptions.RadarTrackingOptionsDesiredAccuracy.HIGH,
+    reason = "login",
+    transactionId = null,
+) { status, token ->
+    if (status != Radar.RadarStatus.SUCCESS || token == null) {
+        // handle error
+        return@trackVerified
+    }
+    if (token.passed) {
+        // send token.token to your backend for validation
+    } else {
+        // deny access, and inspect token.failureReasons
+    }
+}
 ```
 
-</CodeGroup>
+`RadarVerifiedLocationToken` properties:
 
-where `metadata` is a `JSONObject` with up to 16 keys and values of type string, boolean, or number.
+| Property | Type | Description |
+| --- | --- | --- |
+| `token` | `String` | The signed JSON Web Token. Validate it on your backend. See [Geolocation token schema](/api/geolocation-tokens). |
+| `passed` | `Boolean` | Whether the user passed all jurisdiction and fraud detection checks. Don't rely on this value alone. Validate the token on your backend. |
+| `failureReasons` | `Array<String>` | The reasons the user didn't pass, if any. |
+| `expiresAt` | `Date` | When the token expires. |
+| `expiresIn` | `Int` | Seconds until the token expires. |
+| `user` | `RadarUser` | The user. |
+| `events` | `Array<RadarEvent>` | The events generated, if any. |
+| `_id` | `String` | The Radar ID of the location check. |
 
-Finally, to set an optional description for the user, displayed in the dashboard, call:
+`RadarVerifiedReceiver` is an abstract class:
 
-<CodeGroup>
-
-```java Java
-Radar.setDescription(description);
-```
-
-```kotlin Kotlin
-Radar.setDescription(description)
-```
-
-</CodeGroup>
-
-You only need to call these methods once, as these settings will be persisted across app sessions.
-
-Learn more about when Radar creates new user records [here](/faqs#what-is-a-unique-user-when-does-radar-create-a-new-user-record).
+| Method | Called when |
+| --- | --- |
+| `onTokenUpdated(context: Context, token: RadarVerifiedLocationToken)` | The user's verified location was updated. Required. |
+| `onIpChanged(context: Context)` | The device's IP address changed while IP change monitoring is active. Optional. Added in 3.33.0. |
+| `onSharingChanged(context: Context, sharing: Boolean)` | The device's screen sharing state changed. Optional. Added in 3.33.0. |
 
 ## Debug logging
 
@@ -770,31 +853,35 @@ By default, only critical errors are logged to the console. To enable debug logg
 
 <CodeGroup>
 
-```java Java
-Radar.setLogLevel(Radar.RadarLogLevel.DEBUG);
-```
-
 ```kotlin Kotlin
 Radar.setLogLevel(Radar.RadarLogLevel.DEBUG)
 ```
 
+```java Java
+Radar.setLogLevel(Radar.RadarLogLevel.DEBUG);
+```
+
 </CodeGroup>
 
-The Android SDK automatically logs lifecycle events without the additional setup required on iOS.
+`RadarLogLevel` is one of `NONE`, `ERROR`, `WARNING`, `INFO`, or `DEBUG`. A log level set in [remote configuration](/sdk/remote-configuration#log-level) overrides the level you set in code. To receive log messages in your app, implement `onLog` on your [`RadarReceiver`](#listening-for-events-with-a-receiver).
 
-<info>
-  Contact your customer success manager to enable logging app lifecycle events.
-</info>
+The Android SDK observes activity lifecycle callbacks and logs app lifecycle events automatically, without the additional setup required on iOS. `Radar.logResigningActive()` and `Radar.logBackgrounding()` are public for wrapper SDKs. You don't need to call them in a native app.
+
+<Info>
+  App lifecycle event logging must be enabled for your project. Contact your Radar account team.
+</Info>
 
 ## Other APIs
 
-The Android SDK also exposes APIs for beacons, geocoding, search, and distance.
+The Android SDK also exposes APIs for beacons, trips, context, geocoding, search, distance, conversions, and user tags.
+
+Each method takes a callback interface, listed with the method. In Kotlin, you can pass a lambda with the same parameters instead. Check that the status is `RadarStatus.SUCCESS` before you use the other values.
 
 ### Beacons
 
-To range and monitor [beacons](/geofencing/beacons), you must [request Bluetooth permissions](https://developer.android.com/about/versions/12/features/bluetooth-permissions#declare-new-permissions). If targeting API level `31` or above, both `BLUETOOTH_CONNECT` and `BLUETOOTH_SCAN` are required runtime permissions.
+To range and monitor [beacons](/geofencing/beacons), you must [request Bluetooth permissions](https://developer.android.com/about/versions/12/features/bluetooth-permissions#declare-new-permissions). On Android 12 (API level 31) and later, the SDK requires the `BLUETOOTH_SCAN` runtime permission and `ACCESS_FINE_LOCATION`. On earlier versions, it requires `BLUETOOTH`, `BLUETOOTH_ADMIN`, and `ACCESS_FINE_LOCATION`.
 
-The following bluetooth permissions must be added to your manifest:
+Add the Bluetooth permissions to your manifest:
 
 ```xml
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -807,168 +894,165 @@ The following bluetooth permissions must be added to your manifest:
 
 To range beacons in the foreground, call:
 
-<CodeGroup>
-
-```java Java
-Radar.trackOnce(RadarTrackingOptionsDesiredAccuracy.HIGH, true, new RadarTrackCallback() {
-  @Override
-  public void onComplete(RadarStatus status, Location location, RadarEvent[] events, RadarUser user) {
-      // do something with user.beacons
-  }
-});
-```
-
-```kotlin Kotlin
-Radar.trackOnce(RadarTrackingOptionsDesiredAccuracy.HIGH, true) { status, location, events, user ->
-    // do something with user.beacons
+```kotlin
+Radar.trackOnce(RadarTrackingOptions.RadarTrackingOptionsDesiredAccuracy.HIGH, true) { status, location, events, user ->
+    // do something with user?.beacons
 }
 ```
 
-</CodeGroup>
+If beacon ranging fails or times out (5 seconds), the status is `RadarStatus.ERROR_BLUETOOTH`.
 
 To monitor beacons in the background, update your tracking options:
 
-<CodeGroup>
-
-```java Java
-RadarTrackingOptions trackingOptions = RadarTrackingOptions.RESPONSIVE;
-trackingOptions.beacons = true;
-Radar.startTracking(trackingOptions);
-```
-
-```kotlin Kotlin
-val trackingOptions = RadarTrackingOptions.RESPONSIVE
-trackingOptions.beacons = true
+```kotlin
+val trackingOptions = RadarTrackingOptions.RESPONSIVE.copy(beacons = true)
 Radar.startTracking(trackingOptions)
 ```
 
-</CodeGroup>
+If you call `Radar.trackVerified(beacons = true)`, you can call `Radar.startRangingBeacons()` to range beacons continuously in the foreground, so that location checks don't wait for a new ranging window.
 
-If you call `Radar.trackVerified(beacons = true)`, you can call `Radar.startRangingBeacons()` to range beacons continuously in the foreground, so location checks don't wait for a new ranging window. Call `Radar.stopRangingBeacons()` when you no longer need beacons. These methods require Android 8.0 (API level 26) or later. Learn more about [ranging beacons with location checks](/geofencing/fraud#ranging-beacons).
-
-<CodeGroup>
-
-```java Java
-Radar.startRangingBeacons();
-
-Radar.stopRangingBeacons();
-```
-
-```kotlin Kotlin
+```kotlin
 Radar.startRangingBeacons()
-
 Radar.stopRangingBeacons()
 ```
 
-</CodeGroup>
+Call `Radar.startRangingBeacons()` after `initialize()` and after location and Bluetooth permissions are granted, ideally when the user enters a flow that calls `trackVerified(beacons = true)`. Call `Radar.stopRangingBeacons()` when you no longer need beacons. Ranging pauses automatically when the app enters the background and resumes when it returns to the foreground. Until ranging has run for 5 seconds, `trackVerified(beacons = true)` ranges beacons as usual. These methods require Android 8.0 (API level 26) or later.
 
-Learn more about [beacons](/geofencing/beacons).
+### Trips
+
+For the workflow, see [Track pickups, deliveries, and workers](/geofencing/trips).
+
+| Method | Description |
+| --- | --- |
+| `Radar.startTrip(options, callback)` | Starts a trip. |
+| `Radar.startTrip(options, trackingOptions, callback)` | Starts a trip and starts tracking with `trackingOptions` for the trip. If you pass `null` and tracking isn't already started, the SDK starts tracking with the current tracking options when `options.startTracking` is `true`. |
+| `Radar.updateTrip(options, status, callback)` | Manually updates a trip. To avoid updating the status, pass `RadarTripStatus.UNKNOWN`. |
+| `Radar.completeTrip(callback)` | Completes the current trip. |
+| `Radar.cancelTrip(callback)` | Cancels the current trip. |
+| `Radar.getTripOptions(): RadarTripOptions?` | Returns the current trip options. |
+| `Radar.getTrip(): RadarTrip?` | Returns the current trip, including legs for multi-leg trips. |
+| `Radar.updateTripLeg(tripId, legId, status, callback)` | Updates the status of a leg of a multi-leg trip. Use `RadarTrip._id` and the leg's `_id`. |
+| `Radar.updateTripLeg(legId, status, callback)` | The same, using the current trip's ID. |
+| `Radar.updateCurrentTripLeg(status, callback)` | Updates the status of the current leg of the current trip. |
+| `Radar.reorderTripLegs(tripId, legIds, callback)` | Reorders the legs of a multi-leg trip. `legIds` is the array of leg IDs in the new order. |
+| `Radar.reorderTripLegs(legIds, callback)` | The same, using the current trip's ID. |
+
+`RadarTripCallback.onComplete` receives `(status: RadarStatus, trip: RadarTrip?, events: Array<RadarEvent>?)`. `RadarTripLegCallback.onComplete` receives `(status: RadarStatus, trip: RadarTrip?, leg: RadarTripLeg?, events: Array<RadarEvent>?)`.
+
+`RadarTripOptions` properties:
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `externalId` | `String` | Required | A stable unique ID for the trip. |
+| `metadata` | `JSONObject?` | `null` | Custom key-value pairs for the trip. |
+| `destinationGeofenceTag` | `String?` | `null` | For trips with a destination, the tag of the destination geofence. |
+| `destinationGeofenceExternalId` | `String?` | `null` | For trips with a destination, the external ID of the destination geofence. |
+| `mode` | `Radar.RadarRouteMode` | `CAR` | The travel mode. |
+| `scheduledArrivalAt` | `Date?` | `null` | The scheduled arrival time for the trip. |
+| `approachingThreshold` | `Int` | `0` | The approaching threshold for the trip. |
+| `startTracking` | `Boolean` | `true` | Whether to start tracking when the trip starts, if tracking isn't already started and you don't pass tracking options to `startTrip`. |
+| `legs` | `Array<RadarTripLeg>?` | `null` | For multi-leg trips, the trip legs. Added in 3.28.0. |
+
+Create a `RadarTripLeg` with one of `RadarTripLeg.forGeofence(tag, externalId)`, `RadarTripLeg.forGeofenceId(geofenceId)`, `RadarTripLeg.forAddress(address)`, or `RadarTripLeg.forCoordinates(latitude, longitude)`.
+
+For example, to start a trip with two legs and then complete the current leg:
+
+```kotlin
+val tripOptions = RadarTripOptions(
+    externalId = "route-88",
+    legs = arrayOf(
+        RadarTripLeg.forGeofence("store", "store-42"),
+        RadarTripLeg.forAddress("20 Jay St, Brooklyn, NY 11201"),
+    ),
+)
+
+Radar.startTrip(tripOptions, RadarTrackingOptions.CONTINUOUS) { status, trip, events ->
+    // do something with trip?.legs
+}
+
+// later, when the driver finishes the current stop
+Radar.updateCurrentTripLeg(
+    RadarTripLeg.RadarTripLegStatus.COMPLETED,
+    object : Radar.RadarTripLegCallback {
+        override fun onComplete(status: Radar.RadarStatus, trip: RadarTrip?, leg: RadarTripLeg?, events: Array<RadarEvent>?) {
+            // do something with trip?.currentLegId
+        }
+    }
+)
+```
+
+### Context
+
+To get the geofences, place, and regions for a location without sending device or user identifiers to the server, call:
+
+```kotlin
+Radar.getContext(callback: RadarContextCallback)
+Radar.getContext(location: Location, callback: RadarContextCallback)
+```
+
+The first form gets the device's current location first. `onComplete` receives `(status: RadarStatus, location: Location?, context: RadarContext?)`. `RadarContext` has `geofences`, `place`, `country`, `state`, `dma`, and `postalCode`. For example:
+
+```kotlin
+Radar.getContext { status, location, context ->
+    // do something with context?.geofences
+}
+```
 
 ### Geocoding
 
-With the [forward geocoding API](/api#forward-geocode), geocode an address, converting address to coordinates:
+With the [forward geocoding API](/api/geocoding), geocode an address, converting address to coordinates:
 
-<CodeGroup>
-
-```java Java
-Radar.geocode(
-    "20 jay street brooklyn ny", // query
-    new RadarGeocodeCallback() {
-        @Override
-        public void onComplete(RadarStatus status, RadarAddress[] addresses) {
-            // do something with addresses
-        }
-    });
+```kotlin
+Radar.geocode(query: String, layers: Array<String>? = null, countries: Array<String>? = null, callback: RadarGeocodeCallback)
 ```
 
-```kotlin Kotlin
+`layers` are optional layer filters. `countries` are optional two-letter country code filters. `onComplete` receives `(status: RadarStatus, addresses: Array<RadarAddress>?)`. For example:
+
+```kotlin
 Radar.geocode("20 jay street brooklyn ny") { status, addresses ->
     // do something with addresses
 }
 ```
 
-</CodeGroup>
+With the [reverse geocoding API](/api/geocoding), reverse geocode a location, converting coordinates to address:
 
-With the [reverse geocoding API](/api#reverse-geocode), reverse geocode a location, converting coordinates to address:
-
-<CodeGroup>
-
-```java Java
-Radar.reverseGeocode(
-    location,
-    new RadarGeocodeCallback() {
-        @Override
-        public void onComplete(RadarStatus status, RadarAddress[] addresses) {
-            // do something with addresses
-        }
-    });
+```kotlin
+Radar.reverseGeocode(layers: Array<String>? = null, callback: RadarGeocodeCallback)
+Radar.reverseGeocode(location: Location, layers: Array<String>? = null, callback: RadarGeocodeCallback)
 ```
 
-```kotlin Kotlin
+The form without `location` gets the device's current location first. For example:
+
+```kotlin
 Radar.reverseGeocode(location) { status, addresses ->
     // do something with addresses
 }
 ```
 
-</CodeGroup>
+With the [IP geocoding API](/api/geocoding), geocode the device's current IP address, converting IP address to city, state, and country. `RadarIpGeocodeCallback.onComplete` receives `(status: RadarStatus, address: RadarAddress?, proxy: Boolean, throwable: Throwable?)`. `throwable` is the underlying error, if any, so that you can forward it to an error reporting tool.
 
-With the [IP geocoding API](/api#ip-geocode), geocode the device's current IP address, converting IP address to city, state, and country:
-
-<CodeGroup>
-
-```java Java
-Radar.ipGeocode(new RadarIpGeocodeCallback() {
-    @Override
-    public void onComplete(RadarStatus status, RadarAddress address, boolean proxy, Throwable throwable) {
-        // do something with address, proxy
-    }
-});
-```
-
-```kotlin Kotlin
+```kotlin
 Radar.ipGeocode { status, address, proxy, throwable ->
     // do something with address, proxy
 }
 ```
 
-</CodeGroup>
-
 ### Search
 
-With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance. When a result is selected by the user, call `session.select`. If your project has [address enrichment](/maps/search#address-autocomplete) enabled, selecting also returns the enriched address.
+With the [autocomplete API](/api/search), autocomplete partial addresses and place names, sorted by relevance. Create one `RadarAutocompleteSession` per search field. When the user selects a result, call `session.select`. If your project has [address enrichment](/maps/addresses) enabled, selecting also returns the enriched address. `RadarAutocompleteSession` requires Android SDK 4.3.0 or later.
 
-<CodeGroup>
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `query` | `String` | The partial address or place name to autocomplete. |
+| `near` | `Location?` | A location for the search. |
+| `layers` | `Array<String>?` | Optional layer filters. |
+| `limit` | `Int?` | The maximum number of addresses to return. A number between 1 and 100. |
+| `country` | `String?` | An optional two-letter country code filter. |
+| `mailable` | `Boolean?` | Whether to only include mailable addresses. |
 
-```java Java
-RadarAutocompleteSession session = new RadarAutocompleteSession();
+For example, to autocomplete a query and select the first result:
 
-session.autocomplete(
-    "brooklyn roasting", // query
-    near,
-    null, // layers
-    10, // limit
-    new RadarGeocodeCallback() {
-        @Override
-        public void onComplete(RadarStatus status, RadarAddress[] addresses) {
-            if (addresses == null || addresses.length == 0) {
-                return;
-            }
-
-            // with address enrichment enabled
-            session.select(addresses[0], new RadarAutocompleteSelectCallback() {
-                @Override
-                public void onComplete(RadarStatus status, RadarAutocompleteEnrichedAddress address) {
-                    // do something with the enriched address
-                }
-            });
-
-            // otherwise
-            session.select(addresses[0]);
-        }
-    });
-```
-
-```kotlin Kotlin
+```kotlin
 val session = RadarAutocompleteSession()
 
 session.autocomplete(
@@ -988,28 +1072,29 @@ session.autocomplete(
 }
 ```
 
-</CodeGroup>
+`RadarAutocompleteSelectCallback.onComplete` receives `(status: RadarStatus, address: RadarAutocompleteEnrichedAddress?)`.
 
-With the [geofence search API](/api#search-geofences), search for geofences near a location, sorted by distance:
+To autocomplete without a session, call `Radar.autocomplete(query, near, layers, limit, country, mailable, callback)` with the same parameters.
 
-<CodeGroup>
+With the [geofence search API](/api/search), search for geofences near a location, sorted by distance:
 
-```java Java
-Radar.searchGeofences(
-    near,
-    1000, // radius (meters)
-    {"store"}, // tags
-    null, //metadata
-    10, // limit
-    new RadarSearchGeofencesCallback() {
-        @Override
-        public void onComplete(RadarStatus status, Location location, RadarGeofence[] geofences) {
-            // do something with geofences
-        }
-    });
+```kotlin
+Radar.searchGeofences(radius: Int?, tags: Array<String>?, metadata: JSONObject?, limit: Int?, includeGeometry: Boolean? = false, callback: RadarSearchGeofencesCallback)
+Radar.searchGeofences(near: Location, radius: Int?, tags: Array<String>?, metadata: JSONObject?, limit: Int?, includeGeometry: Boolean? = false, callback: RadarSearchGeofencesCallback)
 ```
 
-```kotlin Kotlin
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `near` | `Location` | The location to search. The form without `near` uses the device's current location. |
+| `radius` | `Int?`, meters | The radius to search. A number between 100 and 10000. Pass `null` to search without a radius limit. |
+| `tags` | `Array<String>?` | Tags to filter. |
+| `metadata` | `JSONObject?` | Metadata to filter. |
+| `limit` | `Int?` | The maximum number of geofences to return. A number between 1 and 1000. Defaults to 100. |
+| `includeGeometry` | `Boolean?` | Whether to include geofence geometries in the response. To retrieve more than 100 results, this must be `false`. From Java, you must pass this argument. |
+
+`onComplete` receives `(status: RadarStatus, location: Location?, geofences: Array<RadarGeofence>?)`. For example:
+
+```kotlin
 Radar.searchGeofences(
     near,
     1000, // radius (meters)
@@ -1021,31 +1106,27 @@ Radar.searchGeofences(
 }
 ```
 
-</CodeGroup>
+With the [places search API](/api/search), search for places near a location, sorted by distance:
 
-With the [places search API](/api#search-places), search for places near a location, sorted by distance:
-
-<CodeGroup>
-
-```java Java
-Radar.searchPlaces(
-    near,
-    1000, // radius (meters)
-    new String[]{"starbucks"}, // chains
-    null, // chainMetadata
-    null, // categories
-    null, // groups
-    null, // countryCodes
-    10, // limit
-    new RadarSearchPlacesCallback() {
-      @Override
-      public void onComplete(RadarStatus status, Location location, RadarPlace[] places) {
-          // do something with places
-      }
-    });
+```kotlin
+Radar.searchPlaces(radius: Int, chains: Array<String>?, chainMetadata: Map<String, String>?, categories: Array<String>?, groups: Array<String>?, countryCodes: Array<String>?, limit: Int?, callback: RadarSearchPlacesCallback)
+Radar.searchPlaces(near: Location, radius: Int, chains: Array<String>?, chainMetadata: Map<String, String>?, categories: Array<String>?, groups: Array<String>?, countryCodes: Array<String>?, limit: Int?, callback: RadarSearchPlacesCallback)
 ```
 
-```kotlin Kotlin
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `near` | `Location` | The location to search. The form without `near` uses the device's current location. |
+| `radius` | `Int`, meters | The radius to search. A number between 100 and 10000. |
+| `chains` | `Array<String>?` | Chain slugs to filter. |
+| `chainMetadata` | `Map<String, String>?` | Chain metadata to filter. Pass `null` if you don't filter by chain metadata. |
+| `categories` | `Array<String>?` | Categories to filter. |
+| `groups` | `Array<String>?` | Groups to filter. |
+| `countryCodes` | `Array<String>?` | Country codes to filter. |
+| `limit` | `Int?` | The maximum number of places to return. A number between 1 and 100. |
+
+`onComplete` receives `(status: RadarStatus, location: Location?, places: Array<RadarPlace>?)`. For example:
+
+```kotlin
 Radar.searchPlaces(
     near = near,
     radius = 1000, // meters
@@ -1060,11 +1141,33 @@ Radar.searchPlaces(
 }
 ```
 
-</CodeGroup>
-
-With the [address validation API](/api#validate-an-address) (currently in beta), validate a structured address in the US or Canada. Pass either a street and number or a single-line address label, plus a `city`, `stateCode`, `postalCode`, and `countryCode`. `unit` is optional; in Java, pass `null` to leave it out. If a required field is empty, the SDK returns `RadarStatus.ERROR_BAD_REQUEST` without sending a request.
+With the [address validation API](/api/geocoding), validate a structured address in the US or Canada. Pass either a street and number or a single-line address label, plus a `city`, `stateCode`, `postalCode`, and `countryCode`. `unit` is optional; in Java, pass `null` to leave it out. If a required field is empty, the SDK returns `RadarStatus.ERROR_BAD_REQUEST` without sending a request.
 
 <CodeGroup>
+
+```kotlin Kotlin
+Radar.validateAddress(
+    street = "Jay St",
+    number = "20",
+    city = "Brooklyn",
+    stateCode = "NY",
+    postalCode = "11201",
+    countryCode = "US",
+) { status, address, verificationStatus ->
+    // do something with verificationStatus and address
+}
+
+Radar.validateAddress(
+    addressLabel = "20 Jay St",
+    unit = "Suite 900",
+    city = "Brooklyn",
+    stateCode = "NY",
+    postalCode = "11201",
+    countryCode = "US",
+) { status, address, verificationStatus ->
+    // do something with verificationStatus and address
+}
+```
 
 ```java Java
 Radar.validateAddress(
@@ -1097,231 +1200,182 @@ Radar.validateAddress(
     });
 ```
 
-```kotlin Kotlin
-Radar.validateAddress(
-    street = "Jay St",
-    number = "20",
-    city = "Brooklyn",
-    stateCode = "NY",
-    postalCode = "11201",
-    countryCode = "US",
-) { status, address, verificationStatus ->
-    // do something with verificationStatus and address
-}
-
-Radar.validateAddress(
-    addressLabel = "20 Jay St",
-    unit = "Suite 900",
-    city = "Brooklyn",
-    stateCode = "NY",
-    postalCode = "11201",
-    countryCode = "US",
-) { status, address, verificationStatus ->
-    // do something with verificationStatus and address
-}
-```
-
 </CodeGroup>
 
-To validate an address from autocomplete or geocoding, pass its `street` and `number` (or its `addressLabel`) and the other fields to one of these methods. These methods are available in Android SDK 4.3.0 and later. In earlier versions, use `validateAddress(address)`, which is now deprecated. Addresses from autocomplete and geocoding have a street, a number, and an address label. Versions before 4.3.0 send all three, and the API rejects the request with `RadarStatus.ERROR_BAD_REQUEST`. On those versions, validate a new `RadarAddress` built without `addressLabel`.
+`RadarAddressVerificationStatus` is one of `VERIFIED`, `PARTIALLY_VERIFIED`, `AMBIGUOUS`, `UNVERIFIED`, or `NONE`.
+
+To validate an address from autocomplete or geocoding, pass its `street` and `number` (or its `addressLabel`) and the other fields to one of these methods. These methods are available in Android SDK 4.3.0 and later. In earlier versions, use `validateAddress(address)`, which is deprecated. Addresses from autocomplete and geocoding have a street, a number, and an address label. Versions before 4.3.0 send all three, and the API rejects the request with `RadarStatus.ERROR_BAD_REQUEST`. On those versions, validate a new `RadarAddress` built without `addressLabel`.
 
 ### Distance
 
-With the [distance API](/api#distance), calculate the travel distance and duration from an origin to a destination:
+With the [distance API](/api/routing), calculate the travel distance and duration from an origin to a destination:
 
-<CodeGroup>
-
-```java Java
-Radar.getDistance(
-    origin,
-    destination,
-    EnumSet.of(RadarRouteMode.FOOT, RadarRouteMode.CAR),
-    RadarRouteUnits.IMPERIAL,
-    new RadarRouteCallback() {
-        @Override
-        public void onComplete(RadarStatus status, RadarRoutes routes) {
-            // do something with routes
-        }
-    });
+```kotlin
+Radar.getDistance(destination: Location, modes: EnumSet<RadarRouteMode>, units: RadarRouteUnits, callback: RadarRouteCallback)
+Radar.getDistance(origin: Location, destination: Location, modes: EnumSet<RadarRouteMode>, units: RadarRouteUnits, callback: RadarRouteCallback)
 ```
 
-```kotlin Kotlin
+The form without `origin` uses the device's current location. `modes` is a set of `FOOT`, `BIKE`, `CAR`, `TRUCK`, and `MOTORBIKE`. `units` is `IMPERIAL` or `METRIC`. `onComplete` receives `(status: RadarStatus, routes: RadarRoutes?)`. `RadarRoutes` has `geodesic` and one optional `RadarRoute` per mode. For example:
+
+```kotlin
 Radar.getDistance(
     origin,
     destination,
-    EnumSet.of(RadarRouteMode.FOOT, RadarRouteMode.CAR),
-    RadarRouteUnits.IMPERIAL
+    EnumSet.of(Radar.RadarRouteMode.FOOT, Radar.RadarRouteMode.CAR),
+    Radar.RadarRouteUnits.IMPERIAL
 ) { status, routes ->
-  // do something with routes
+    // do something with routes?.car
 }
 ```
-
-</CodeGroup>
 
 ### Matrix
 
-With the [matrix API](/api#matrix), calculate the travel distance and duration between multiple origins and destinations for up to 25 routes:
+With the [matrix API](/api/routing), calculate the travel distance and duration between multiple origins and destinations for up to 25 routes:
 
-<CodeGroup>
-
-```java Java
-Radar.getMatrix(
-    origins,
-    destinations,
-    RadarRouteMode.CAR,
-    RadarRouteUnits.IMPERIAL,
-    new RadarRouteCallback() {
-        @Override
-        public void onComplete(RadarStatus status, RadarRouteMatrix matrix) {
-            // do something with matrix.routeBetween(originIndex, destinationIndex)
-        }
-    });
+```kotlin
+Radar.getMatrix(origins: Array<Location>, destinations: Array<Location>, mode: RadarRouteMode, units: RadarRouteUnits, callback: RadarMatrixCallback)
 ```
 
-```kotlin Kotlin
+`RadarMatrixCallback.onComplete` receives `(status: RadarStatus, matrix: RadarRouteMatrix?)`. For example, to get the route between the first origin and the first destination:
+
+```kotlin
 Radar.getMatrix(
     origins,
     destinations,
-    RadarRouteMode.CAR,
-    RadarRouteUnits.IMPERIAL
-) { status, routes ->
-  // do something with matrix.routeBetween(originIndex, destinationIndex)
+    Radar.RadarRouteMode.CAR,
+    Radar.RadarRouteUnits.IMPERIAL
+) { status, matrix ->
+    val route = matrix?.routeBetween(0, 0)
+    // do something with route
 }
 ```
-
-</CodeGroup>
 
 ### Conversions
 
-With the [conversions API](/api#log-a-conversion), log a conversion, such as a purchase or signup, to analyze alongside your app's location activity:
+With the [conversions API](/api/events), log a conversion, such as a purchase or signup, to analyze alongside your app's location activity:
 
-<CodeGroup>
-
-```java Java
-Radar.logConversion(
-    name,
-    metadata,
-    new RadarLogConversionCallback() {
-        @Override
-        public void onComplete(RadarStatus status, RadarEvent event) {
-            // do something with the conversion event
-        }
-    })
-
-// Conversion with revenue
-Radar.logConversion(
-    name,
-    revenue,
-    metadata,
-    new RadarLogConversionCallback() {
-        @Override
-        public void onComplete(RadarStatus status, RadarEvent event) {
-            // do something with the conversion event
-        }
-    })
+```kotlin
+Radar.logConversion(name: String, metadata: JSONObject? = null, callback: RadarLogConversionCallback)
+Radar.logConversion(name: String, revenue: Double, metadata: JSONObject? = null, callback: RadarLogConversionCallback)
 ```
 
-```kotlin Kotlin
-Radar.logConversion(
-    name,
-    metadata,
-) { status, event ->
+`onComplete` receives `(status: RadarStatus, event: RadarEvent?)`. For example:
+
+```kotlin
+val metadata = JSONObject().put("orderId", "order-299")
+
+Radar.logConversion("order_placed", metadata) { status, event ->
     // do something with the conversion event
 }
 
-// Conversion with revenue
-Radar.logConversion(
-    name,
-    revenue,
-    metadata,
-) { status, event ->
+// conversion with revenue
+Radar.logConversion("order_placed", 24.5, metadata) { status, event ->
     // do something with the conversion event
 }
 ```
 
-</CodeGroup>
+### Verify events
+
+After a user check-in or another form of verification, you can accept or reject an event. Radar uses event verifications to improve the accuracy and confidence level of future events.
+
+```kotlin
+Radar.acceptEvent(eventId: String, verifiedPlaceId: String? = null)
+Radar.rejectEvent(eventId: String)
+```
+
+For example, to accept an event:
+
+```kotlin
+Radar.acceptEvent(event._id, event.place?._id)
+```
 
 ### User tags
 
-With the [user tag API](/geofencing/campaigns#campaign-targeting), you can configure [campaigns](/geofencing/campaigns) to only target users with the corresponding tags:
+Set tags on the user so that you can target [campaigns](/geofencing/geofences-and-places) at users with the corresponding tags. Added in 3.22.0.
 
-<CodeGroup>
+| Method | Description |
+| --- | --- |
+| `Radar.addTags(tags: Array<String>)` | Adds tags to the existing set. |
+| `Radar.removeTags(tags: Array<String>)` | Removes tags from the existing set. |
+| `Radar.setTags(tags: Array<String>)` | Replaces all tags. |
+| `Radar.getTags(): Array<String>?` | Returns the current tags. |
 
-```java Java
-Radar.addTags(new String[]{"tag1", "tag2"});
-Radar.removeTags(new String[]{"tag1", "tag2"});
-Radar.setTags(new String[]{"tag1", "tag2"});
-Radar.getTags();
-```
+For example:
 
-```kotlin Kotlin
+```kotlin
 Radar.addTags(arrayOf("tag1", "tag2"))
-Radar.removeTags(arrayOf("tag1", "tag2"))
-Radar.setTags(arrayOf("tag1", "tag2"))
-Radar.getTags()
+Radar.removeTags(arrayOf("tag1"))
+Radar.setTags(arrayOf("tag2", "tag3"))
+val tags = Radar.getTags()
 ```
 
-</CodeGroup>
+### In-app messages
+
+To customize how Radar in-app messages are handled, implement `RadarInAppMessageReceiver` and pass it in `RadarInitializeOptions.inAppMessageReceiver` or to `Radar.setInAppMessageReceiver()`. Every method of the interface has a default implementation: `onNewInAppMessage(inAppMessage)` shows the message with `Radar.showInAppMessage()`, and `onInAppMessageDismissed(inAppMessage)` and `onInAppMessageButtonClicked(inAppMessage)` do nothing. Override `createInAppMessageView` to supply your own view.
 
 ## Notifications
 
-With `setNotificationOptions`, set the icon and the background color of foreground service and event notifications:
+With `Radar.setNotificationOptions()`, set the icon and the background color of foreground service and event notifications. Pass a `RadarNotificationOptions`:
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `iconString` | `String?` | The name of the drawable resource to use for notifications. Defaults to the app icon. |
+| `iconColor` | `String?` | The background color used for notifications. |
+| `foregroundServiceIconString` | `String?` | The icon for foreground service notifications. Defaults to `iconString`. |
+| `foregroundServiceIconColor` | `String?` | The color for foreground service notifications. Defaults to `iconColor`. |
+| `eventIconString` | `String?` | The icon for event notifications. Defaults to `iconString`. |
+| `eventIconColor` | `String?` | The color for event notifications. Defaults to `iconColor`. |
+| `deepLink` | `String?` | The deep link for event notifications. |
+
+For example:
 
 <CodeGroup>
 
-```java Java
-// Set both foreground service and event notifications
-
-JSONObject notificationOptions = new JSONObject();
-try {
-  notificationOptions.put("iconString", "icon_1");
-  notificationOptions.put("iconColor", "color_1");
-} catch (JSONException e) {
-  e.printStackTrace();
-}
-
-Radar.setNotificationOptions(RadarNotificationsOptions.fromJson(notificationOptions));
-
-// Or, set the foreground service notification and event notifications separately
-
-JSONObject notificationOptions = new JSONObject();
-try {
-  notificationOptions.put("foregroundServiceIconString", "icon_1");
-  notificationOptions.put("foregroundServiceIconColor", "color_1");
-  notificationOptions.put("eventIconString", "icon_2");
-  notificationOptions.put("eventIconColor", "color_2");
-} catch (JSONException e) {
-  e.printStackTrace();
-}
-
-Radar.setNotificationOptions(RadarNotificationsOptions.fromJson(notificationOptions));
-```
-
 ```kotlin Kotlin
 // Set both foreground service and event notifications
-Radar.setNotificationOptions(RadarNotificationsOptions(
-  "icon_1", // iconString
-  "color_1", // iconColor
-))
+Radar.setNotificationOptions(
+    RadarNotificationOptions(
+        iconString = "icon_1",
+        iconColor = "color_1",
+    )
+)
 
 // Or, set the foreground service notification and event notifications separately
-Radar.setNotificationOptions(RadarNotificationsOptions(
-  foregroundServiceIconString = "icon_2",
-  foregroundServiceIconColor = "color_2",
-  eventIconString = "icon_3",
-  eventIconColor = "color_3",
-))
+Radar.setNotificationOptions(
+    RadarNotificationOptions(
+        foregroundServiceIconString = "icon_2",
+        foregroundServiceIconColor = "color_2",
+        eventIconString = "icon_3",
+        eventIconColor = "color_3",
+    )
+)
+```
+
+```java Java
+JSONObject notificationOptions = new JSONObject();
+try {
+    notificationOptions.put("iconString", "icon_1");
+    notificationOptions.put("iconColor", "color_1");
+} catch (JSONException e) {
+    // handle error
+}
+
+Radar.setNotificationOptions(RadarNotificationOptions.fromJson(notificationOptions));
 ```
 
 </CodeGroup>
+
+To set the text, title, and behavior of the foreground service notification, see [Android foreground service options](/sdk/tracking#android-foreground-service-options).
+
+Radar can associate `opened_app` conversions with a Radar notification that the user tapped to open the app. The SDK does this from its activity lifecycle callbacks. `Radar.logOpenedAppConversion(intent: Intent)` is public for cases where you need to pass the launching intent yourself.
 
 ## Huawei
 
 By default, the SDK [depends on](#dependencies) [Google Play Services Location](https://developer.android.com/training/location). However, you can use [Huawei Mobile Services Location Kit](https://developer.huawei.com/consumer/en/hms/huawei-locationkit/) instead.
 
-If you haven't already configured your project for Huawei Mobile Services, follow the instructions [here](https://developer.huawei.com/consumer/en/doc/development/HMSCore-Guides/integrate-as-sdk-0000001050168936).
+If you haven't already configured your project for Huawei Mobile Services, follow the [HMS Core integration instructions](https://developer.huawei.com/consumer/en/doc/development/HMSCore-Guides/integrate-as-sdk-0000001050168936).
 
-Then, add the dependency to your app's `build.gradle` file:
+Then add the dependency to your app's `build.gradle` file:
 
 ```gradle
 dependencies {
@@ -1329,20 +1383,66 @@ dependencies {
 }
 ```
 
-Finally, pass in `RadarLocationServicesProvider.HUAWEI` when you initialize the SDK:
+Finally, set the location provider to `HUAWEI` when you initialize the SDK:
 
 <CodeGroup>
 
-```java Java
-Radar.initialize(this, publishableKey, receiver, RadarLocationServicesProvider.HUAWEI);
+```kotlin Kotlin
+val options = RadarInitializeOptions(
+    locationProvider = Radar.RadarLocationServicesProvider.HUAWEI,
+)
+Radar.initialize(this, "prj_test_pk_...", options)
 ```
 
-```kotlin Kotlin
-Radar.initialize(context, publishableKey, receiver, RadarLocationServicesProvider.HUAWEI)
+```java Java
+RadarInitializeOptions options = new RadarInitializeOptions.Builder()
+    .locationProvider(Radar.RadarLocationServicesProvider.HUAWEI)
+    .build();
+Radar.initialize(this, "prj_test_pk_...", options);
 ```
 
 </CodeGroup>
 
 <Warning>
-  If you pass `RadarLocationServicesProvider.HUAWEI` but your app does not include `com.huawei.hms:location`, the SDK does not get locations or add geofences. It logs an error, and location requests fail with `ERROR_LOCATION`. This behavior starts in version `4.3.0`.
+  If you set the `HUAWEI` provider but your app doesn't include `com.huawei.hms:location`, the SDK doesn't get locations or add geofences. From Android SDK 4.3.0, it logs an error and location requests fail with `ERROR_LOCATION`.
 </Warning>
+
+## Models
+
+The SDK returns these model classes from the `io.radar.sdk.model` package. Models have a `toJson()` method for serialization.
+
+| Model | Key properties |
+| --- | --- |
+| `RadarUser` | `_id`, `userId`, `deviceId`, `description`, `metadata`, `location`, `geofences`, `place`, `beacons`, `stopped`, `foreground`, `country`, `state`, `dma`, `postalCode`, `nearbyPlaceChains`, `segments`, `topChains`, `source`, `trip`, `fraud`, `activityType`, `altitude`, `expectedAddress` |
+| `RadarEvent` | `_id`, `createdAt`, `actualCreatedAt`, `live`, `type`, `conversionName`, `geofence`, `place`, `region`, `beacon`, `trip`, `fraud`, `alternatePlaces`, `verifiedPlace`, `verification`, `confidence`, `duration`, `location`, `replayed`, `metadata` |
+| `RadarTrip` | `_id`, `externalId`, `metadata`, `destinationGeofenceTag`, `destinationGeofenceExternalId`, `destinationLocation`, `mode`, `etaDistance`, `etaDuration`, `status`, `orders`, `legs`, `currentLegId` |
+| `RadarRegion` | `_id`, `name`, `code`, `type`, `flag`, `allowed`, `passed`, `inExclusionZone`, `inBufferZone`, `distanceToBorder`, `expected` |
+| `RadarFraud` | `passed`, `bypassed`, `verified`, `proxy`, `mocked`, `compromised`, `jumped`, `sharing`, `inaccurate`, `blocked` |
+| `RadarRoutes` | `geodesic`, `foot`, `bike`, `car`, `truck`, `motorbike` |
+| `RadarRevealRiskToken` | `id`, `risk` (`level` and `reasons`), `network`, `device`, `token`, `expiresAt`, `expiresIn` |
+
+For field definitions, see the API reference for [users](/api/users), [events](/api/events), and [trips](/api/trips).
+
+### Helpers
+
+| Method | Returns |
+| --- | --- |
+| `Radar.stringForSource(source)` | A string for a `RadarLocationSource`. |
+| `Radar.stringForMode(mode)` | A string for a `RadarRouteMode`. |
+| `Radar.stringForVerificationStatus(verificationStatus)` | A string for a `RadarAddressVerificationStatus`. |
+| `Radar.stringForTripStatus(status)` | A string for a `RadarTripStatus`. |
+| `Radar.jsonForLocation(location)` | A `JSONObject` for a `Location`. |
+
+## Upgrade notes
+
+Breaking changes in recent versions. For the full list, see the [migration guide](https://github.com/radarlabs/radar-sdk-android/blob/master/MIGRATION.md).
+
+| Version | Change |
+| --- | --- |
+| 4.3.0 | Adds `RadarAutocompleteSession` and the structured `Radar.validateAddress()` methods. `Radar.validateAddress(address)` is deprecated. The SDK includes R8 rules for optional dependencies. |
+| 4.2.0 | `trackVerified()` retries against a backup host by default. To opt out, set `trackVerifiedAutoFailover` to `false`. |
+| 4.0.0 | The SDK manifest no longer declares `RadarForegroundService`. See [Foreground services and Google Play policy](#foreground-services-and-google-play-policy). The minimum Android version is API level 23. The SDK is compiled to Java 11 bytecode and requires Android Gradle Plugin 7.0 or later. |
+| 4.0.0 | Removed: the three-argument `RadarIpGeocodeCallback.onComplete(status, address, proxy)`, the `expandUnits` parameter on `Radar.autocomplete()`, the `Radar.autocomplete()` overloads without `mailable`, and the `Radar.searchPlaces()` overloads without `chainMetadata`. If you passed `expandUnits` positionally, remove the argument, because that `Boolean` is now read as `mailable`. |
+| 3.39.0 | Verified tracking and reveal risk requests encrypt the complete request body and require a compatible `io.radar:sdk-fraud` version. A missing or incompatible fraud plugin returns `ERROR_PLUGIN`. |
+| 3.21.0 | `Radar.searchPlaces()` takes an additional `countryCodes` parameter. |
+| 3.13.0 | `Radar.trackVerified()` returns a `RadarVerifiedLocationToken`. `Radar.trackVerifiedToken()` was removed. |

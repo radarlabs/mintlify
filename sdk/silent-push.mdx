@@ -1,45 +1,68 @@
 ---
 title: "Silent push"
-description: "Use silent push notifications to request a fresh location from a device through the Radar API on iOS and Android."
+description: "Request a fresh location from an iOS or Android device with a silent push or an iOS location push, sent through the Radar API."
 ---
 
-Silent push notifications allow us to remotely request a fresh location from a user. Radar supports requesting these locations through an API endpoint, starting with iOS and Android SDK version `3.24.0`.
+Silent push lets your backend ask a device for a fresh location. You call the Radar API with a list of user IDs, Radar sends a push to each device, and the SDK responds by calling `Radar.trackOnce()`. At the end of this page, a `POST /v1/users/refresh` request from your backend produces a new location update for a test device.
 
-There are two types of silent push notifications that can be sent to a device: regular app silent push and location service extension push.
+Silent push is available in iOS and Android SDK 3.24.0 and later. This page documents iOS SDK 3.46.0, Android SDK 4.3.0, and React Native SDK 4.39.0.
 
-**App silent push** can be used to wake the app to perform a track if the app is in the foreground or background. 
-This can be used to restart tracking if tracking was stopped due to device memory or CPU resource constraints. 
-However the silent push notification will not work if the app has been manually killed by the user.
+## Push types and platform support
 
-**Location extension service** can be used to request a location for devices even if the app was manually terminated. 
-The app will wake for ~30 seconds to respond to the request and perform a track request with a fresh location. 
-The location extension service acts as a separate app, so it can only restart continuous tracking for 30 seconds before the extension is shutdown.
+Radar can send two types of push:
+
+| Type | API `type` value | iOS | Android | What it does |
+| --- | --- | --- | --- | --- |
+| App silent push | `pushNotification` | Yes, through APNs | Yes, through Firebase Cloud Messaging | Wakes the app in the foreground or background to call `Radar.trackOnce()`. |
+| Location extension push | `locationExtension` | Yes, through APNs and a location push service extension | No, sends an app silent push instead | Wakes a separate extension for about 30 seconds to call `Radar.trackOnce()`, even if the user force-quit the app. |
+
+The Web SDK doesn't support silent push.
+
+Choose by the state you need to reach:
+
+| App state | App silent push | Location extension push (iOS) |
+| --- | --- | --- |
+| Foreground or background | Yes | Yes |
+| Suspended, or stopped by the system for memory or CPU | Yes, subject to operating system throttling | Yes |
+| Force-quit by the user on iOS | No | Yes |
+
+The location extension runs as a separate process from your app. It can send a location while it is awake, but it can't keep background tracking running after it shuts down.
+
+An app silent push can also bring back background tracking that stopped because the system ended the app for memory or CPU reasons, because waking the app initializes the SDK again.
+
+## Prerequisites
+
+- iOS or Android SDK 3.24.0 or later, initialized with your publishable key.
+- A `userId` set with `Radar.setUserId()`. The API addresses devices by user ID.
+- For iOS: an Apple Developer account with an [APNs authentication key](https://developer.apple.com/help/account/keys/create-a-private-key).
+- For Android: a Firebase project for your app, and a Firebase service account.
+- A secret key (`prj_test_sk_...` or `prj_live_sk_...`) on your backend to call the API. Never put a secret key in client code.
+- For the location extension: the `com.apple.developer.location.push` entitlement, which Apple grants on request.
 
 ## Radar dashboard setup
 
-[Obtain an encryption key for APN](https://developer.apple.com/help/account/keys/create-a-private-key) (Apple push notification).
+1. In the Radar dashboard, open the [Settings](https://dashboard.radar.com/settings) page and enable push notifications.
+2. For iOS, enter your app's bundle ID, your Apple team ID, the APNs key ID, and the APNs key.
+3. For Android, enter the Firebase project ID, and the client email and private key from the Firebase service account.
+4. Save the settings.
 
-Navigate to Settings tab, and enable push notifications.
-
-Then enter in the app's bundle ID, team ID, key ID, and key for iOS. Enter the project ID, client email, and private key for Android. Then save the settings.
-
-Your private key should begin and end with `-----BEGIN/END PRIVATE KEY-----`, include this in your key.
+A private key begins with `-----BEGIN PRIVATE KEY-----` and ends with `-----END PRIVATE KEY-----`. Include both lines when you paste the key.
 
 ## Build configuration
 
 ### Native iOS and Android
 
-For iOS, Add the "Push Notifications" app capabilities, and turn on "Remote notifications" in the "Background Modes" capability.
+For iOS, open **Signing & Capabilities** for your app target in Xcode. Add the **Push Notifications** capability, and select **Remote notifications** in the **Background Modes** capability.
 
-For Android, [Add Firebase to your project](https://firebase.google.com/docs/android/setup) and then generate a service account from the Firebase console. You'll need the account details to send silent push notifications.
+For Android, [add Firebase to your project](https://firebase.google.com/docs/android/setup), then generate a service account in the Firebase console for the [dashboard setup](#radar-dashboard-setup).
 
-Add the following firebase messaging service configuration to your project
-```
-<manifest>
-    ...
+Declare the Radar messaging service in your app manifest:
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
-        ...
-        <service android:name="io.radar.sdk.RadarFirebaseMessagingService"
+        <service
+            android:name="io.radar.sdk.RadarFirebaseMessagingService"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
@@ -49,10 +72,10 @@ Add the following firebase messaging service configuration to your project
 </manifest>
 ```
 
-Add firebase messaging dependency to gradle
-```
+Add the Firebase Messaging dependency to your app's `build.gradle` file. The Radar SDK doesn't add it for you:
+
+```gradle
 dependencies {
-    ...
     implementation platform('com.google.firebase:firebase-bom:34.5.0')
     implementation "com.google.firebase:firebase-messaging"
 }
@@ -60,9 +83,7 @@ dependencies {
 
 ### React Native
 
-The Android manifest service entry and Gradle dependencies above are for native Android projects only. For React Native, the `react-native-radar` package automatically registers `RadarFirebaseMessagingService` in your `AndroidManifest.xml`.
-
-For iOS, add `"remote-notification"` to `UIBackgroundModes` in your `Info.plist`. If using Expo, add it to `app.json`:
+For iOS, add `remote-notification` to `UIBackgroundModes` in your `Info.plist`. If you use Expo, add it to `app.json`:
 
 ```json
 {
@@ -76,59 +97,68 @@ For iOS, add `"remote-notification"` to `UIBackgroundModes` in your `Info.plist`
 }
 ```
 
-Add the "Push Notifications" capability in Xcode under _Signing & Capabilities_.
+Then add the **Push Notifications** capability in Xcode under **Signing & Capabilities**.
 
-For Android, install `@react-native-firebase/messaging` and ensure you have [added Firebase to your Android project](https://firebase.google.com/docs/android/setup) with the `google-services` plugin applied:
+For Android, React Native SDK 4.39.0 doesn't declare `RadarFirebaseMessagingService` for you. Add the manifest entry shown for native Android to your Android app manifest. Then install `@react-native-firebase/messaging` and [add Firebase to your Android project](https://firebase.google.com/docs/android/setup) with the `google-services` plugin applied:
 
 ```bash
 npm install --save @react-native-firebase/app @react-native-firebase/messaging
 ```
 
-For location extension service support (iOS), see [Location extension service setup](#location-extension-service-setup-ios-only).
+For the location extension on iOS, see [Location extension service setup (iOS only)](#location-extension-service-setup-ios-only).
 
 ## App setup (automated setup)
 
-Initialize Radar with `RadarInitializeOptions.silentPush = true`.
+Initialize Radar with the `silentPush` initialization option set to `true`.
+
+- **iOS**: The SDK registers for remote notifications, stores the APNs device token, and handles incoming Radar pushes. It does this by swizzling `application(_:didRegisterForRemoteNotificationsWithDeviceToken:)` and `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)` on your app delegate, and then calls your own implementations.
+- **Android**: The SDK reads the Firebase Cloud Messaging token and stores it. Firebase must be initialized before Radar.
+
+For example, to initialize with silent push and set a user ID:
 
 <CodeGroup>
 
 ```swift Swift
+import UIKit
 import RadarSDK
 
-@UIApplicationMain
+@main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // initialization Radar with the silent push option
-        let radarInitializeOptions = RadarInitializeOptions()
-        radarInitializeOptions.silentPush = true
-        Radar.initialize(publishableKey: "prj_test_pk_...", options: radarInitializeOptions)
+        let options = RadarInitializeOptions()
+        options.silentPush = true
+        Radar.initialize(publishableKey: "prj_test_pk_...", options: options)
+        Radar.setUserId("user-123")
 
         return true
     }
 
 }
 ```
+
 ```kotlin Kotlin
+import android.app.Application
 import com.google.firebase.FirebaseApp
 import io.radar.sdk.Radar
 import io.radar.sdk.RadarInitializeOptions
 
-class MainActivity : AppCompatActivity() {
+class MyApplication : Application() {
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        // first the firebase app needs to be initialized
+    override fun onCreate() {
+        super.onCreate()
+
+        // Firebase must be initialized first
         FirebaseApp.initializeApp(this)
 
-        // initialization Radar with the silent push option
-        val radarInitializeOptions = RadarInitializeOptions(
-            silentPush = true,
-        )
-        Radar.initialize(this, "prj_test_pk_...", radarInitializeOptions)
+        val options = RadarInitializeOptions(silentPush = true)
+        Radar.initialize(this, "prj_test_pk_...", options)
+        Radar.setUserId("user-123")
     }
 
 }
 ```
+
 ```javascript React Native
 import Radar from 'react-native-radar';
 import { Platform } from 'react-native';
@@ -137,6 +167,7 @@ import { getMessaging, getToken, onTokenRefresh } from '@react-native-firebase/m
 Radar.initialize('prj_test_pk_...', false, {
   silentPush: Platform.OS === 'ios',
 });
+Radar.setUserId('user-123');
 
 async function registerPushToken() {
   if (Platform.OS === 'android') {
@@ -156,11 +187,13 @@ registerPushToken();
 
 </CodeGroup>
 
-On iOS, `silentPush: true` handles push token registration automatically. On Android, you must also pass the FCM token to Radar via `Radar.setPushNotificationToken()`.
+In React Native, the `silentPush` option applies to iOS. On Android, pass the Firebase Cloud Messaging token to Radar with `Radar.setPushNotificationToken()` as shown.
+
+The SDK sends the stored token to Radar with the next location update. Call `Radar.trackOnce()` or start tracking at least once after setup so that Radar has a token for the user.
 
 ## Manual setup
 
-Initialize Radar, register for silent push notifications and pass the push token to Radar.
+If you don't want the SDK to swizzle your app delegate or read the Firebase token for you, leave `silentPush` off, pass the token to Radar yourself, and forward incoming pushes to the SDK.
 
 <CodeGroup>
 
@@ -168,47 +201,66 @@ Initialize Radar, register for silent push notifications and pass the push token
 import UIKit
 import RadarSDK
 
-@UIApplicationMain
+@main
 class AppDelegate: UIResponder, UIApplicationDelegate {
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // initialize Radar, silent push option defaults to false
+        // silentPush defaults to false
         Radar.initialize(publishableKey: "prj_test_pk_...")
+        Radar.setUserId("user-123")
 
         application.registerForRemoteNotifications()
 
         return true
     }
 
-    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable : Any]) async -> UIBackgroundFetchResult {
-        await Radar.didReceivePushNotificationPayload(userInfo)
-        return .newData
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        // Radar expects the token as a lowercase hex string
+        let token = deviceToken.map { String(format: "%02x", $0) }.joined()
+        Radar.setPushNotificationToken(token)
     }
+
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        Radar.didReceivePushNotificationPayload(userInfo) {
+            completionHandler(.newData)
+        }
+    }
+
 }
 ```
+
 ```kotlin Kotlin
+import android.app.Application
+import com.google.firebase.FirebaseApp
+import com.google.firebase.messaging.FirebaseMessaging
+import io.radar.sdk.Radar
 
-class MainActivity : AppCompatActivity() {
+class MyApplication : Application() {
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        // first the firebase app needs to be initialized
+    override fun onCreate() {
+        super.onCreate()
+
         FirebaseApp.initializeApp(this)
 
-        // initialize Radar, silent push option defaults to false
+        // silentPush defaults to false
         Radar.initialize(this, "prj_test_pk_...")
-        
-        // register push notification with firebase, then pass the push token to Radar
+        Radar.setUserId("user-123")
+
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
             Radar.setPushNotificationToken(token)
         }
     }
+
 }
 ```
+
 ```javascript React Native
 import Radar from 'react-native-radar';
 import { Platform } from 'react-native';
 import { getMessaging, getToken, onTokenRefresh } from '@react-native-firebase/messaging';
 
 Radar.initialize('prj_test_pk_...');
+Radar.setUserId('user-123');
 
 async function registerPushToken() {
   if (Platform.OS === 'android') {
@@ -225,28 +277,45 @@ async function registerPushToken() {
 
 registerPushToken();
 ```
+
 </CodeGroup>
+
+`Radar.didReceivePushNotificationPayload(_:completionHandler:)` calls `Radar.trackOnce()` when the payload `type` is `radar:trackOnce`, and calls the completion handler when the request finishes. For any payload that isn't from Radar, it calls the completion handler immediately, so you can pass every remote notification through it.
+
+On Android, `RadarFirebaseMessagingService` receives the message. If the app process wasn't running, the service initializes the SDK with the stored publishable key before it calls `Radar.trackOnce()`.
+
+### Method reference
+
+| Platform | Method | Description |
+| --- | --- | --- |
+| iOS | `Radar.setPushNotificationToken(_ token: String?)` | Stores the APNs device token, as a hex string. |
+| iOS | `Radar.setLocationExtensionToken(_ token: String?)` | Stores the location push token, as a hex string. |
+| iOS | `Radar.setAppGroup(_ appGroup: String?)` | Sets the app group that the app and the location push extension share. |
+| iOS | `Radar.initialize(withAppGroup: String)` | Initializes the SDK inside the extension, using the publishable key the app stored in the shared app group. |
+| iOS | `Radar.didReceivePushNotificationPayload(_ payload: [AnyHashable: Any], completionHandler: @escaping () -> Void)` | Handles a Radar push payload. |
+| Android | `Radar.setPushNotificationToken(token: String?)` | Stores the Firebase Cloud Messaging token. |
 
 ## Location extension service setup (iOS only)
 
-The location extension service requires a native `CLLocationPushServiceExtension` target, an [app group](https://developer.apple.com/documentation/Xcode/configuring-app-groups) shared between the main app and the extension, and the `com.apple.developer.location.push` entitlement on both targets.
+The location extension requires a native `CLLocationPushServiceExtension` target, an [app group](https://developer.apple.com/documentation/Xcode/configuring-app-groups) shared between the main app and the extension, and the `com.apple.developer.location.push` entitlement on both targets.
 
 ### Build configuration
 
-Add the following capabilities to both the main app target and the location push extension target:
-- **App Groups** — use a shared group (e.g., `group.yourApp.data`)
+Add these capabilities to both the main app target and the location push extension target:
+
+- **App Groups**, with a shared group such as `group.com.example.app`
 - **Push Notifications**
 
 Add the `com.apple.developer.location.push` entitlement to both targets.
 
-For React Native with Expo, you can configure this in `app.json`:
+For React Native with Expo, you can configure the entitlements in `app.json`:
 
 ```json
 {
   "expo": {
     "ios": {
       "entitlements": {
-        "com.apple.security.application-groups": ["group.yourApp.data"],
+        "com.apple.security.application-groups": ["group.com.example.app"],
         "com.apple.developer.location.push": true
       }
     }
@@ -254,83 +323,173 @@ For React Native with Expo, you can configure this in `app.json`:
 }
 ```
 
-The location push extension is a native iOS target and must be created in Xcode (or with a tool like `@bacons/apple-targets` for Expo). The extension target needs the `RadarSDK` pod, `CoreLocation` framework, and the same App Group and `com.apple.developer.location.push` entitlements.
+The location push extension is a native iOS target. Create it in Xcode, or with a tool that generates native targets for Expo. The extension target needs the Radar SDK, the `CoreLocation` framework, and the same app group and `com.apple.developer.location.push` entitlement as the app.
 
 ### Main app setup
 
-Initialize Radar, set the app group, and start monitoring for location extension pushes.
+Initialize Radar, set the app group, and start monitoring for location pushes. Pass the location push token to Radar as a hex string.
 
 <CodeGroup>
 
 ```swift Swift
 import UIKit
+import CoreLocation
 import RadarSDK
 
-@UIApplicationMain
+@main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     let locationManager = CLLocationManager()
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        let radarInitializeOptions = RadarInitializeOptions()
-        radarInitializeOptions.silentPush = true // (or true if you only want location extension)
-        Radar.initialize(publishableKey: "prj_test_pk_...", options: radarInitializeOptions)
-        Radar.setAppGroup("group.yourApp.data")
+        let options = RadarInitializeOptions()
+        // Set to true to also handle app silent push. Leave false to use only the location extension.
+        options.silentPush = true
+        Radar.initialize(publishableKey: "prj_test_pk_...", options: options)
+        Radar.setAppGroup("group.com.example.app")
+        Radar.setUserId("user-123")
 
-        locationManager.startMonitoringLocationPushes() { data, error in
-            Radar.setLocationExtensionToken(data?.map { String(format: "%02x", $0) }.joined())
+        locationManager.startMonitoringLocationPushes { data, error in
+            guard let data = data else { return }
+            Radar.setLocationExtensionToken(data.map { String(format: "%02x", $0) }.joined())
         }
 
         return true
     }
+
 }
 ```
+
 ```javascript React Native
 import Radar from 'react-native-radar';
 
-Radar.setAppGroup('group.yourApp.data');
+Radar.setAppGroup('group.com.example.app');
 Radar.initialize('prj_test_pk_...', false, { silentPush: true });
+Radar.setUserId('user-123');
 ```
+
 </CodeGroup>
 
-<Info>
-  `CLLocationManager.startMonitoringLocationPushes()` is not exposed by the React Native SDK. You need to bridge this call natively using either a custom Expo Module, a React Native native module, or by calling it from your `AppDelegate`. Once you have the token, pass it to Radar from JavaScript:
-</Info>
-
-```javascript React Native
-Radar.setLocationExtensionToken(token);
-```
+The React Native SDK doesn't expose `CLLocationManager.startMonitoringLocationPushes()`. Call it from native code, for example from your `AppDelegate`, a custom Expo module, or a React Native native module. If you bridge the token to JavaScript, pass it to Radar with `Radar.setLocationExtensionToken(token)`.
 
 ### Extension setup
 
-Create a `CLLocationPushServiceExtension` target. When a location payload is received, initialize Radar using the shared app group and pass the payload to the SDK.
+In the `CLLocationPushServiceExtension` target, initialize Radar with the shared app group when a location push arrives, then pass the payload to the SDK. Call the extension's completion handler when Radar finishes.
 
-<CodeGroup>
-
-```swift Swift
+```swift
 import CoreLocation
 import RadarSDK
 
 class LocationPushService: NSObject, CLLocationPushServiceExtension {
-    func didReceiveLocationPushPayload(_ payload: [String : Any], completion: @escaping () -> Void) {
-        Radar.initialize(withAppGroup: "group.yourApp.data")
+
+    func didReceiveLocationPushPayload(_ payload: [String: Any], completion: @escaping () -> Void) {
+        Radar.initialize(withAppGroup: "group.com.example.app")
         Radar.didReceivePushNotificationPayload(payload, completionHandler: completion)
     }
+
 }
 ```
 
-</CodeGroup>
-
-This extension code is the same whether your main app is native Swift or React Native.
+The extension code is the same whether your main app is native Swift or React Native.
 
 ## Usage
 
-Silent push or location extension push notifications can be triggered by sending a POST API request to the `/users/refresh` endpoint. See the [API reference](/api#send-remote-track-requests-to-users) for full details.
+To request a location, send a `POST` request to `/v1/users/refresh` from your backend.
 
-## iOS Environments
+### Request
 
-APNs operate in two separate environments for production and non-production app builds. 
-When using the live Radar environment, Radar sends silent push notifications to the production APN environment, 
-and when using the test Radar environment, Radar sends silent push notifications to the non-production environment.
+- **Endpoint**: `POST /v1/users/refresh`
+- **Authentication**: Secret key
 
-When using the live Radar environment, your device must be in a production build, and vice versa. You will receive "BadDeviceToken" if there is a mismatch.
+Pass the secret key in the `Authorization` header. The key's environment selects the environment: a test secret key reaches users created with your test publishable key.
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `userIds` | array of strings | Yes | The `userId` values to send the request to. At least 1 and at most 10 per request. |
+| `type` | string | No | `pushNotification` for an app silent push, or `locationExtension` for an iOS location extension push. Defaults to `pushNotification`. Android devices receive an app silent push for either value. |
+
+For example:
+
+```bash
+curl "https://api.radar.io/v1/users/refresh" \
+  -H "Authorization: prj_test_sk_..." \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"userIds": ["user-123", "user-456", "user-789"], "type": "pushNotification"}'
+```
+
+### Response
+
+The response lists the users Radar sent a push to and the users it didn't, with a reason.
+
+```json
+{
+  "meta": {
+    "code": 200
+  },
+  "sent": [
+    { "userId": "user-123" },
+    { "userId": "user-456" }
+  ],
+  "failed": [
+    { "userId": "user-789", "reason": "Rate limit exceeded" }
+  ]
+}
+```
+
+`sent` means the push provider accepted the push. It doesn't mean the device received it or that a location update followed. Confirm the result with the user's `updatedAt` time, a [webhook](/integrations/webhooks), or the [Users](https://dashboard.radar.com/geofencing/users) page.
+
+For the user object, see [Users API](/api/users).
+
+## Failure handling
+
+A request that Radar rejects as a whole returns HTTP `400` with one of these messages:
+
+| Message | Cause |
+| --- | --- |
+| `No userIds provided` | `userIds` is empty. |
+| `Too many userIds provided` | `userIds` has more than 10 entries. |
+| `Push notification is not enabled for this project` | The project has no iOS push settings saved. Radar returns this error even when Android push settings are saved. See [Radar dashboard setup](#radar-dashboard-setup). |
+| `Silent push is not enabled` | Silent push isn't available for the request. Contact [Radar support](https://radar.com/support). |
+
+Per-user failures appear in `failed` with a `reason`:
+
+| Reason | Cause | What to do |
+| --- | --- | --- |
+| `User not found` | No user with that `userId` exists in the environment. | Check the user ID and the key's environment. |
+| `No pushNotification token` or `No locationExtension token` | Radar has no token of that type for the user. | Complete the app setup, then send a location update from the device. |
+| `Rate limit exceeded` | Radar sent a push of that type to the device too recently. Radar limits how often each device can be refreshed. | Wait and retry later. Don't retry in a tight loop. |
+| `Apple Push Notification is not configured` | The user is on iOS and the iOS push settings are missing or disabled. | Complete the Radar dashboard setup. |
+| `Firebase Cloud Messaging is not configured` | The user is on Android and the Android push settings are missing or disabled. | Complete the Radar dashboard setup. |
+| A reason from APNs, such as `BadDeviceToken` | APNs rejected the push. | See [iOS environments](#ios-environments). |
+| A message from Firebase Cloud Messaging | Firebase rejected the push. | Check the Firebase project ID and service account. |
+
+## Delivery constraints
+
+- **Best-effort delivery**: iOS and Android decide when, and whether, to deliver a background push. Apple [throttles background notifications](https://developer.apple.com/documentation/usernotifications/pushing-background-updates-to-your-app), and Android can defer delivery in Doze. Don't use silent push as a precise timer.
+- **Force-quit apps on iOS**: An app silent push doesn't reach an iOS app that the user force-quit. Use the location extension for that case.
+- **Permissions**: A push doesn't grant permission. The resulting `Radar.trackOnce()` call still needs location permission. A request made in the background needs background location permission. If permission is missing, the push is delivered and no location update follows.
+- **Current token**: The token must be current. The SDK sends its token with location updates. A device that hasn't sent a location update since the token was set or changed can't be reached.
+- **One update per push**: One push produces at most one location update. Waking the app also lets the SDK resume background tracking that you had already started, if the system had stopped the app. A push doesn't start tracking that was never started, and the location extension can't keep tracking running after it shuts down.
+
+## iOS environments
+
+APNs has separate production and development environments. With a live Radar key, Radar sends pushes to the production APNs environment. With a test Radar key, Radar sends pushes to the development APNs environment.
+
+The build on the device must match. Use a production build, such as a TestFlight or App Store build, with the live Radar environment, and a development build with the test Radar environment. If they don't match, the user appears in `failed` with the reason `BadDeviceToken`.
+
+## Test your setup
+
+1. Install a development build on a physical device, initialize with your `prj_test_pk_...` key, set a `userId`, and grant location permission.
+2. Call `Radar.trackOnce()` once. Find the user on the [Users](https://dashboard.radar.com/geofencing/users) page and note the last update time.
+3. Send the app to the background.
+4. From your backend or a terminal, call `POST /v1/users/refresh` with your `prj_test_sk_...` key and the user's ID.
+5. Check that the user appears in `sent`, and that the user's last update time changes on the Users page.
+6. Test failures: send an unknown user ID and expect `User not found`. Send the same request again immediately and expect `Rate limit exceeded`.
+7. For the location extension, force-quit the app, send a request with `"type": "locationExtension"`, and check for a new location update.
+
+## See also
+
+- [iOS SDK](/sdk/ios), [Android SDK](/sdk/android), and [React Native SDK](/sdk/react-native)
+- [Location permissions](/fundamentals/location-permissions)
+- [Test, troubleshoot, and go live](/fundamentals/testing-and-launch)

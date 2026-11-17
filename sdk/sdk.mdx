@@ -1,38 +1,171 @@
 ---
-title: "Overview"
-description: "Overview of the Radar SDK for adding geofencing, location tracking, trip tracking, geocoding, and routing to iOS, Android, web, and cross-platform apps."
+title: "SDK overview and compatibility"
+sidebarTitle: "Overview"
+description: "Compare what each Radar SDK supports for core tracking, the fraud plugin, the desktop companion app, and Maps components, with documented versions and install routes."
 ---
 
-The Radar SDK abstracts away cross-platform differences between location services, allowing you to add geofencing, location tracking, trip tracking, geocoding, and routing to your apps and websites with just a few lines of code.
+Radar has native SDKs for iOS and Android, a web SDK for browsers, and wrappers for React Native, Flutter, Capacitor, Cordova, and .NET MAUI. Use this page to pick an SDK, check that it supports the feature you need, and find the version and install route before you open the reference for your platform.
 
-Note that you can use our [Waypoint apps](/waypoint) for iOS and Android to test Radar before integrating the SDK, or to test your implementation of Radar side-by-side with a complete implementation.
+Support is listed in four separate tables: the core SDK, the fraud plugin, the desktop companion app, and Maps and UI components. A "Yes" in one table doesn't imply support in another. "Yes" means the documented version exposes the feature. "Partial" and "No" cells say what is missing.
 
 ## Platforms
 
-<CardGroup cols={3}>
-  <Card title="iOS" href="/sdk/ios" img="/images/sdk/logos/apple.png">
-    
+<CardGroup cols={4}>
+  <Card title="iOS" href="/sdk/ios" />
+  <Card title="Android" href="/sdk/android" />
+  <Card title="Web" href="/sdk/web" />
+  <Card title="React Native" href="/sdk/react-native" />
+  <Card title="Flutter" href="/sdk/flutter" />
+  <Card title="Capacitor" href="/sdk/capacitor" />
+  <Card title="Cordova" href="/sdk/cordova" />
+  <Card title=".NET MAUI" href="/sdk/maui" />
+</CardGroup>
+
+The wrappers bundle a specific version of the native iOS and Android SDKs. A method added to a native SDK after that version isn't available through the wrapper, even when the native reference documents it. See [Supported versions](#supported-versions) for the pairing.
+
+## Supported versions
+
+These are the versions the reference pages document.
+
+| SDK | Package | Documented version | Requirements | Native SDKs it pairs with |
+| --- | --- | --- | --- | --- |
+| [iOS](/sdk/ios) | `RadarSDK` | 3.46.0 | iOS 15 or later. iOS SDK versions before 3.41.0 support earlier iOS versions. | Not applicable |
+| [Android](/sdk/android) | `io.radar:sdk` | 4.3.0 | API level 23 (Android 6.0) or later and Android Gradle Plugin 7.0 or later, from Android SDK 4.0.0 | Not applicable |
+| [Web](/sdk/web) | `radar-sdk-js` | 5.3.0 | A browser with `fetch`, `localStorage`, and, for device location, the Geolocation API on a secure origin | Not applicable |
+| [React Native](/sdk/react-native) | `react-native-radar` | 4.39.0 | React Native 0.80.0 or later, React 19.1.0 or later. Expo 43.0.5 or later if you use the config plugin. iOS 15.0 or later. | iOS SDK 3.45.0, Android SDK 4.1.0 |
+| [Flutter](/sdk/flutter) | `flutter_radar` | 3.12.4 (latest stable) | Dart 2.12.0 or later and below 4.0.0, Flutter 1.20.0 or later. iOS 10.0 or later. | iOS SDK 3.19.5, Android SDK 3.18.10 |
+| [Capacitor](/sdk/capacitor) | `capacitor-radar` | 4.1.1 | Capacitor 8, Node.js 22 or later, JDK 21. iOS 15.0 or later, Android SDK level 24 or later. | iOS SDK 3.38.0, Android SDK 3.35.0 |
+| [Cordova](/sdk/cordova) | `@radarlabs/cordova-plugin-radar` | 3.9.1 (published April 2024) | iOS and Android | iOS SDK 3.9.14, Android SDK 3.9.8 |
+| [.NET MAUI](/sdk/maui) | `RadarIO.Xamarin` | 3.9.3 (latest stable) | .NET MAUI targets `net8.0-android21.0` and `net8.0-ios14.2`. Xamarin targets `MonoAndroid12.0` and `Xamarin.iOS`. | iOS SDK 3.9.6, Android SDK 3.9.8 |
+
+The Cordova plugin and the .NET MAUI package pair with the 3.9 native SDKs. If a hybrid app needs newer native features, the Capacitor SDK pairs with newer native SDKs.
+
+## Core SDK support
+
+The core SDK covers location tracking, geofence and place events, trips, beacons, and the geocoding, search, and routing methods. It doesn't include verified location checks or risk assessments. Those need the [fraud plugin](#fraud-plugin-support).
+
+| SDK | Foreground tracking | Background tracking | Trips | Multi-leg trip methods | Beacons | Geocoding, search, and routing methods | Silent push |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| iOS | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Android | Yes | Yes | Yes | Yes | Yes. Ranging needs Android 8.0 (API level 26) or later. | Yes | Yes |
+| Web | Yes | No. The web SDK tracks only while your page is open. | Yes, while the page is open | No. The 5.3.0 reference has no trip leg methods. | No. The web SDK doesn't range beacons. | Yes | No |
+| React Native | Yes | Yes | Yes | Yes. `updateTripLeg()` and `reorderTripLegs()`. | Yes | Yes | Yes |
+| Flutter | Yes | Yes | Yes | No | Yes, through the `beacons` option | Yes | No. Not exposed in 3.12.4. |
+| Capacitor | Yes | Yes | Yes | Partial. `updateTripLeg()`, `updateCurrentTripLeg()`, and `reorderTripLegs()` exist, but the typed trip options have no `legs` field. | Yes, through the `beacons` option | Yes | Partial. The `silentPush` option and `setPushNotificationToken()` exist. The [silent push](/sdk/silent-push) setup steps cover native iOS, native Android, and React Native only. |
+| Cordova | Yes | Yes. Inspect your merged Android manifest for the background location permission, as described in the [Cordova reference](/sdk/cordova#android). | Yes | No | Yes, through the `beacons` option | Yes | No. Not exposed in 3.9.1. |
+| .NET MAUI | Yes | Yes | Yes | No | Yes, through the `beacons` argument and tracking option | Yes | No. Not exposed in 3.9.3. |
+
+For the tracking options and presets behind foreground and background tracking, see [Tracking options](/sdk/tracking). To change tracking behavior without an app release, see [Remote configuration](/sdk/remote-configuration).
+
+## Fraud plugin support
+
+Verified location checks (`Radar.trackVerified()`) and device and network risk assessments (`Radar.revealRisk()`) run through a fraud plugin that you add next to the core SDK. Install steps, attestation setup, and the exact core SDK and plugin pairs are in [Fraud plugin setup](/sdk/fraud#compatibility).
+
+| SDK | Verified location checks | Risk assessments with `revealRisk()` | Plugin and pairing |
+| --- | --- | --- | --- |
+| iOS | Yes | Yes | `RadarSDKFraud` 1.6.x with `RadarSDK` 3.44.0 to 3.46.x. The plugin requires iOS 15 or later. |
+| Android | Yes | Yes | `io.radar:sdk-fraud` 1.3.x with `io.radar:sdk` 3.39.0 to 4.3.x, plus the Play Integrity API dependency |
+| Web | Yes | Yes | `@radarlabs/plugin-fraud` 1.6.x with `radar-sdk-js` 5.1.0 or later. Methods are on `Radar.fraud`. |
+| React Native | Yes | Yes | `react-native-radar` 4.x ships the iOS plugin (1.6.0 in 4.39.0), linked only when you opt in. You add the Android plugin, or the Expo config plugin adds it. |
+| Capacitor | Yes | Yes | `capacitor-radar` 4.1.1 bundles `RadarSDKFraud` 1.4.1 and `io.radar:sdk-fraud` 1.2.1. These pair with the older native SDKs that the plugin bundles, and [Fraud plugin setup](/sdk/fraud) has no Capacitor install section. |
+| Flutter | Partial | No. Not exposed in 3.12.4. | `trackVerified()`, `getVerifiedLocationToken()`, and `startTrackingVerified()` are exposed, but the package doesn't install or configure a fraud plugin. See the [Flutter reference](/sdk/flutter#verified-location). |
+| Cordova | Partial | No. Not exposed in 3.9.1. | The plugin exposes the verified location methods of the 3.9 native SDKs, which predate the current fraud plugin and token APIs. See the [Cordova reference](/sdk/cordova#verified-location). |
+| .NET MAUI | Partial | No. Not exposed in 3.9.3. | The package exposes the verified location methods of the 3.9 native SDKs, which predate the current fraud plugin and token APIs. See the [.NET MAUI reference](/sdk/maui#verified-location). |
+
+For a new Geo-compliance or Fraud integration, use a "Yes" row. If you must use a "Partial" row, confirm support for your use case with your Radar account team before you build.
+
+A missing or incompatible plugin makes `Radar.trackVerified()` return `ERROR_PLUGIN`. Reading a result in the app isn't validation on any platform. Your backend validates the signed token. See [Geolocation token schema](/api/geolocation-tokens).
+
+## Companion app support
+
+Radar Verify is a desktop companion app for Mac and Windows. It works with the web SDK fraud plugin. It isn't used with the mobile SDKs.
+
+| Client | Companion app | How to select the path |
+| --- | --- | --- |
+| Web SDK with `@radarlabs/plugin-fraud`, desktop browser | Yes. Radar Verify for Mac and Windows. | Default. `skipVerifyApp` is `false`. If the app isn't installed or isn't running, the call fails with `ERROR_VERIFY_APP`. |
+| Web SDK with `@radarlabs/plugin-fraud`, no download | Not used. The check runs in the browser with browser signals only. | Pass `skipVerifyApp: true`. |
+| iOS, Android, and the mobile wrappers | Not applicable. Device attestation uses App Attest on iOS and the Play Integrity API on Android. | Not applicable |
+| Native desktop apps | Not applicable. A Mac SDK (macOS 12.4 or later), a Windows SDK (Windows 10 or later with .NET 8 or later), and an Electron plugin are available on request. | Contact your Radar account team for access. |
+
+To compare the two web paths and their signals, see [Choose the companion app or the no-download path](/sdk/fraud#choose-the-companion-app-or-the-no-download-path).
+
+## Maps and UI component support
+
+Every SDK has methods for geocoding, search, and routing, listed in [Core SDK support](#core-sdk-support). Prebuilt UI components are a separate question.
+
+| SDK | Map component | Autocomplete component | Notes |
+| --- | --- | --- | --- |
+| Web | Yes. `Radar.ui.map()`, `Radar.ui.marker()`, and `Radar.ui.popup()`. | Yes. `Radar.ui.autocomplete()`. | Separate plugins: `@radarlabs/plugin-maps` (requires `maplibre-gl`) and `@radarlabs/plugin-autocomplete`. Version 1.2.0 of each is documented. The autocomplete plugin requires `radar-sdk-js` 5.3.0 or later. |
+| iOS | No | No | Display a Radar map style with MapLibre Native. See [Display maps](/maps/maps#ios). Build address entry with `Radar.autocomplete` and your own UI. |
+| Android | No | No | Display a Radar map style with MapLibre Native. See [Display maps](/maps/maps#android). Build address entry with `Radar.autocomplete` and your own UI. |
+| React Native | Yes. `Map`. | Yes. `Autocomplete`. | `Map` needs `@maplibre/maplibre-react-native` 11. See [Maps and UI kits](/sdk/react-native#maps-and-ui-kits). |
+| Flutter | No | No | Display a Radar map style with the `maplibre_gl` package. See [Display maps](/maps/maps#flutter). |
+| Capacitor | No | No | No native component. In a Capacitor web view, you can use the [Web SDK](/sdk/web#maps-and-ui-kits) components. |
+| Cordova | No | No | The plugin has no map or autocomplete component. |
+| .NET MAUI | No | No | The package has no map or autocomplete control. |
+
+Radar map styles also load in any library that supports MapLibre styles. See [Compatibility](/maps/maps#compatibility).
+
+## SDK and plugin pairing
+
+Keep these pairs on compatible versions and update them together.
+
+| If you use | Pair it with | Where the versions are listed |
+| --- | --- | --- |
+| iOS SDK and verified location or risk assessments | `RadarSDKFraud` | [Fraud plugin setup](/sdk/fraud#compatibility) |
+| Android SDK and verified location or risk assessments | `io.radar:sdk-fraud` and the Play Integrity API | [Fraud plugin setup](/sdk/fraud#compatibility) |
+| Web SDK and verified location or risk assessments | `@radarlabs/plugin-fraud` | [Fraud plugin setup](/sdk/fraud#web) |
+| Web SDK and maps | `@radarlabs/plugin-maps` and `maplibre-gl` | [Web SDK](/sdk/web#install) |
+| Web SDK and address autocomplete UI | `@radarlabs/plugin-autocomplete` | [Web SDK](/sdk/web#install) |
+| React Native SDK and verified location | The iOS plugin shipped in the package, and `io.radar:sdk-fraud` on Android | [Fraud plugin setup](/sdk/fraud#react-native) |
+| React Native SDK and the `Map` component | `@maplibre/maplibre-react-native` 11 | [React Native SDK](/sdk/react-native#maps-and-ui-kits) |
+| Android SDK and silent push | `com.google.firebase:firebase-messaging` | [Silent push](/sdk/silent-push) |
+| A wrapper | The native SDK versions it bundles | [Supported versions](#supported-versions) |
+
+Starting with iOS SDK 3.44.0, the core SDK and the fraud plugin must be updated together.
+
+## Install routes
+
+| SDK | Install route | Details |
+| --- | --- | --- |
+| iOS | Swift Package Manager (recommended), Carthage, or a manual `RadarSDK.xcframework` | [Install SDK](/sdk/ios#install-sdk) |
+| Android | Gradle from Maven Central (recommended), or a manual `aar` | [Install SDK](/sdk/android#install-sdk) |
+| Web | A script tag from `js.radar.com`, or `npm install radar-sdk-js` | [Install](/sdk/web#install) |
+| React Native | `npm install --save react-native-radar`, then the Expo config plugin or the manual iOS and Android steps. The module doesn't run in Expo Go. | [Install](/sdk/react-native#install) |
+| Flutter | `flutter_radar` in `pubspec.yaml`, then `flutter pub get` | [Install](/sdk/flutter#install) |
+| Capacitor | `npm install --save capacitor-radar`, then `npx cap sync` | [Install](/sdk/capacitor#install) |
+| Cordova | `cordova plugin add @radarlabs/cordova-plugin-radar` | [Install](/sdk/cordova#install) |
+| .NET MAUI | `dotnet add package RadarIO.Xamarin`. One package carries the .NET MAUI and Xamarin bindings. | [Install](/sdk/maui#install) |
+| Fraud plugin | Per platform | [Fraud plugin setup](/sdk/fraud) |
+
+Each wrapper also needs native iOS and Android configuration, such as `Info.plist` keys and manifest permissions. The wrapper's reference page lists it.
+
+Initialize every SDK with a publishable key (`prj_test_pk_...` while you build, `prj_live_pk_...` in production). Never put a secret key in client code. See [Choose the right API key](/fundamentals/authentication-and-access#choose-the-right-api-key).
+
+## Product guides
+
+Once the SDK is installed, follow the guide for the outcome you need. [Choose your integration](/get-started/choose-your-integration) maps each outcome to a platform path.
+
+<CardGroup cols={2}>
+  <Card title="Geo-compliance" icon="shield-check" href="/geo-compliance/overview">
+    Verified location checks with the fraud plugin, validated on your backend.
   </Card>
-  <Card title="Android" href="/sdk/android" img="/images/sdk/logos/android.png">
-    
+  <Card title="Fraud" icon="user-shield" href="/fraud/overview">
+    Device and network risk assessments, with a verified location check when you need one.
   </Card>
-  <Card title="React Native" href="/sdk/react-native" img="/images/sdk/logos/react.png">
-    
+  <Card title="Geofencing" icon="location-dot" href="/geofencing/overview">
+    Geofence and place events, trips, and beacons with the core SDK.
   </Card>
-  <Card title="Web" href="/sdk/web" img="/images/sdk/logos/js.png">
-    
-  </Card>
-  <Card title="Cordova" href="/sdk/cordova" img="/images/sdk/logos/cordova.png">
-    
-  </Card>
-  <Card title="Capacitor" href="/sdk/capacitor" img="/images/sdk/logos/capacitor.png">
-    
-  </Card>
-  <Card title="Flutter" href="/sdk/flutter" img="/images/sdk/logos/flutter.png">
-    
-  </Card>
-  <Card title="Maui" href="/sdk/maui" img="/images/sdk/logos/maui.png">
-    
+  <Card title="Maps" icon="map" href="/maps/overview">
+    Maps, store locators, and address entry with the web SDK plugins, the mobile SDK methods, or the APIs.
   </Card>
 </CardGroup>
 
+## Related reference
+
+- [Tracking options](/sdk/tracking)
+- [Remote configuration](/sdk/remote-configuration)
+- [Silent push](/sdk/silent-push)
+- [Understand foreground and background location permissions](/fundamentals/location-permissions)
+- [Test, troubleshoot, and go live](/fundamentals/testing-and-launch)
+- [REST API overview](/api)

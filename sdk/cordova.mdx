@@ -1,101 +1,168 @@
 ---
-title: "Cordova plugin"
-description: "Install and integrate the Radar Cordova plugin to add location tracking, geofencing, and trip tracking to your Cordova app."
+title: "Cordova SDK"
+description: "Install, configure, and call the Radar Cordova plugin, with native setup, version pairing, and feature availability for iOS and Android."
 ---
 
-This is the documentation for the Cordova plugin. Before integrating, read the [native SDK documentation](https://docs.radar.com/sdk) to familiarize yourself with the platform.
+At the end of this page you have the Radar Cordova plugin installed, the native iOS and Android projects configured, and a reference for every method and listener the plugin exposes.
 
-See the source on GitHub [here](https://github.com/radarlabs/cordova-plugin-radar). Or, see the `@radarlabs/cordova-plugin-radar` package on npm [here](https://www.npmjs.com/package/@radarlabs/cordova-plugin-radar).
+This page documents `@radarlabs/cordova-plugin-radar` 3.9.1. The source is on [GitHub](https://github.com/radarlabs/cordova-plugin-radar) and the package is on [npm](https://www.npmjs.com/package/@radarlabs/cordova-plugin-radar).
+
+## Versions and feature availability
+
+| Item | `@radarlabs/cordova-plugin-radar` 3.9.1 |
+| --- | --- |
+| Platforms | iOS and Android. |
+| iOS SDK | `RadarSDK` 3.9.14, added by the plugin as a CocoaPods dependency. |
+| Android SDK | `io.radar:sdk:3.9.8`, added by the plugin as a Gradle dependency. |
+| Latest release | 3.9.1, published in April 2024. |
+
+The plugin pairs with the 3.9 native SDKs. Methods and options added to the native SDKs after those versions aren't available through the plugin. If your hybrid app needs them, the [Capacitor SDK](/sdk/capacitor) pairs with newer native SDKs.
+
+| Feature | Available | Notes |
+| --- | --- | --- |
+| Foreground and background tracking | Yes | Presets, custom options, mock tracking, listeners. |
+| Trips | Yes | `startTrip()`, `updateTrip()`, `completeTrip()`, `cancelTrip()`. No multi-leg methods. |
+| Verified location (Geo-compliance and Fraud) | Partial | `trackVerified()`, `trackVerifiedToken()`, and `startTrackingVerified()` from the 3.9 SDKs are exposed. See [Verified location](#verified-location). |
+| Beacons | Yes | `beacons` option on `trackOnce()`, `trackVerified()`, and tracking options. |
+| Maps and address UI | No | The plugin has no map or autocomplete component. |
+| In-app messages | No | Not exposed in 3.9.1. |
+
+The plugin doesn't expose user tags, product, or initialization options. For how the wrappers compare, see [SDK overview and compatibility](/sdk/sdk).
 
 ## Install
 
 Install the Cordova plugin:
 
-```javascript
+```bash
 cordova plugin add @radarlabs/cordova-plugin-radar
 ```
 
-Before writing any JavaScript, you must integrate the Radar SDK with your iOS and Android apps as described in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+The plugin adds the Radar iOS and Android SDKs to the native projects. Finish the native configuration below before you write any JavaScript.
 
-On iOS, you must add location usage descriptions and background modes to your `Info.plist`. Initialize the SDK in `application:didFinishLaunchingWithOptions:` in `AppDelegate.m`, passing in your Radar publishable API key:
+### iOS
 
-```c
-#import <RadarSDK/RadarSDK.h>
-@implementation AppDelegate
--	(BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {  
-	[Radar initializeWithPublishableKey:publishableKey];  
-	// ...
-}
+The plugin writes three location usage descriptions to `Info.plist` with a generic default string. Set your own text when you add the plugin. These strings appear in the permission prompts.
+
+```bash
+cordova plugin add @radarlabs/cordova-plugin-radar \
+  --variable NS_LOCATION_WHEN_IN_USE_USAGE_DESCRIPTION="Your foreground location usage description." \
+  --variable NS_LOCATION_ALWAYS_AND_WHEN_IN_USE_USAGE_DESCRIPTION="Your background location usage description." \
+  --variable NS_LOCATION_ALWAYS_USAGE_DESCRIPTION="Your background location usage description."
 ```
 
-On Android, you must add the Google Play Services library to your project, then add the SDK to your project, preferably using Gradle. Finally, initialize the SDK in `onCreate()` in `MainActivity.java`, passing in your Radar publishable API key:
+For background tracking with the responsive or continuous preset, open the app target in Xcode, select **Signing & Capabilities**, add **Background Modes**, and select **Location updates** and **Background fetch**.
 
-```kotlin
+Then initialize the SDK in `application:didFinishLaunchingWithOptions:` in `AppDelegate.m` with your publishable key:
+
+```objc
+#import <RadarSDK/RadarSDK.h>
+
+@implementation AppDelegate
+
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+  [Radar initializeWithPublishableKey:@"prj_test_pk_..."];
+  // Keep the rest of the generated method.
+  return [super application:application didFinishLaunchingWithOptions:launchOptions];
+}
+
+@end
+```
+
+### Android
+
+Add Google Play Services Location to your app. The plugin adds `io.radar:sdk` itself.
+
+Initialize the SDK in `onCreate()` in `MainActivity.java` with your publishable key. Keep the rest of the generated method as it is.
+
+```java
+import android.os.Bundle;
+
+import org.apache.cordova.CordovaActivity;
+
 import io.radar.sdk.Radar;
 
 public class MainActivity extends CordovaActivity {
 
   @Override
-  public void onCreate() {
-    super.onCreate();
-    Radar.initialize(this, publishableKey);
-    // ...
+  public void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    Radar.initialize(this, "prj_test_pk_...");
+    loadUrl(launchUrl);
   }
 
 }
 ```
 
+The plugin changes your `AndroidManifest.xml` in two ways:
+
+- It adds the `FOREGROUND_SERVICE` permission.
+- It adds a `tools:node="remove"` rule for `ACCESS_BACKGROUND_LOCATION`, which strips that permission from the merged manifest.
+
+<Warning>
+  Android grants only permissions that are declared in the merged manifest, so the remove rule can leave your app without background location permission.
+</Warning>
+
+Inspect the merged manifest of your build before you rely on background location permission on Android. If `ACCESS_BACKGROUND_LOCATION` isn't in the merged manifest, `requestPermissions(true)` can't obtain background permission, and on Android 10 and later the app receives location in the background only while a foreground service is running. For [background tracking](#background-tracking), that means:
+
+- **Continuous preset**: Runs a foreground service with a notification (`foregroundServiceEnabled` is `true`), so it keeps tracking in the background with foreground permission.
+- **Efficient and responsive presets**: Don't run a foreground service, so they track only while the app is in the foreground.
+- **Custom options**: Set `foregroundServiceEnabled: true` in `startTrackingCustom()` to track in the background with foreground permission.
+
 ## Integrate
+
+The plugin is available as `cordova.plugins.radar` after the `deviceready` event.
+
+Methods that return data take a callback as the last argument. They don't return promises. If the native call fails before it reaches the Radar API, for example because a required argument is missing, the plugin logs the error with `console.error` and doesn't call your callback.
 
 ### Initialize
 
-When your app starts, initialize the SDK with your publishable key.
+Initialize natively as described in [iOS](#ios) and [Android](#android), so the SDK is ready when the operating system relaunches the app in the background. You can also initialize from JavaScript:
 
-Use your `Test Publishable` key for testing and non-production environments. Use your `Live Publishable` key for production environments.
+```javascript
+cordova.plugins.radar.initialize('prj_test_pk_...');
+```
+
+Use your test publishable key (`prj_test_pk_...`) in development and your live publishable key (`prj_live_pk_...`) in production.
 
 <Warning>
-  Note that you should always use your publishable API keys, which are restricted in scope, in the SDK. Do not use your secret API keys, which are unrestricted in scope, in any client-side code.
+  Use publishable keys in client code. Never put a secret key in an app or web page.
 </Warning>
-
-```swift
-cordova.plugins.radar.initialize(publishableKey);
-```
 
 ### Identify user
 
-To identify the user when logged in, call:
+Identify the user with an ID, metadata, and a description:
 
-```swift
-cordova.plugins.radar.setUserId(userId);
+```javascript
+cordova.plugins.radar.setUserId('user-123');
+cordova.plugins.radar.setMetadata({ tier: 'gold', orders: 12, optedIn: true });
+cordova.plugins.radar.setDescription('Example user');
 ```
 
-where `userId` is a stable unique ID for the user.
+| Method | Argument |
+| --- | --- |
+| `setUserId(userId)` | A stable unique ID for the user. |
+| `setMetadata(metadata)` | An object with string, number, or boolean values. Radar accepts up to 16 keys. |
+| `setDescription(description)` | A string shown in the Radar dashboard. |
 
-To set an optional dictionary of custom metadata for the user, call:
+These values persist across app sessions, so call each setter once, for example after login. `getUserId(callback)`, `getMetadata(callback)`, and `getDescription(callback)` pass the stored value to the callback.
 
-```swift
-cordova.plugins.radar.setMetadata(metadata);
+`cordova.plugins.radar.setAnonymousTrackingEnabled(enabled)` turns anonymous tracking on or off.
+
+### Debug logging
+
+By default, only critical errors are logged to the console. To change the level, call:
+
+```javascript
+cordova.plugins.radar.setLogLevel('debug');
 ```
 
-where `metadata` is a JSON object with up to 16 keys and values of type string, boolean, or number.
+Valid levels are `'error'`, `'warning'`, `'info'`, and `'debug'`.
 
-Finally, to set an optional description for the user, displayed in the dashboard, call:
-
-```swift
-cordova.plugins.radar.setDescription(description);
-```
-
-where `description` is a string.
-
-You only need to call these functions once, as these settings will be persisted across app sessions.
-
-Learn about platform-specific implementations of these functions in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+`logBackgrounding()` and `logResigningActive()` record app lifecycle events. `logTermination()` does the same on iOS only.
 
 ### Request permissions
 
-Before tracking the user's location, the user must have granted location permissions for the app.
-
-To determine the whether user has granted location permissions for the app, call:
+The user must grant location permission before you track. To read the current status, call:
 
 ```javascript
 cordova.plugins.radar.getPermissionsStatus((status) => {
@@ -103,64 +170,76 @@ cordova.plugins.radar.getPermissionsStatus((status) => {
 });
 ```
 
-`status` will be a string, one of:
+`status` is a string, one of:
 
-- **`GRANTED_BACKGROUND`**
-- **`GRANTED_FOREGROUND`**
-- **`DENIED`**
-- **`UNKNOWN`**
+- `GRANTED_BACKGROUND`
+- `GRANTED_FOREGROUND`
+- `DENIED`
+- `UNKNOWN`
 
-To request location permissions for the app, call:
+`UNKNOWN` is reported on iOS only, when the user hasn't been asked yet. On Android versions below API level 29, the plugin reports `GRANTED_BACKGROUND` when location permission is granted.
+
+To request permission, call:
 
 ```javascript
-cordova.plugins.radar.requestPermissions(background);
+cordova.plugins.radar.requestPermissions(false); // foreground
+cordova.plugins.radar.requestPermissions(true);  // background
 ```
 
-where `background` is a boolean indicating whether to request background location permissions or foreground location permissions.
+The argument is a boolean: `true` requests background permission and `false` requests foreground permission. Request foreground permission first. The call doesn't report the result, so call `getPermissionsStatus()` afterward.
 
-Learn about platform-specific permissions in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+To verify, build and run the app on a device and confirm the prompts appear. For when to ask for each level, see [Understand foreground and background location permissions](/fundamentals/location-permissions).
 
 ### Foreground tracking
 
-Once you have initialized the SDK and the user has granted permissions, you can track the user's location.
-
-To track the user's location in the foreground, call:
+After the SDK is initialized and the user grants permission, track the user's location once:
 
 ```javascript
-cordova.plugins.radar.trackOnce((result) => {  // do something with result.status, result.location, result.events, result.user});
+cordova.plugins.radar.trackOnce((result) => {
+  if (result.status === 'SUCCESS') {
+    // do something with result.location, result.events, result.user
+  }
+});
 ```
 
-`status` will be a string, one of:
+To set accuracy or range beacons, pass an options object first:
+
+```javascript
+cordova.plugins.radar.trackOnce({ desiredAccuracy: 'high', beacons: false }, (result) => {
+  // do something with result.status
+});
+```
+
+`desiredAccuracy` is `'high'`, `'medium'`, `'low'`, or `'none'` and defaults to `'medium'`.
+
+The callback always receives a `status`. It is a string, one of:
 
 - **`SUCCESS`**: success
 - **`ERROR_PUBLISHABLE_KEY`**: SDK not initialized
 - **`ERROR_PERMISSIONS`**: location permissions not granted
-- **`ERROR_LOCATION`**: location services error or timeout (10 seconds)
-- **`ERROR_NETWORK`**: network error or timeout (10 seconds)
+- **`ERROR_LOCATION`**: location services error or timeout
+- **`ERROR_BLUETOOTH`**: beacon ranging error or timeout
+- **`ERROR_NETWORK`**: network error or timeout
 - **`ERROR_BAD_REQUEST`**: bad request (missing or invalid params)
 - **`ERROR_UNAUTHORIZED`**: unauthorized (invalid API key)
 - **`ERROR_PAYMENT_REQUIRED`**: payment required (organization disabled or usage exceeded)
 - **`ERROR_FORBIDDEN`**: forbidden (insufficient permissions or no beta access)
 - **`ERROR_NOT_FOUND`**: not found
-- **`ERROR_RATE_LIMIT`**: too many requests ([rate limit](/api#track) exceeded)
+- **`ERROR_RATE_LIMIT`**: too many requests (rate limit exceeded)
 - **`ERROR_SERVER`**: internal server error
 - **`ERROR_UNKNOWN`**: unknown error
 
-Learn about platform-specific implementations of this function in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+`cordova.plugins.radar.getLocation(desiredAccuracy, callback)` reads the device location without sending it to Radar. `desiredAccuracy` is `'high'`, `'medium'`, or `'low'`. The callback receives `{ status, location, stopped }`.
 
 ### Background tracking
 
-Once you have initialized the SDK and the user has granted permissions, you can start tracking the user's location in the background.
+After the SDK is initialized and the user grants permission, start tracking in the background. The SDK supports custom tracking options and three presets:
 
-For background tracking, the SDK supports custom tracking options as well as three presets:
-
-- **`EFFICIENT`**: A low frequency of location updates and lowest battery usage. On Android, avoids Android vitals bad behavior thresholds.
+- **`EFFICIENT`**: A low frequency of location updates and the lowest battery usage. On Android, avoids Android vitals bad behavior thresholds.
 - **`RESPONSIVE`**: A medium frequency of location updates and low battery usage. Suitable for most consumer use cases.
-- **`CONTINUOUS`**: A high frequency of location updates and higher battery usage. Suitable for on-demand use cases (e.g., delivery tracking) and some consumer use cases (e.g., order ahead, "mall mode").
+- **`CONTINUOUS`**: A high frequency of location updates and higher battery usage. Suitable for on-demand use cases such as delivery tracking.
 
-Learn about platform-specific implementations of these presets in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
-
-To start tracking the user's location in the background, call one of:
+Start tracking with one of the presets:
 
 ```javascript
 cordova.plugins.radar.startTrackingEfficient();
@@ -170,20 +249,18 @@ cordova.plugins.radar.startTrackingResponsive();
 cordova.plugins.radar.startTrackingContinuous();
 ```
 
-You only need to call these methods once, as these settings will be persisted across app sessions.
+Call one of these once. Tracking options persist across app sessions.
 
-Though we recommend using presets for most use cases, you can customize the tracking options. See the [tracking options reference](/sdk/tracking).
+Presets cover most use cases. To customize, pass tracking options to `startTrackingCustom()`. For field meanings, units, and defaults, see the [tracking options reference](/sdk/tracking). This plugin pairs with the 3.9 SDKs, so options added later aren't recognized.
 
 ```javascript
-// optionally adjust foreground service options for android
+// Android only: configure the foreground service notification
 cordova.plugins.radar.setForegroundServiceOptions({
-  options: {
-    text: "Location tracking started",
-    title: "Location updates",
-    updatesOnly: false,
-    importance: 2,
-    activity: 'com.yourapp.MainActivity'
-  }
+  text: 'Location tracking started',
+  title: 'Location updates',
+  updatesOnly: false,
+  importance: 2,
+  activity: 'com.example.app.MainActivity'
 });
 
 cordova.plugins.radar.startTrackingCustom({
@@ -200,21 +277,23 @@ cordova.plugins.radar.startTrackingCustom({
 });
 ```
 
-To determine whether tracking has been started, call:
+`setForegroundServiceOptions()` takes the options object directly and does nothing on iOS.
+
+To check and stop tracking:
 
 ```javascript
-cordova.plugins.radar.isTracking();
-```
+cordova.plugins.radar.isTracking((tracking) => {
+  // tracking is a boolean
+});
 
-To stop tracking the user's location in the background (e.g., when the user logs out), call:
-
-```javascript
 cordova.plugins.radar.stopTracking();
 ```
 
-Learn about platform-specific implementations of these functions in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+`cordova.plugins.radar.getTrackingOptions(callback)` passes the options in use to the callback.
 
-To listen for events, location updates, and errors, you can add event listeners:
+#### Listen for events
+
+Register a callback for each update you want:
 
 ```javascript
 cordova.plugins.radar.onClientLocation((location, stopped, source) => {
@@ -229,18 +308,22 @@ cordova.plugins.radar.onEvents((events, user) => {
   // do something with events, user
 });
 
-cordova.plugins.radar.onError((err) => {
-  // do something with err
+cordova.plugins.radar.onError((status) => {
+  // do something with status
 });
 ```
 
-<Warning>
-  Listeners should be set only once and before tracking begins.
-</Warning>
+| Listener | Callback arguments |
+| --- | --- |
+| `onClientLocation` | `location`, `stopped`, `source` |
+| `onLocation` | `location`, `user` |
+| `onEvents` | `events`, `user` |
+| `onError` | `status` |
+| `onToken` | `token`. See [Verified location](#verified-location). |
 
-Add event listeners outside of your view lifecycle if you want them to work when the app is in the background.
+Register listeners once, before tracking begins. Listeners fire while the Cordova web view is running. Register them outside your view lifecycle if you want them to keep firing while the app is in the background. To act on events when your app isn't running, use the native delegate or receiver described in the [iOS SDK reference](/sdk/ios) and [Android SDK reference](/sdk/android), or send events to your backend with [webhooks](/integrations/webhooks).
 
-You can also remove event listeners:
+To remove listeners:
 
 ```javascript
 cordova.plugins.radar.offClientLocation();
@@ -249,78 +332,164 @@ cordova.plugins.radar.offLocation();
 
 cordova.plugins.radar.offEvents();
 
-cordova.plugins.radar.offError();
+cordova.plugins.radar.offToken();
+```
+
+<Note>
+  In version 3.9.1, `offError()` removes the events listener, not the error listener.
+</Note>
+
+If you still need `onEvents()`, don't call `offError()`.
+
+### Mock tracking
+
+To simulate a sequence of location updates for testing, call `mockTracking()`. This example simulates 10 updates, 3 seconds apart, by car. The optional callback receives the result of each update.
+
+```javascript
+cordova.plugins.radar.mockTracking({
+  origin: { latitude: 40.714708, longitude: -74.035807 },
+  destination: { latitude: 40.717410, longitude: -74.053334 },
+  mode: 'car',
+  steps: 10,
+  interval: 3
+}, (result) => {
+  // do something with result.status, result.location, result.events, result.user
+});
 ```
 
 ### Trip tracking
 
-On iOS and Android, to start a trip to a destination, call:
+Start a trip to a destination geofence. Pass `tripOptions` and optional `trackingOptions`. `trackingOptions` applies while the trip is active.
 
 ```javascript
 cordova.plugins.radar.startTrip({
-  externalId: '299',
+  tripOptions: {
+    externalId: 'order-299',
+    destinationGeofenceTag: 'store',
+    destinationGeofenceExternalId: 'store-42',
+    mode: 'car'
+  },
+  trackingOptions: {
+    desiredStoppedUpdateInterval: 30,
+    desiredMovingUpdateInterval: 30,
+    desiredSyncInterval: 20,
+    desiredAccuracy: 'high',
+    stopDuration: 140,
+    stopDistance: 70,
+    sync: 'all',
+    replay: 'none',
+    showBlueBar: true,
+    foregroundServiceEnabled: true
+  }
+}, (result) => {
+  // do something with result.status, result.trip, result.events
+});
+```
+
+The plugin also accepts the older form, where you pass the trip options object directly and start tracking yourself:
+
+```javascript
+cordova.plugins.radar.startTrip({
+  externalId: 'order-299',
   destinationGeofenceTag: 'store',
-  destinationGeofenceExternalId: '123',
+  destinationGeofenceExternalId: 'store-42',
   mode: 'car'
-}).then((result) => {
+}, (result) => {
   // do something with result.status
 });
 cordova.plugins.radar.startTrackingContinuous();
 ```
 
-Update information about the trip. Status can be set to 'unknown' to leave the status unchanged as it will update via location tracking.
+Update the trip. `options` is required. Leave out `status`, or set it to `'unknown'`, to keep the current status and let location tracking update it.
 
 ```javascript
 cordova.plugins.radar.updateTrip({
-  status:'arrived',
+  status: 'arrived',
   options: {
-    externalId: '299',
+    externalId: 'order-299',
     metadata: {
       parkingSpot: '5'
     }
   }
-}).then((result) => {
+}, (result) => {
   // do something with result.status
 });
 ```
 
-Later, to complete the trip and stop tracking, call:
+Complete or cancel the trip:
 
 ```javascript
-cordova.plugins.radar.completeTrip().then((result) => {
+cordova.plugins.radar.completeTrip((result) => {
   // do something with result.status
 });
-cordova.plugins.radar.stopTracking();
-```
 
-Or, to cancel the trip and stop tracking, call:
-
-```javascript
-cordova.plugins.radar.cancelTrip().then((result) => {
+cordova.plugins.radar.cancelTrip((result) => {
   // do something with result.status
 });
-cordova.plugins.radar.stopTracking();
 ```
 
-Learn more about [trip tracking](/geofencing/trips).
+If you started tracking yourself, call `cordova.plugins.radar.stopTracking()` when the trip ends.
+
+`cordova.plugins.radar.getTripOptions(callback)` passes the current trip options to the callback.
+
+For the full workflow, see [Track pickups, deliveries, and workers](/geofencing/trips).
 
 ### Manual tracking
 
-You can manually update the user's location by calling:
+To send a location you already have, pass it under the `location` key:
 
 ```javascript
-cordova.plugins.radar.trackOnce({  latitude: 39.2904,  longitude: -76.6122,  accuracy: 65}, (result) => {  // do something with result.status, result.location, result.events, result.user});
+cordova.plugins.radar.trackOnce({
+  location: {
+    latitude: 39.2904,
+    longitude: -76.6122,
+    accuracy: 65
+  }
+}, (result) => {
+  // do something with result.status, result.location, result.events, result.user
+});
 ```
 
-Learn about platform-specific implementation of this function in the [iOS SDK documentation](/sdk/ios) and [Android SDK documentation](/sdk/android).
+### Verified location
+
+The plugin exposes the verified location methods of the 3.9 native SDKs:
+
+| Method | Description |
+| --- | --- |
+| `trackVerified(options?, callback)` | Runs a verified location check. Option: `beacons`. The callback receives `status`, `location`, `events`, and `user`. |
+| `trackVerifiedToken(options?, callback)` | Runs a verified location check and returns a token. Option: `beacons`. The callback receives `status` and `token`. |
+| `startTrackingVerified(options?)` | Starts periodic verified checks. Options: `token` (boolean), `interval`, `beacons`. |
+| `onToken(callback)`, `offToken()` | Listen for new tokens. |
+
+On iOS, `trackVerified()` and `trackVerifiedToken()` call your callback only on success.
+
+These methods predate the current fraud plugin and token APIs on the native SDKs. Before you build a Geo-compliance or Fraud integration on Cordova, read [Fraud plugin setup](/sdk/fraud) and confirm support for your use case with your Radar account team.
+
+### Beacons
+
+To range beacons on a single call, pass `beacons: true` in the options for `trackOnce()` or `trackVerified()`. To range during background tracking, set `beacons: true` in your tracking options.
+
+Beacon ranging needs Bluetooth permission and native setup. See [Track indoor location with beacons](/geofencing/beacons).
 
 ### Other APIs
 
-The Cordova plugin also exposes APIs for geocoding, search, and distance.
+The plugin also exposes context, geocoding, search, routing, and conversion APIs. Each takes a callback that receives an object with a `status`.
+
+#### Context
+
+Get context for the device location:
+
+```javascript
+cordova.plugins.radar.getContext((result) => {
+  // do something with result.status, result.location, result.context
+});
+```
+
+Pass `{ latitude, longitude }` as the first argument to use a location you already have.
 
 #### Geocoding
 
-With the [forward geocoding API](/api#forward-geocode), geocode an address, converting address to coordinates:
+Forward geocode an address with the [geocoding API](/api/geocoding):
 
 ```javascript
 cordova.plugins.radar.geocode('20 jay st brooklyn ny', (result) => {
@@ -328,7 +497,7 @@ cordova.plugins.radar.geocode('20 jay st brooklyn ny', (result) => {
 });
 ```
 
-With the [reverse geocoding API](/api#reverse-geocode), reverse geocode a location, converting coordinates to address:
+Reverse geocode a location. Omit the first argument to use the device location.
 
 ```javascript
 cordova.plugins.radar.reverseGeocode({
@@ -339,7 +508,7 @@ cordova.plugins.radar.reverseGeocode({
 });
 ```
 
-With the [IP geocoding API](/api#ip-geocode), geocode the device's current IP address, converting IP address to city, state, and country:
+Geocode the device's IP address to a city, state, and country:
 
 ```javascript
 cordova.plugins.radar.ipGeocode((result) => {
@@ -349,24 +518,25 @@ cordova.plugins.radar.ipGeocode((result) => {
 
 #### Search
 
-With the [autocomplete API](/api#autocomplete), autocomplete partial addresses and place names, sorted by relevance:
+Autocomplete partial addresses and place names with the [search API](/api/search). Pass `country`: the Android implementation requires it. `layers` and `mailable` are optional.
 
-```
+```javascript
 cordova.plugins.radar.autocomplete({
   query: 'brooklyn roasting',
   near: {
     latitude: 40.783826,
     longitude: -73.975363
   },
-  limit: 10
+  limit: 10,
+  country: 'US'
 }, (result) => {
   // do something with result.status, result.addresses
 });
 ```
 
-With the [geofence search API](/api#search-geofences), search for geofences near a location, sorted by distance:
+Search for geofences near a location, sorted by distance. Omit `near` to search near the device location. `radius` is in meters.
 
-```
+```javascript
 cordova.plugins.radar.searchGeofences({
   radius: 1000,
   tags: ['venue'],
@@ -376,9 +546,9 @@ cordova.plugins.radar.searchGeofences({
 });
 ```
 
-With the [places search API](/api#search-places), search for places near a location, sorted by distance:
+Search for places near a location, sorted by distance. Filter with `chains`, `chainMetadata`, `categories`, or `groups`.
 
-```
+```javascript
 cordova.plugins.radar.searchPlaces({
   near: {
     latitude: 40.783826,
@@ -394,9 +564,9 @@ cordova.plugins.radar.searchPlaces({
 
 #### Distance
 
-With the [distance API](/api#distance), calculate the travel distance and duration from an origin to a destination:
+Calculate travel distance and duration from an origin to a destination with the [routing API](/api/routing). Omit `origin` to use the device location.
 
-```
+```javascript
 cordova.plugins.radar.getDistance({
   origin: {
     latitude: 40.78382,
@@ -418,9 +588,9 @@ cordova.plugins.radar.getDistance({
 
 #### Matrix
 
-With the [matrix API](/api#matrix), calculate the travel distance and duration between multiple origins and destinations for up to 25 routes:
+Calculate travel distance and duration between multiple origins and destinations, for up to 25 routes. `origins` and `destinations` are flat arrays of locations.
 
-```
+```javascript
 cordova.plugins.radar.getMatrix({
   origins: [
     {
@@ -429,16 +599,14 @@ cordova.plugins.radar.getMatrix({
     }
   ],
   destinations: [
-    [
-      {
-        latitude: 40.70390,
-        longitude: -73.98670
-      },
-      {
-        latitude: 40.73237,
-        longitude: -73.94884
-      }
-    ]
+    {
+      latitude: 40.70390,
+      longitude: -73.98670
+    },
+    {
+      latitude: 40.73237,
+      longitude: -73.94884
+    }
   ],
   mode: 'car',
   units: 'imperial'
@@ -447,6 +615,33 @@ cordova.plugins.radar.getMatrix({
 });
 ```
 
+#### Conversions
+
+Log a conversion, such as a purchase or signup, to analyze alongside location activity. Pass `name` and `metadata`. `revenue` is optional.
+
+```javascript
+cordova.plugins.radar.logConversion({
+  name: 'purchase',
+  revenue: 12.5,
+  metadata: { sku: 'example-sku' }
+}, (result) => {
+  // do something with result.status, result.event
+});
+```
+
+### Notification options
+
+On Android, `setNotificationOptions()` sets the icon and color of the foreground service notification and event notifications. Values are resource names in your Android project.
+
+```javascript
+cordova.plugins.radar.setNotificationOptions({
+  iconString: 'icon_1',
+  iconColor: 'color_1'
+});
+```
+
+This method is Android only.
+
 ## Support
 
-Have questions? We're here to help! Contact us at [radar.com/support](https://radar.com/support).
+Have questions? Contact [Radar support](https://radar.com/support).
