@@ -54,19 +54,20 @@ description: "Start, update, and complete trips to power pickup, delivery, and w
 
 ### Implementation guides
 
-The 12 product guides use these `##` sections, in this order. Sections 4 to 6 are replaced by task headings that fit the guide.
+The product guides use these `##` sections, in this order. The task headings in row 6 are named for the guide's own steps.
 
 | Order | Heading | Contents |
 | --- | --- | --- |
-| 1 | (opening, no heading) | What works at the end, with a small example result. |
-| 2 | Build with an agent | The copyable prompt. See [Agent prompts](#agent-prompts). |
-| 3 | Prerequisites | Platform, SDK versions, access, environment, and permissions. A bulleted list. |
-| 4 | How it works | Who does what: your app, Radar, your backend, downstream systems. A table or a short numbered list. |
-| 5 | Task headings | Setup and implementation, in the order the reader does them. |
-| 6 | Handle results and errors | Expected responses, each error and degraded path, and recovery. |
-| 7 | Test the integration | The happy path and each meaningful failure path. |
-| 8 | Production checklist | A task list (`- [ ]`) of things to confirm before launch. |
-| 9 | See also | Links to reference and related guides. Last line points back to the agent prompt. |
+| 1 | (opening, no heading) | What works at the end, in one or two sentences. |
+| 2 | Complete example | The whole implementation at a glance, one tab per platform. See [Complete examples](#complete-examples). |
+| 3 | Build with an agent | The copyable prompt. See [Agent prompts](#agent-prompts). |
+| 4 | Prerequisites | Platform, SDK versions, access, environment, and permissions. A bulleted list. |
+| 5 | How it works | Who does what: your app, Radar, your backend, downstream systems. A table or a short numbered list. |
+| 6 | Task headings | Setup and implementation, in the order the reader does them. |
+| 7 | Handle results and errors | Expected responses, each error and degraded path, and recovery. |
+| 8 | Test the integration | The happy path and each meaningful failure path. |
+| 9 | Production checklist | A task list (`- [ ]`) of things to confirm before launch. |
+| 10 | See also | Links to reference and related guides. Last line points back to the agent prompt. |
 
 Don't use generic task headings such as "Set up and implement" or "Expected responses and how to use them". Name the task.
 
@@ -255,9 +256,34 @@ Standard wording:
 - Pseudocode is labeled as pseudocode in the sentence that introduces it, and uses the `text` language.
 - Introduce every block with a sentence that says what it does. Don't put two blocks back to back with nothing between them.
 
+## Complete examples
+
+Each implementation guide has a `## Complete example` section directly after the opening, so a reader sees the whole implementation before the explanation.
+
+- One sentence above the code. The sections below it explain each part.
+- A `<CodeGroup>` with one tab per platform that can do the whole task: imports, initialization, identifying the user, permission where needed, the core call, and handling the result, including failure.
+- Every tab does the same thing in the same order, so platforms compare line by line.
+- If the task has a backend half, a second `<CodeGroup>` follows with Node.js, and Python where the page has it.
+- Desktop tabs (macOS, Windows) appear only on Geo-compliance guides.
+- The complete example and the step-by-step sections use the same method names, options, and result handling.
+
+## Results and decisions
+
+Describe results in Radar's own terms: `passed`, `failureReasons`, warnings, expiry, a risk level, an error status. Don't invent a decision vocabulary on top ("allow", "deny", "step up" enums, policy modules, wrapper result types). A backend example verifies the token, reads Radar's fields, and rejects the action when `passed` is `false`.
+
+Don't frontload edge-case lifecycle code such as logout resets. Say that `userId` is nullable, and link to the page that covers user switching.
+
+## Live demos
+
+The Maps guides embed live components from `snippets/radar-demos.jsx` (a map, an address autocomplete, a store locator). They run the Radar web SDK in the page with a demo publishable key.
+
+- Place a demo directly under the page opening, or next to the code it demonstrates, and make sure the code shown on the page produces what the demo shows.
+- A demo never replaces instructions or code. The page must work as Markdown without it.
+- In that file, only exported components can be used as JSX tags. Shared pieces are plain functions.
+
 ## Agent prompts
 
-Each implementation guide has a `## Build with an agent` section directly after the opening.
+Each implementation guide has a `## Build with an agent` section directly after the complete example.
 
 - First line, exactly: "Copy this prompt into a coding agent that has access to your repository."
 - The prompt is one `text` code block. It names the task, links the guide's own Markdown URL (`https://docs.radar.com/<path>.md`), the platform SDK reference, and the relevant API page, states the constraints, and lists the guide-specific tests.

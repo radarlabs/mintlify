@@ -242,8 +242,7 @@
         "group": "Geo-compliance",
         "pages": [
           "geo-compliance/overview",
-          "geo-compliance/sportsbooks-and-casinos",
-          "geo-compliance/predictions-dfs-and-sweepstakes",
+          "geo-compliance/gaming",
           "geo-compliance/non-gaming"
         ]
       },
@@ -277,6 +276,7 @@
       {
         "group": "Fundamentals",
         "pages": [
+          "fundamentals/context-types",
           "fundamentals/authentication-and-access",
           "fundamentals/location-permissions",
           "fundamentals/testing-and-launch"
