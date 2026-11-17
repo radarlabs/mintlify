@@ -12,6 +12,30 @@ The bar is the best developer documentation you have used: every page gets a dev
 4. **Only verified facts.** Every method, field, default, limit, and UI label matches the released SDK, the API, or the current dashboard. If you can't verify it, leave it out.
 5. **Formatting carries meaning.** Bold, code, and callouts each mean one thing (below). If everything is emphasized, nothing is.
 
+## Length
+
+A reader should finish a page thinking "that was simple" and "that was everything". Completeness lives in the reference; guides stay short.
+
+| Page type | Budget (prose words, not counting code) |
+| --- | --- |
+| Product overview and quickstart | 700 |
+| Implementation guide | 1,800 |
+| Fundamentals page | 1,300 |
+| Integration page | 1,200, including its tables |
+| Choose your integration | 500 |
+| SDK and API reference | No budget. Be complete. |
+
+Count with `python3 tools/wc.py <page.mdx>`, which counts prose words including imported snippets. If a page is over budget, cut before you add.
+
+How pages stay short:
+
+- **The complete example carries the code.** Steps explain it. A step gets its own code block only when it shows something the complete example doesn't.
+- **One home per procedure.** Token validation lives on [Geolocation token schema](/api/geolocation-tokens). Permissions live on the permissions page. Block and bypass testing lives on the testing page. Guides say the one sentence that matters and link.
+- **No operations manual in a guide.** Rollout plans, shadow testing, data inspection, reporting, and investigation walkthroughs belong on a Fundamentals page or the product overview, once.
+- **No asides for gated features.** If something needs the account team to turn it on, it gets one line in reference, not a section in a guide.
+- **One table for errors.** Not a section per error.
+- **Cut decision tables for choices most readers don't face.** State the common path. Mention the variation in a sentence with a link.
+
 ## Voice
 
 - Second person, present tense, active voice: "Radar returns a token", not "a token will be returned".
@@ -54,22 +78,23 @@ description: "Start, update, and complete trips to power pickup, delivery, and w
 
 ### Implementation guides
 
-The product guides use these `##` sections, in this order. The task headings in row 6 are named for the guide's own steps.
+The product guides use these `##` sections, in this order.
 
-| Order | Heading | Contents |
-| --- | --- | --- |
-| 1 | (opening, no heading) | What works at the end, in one or two sentences. |
-| 2 | Complete example | The whole implementation at a glance, one tab per platform. See [Complete examples](#complete-examples). |
-| 3 | Build with an agent | The copyable prompt. See [Agent prompts](#agent-prompts). |
-| 4 | Prerequisites | Platform, SDK versions, access, environment, and permissions. A bulleted list. |
-| 5 | How it works | Who does what: your app, Radar, your backend, downstream systems. A table or a short numbered list. |
-| 6 | Task headings | Setup and implementation, in the order the reader does them. |
-| 7 | Handle results and errors | Expected responses, each error and degraded path, and recovery. |
-| 8 | Test the integration | The happy path and each meaningful failure path. |
-| 9 | Production checklist | A task list (`- [ ]`) of things to confirm before launch. |
-| 10 | See also | Links to reference and related guides. Last line points back to the agent prompt. |
+| Order | Heading | Contents | Size |
+| --- | --- | --- | --- |
+| 1 | (opening, no heading) | What works at the end. | 1 to 2 sentences |
+| 2 | Complete example | The whole implementation, one tab per platform. See [Complete examples](#complete-examples). | 1 sentence plus code |
+| 3 | Prerequisites | What the reader needs first. | 3 to 5 bullets |
+| 4 | Task headings | Four to six steps in the order the reader does them, each explaining one part of the complete example. | About 150 words each |
+| 5 | Handle results and errors | One table: result or error, what it means, what to do. | 8 rows at most |
+| 6 | Test the integration | One passing case and one failing case, with a link to [Test, troubleshoot, and go live](/fundamentals/testing-and-launch). | About 150 words |
+| 7 | Production checklist | A task list (`- [ ]`). | 6 items at most |
+| 8 | Build with an agent | The copyable prompt. See [Agent prompts](#agent-prompts). | 12 lines at most |
+| 9 | See also | Reference and related guides. | 6 links at most |
 
-Don't use generic task headings such as "Set up and implement" or "Expected responses and how to use them". Name the task.
+There is no "How it works" section. If the reader needs to know who does what, say it in the opening or in the step where it matters.
+
+Name task headings for the task. Don't use generic headings such as "Set up and implement".
 
 ### Reference pages
 
@@ -258,7 +283,7 @@ Standard wording:
 
 ## Complete examples
 
-Each implementation guide has a `## Complete example` section directly after the opening, so a reader sees the whole implementation before the explanation.
+Each implementation guide has a `## Complete example` section directly after the opening, so a reader sees the whole implementation before the explanation. Keep each tab as short as a correct implementation allows.
 
 - One sentence above the code. The sections below it explain each part.
 - A `<CodeGroup>` with one tab per platform that can do the whole task: imports, initialization, identifying the user, permission where needed, the core call, and handling the result, including failure.
@@ -283,11 +308,10 @@ The Maps guides embed live components from `snippets/radar-demos.jsx` (a map, an
 
 ## Agent prompts
 
-Each implementation guide has a `## Build with an agent` section directly after the complete example.
+Each implementation guide has a `## Build with an agent` section near the end, before See also.
 
 - First line, exactly: "Copy this prompt into a coding agent that has access to your repository."
-- The prompt is one `text` code block. It names the task, links the guide's own Markdown URL (`https://docs.radar.com/<path>.md`), the platform SDK reference, and the relevant API page, states the constraints, and lists the guide-specific tests.
-- The last line of the page, exactly: "To have a coding agent implement this guide, use the prompt in [Build with an agent](#build-with-an-agent)."
+- The prompt is one `text` code block of 12 lines at most: the task in one sentence, the guide's own Markdown URL (`https://docs.radar.com/<path>.md`) and one or two reference URLs to read, the two or three constraints that matter for this task, and the tests to add. The guide itself carries the detail, and the Copy page menu gives an agent the whole page.
 
 ## Words we use
 
