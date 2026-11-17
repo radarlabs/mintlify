@@ -1,0 +1,569 @@
+---
+title: "Prevent account takeover and account sharing"
+sidebarTitle: "Account takeover and sharing"
+description: "Assess device, network, and location risk at login, during a session, and before sensitive account actions, then decide whether to allow, step up, review, or block."
+---
+
+import IdentifyUser from '/snippets/identify-user.mdx';
+import FraudInvestigation from '/snippets/fraud-investigation.mdx';
+
+By the end of this guide, your app assesses risk at login, when a session continues, and before sensitive account actions. Your backend validates each result, compares it with what it already knows about the user's devices, and returns one decision: allow, step up, review, or block.
+
+A decision for a login from a device your backend hasn't seen before, on a network that Radar flags:
+
+```json
+{
+  "checkpoint": "login",
+  "userId": "user-123",
+  "decision": "step_up",
+  "signals": ["new_device", "device_or_network_risk"],
+  "riskLevel": "medium",
+  "radarAssessmentId": "6740a1f2c3d4e5f6a7b8c9d0"
+}
+```
+
+Account takeover and account sharing produce similar signals and call for different responses. This guide implements the shared collection once, then treats the two separately.
+
+## Build with an agent
+
+Copy this prompt into a coding agent that has access to your repository.
+
+```text
+Implement Radar risk assessment at login, session continuation, and sensitive
+account actions in this repository using the current Radar documentation.
+
+First inspect the application framework, platform versions, existing Radar code,
+the authentication and session flow, logout and user-switching code, and tests.
+Preserve existing behavior outside this task.
+
+Read:
+- https://docs.radar.com/fraud/account-takeover-and-sharing.md
+- https://docs.radar.com/fraud/overview.md
+- https://docs.radar.com/fraud/risky-transactions.md
+- https://docs.radar.com/sdk/fraud.md
+- https://docs.radar.com/api/geolocation-tokens.md
+
+Implement:
+- Identity: call Radar.setUserId() with the authenticated user's ID after
+  login and before any verified location check. Clear it at logout, and clear
+  the cached verified location token where the platform SDK provides that
+  method.
+- Client: at each checkpoint, call Radar.revealRisk(). When location permission
+  is already granted, also run a verified location check with a reason of
+  login, session, or account_change. Send the signed tokens to the backend.
+- Backend: validate both tokens with the project JWT secret key (HS256, expiry).
+  Compare user.userId in the geolocation token with the session user. Keep a
+  per-user record of devices seen, keyed by the application's user ID. Return
+  one decision: allow, step_up, review, or block.
+- Treat a new device, several devices, or several users on one device as
+  context that combines with other signals. Never block on one of them alone.
+- Keep account takeover and account sharing as separate code paths with
+  separate follow-up actions.
+
+Read risk levels that trigger a step-up from configuration. Do not treat a risk
+score as a fraud probability or hardcode a universal threshold. Use environment
+variables for credentials. Never put a secret key or the JWT secret key in
+client code. Do not invent methods, fields, supported platforms, or defaults.
+
+Add backend tests for: a known device with no signals is allowed; a new device
+with no other signal is allowed and recorded; a new device with a flagged
+network requires step-up; fraud_jumped_multiple_devices requires step-up; a
+blocked user is blocked; a missing or tampered risk token is treated as risk
+unknown; a geolocation token for another user is rejected; after logout and
+login as a second user on the same device, the second user's decision does not
+use the first user's device record. Run the repository's relevant checks.
+Report changed files, test results, required dashboard setup, and anything that
+still needs confirmation. Do not change production settings or deploy without
+approval.
+```
+
+## Prerequisites
+
+- **Access**: A Radar project with Fraud enabled. The device and network risk assessment must be enabled for your project. Contact your Radar account team. Risk scores, fraud rules, and cases are also enabled for each project.
+- **Working risk assessment**: Complete the [Fraud quickstart](/fraud/overview#quickstart-assess-device-and-network-risk). This guide reuses its `validateRiskToken` function.
+- **SDK and plugin**: The Radar SDK and fraud plugin for your platform. See [Fraud plugin setup](/sdk/fraud). The examples use iOS SDK 3.46.0, Android SDK 4.3.0, and Web SDK 5.3.0 with `@radarlabs/plugin-fraud` 1.6.1. `Radar.revealRisk()` requires iOS SDK 3.38.0 or later, Android SDK 3.35.0 or later, `@radarlabs/plugin-fraud` 1.4.0 or later, or React Native SDK 4.36.0 or later.
+- **Keys**: A publishable key in your app. The project's JWT secret key on your backend only.
+- **Identity**: A stable, opaque ID for each account in your own system.
+- **Permission**: None for the risk assessment. A verified location check needs foreground location permission. This guide runs it only when permission is already granted, and links to the [step-up guide](/fraud/risky-transactions) for asking.
+- **Environment**: Build and test with Test keys. Users and history in the Test environment are separate from the Live environment.
+
+## How it works
+
+| Party | Responsibility |
+| --- | --- |
+| Your app | Identifies the signed-in user to the SDK, runs the assessment and, where possible, a verified location check at each checkpoint, and sends the signed tokens to your backend. Clears the identity at logout. |
+| Radar | Returns a signed device and network risk assessment. For a verified location check, returns a signed geolocation token with the user's fraud flags, failure reasons, and device and user counts. Keeps the history that the Radar dashboard and fraud rules use. |
+| Your backend | Validates the tokens, checks that the geolocation token belongs to the session user, keeps its own record of each user's devices, and returns the decision. Applies the follow-up, such as requiring another factor or revoking sessions. |
+| Your analysts | Investigate cases in the dashboard, record outcomes, and tune rules. |
+
+The two calls answer different questions:
+
+| Question | Call | Why |
+| --- | --- | --- |
+| Is this device or network risky right now? | `Radar.revealRisk()` | Works without location permission and without a user ID, so it runs on every checkpoint. |
+| Is this the same user, on a consistent set of devices, in a plausible place? | `Radar.trackVerified()` | Carries the `userId`, the location, and signals that depend on them, such as `fraud_jumped_multiple_devices`. Needs location permission. |
+
+## Identify the authenticated user
+
+Every user-level signal depends on the SDK knowing which account is signed in. Set the user ID after you authenticate the user and before the first verified location check. Clear it at logout.
+
+<IdentifyUser />
+
+For this guide, always use the "clear the `userId`" option at logout. A fraud decision must never be attributed to the previous user of a device.
+
+## Choose your checkpoints
+
+| Checkpoint | When to run it | Calls | `reason` |
+| --- | --- | --- | --- |
+| Login | After you verify credentials and before you treat the session as fully trusted | Risk assessment always. Verified location check when location permission is already granted. | `login` |
+| Session continuation | When the app returns to the foreground after a long gap, or on a schedule you choose for long sessions | Risk assessment. Verified location check when permission is granted. | `session` |
+| Sensitive account action | Before a change of email, password, phone number, or payout details | Risk assessment, then a step-up when the decision calls for it | `account_change` |
+
+Use the same small set of `reason` values on every platform. Radar shows the reason in the dashboard and reports, and fraud rules can match on it.
+
+For a sensitive account action that requires the user's verified location when risk is raised, implement the full flow in [Detect risky transactions and verify precise location](/fraud/risky-transactions). This guide doesn't repeat it.
+
+## Collect the signals on the client
+
+At a checkpoint, run the risk assessment, then run a verified location check if the user has already granted location permission, and send whatever you collected to your backend. Don't prompt for location permission at login only for this purpose unless your product already explains why.
+
+In these examples, `hasLocationPermission` and `sendCheckpoint` are functions you write. Check permission with the platform API described in [Understand foreground and background location permissions](/fundamentals/location-permissions).
+
+<CodeGroup>
+
+```swift Swift
+import RadarSDK
+
+// After Radar.initialize(publishableKey:) and Radar.setUserId("user-123")
+func assessCheckpoint(_ checkpoint: String) {
+  Radar.revealRisk { (_, risk) in
+    let riskToken = risk?.token // nil when the assessment did not complete
+
+    guard hasLocationPermission() else {
+      sendCheckpoint(checkpoint, riskToken: riskToken, geolocationToken: nil)
+      return
+    }
+
+    Radar.trackVerified(
+      beacons: false,
+      desiredAccuracy: .medium,
+      reason: checkpoint,
+      transactionId: nil
+    ) { (status, token) in
+      // Send the token whether or not the check passed.
+      let geolocationToken = status == .success ? token?.token : nil
+      sendCheckpoint(checkpoint, riskToken: riskToken, geolocationToken: geolocationToken)
+    }
+  }
+}
+```
+
+```kotlin Kotlin
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarTrackingOptions
+
+// After Radar.initialize(...) with fraud = true and Radar.setUserId("user-123")
+fun assessCheckpoint(checkpoint: String) {
+  Radar.revealRisk { _, risk ->
+    val riskToken = risk?.token // null when the assessment did not complete
+
+    if (!hasLocationPermission()) {
+      sendCheckpoint(checkpoint, riskToken, null)
+      return@revealRisk
+    }
+
+    Radar.trackVerified(
+      beacons = false,
+      desiredAccuracy = RadarTrackingOptions.RadarTrackingOptionsDesiredAccuracy.MEDIUM,
+      reason = checkpoint,
+      transactionId = null
+    ) { status, token ->
+      // Send the token whether or not the check passed.
+      val geolocationToken = if (status == Radar.RadarStatus.SUCCESS) token?.token else null
+      sendCheckpoint(checkpoint, riskToken, geolocationToken)
+    }
+  }
+}
+```
+
+```javascript JavaScript
+import Radar from 'radar-sdk-js';
+
+// After Radar.registerPlugin(createFraudPlugin()), Radar.initialize(...),
+// and Radar.setUserId('user-123')
+async function assessCheckpoint(checkpoint) {
+  let riskToken = null;
+  let geolocationToken = null;
+
+  try {
+    const risk = await Radar.fraud.revealRisk();
+    riskToken = risk.token ?? null;
+  } catch (err) {
+    // The assessment did not complete. The backend treats risk as unknown.
+  }
+
+  if (await hasLocationPermission()) {
+    try {
+      const result = await Radar.fraud.trackVerified({ reason: checkpoint });
+      // Send the token whether or not the check passed.
+      geolocationToken = result.token;
+    } catch (err) {
+      // The check did not complete. No token was issued.
+    }
+  }
+
+  return sendCheckpoint(checkpoint, { riskToken, geolocationToken });
+}
+```
+
+```javascript React Native
+import Radar from 'react-native-radar';
+
+// After Radar.initialize('prj_test_pk_...', true) and Radar.setUserId('user-123')
+async function assessCheckpoint(checkpoint) {
+  let riskToken = null;
+  let geolocationToken = null;
+
+  try {
+    const risk = await Radar.revealRisk();
+    riskToken = risk.token?.token ?? null;
+  } catch (err) {
+    // The assessment did not complete. The backend treats risk as unknown.
+  }
+
+  if (await hasLocationPermission()) {
+    try {
+      const result = await Radar.trackVerified({ reason: checkpoint });
+      // Send the token whether or not the check passed.
+      geolocationToken = result.token?.token ?? null;
+    } catch (err) {
+      // The check did not complete. No token was issued.
+    }
+  }
+
+  return sendCheckpoint(checkpoint, { riskToken, geolocationToken });
+}
+```
+
+</CodeGroup>
+
+For the verified location check, its parameters, and the web companion app option, see [Request the verified location check](/fraud/risky-transactions#request-the-verified-location-check).
+
+## Validate and read the results on your backend
+
+Validate the risk token with `validateRiskToken` from the [Fraud quickstart](/fraud/overview#validate-the-token-on-your-backend).
+
+For the geolocation token, this guide needs the payload fields and not only a pass or fail, so it verifies the token and returns the payload. It performs the signature, algorithm, expiry, user, and environment steps of the [shared validation procedure](/fraud/risky-transactions#validation-steps). The example uses the [`jose`](https://github.com/panva/jose) library.
+
+```javascript Node.js
+import { jwtVerify } from 'jose';
+
+const secret = new TextEncoder().encode(process.env.RADAR_JWT_SECRET_KEY);
+
+/**
+ * @param {string | null} token Geolocation token sent by the client
+ * @param {string} sessionUserId The authenticated user on this request
+ * @returns {Promise<{ ok: true, payload: object } | { ok: false, reason: string }>}
+ */
+export async function readVerifiedCheck(token, sessionUserId) {
+  if (!token) {
+    return { ok: false, reason: 'no_check' };
+  }
+
+  let payload;
+  try {
+    ({ payload } = await jwtVerify(token, secret, {
+      algorithms: ['HS256'],
+      clockTolerance: 5, // seconds
+    }));
+  } catch (err) {
+    return { ok: false, reason: 'token_invalid_or_expired' };
+  }
+
+  // The token must belong to the user who is signed in on this request.
+  if (!payload.user || payload.user.userId !== sessionUserId) {
+    return { ok: false, reason: 'user_mismatch' };
+  }
+
+  if (process.env.NODE_ENV === 'production' && payload.user.live !== true) {
+    return { ok: false, reason: 'wrong_environment' };
+  }
+
+  return { ok: true, payload };
+}
+```
+
+## Keep your own device record for each user
+
+Radar keeps the device and location history that you see in the dashboard and that fraud rules use. For decisions inside a request, keep a small record on your backend as well, keyed by your own user ID:
+
+| Field | Source |
+| --- | --- |
+| `userId` | Your session. Never a value from the client payload. |
+| `deviceId` | `user.deviceId` from a validated geolocation token |
+| `firstSeenAt`, `lastSeenAt` | Your backend clock when you validated the token |
+| `lastCountry`, `lastState` | `user.country.code` and `user.state.code` from the validated token, when present |
+| `trusted` | Set by your own rules, for example after the user completes a second factor on that device |
+
+Write to this record only from validated tokens, and only under the user ID from the session. Don't look up or merge records by device ID alone. A device ID that appears under two user IDs is two separate records, one for each user.
+
+## Decide at each checkpoint
+
+This example turns the validated results into signals and the signals into a decision. The policy is an example to adapt. It isn't a recommended threshold, and it deliberately never blocks on a new device, a device count, or a user count alone. `knownDevices` is your own module.
+
+```javascript Node.js
+// Example policy. Tune it for each checkpoint from your own outcomes.
+const STEP_UP_LEVELS = new Set(
+  (process.env.RISK_STEP_UP_LEVELS ?? 'medium,high').split(',')
+);
+
+/**
+ * @param {{ userId: string, checkpoint: 'login' | 'session' | 'account_change',
+ *           riskToken: string | null, geolocationToken: string | null }} input
+ */
+export async function assessCheckpoint({ userId, checkpoint, riskToken, geolocationToken }) {
+  const risk = await validateRiskToken(riskToken);
+  const check = await readVerifiedCheck(geolocationToken, userId);
+  const signals = [];
+
+  // Device and network risk, from the risk assessment.
+  if (!risk.ok) {
+    signals.push('risk_unknown');
+  } else if (STEP_UP_LEVELS.has(risk.assessment.risk.level)) {
+    signals.push('device_or_network_risk');
+  }
+
+  // User-level signals, from the verified location check when there is one.
+  let deviceId = null;
+  if (check.ok) {
+    const { user, failureReasons = [] } = check.payload;
+    deviceId = user.deviceId;
+
+    if (user.fraud.blocked) signals.push('blocked');
+    if (user.fraud.compromised) signals.push('compromised_device');
+    if (user.fraud.sharing) signals.push('screen_sharing');
+    if (user.fraud.mocked) signals.push('location_spoofing');
+    if (failureReasons.includes('fraud_jumped_multiple_devices')) {
+      signals.push('inconsistent_devices');
+    }
+    if (!(await knownDevices.has(userId, deviceId))) {
+      signals.push('new_device');
+    }
+  } else if (check.reason === 'user_mismatch') {
+    signals.push('token_for_another_user');
+  }
+
+  const decision = decide(checkpoint, signals);
+
+  // Remember the device only after a decision that lets the user continue.
+  if (decision === 'allow' && deviceId) {
+    await knownDevices.record(userId, deviceId, check.payload.user);
+  }
+
+  return {
+    checkpoint,
+    userId,
+    decision,
+    signals,
+    riskLevel: risk.ok ? risk.assessment.risk.level : null,
+    radarAssessmentId: risk.ok ? risk.assessment._id : null,
+    radarCheckId: check.ok ? check.payload._id : null,
+  };
+}
+
+function decide(checkpoint, signals) {
+  const has = (signal) => signals.includes(signal);
+
+  if (has('blocked')) return 'block';
+  if (has('token_for_another_user')) return 'step_up';
+
+  // Strong observations about this device or this moment.
+  if (has('inconsistent_devices') || has('screen_sharing') || has('compromised_device') || has('location_spoofing')) {
+    return 'step_up';
+  }
+
+  // A new device matters when it comes with something else.
+  if (has('new_device') && (has('device_or_network_risk') || has('risk_unknown'))) {
+    return 'step_up';
+  }
+
+  // Sensitive changes get the cautious path whenever risk is raised or unknown.
+  if (checkpoint === 'account_change' && (has('device_or_network_risk') || has('risk_unknown'))) {
+    return 'step_up';
+  }
+
+  // A flagged network on a device this user already uses is worth a look, not a wall.
+  if (has('device_or_network_risk')) return 'review';
+
+  return 'allow';
+}
+```
+
+What each decision does is yours to define. A common mapping:
+
+| Decision | Follow-up |
+| --- | --- |
+| `allow` | Continue. For a new device, record it and tell the account owner about the new sign-in through a channel the new device doesn't control. |
+| `step_up` | Require something more before continuing: another authentication factor, or a [verified location check](/fraud/risky-transactions). Record the device as known only after the step-up succeeds. |
+| `review` | Continue, and queue the session for an analyst or for closer monitoring. Hold sensitive changes until the review clears if your product allows it. |
+| `block` | Refuse. A block rule in Radar matched, so an analyst or a rule already decided. |
+
+## Detect account takeover
+
+The hypothesis is that someone other than the account owner has signed in.
+
+Takeover shows up as a break from the account's own pattern, usually followed quickly by an attempt to change or extract something.
+
+| Observation | Where it comes from |
+| --- | --- |
+| A device the account hasn't used before | Your device record. In the dashboard, the user's device list. |
+| A VPN, proxy, or hosting network on that device | `risk.reasons` and `network.privacy` on the risk assessment, or `user.fraud.proxy` |
+| Screen sharing or remote control during the session | `user.fraud.sharing`, or a `fraud_sharing_` reason. Remote control of the real owner's device is a takeover method that keeps the device and location unchanged. |
+| A country or state that differs from the account's recent checks | Your device record, or the location history in the dashboard |
+| The same account active on two devices in inconsistent places | `fraud_jumped_multiple_devices` in `failureReasons` |
+| A sensitive account action soon after any of the above | Your own event sequence |
+
+Respond in a way the real owner can recover from: step up authentication, hold changes to credentials and payout details, notify the owner, and revoke other sessions once the owner confirms. Reserve blocking for confirmed cases.
+
+## Detect account sharing
+
+The hypothesis is that the account owner has given their credentials to other people.
+
+Sharing shows up as a stable, repeating pattern, without the urgency of a takeover.
+
+| Observation | Where it comes from |
+| --- | --- |
+| The same small set of devices returning over weeks | Your device record. `user.fraud.devicesForThisUser` on the verified location check. |
+| Those devices checking from different places, repeatedly | Location history in the dashboard. Repeated `fraud_jumped_multiple_devices` over time. |
+| Overlapping sessions on different devices | Your session store |
+| No change to credentials or payout details | Your own event sequence |
+
+Whether sharing is a problem, and how much of it, is defined by your terms of service. Respond in proportion: limit concurrent sessions, ask the user to sign in again, or message the account owner. A fraud rule on **Devices for this user** with a time window is a good way to surface candidates as cases without acting on them automatically.
+
+## Tell the scenarios apart
+
+The same signals appear in all three of these. What distinguishes them is what accompanies the signal and what happens next.
+
+| Scenario | What you observe | Decision in the example policy | Why |
+| --- | --- | --- | --- |
+| Legitimate new-device session | A device not in the user's record. Risk level outside your step-up configuration. No flags. The country and state match the account's recent checks. | `allow`, then record the device and notify the owner | A new device alone is context. People replace and add devices. |
+| Suspicious login | A device not in the user's record, together with a flagged network or an unavailable risk result. Possibly a different country from recent checks. | `step_up` | A new device with a second independent signal breaks the account's pattern. The owner can pass the step-up. Someone else usually can't. |
+| Inconsistent activity across devices | `fraud_jumped_multiple_devices`: this device's location is inconsistent with another device using the same user ID. | `step_up` at the checkpoint. Then follow the takeover path if the other device is new and sensitive actions follow, or the sharing path if the same devices recur. | Two devices in inconsistent places means two people or a spoofed location. It doesn't say which person is the owner. |
+
+### Keep one user's history out of another's decision
+
+Shared and handed-down devices are common. These rules keep one person's history from affecting another person:
+
+- Call `Radar.setUserId()` for the signed-in user before any verified location check, and clear it at logout. Radar keeps a separate user record for each combination of install, device, and user ID.
+- At logout, also clear cached results. On iOS, Android, and React Native, call `Radar.clearVerifiedLocationToken()`. The web plugin exposes `Radar.fraud.clearVerifiedLocationToken()`. The SDK remembers the ID of the latest risk assessment and attaches it to the next verified location check. On Android, call `Radar.clearRevealRiskId()`, and on web call `Radar.fraud.clearRevealRiskId()`, so the next user's check isn't linked to the previous user's assessment.
+- On your backend, reject a geolocation token whose `user.userId` isn't the session user, as `readVerifiedCheck` does.
+- Key your device record by your user ID. When `user-456` signs in on a device that `user-123` used, `user-456` starts with their own record, and the device is new for them.
+- Treat `user.fraud.usersForThisDevice` greater than 1 as context. A family tablet has several users.
+- Remember that Radar's risk score for a user can reflect signals from devices and users associated with them. A raised score on a shared device isn't evidence about the person signed in now. Look at the reasons.
+- A risk assessment has no user ID. Never store its result against a user except through the authenticated request that delivered it.
+
+## Investigate a suspected takeover or shared account
+
+When a decision is `review`, when a customer reports a takeover, or when a fraud rule opens a case, an analyst follows the same path in the dashboard. For this use case, look in particular for a device that appears for the first time shortly before a sensitive change, and for whether the account's devices form a stable set or keep changing.
+
+<FraudInvestigation />
+
+Rules that suit this use case, each starting with **Open case** as the only action:
+
+| Goal | Criteria |
+| --- | --- |
+| Surface possible sharing | **Devices for this user** above a number you choose, within a time window in days |
+| Surface inconsistent use | **Failure reasons** includes `fraud_jumped_multiple_devices` |
+| Surface risky logins | **Location check reason** is `login`, and **Country change** or **State change** |
+
+A blocking action on any of these rules affects every associated user or device, including legitimate members of a household. Add it only after reviewing what the rule opens. See [Configure rules and actions](/fraud/overview#configure-rules-and-actions).
+
+## Handle results and errors
+
+Your backend reads these fields from each result:
+
+| Result | Fields your backend reads | Use |
+| --- | --- | --- |
+| Risk assessment | `risk.level`, `risk.reasons`, `network.privacy`, `network.asn`, `device`, `_id` | Device and network signal at every checkpoint. See [Read the result](/fraud/overview#read-the-result). |
+| Verified location check | `user.userId`, `user.deviceId`, `passed`, `failureReasons`, `warningReasons`, `user.fraud`, `user.country`, `user.state`, `_id` | User-level signals and the device record. See the [Geolocation token schema](/api/geolocation-tokens). |
+
+Notes on reading the verified location check for this use case:
+
+- `passed` set to `false` means a check failed according to your project configuration. It doesn't by itself say the session is a takeover. Read `failureReasons` to see which check failed.
+- `user.fraud.devicesForThisUser` and `user.fraud.usersForThisDevice` are counts. They tell you that relationships exist, not who the devices or users are. Use the dashboard to see them.
+- `user.fraud.risk` is present when risk scores are enabled for your project. Record it for analysts. This guide doesn't base a decision on specific values. See [Understand risk scores and decisions](/fraud/overview#understand-risk-scores-and-decisions).
+- `warningReasons` lists signals that didn't fail the check. Record them with the decision.
+- Reasons can include values that aren't documented. Record them without failing.
+
+### Recover from errors and degraded paths
+
+Each situation in this table ends in a defined result:
+
+| Situation | What your backend receives | Result |
+| --- | --- | --- |
+| Location permission not granted | A risk token and no geolocation token | Decide from the risk assessment alone. User-level signals are unavailable, so `new_device` can't be evaluated from Radar data for this checkpoint. |
+| Risk assessment failed in your app | No risk token | `risk_unknown`. The example policy steps up for a new device or a sensitive action, and allows a known device otherwise. |
+| Risk token invalid or expired | A token that fails validation | Same as no risk token. |
+| Verified check returned a technical error | No geolocation token | Same as no permission. A technical error isn't a failed check and not a pass. |
+| Geolocation token expired before it arrived | A token that fails validation | Treat as no check. Don't ask the user to act. Run the check again at the next checkpoint. |
+| Geolocation token for a different user | `user_mismatch` | Step up. In your app, call `Radar.setUserId()` with the session user and check again. This usually means the identity wasn't updated after a user switch. |
+| Failed check | A valid token with `passed` set to `false` | Read `failureReasons` and apply the policy. Don't loop on the check. |
+| User blocked in Radar | `user.fraud.blocked` is `true` | `block`. To reverse it, an analyst removes the block rule. |
+
+For the client status values for technical errors, see [Handle a technical error](/fraud/risky-transactions#handle-a-technical-error).
+
+Handle each point in the session lifecycle:
+
+- **Login**: Set the user ID, then assess. Don't reuse a result collected before the user ID was set.
+- **App returns to the foreground**: Assess again if the last assessment is older than the interval you chose for the `session` checkpoint.
+- **Logout**: Clear the user ID and cached results as described above.
+- **User switch without logout**: Treat it as a logout followed by a login.
+
+## Test the integration
+
+Use the Test environment and dedicated test accounts. Test your backend with tokens signed by a test-only secret.
+
+| Test | How | Expected result |
+| --- | --- | --- |
+| Known device, no signals | Sign in as `test-user-123` twice on the same device with permission granted | The second login returns `allow` with no `new_device` signal |
+| Legitimate new device | Sign in as `test-user-123` on a second device on a normal network | `allow`, with `new_device` in the signals. The device is recorded. |
+| Suspicious login | Sign in as `test-user-123` on a new device while connected to a commercial VPN | `step_up`, if the assessment returns a level in your step-up configuration. Note the level and reasons you get. |
+| Inconsistent devices | Backend test with a signed geolocation token whose `failureReasons` contains `fraud_jumped_multiple_devices` | `step_up` |
+| Blocked user | Create a block rule for the test user in the dashboard, then sign in | `block` |
+| Risk unavailable | Send the checkpoint with no risk token, and with a token that has one character changed | `risk_unknown` in the signals |
+| No location permission | Deny location permission, then sign in | A decision from the risk assessment only |
+| Shared device | Sign in as `test-user-123`, sign out, sign in as `test-user-456` on the same device | The second user's token carries `test-user-456`, and their decision doesn't use the first user's device record |
+| Stale identity | Skip the logout call, sign in as the second user, and send the first user's token | `step_up` with `token_for_another_user` |
+| Sensitive action | Trigger an account change with a flagged network | `step_up` |
+
+To create and remove the block rule, see [Produce a failed check on demand](/fraud/risky-transactions#produce-a-failed-check-on-demand). Remove every test rule when you finish.
+
+After each test, open the [Users](https://dashboard.radar.com/geofencing/users) page and confirm that the test user shows the devices you used.
+
+## Production checklist
+
+- [ ] `Radar.setUserId()` is called with the authenticated user before any verified location check, and cleared at logout together with cached results.
+- [ ] Both tokens are validated on your backend with the JWT secret key and an explicit `HS256` allowlist.
+- [ ] Your backend rejects a geolocation token whose `user.userId` isn't the session user.
+- [ ] The device record is keyed by your user ID and written only from validated tokens.
+- [ ] No rule or code path blocks on a new device, a device count, or a user count alone.
+- [ ] The risk levels that trigger a step-up come from configuration and have an owner who reviews them against recorded outcomes.
+- [ ] A missing or invalid risk token is treated as unknown risk, not as no risk.
+- [ ] Account takeover and account sharing have separate follow-up actions.
+- [ ] Each decision is stored with the Radar assessment ID and check ID.
+- [ ] Analysts have dashboard access and know how to record an outcome.
+- [ ] New fraud rules start with **Open case** only.
+- [ ] Production builds use a Live publishable key, and neither token is written to logs.
+- [ ] Confirmed takeovers and cleared reviews are recorded as [labels](/fraud/overview#labels-and-feedback).
+
+## See also
+
+- [Fraud overview and quickstart](/fraud/overview): the risk assessment, signal families, scores, rules, and labels.
+- [Detect risky transactions and verify precise location](/fraud/risky-transactions): the full location step-up and token validation.
+- [Fraud plugin setup](/sdk/fraud): plugin installation and attestation setup.
+- [Geolocation token schema](/api/geolocation-tokens): the verified location check payload.
+- [Fraud API](/api/fraud): the fraud object, and blocking and unblocking from your own systems.
+- [Labels API](/api/labels): recording confirmed outcomes.
+- [Users API](/api/users): reading a user's latest fraud result from your backend.
+
+To have a coding agent implement this guide, use the prompt in [Build with an agent](#build-with-an-agent).

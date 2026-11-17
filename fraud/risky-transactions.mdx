@@ -1,0 +1,442 @@
+---
+title: "Detect risky transactions and verify precise location"
+sidebarTitle: "Risky transactions"
+description: "Assess device and network risk before a sensitive action, and step up to a verified location check on your backend only when the risk calls for it."
+---
+
+import VerifiedCheck from '/snippets/verified-check.mdx';
+import TokenValidation from '/snippets/token-validation.mdx';
+import CheckResults from '/snippets/check-results.mdx';
+import TestBlockBypass from '/snippets/test-block-bypass.mdx';
+
+By the end of this guide, a sensitive action in your app, such as a payment, a cashout, or revealing account details, goes through a risk assessment first. Low-risk attempts continue without interruption. Higher-risk attempts must pass a verified location check before your backend authorizes them. Every other outcome, including a denied permission or a technical error, ends in an explicit state.
+
+Your backend returns one result for each attempt. For a low-risk attempt:
+
+```json
+{
+  "transactionId": "txn-789",
+  "status": "authorized",
+  "path": "low_friction",
+  "riskLevel": "low"
+}
+```
+
+For an attempt that needs the step-up:
+
+```json
+{
+  "transactionId": "txn-789",
+  "status": "step_up_required",
+  "path": "step_up",
+  "riskLevel": "high",
+  "reasons": ["fraud_proxy_known_proxy_ip"]
+}
+```
+
+Payments, cashouts, and account details are examples of where you might place this flow in your own product. They aren't Radar features.
+
+If the action always requires the user to be in a particular place, regardless of risk, you don't need the risk step. See [Verify location for non-gaming use cases](/geo-compliance/non-gaming), which runs the same verified location check and backend validation as a fixed condition.
+
+## Build with an agent
+
+Copy this prompt into a coding agent that has access to your repository.
+
+```text
+Implement a risk-triggered location step-up for one sensitive action in this
+repository using the current Radar documentation.
+
+First inspect the application framework, platform versions, existing Radar code,
+authentication flow, the code path for the sensitive action, and tests. Preserve
+existing behavior outside this task. Ask me which action to protect if it is
+not obvious.
+
+Read:
+- https://docs.radar.com/fraud/risky-transactions.md
+- https://docs.radar.com/fraud/overview.md
+- https://docs.radar.com/sdk/fraud.md
+- https://docs.radar.com/api/geolocation-tokens.md
+
+Implement:
+- A backend transaction record with the states pending_risk, authorized,
+  step_up_required, denied, and expired, tied to the authenticated user.
+- Client: Radar.revealRisk() for the transaction, then send the signed token to
+  the backend. If the backend returns step_up_required, request location
+  permission, run a verified location check with the transaction ID as
+  transactionId, and send the geolocation token to the backend.
+- Backend: validate the risk token (HS256, project JWT secret key, expiry), and
+  treat a missing or invalid risk token as step_up_required. Validate the
+  geolocation token in the documented order and bind it to the authenticated
+  user and the transaction ID. Authorize the action only on the backend.
+- An explicit result for permission denied, location unavailable or low
+  quality, user cancellation, expired token, technical error, and failed check.
+
+Read the risk levels that trigger the step-up from configuration. Do not treat
+a risk level as a fraud probability or hardcode a universal threshold. Use
+environment variables for credentials. Never put a secret key or the JWT secret
+key in client code. Do not invent methods, fields, supported platforms, or
+defaults.
+
+Add backend tests for: low risk authorizes; configured risk level requires
+step-up; missing and tampered risk tokens require step-up; a passed step-up
+token authorizes once; a failed check denies; an expired token asks for a new
+check; a token for another user or another transaction is rejected; a reused
+transaction ID is rejected. Run the repository's relevant checks. Report changed
+files, test results, required dashboard setup, and anything that still needs
+confirmation. Do not change production settings or deploy without approval.
+```
+
+## Prerequisites
+
+- **Access**: A Radar project with Fraud enabled. The device and network risk assessment must be enabled for your project. Contact your Radar account team.
+- **Working risk assessment**: Complete the [Fraud quickstart](/fraud/overview#quickstart-assess-device-and-network-risk) first. This guide reuses its `validateRiskToken` and `decideFromRisk` functions.
+- **SDK and plugin**: The Radar SDK and fraud plugin for your platform. See [Fraud plugin setup](/sdk/fraud). The examples use iOS SDK 3.46.0, Android SDK 4.3.0, and Web SDK 5.3.0 with `@radarlabs/plugin-fraud` 1.6.1. `Radar.revealRisk()` requires iOS SDK 3.38.0 or later, Android SDK 3.35.0 or later, `@radarlabs/plugin-fraud` 1.4.0 or later, or React Native SDK 4.36.0 or later. The verified location check with `reason` and `transactionId` is available on the clients listed in [Supported clients](#supported-clients).
+- **Keys**: A publishable key in your app. The project's JWT secret key on your backend only. See [Set up organizations, projects, accounts, and authentication](/fundamentals/authentication-and-access).
+- **Identity**: An authenticated user, with `Radar.setUserId()` called with that user's ID before the verified location check.
+- **Permission**: Location permission is needed only for the step-up. Foreground permission is enough. For the platform prompts, see [Understand foreground and background location permissions](/fundamentals/location-permissions).
+- **Environment**: Build and test with Test keys. Switch to Live keys only in production builds.
+
+## How it works
+
+| Party | Responsibility |
+| --- | --- |
+| Your app | Starts the transaction, calls `Radar.revealRisk()`, sends the risk token to your backend, and, when asked, requests location permission, runs the verified location check, and sends the geolocation token. It displays the result. It never authorizes anything. |
+| Radar | Collects device and network signals and returns a signed risk assessment. For the step-up, collects the location with integrity signals, evaluates it, and returns a signed geolocation token. |
+| Your backend | Creates the transaction, validates both tokens, decides whether the step-up is required, binds the step-up result to the user and the transaction, and authorizes or refuses the action. |
+| Your downstream systems | Your payment processor, ledger, or account service acts only after your backend has authorized the transaction. |
+
+The transaction moves through these states on your backend:
+
+| State | Meaning | Next states |
+| --- | --- | --- |
+| `pending_risk` | The transaction exists. No risk result yet. | `authorized`, `step_up_required`, `expired` |
+| `step_up_required` | The risk result calls for a verified location check, or the risk result was unavailable. | `authorized`, `denied`, `expired` |
+| `authorized` | Your backend approved the action. This state is final and is used once. | None |
+| `denied` | A verified location check completed and failed. | None. The user starts a new transaction. |
+| `expired` | The transaction's time limit passed before it was authorized. | None. The user starts a new transaction. |
+
+A transaction in `step_up_required` stays there through permission prompts, retries, and technical errors. Only a validated, passed geolocation token for the same user and the same transaction moves it to `authorized`.
+
+## Configure your project
+
+<Steps>
+  <Step title="Copy the JWT secret key">
+    On the [Settings](https://dashboard.radar.com/settings#fraud-settings) page of the Radar dashboard, under **Fraud**, confirm that Fraud is enabled and copy the JWT secret key into your backend's secret manager.
+  </Step>
+  <Step title="Choose your check reasons">
+    Decide the `reason` values you pass to verified location checks, such as `withdrawal` or `payment`. Radar shows the reason in the dashboard and reports, and you can use it in [fraud rule criteria](/fraud/overview#configure-rules-and-actions).
+  </Step>
+  <Step title="Choose the risk levels that trigger the step-up">
+    Decide which risk levels trigger the step-up for this action and store that as configuration, not as a constant in code. There is no universal threshold. See [Understand risk scores and decisions](/fraud/overview#understand-risk-scores-and-decisions).
+  </Step>
+</Steps>
+
+## Create the transaction on your backend
+
+Create the transaction before any Radar call, on an authenticated request. Generate the transaction ID on your backend so your app can't choose it. Give the transaction a time limit that fits the action.
+
+The backend examples in this guide use Express-style routes and a `transactions` store that you implement with your own database.
+
+```javascript Node.js
+import { randomUUID } from 'node:crypto';
+
+const TRANSACTION_TTL_MS = 10 * 60 * 1000; // Your choice for this action.
+
+app.post('/api/withdrawals', requireSession, async (req, res) => {
+  const transaction = await transactions.create({
+    id: `txn-${randomUUID()}`,
+    userId: req.session.userId,
+    amount: req.body.amount,
+    status: 'pending_risk',
+    expiresAt: Date.now() + TRANSACTION_TTL_MS,
+  });
+
+  res.status(201).json({ transactionId: transaction.id, status: transaction.status });
+});
+```
+
+## Assess risk for the transaction
+
+In your app, call `Radar.revealRisk()` and send the token with the transaction ID. For the platform-specific call and its error handling, see [Request the assessment](/fraud/overview#request-the-assessment). If the call fails or returns no token, still call your backend route without a token, so your backend can move the transaction to the step-up.
+
+On your backend, validate the token and decide:
+
+```javascript Node.js
+app.post('/api/withdrawals/:id/risk', requireSession, async (req, res) => {
+  const transaction = await loadOpenTransaction(req.params.id, req.session.userId);
+  if (!transaction || transaction.status !== 'pending_risk') {
+    return res.status(409).json({ status: transaction?.status ?? 'not_found' });
+  }
+
+  // validateRiskToken and decideFromRisk are defined in the Fraud quickstart.
+  const result = await validateRiskToken(req.body.riskToken);
+  const { decision, riskLevel, reasons } = decideFromRisk(result);
+
+  if (result.ok) {
+    // Bind the assessment to this transaction. Refuse an assessment that was
+    // already used for a different transaction.
+    const firstUse = await transactions.recordRiskAssessment(transaction.id, result.assessment.jti);
+    if (!firstUse) {
+      return res.status(409).json({ status: 'risk_token_reused' });
+    }
+  }
+
+  if (decision === 'allow') {
+    await transactions.update(transaction.id, { status: 'authorized', path: 'low_friction', riskLevel });
+    await releaseWithdrawal(transaction.id); // Your downstream call.
+    return res.json({ transactionId: transaction.id, status: 'authorized', path: 'low_friction', riskLevel });
+  }
+
+  await transactions.update(transaction.id, { status: 'step_up_required', path: 'step_up', riskLevel });
+  return res.json({
+    transactionId: transaction.id,
+    status: 'step_up_required',
+    path: 'step_up',
+    riskLevel,
+    reasons,
+  });
+});
+
+// Returns the transaction only if it belongs to this user and has not expired.
+async function loadOpenTransaction(id, userId) {
+  const transaction = await transactions.get(id);
+  if (!transaction || transaction.userId !== userId) return null;
+  if (Date.now() > transaction.expiresAt && transaction.status !== 'authorized') {
+    await transactions.update(id, { status: 'expired' });
+    return { ...transaction, status: 'expired' };
+  }
+  return transaction;
+}
+```
+
+The risk assessment has no user ID. It is tied to the user and the transaction only because your backend received it on that user's authenticated request for that transaction and recorded its `jti`.
+
+## Ask for location permission
+
+When your backend returns `step_up_required`, explain to the user why you need their location for this action before the operating system prompt appears. Then request foreground location permission with the platform API described in [Understand foreground and background location permissions](/fundamentals/location-permissions).
+
+Granting permission isn't verification. It only makes the check possible. The transaction stays in `step_up_required` until a check passes and your backend validates it.
+
+If the user declines, don't run the check. Show what they can do instead, and leave the transaction in `step_up_required` until it expires. See [Recover from errors and degraded paths](#recover-from-errors-and-degraded-paths).
+
+## Request the verified location check
+
+Run one verified location check for the transaction. Pass the transaction ID from your backend as `transactionId`, and a `reason` from your fixed set.
+
+<VerifiedCheck />
+
+For this guide, use the pattern in [Tie a check to one action](#tie-a-check-to-one-action): the `transactionId` is the ID your backend returned when it created the transaction, and the `reason` is the action, for example `withdrawal`. Keep the same `transactionId` for every retry of the same transaction.
+
+## Validate the step-up token on your backend
+
+The geolocation token from the step-up is validated the same way as in Geo-compliance. The procedure and the `validateGeolocationToken` function below are shared with those guides.
+
+<TokenValidation />
+
+## Authorize the original action
+
+Call the validation function with the user from the session and the transaction ID from your own record, then move the transaction to its final state.
+
+```javascript Node.js
+app.post('/api/withdrawals/:id/verify', requireSession, async (req, res) => {
+  const transaction = await loadOpenTransaction(req.params.id, req.session.userId);
+  if (!transaction || transaction.status !== 'step_up_required') {
+    return res.status(409).json({ status: transaction?.status ?? 'not_found' });
+  }
+
+  const result = await validateGeolocationToken(req.body.geolocationToken, {
+    userId: req.session.userId,
+    transactionId: transaction.id,
+    requireLive: process.env.NODE_ENV === 'production',
+  });
+
+  if (result.decision === 'retry') {
+    // The token expired before it reached the backend. The transaction is unchanged.
+    return res.status(409).json({ transactionId: transaction.id, status: 'step_up_required', retry: true });
+  }
+
+  if (result.decision === 'deny' && isCompletedFailedCheck(result.reasons)) {
+    // An authentic token for this user and transaction, with passed set to false.
+    await transactions.update(transaction.id, { status: 'denied', reasons: result.reasons });
+    return res.status(403).json({ transactionId: transaction.id, status: 'denied', reasons: result.reasons });
+  }
+
+  if (result.decision !== 'allow') {
+    // Invalid token, wrong user, wrong transaction, or wrong environment.
+    // Nothing was verified, so the transaction is unchanged.
+    return res.status(400).json({ transactionId: transaction.id, status: 'step_up_required', reasons: result.reasons });
+  }
+
+  // Compare-and-set, so two concurrent requests cannot both authorize.
+  const won = await transactions.transition(transaction.id, 'step_up_required', 'authorized');
+  if (!won) {
+    return res.status(409).json({ transactionId: transaction.id, status: 'already_processed' });
+  }
+
+  await releaseWithdrawal(transaction.id); // Your downstream call.
+  return res.json({ transactionId: transaction.id, status: 'authorized', path: 'step_up' });
+});
+
+// The validation function returns its own reason codes when the token itself
+// is rejected. Anything else is a failure reason from a completed check.
+const VALIDATION_REASONS = new Set([
+  'token_invalid',
+  'token_expired',
+  'user_mismatch',
+  'product_mismatch',
+  'transaction_mismatch',
+  'wrong_environment',
+]);
+
+function isCompletedFailedCheck(reasons) {
+  return !reasons.some((reason) => VALIDATION_REASONS.has(reason));
+}
+```
+
+Whether a failed check ends the transaction, as in this example, or lets the user correct the cause and try again within the same transaction, is your policy. If you allow another attempt, keep the transaction in `step_up_required` and keep the same `transactionId`.
+
+## Check proximity to an expected address
+
+This step is optional. Some actions are less risky when the user is at an address you already hold for them, such as a billing address. You can add that comparison to the step-up.
+
+<Info>
+  Address verification must be enabled for your project. Contact your Radar account team.
+</Info>
+
+Call `Radar.setExpectedAddress()` with the address before the verified location check. Radar geocodes the address and compares it with the location of the check. The method is available on iOS SDK 3.42.0 or later and Android SDK 3.38.0 or later. The web fraud plugin exposes it as `Radar.fraud.setExpectedAddress()`. Radar sends the address with each later check until you clear it by passing `nil` in Swift or `null` in Kotlin, or by calling `Radar.fraud.setExpectedAddress()` with no argument on web.
+
+<CodeGroup>
+
+```swift Swift
+Radar.setExpectedAddress("123 Example St, New York, NY 10001")
+// Then run the verified location check for the transaction.
+```
+
+```kotlin Kotlin
+Radar.setExpectedAddress("123 Example St, New York, NY 10001")
+// Then run the verified location check for the transaction.
+```
+
+```javascript JavaScript
+Radar.fraud.setExpectedAddress('123 Example St, New York, NY 10001');
+// Then run the verified location check for the transaction.
+```
+
+</CodeGroup>
+
+The result is in `user.expectedAddress` in the validated token. Read `atAddress`, `distance`, and `confidence`. See [Expected address fields](/api/geolocation-tokens#expected-address-fields). When the user isn't at the address, the token includes the warning `address_not_expected`. A warning doesn't change `passed`.
+
+Be precise about what this establishes:
+
+| It tells you | It doesn't tell you |
+| --- | --- |
+| At the time of the check, the verified location was within the configured distance of the point Radar geocoded for the address, with the stated confidence. | That the user lives or works there, that the address is formatted correctly or deliverable, or that the user is who they claim to be. |
+
+Read the result on your backend from the validated token, and treat it as one input:
+
+```javascript Node.js
+// payload is the verified geolocation token payload.
+const address = payload.user.expectedAddress;
+const atExpectedAddress =
+  address?.atAddress === true && (address.confidence === 'high' || address.confidence === 'medium');
+```
+
+Which confidence values you accept is your policy. A `confidence` of `unknown` means the address couldn't be geocoded or the location accuracy wasn't available, so treat it as "not established".
+
+## Handle results and errors
+
+Your backend reads two results and returns exactly one outcome for each attempt.
+
+### Read the risk assessment
+
+For the assessment fields, see [Read the result](/fraud/overview#read-the-result). In this flow, your backend uses `risk.level` and `risk.reasons` to choose between the low-friction path and the step-up, and records both with the transaction. Your app doesn't make that choice.
+
+### Read the verified location check
+
+<CheckResults />
+
+### Result for every branch
+
+Each branch ends in exactly one result. No branch authorizes the action on the client.
+
+| Branch | How you detect it | Backend state | Is the action authorized? | What the user sees |
+| --- | --- | --- | --- | --- |
+| Low risk | Valid risk token, and the level isn't in your step-up configuration | `authorized` | Yes | The action completes. |
+| Risk calls for step-up | Valid risk token, and the level is in your step-up configuration | `step_up_required` | Not yet | An explanation, then the location prompt. |
+| Risk assessment unavailable | Your app reports an error or no token, or the token fails validation | `step_up_required` | Not yet | The same step-up. Unknown risk isn't low risk. |
+| Permission denied | The user declines the prompt, or the check returns `ERROR_PERMISSIONS` | `step_up_required` | No | Why location is needed, how to enable it in settings, and your alternative, such as contacting support. |
+| Location unavailable | The check returns `ERROR_LOCATION` | `step_up_required` | No | A request to turn on location services and Wi-Fi, and a button to try again. |
+| Location low quality | The check completes with `passed` set to `false` and `fraud_inaccurate_exceeded_accuracy_threshold` in `failureReasons` | `denied`, or `step_up_required` if your policy allows another attempt | No | A request to enable precise location and Wi-Fi, then try again. |
+| User cancelled | The user leaves the step-up before a check completes. Radar sends no signal for this. | `step_up_required` until the time limit, then `expired` | No | The action isn't completed. They can start again. |
+| Token expired | Your backend's validation returns `retry` because `exp` has passed | `step_up_required` | No | Your app runs a new check with the same `transactionId` and resends. |
+| Transaction expired | Your own time limit passed | `expired` | No | The action timed out. They start a new transaction. |
+| Technical error | The check returns `ERROR_NETWORK`, `ERROR_SERVER`, or another error status, and no token | `step_up_required` | No | A request to check the connection and try again. |
+| Failed check | A valid token for this user and transaction with `passed` set to `false` | `denied` | No | A message based on `failureReasons`. |
+| Passed check with warnings | A valid token with `passed` set to `true` and entries in `warningReasons` | `authorized` | Yes | The action completes. Record the warnings with the transaction. |
+| Passed check | A valid token for this user and transaction with `passed` set to `true` | `authorized` | Yes | The action completes. |
+
+### Recover from errors and degraded paths
+
+Apply these rules to every retry and failure:
+
+- **Keep one transaction ID through retries**: A retry after a technical error, an expired token, or a permission change uses the same `transactionId`. A new transaction gets a new ID and starts again from the risk assessment.
+- **Authorize once**: Move the transaction to `authorized` with a compare-and-set, as in the example, so a repeated or concurrent request can't release the action twice. Radar returns `transactionId` unchanged and doesn't enforce single use.
+- **Permission approval isn't success**: After the user grants permission, the check can still fail or return an error. Read the check result, not the permission state.
+- **Don't fall back to allow**: When the risk assessment is unavailable, require the step-up. When the step-up can't complete, the action stays unauthorized. Offer the user another route, such as support or a different verification method that you operate.
+- **Don't loop on a failed check**: A failed check means Radar reached a conclusion. Let the user change something first, such as disconnecting a VPN, and then start a new attempt.
+- **App backgrounded during the step-up**: When the app returns to the foreground, ask your backend for the transaction's current state before continuing. If the transaction expired, start again.
+- **User changes during the flow**: If the signed-in user changes, discard the transaction in your app, call `Radar.setUserId()` with the new user, and start a new transaction. Your backend rejects a token whose `user.userId` doesn't match the session.
+- **Unknown reasons**: `risk.reasons` and `failureReasons` can contain values that aren't documented. Record them and show a general message.
+
+## Test the integration
+
+Run these in the Test environment with a Test publishable key. Sign test tokens for backend unit tests with a test-only secret.
+
+| Test | How | Expected result |
+| --- | --- | --- |
+| Low-friction path | Backend test with a signed risk token whose `risk.level` is outside your step-up configuration | `authorized`, `path` is `low_friction` |
+| Step-up triggered | Backend test with a signed risk token whose `risk.level` is in your step-up configuration. On a device, connect to a commercial VPN and observe the level you get. | `step_up_required` |
+| Risk unavailable | Call the risk route with no token, and with a token that has one character changed | `step_up_required` |
+| Risk token reuse | Send the same risk token for two different transactions | The second request is rejected |
+| Step-up passes | Run the check on a device with location permission granted | `authorized`, `path` is `step_up` |
+| Failed check | Block the test user with the procedure below, then run the check | `denied`, with `fraud_blocked_user_id` in the reasons |
+| Permission denied | Deny location permission on the device | No token. The transaction stays `step_up_required`. |
+| Location unavailable | Turn off location services, or use a device with no location fix | No token. The transaction stays `step_up_required`. |
+| Technical error | Turn on airplane mode before the check | No token. The transaction stays `step_up_required`. |
+| Expired token | Backend test with a token whose `exp` is in the past | `retry`, and the transaction stays `step_up_required` |
+| Wrong user | Present a valid token for `user-456` in a `user-123` session | Rejected. The transaction is unchanged. |
+| Wrong transaction | Present a valid token whose `transactionId` is `txn-111` for `txn-789` | Rejected. The transaction is unchanged. |
+| Double submit | Send the same passing token twice | The second request returns `already_processed`. The action is released once. |
+| Cancelled | Start the step-up, then leave the screen | The transaction becomes `expired` after your time limit |
+| Client-only bypass | Call your downstream action route directly without an authorized transaction | Refused |
+
+### Produce a failed check on demand
+
+<TestBlockBypass />
+
+## Production checklist
+
+- [ ] Your backend creates the transaction ID. Your app never chooses it.
+- [ ] The risk token and the geolocation token are both validated on your backend with the JWT secret key and an explicit `HS256` allowlist.
+- [ ] A missing, invalid, or expired risk token leads to the step-up, not to the low-friction path.
+- [ ] The levels that trigger the step-up come from configuration, were chosen for this action, and have an owner who reviews them against recorded outcomes.
+- [ ] The step-up token is bound to the authenticated user and to the transaction ID.
+- [ ] The transaction is authorized at most once, with an atomic state change.
+- [ ] Every branch in [Result for every branch](#result-for-every-branch) has a tested client message and a tested backend state.
+- [ ] No code path authorizes the action from a client-side value.
+- [ ] Production builds use a Live publishable key, and your backend rejects tokens with `user.live` set to `false`.
+- [ ] The JWT secret key is in a secret manager, and neither token is written to logs.
+- [ ] Each transaction record stores the Radar assessment ID and check ID, so an analyst can [inspect the check](/fraud/overview#inspect-a-check).
+- [ ] No bypass rule exists in the Live environment for a real user.
+- [ ] Confirmed outcomes, such as chargebacks, are sent back as [labels](/fraud/overview#labels-and-feedback).
+
+## See also
+
+- [Fraud overview and quickstart](/fraud/overview): the risk assessment, signal families, scores, rules, and labels.
+- [Fraud plugin setup](/sdk/fraud): plugin installation and attestation setup.
+- [Geolocation token schema](/api/geolocation-tokens): the step-up token payload, failure reasons, and expiry.
+- [Fraud API](/api/fraud): the fraud object and block rules.
+- [Verify location for non-gaming use cases](/geo-compliance/non-gaming): the same check as a fixed location condition.
+- [Test, troubleshoot, and go live](/fundamentals/testing-and-launch): test procedures and launch steps.
+
+To have a coding agent implement this guide, use the prompt in [Build with an agent](#build-with-an-agent).

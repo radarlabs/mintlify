@@ -1,0 +1,475 @@
+---
+title: "Fraud overview and quickstart"
+sidebarTitle: "Overview and quickstart"
+description: "Run a device and network risk assessment with Radar Fraud, use the result on your backend, and learn how signals, risk scores, rules, and checks fit together."
+---
+
+import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
+
+By the end of this page you have a working device and network risk assessment: your app calls `Radar.revealRisk()`, your backend validates the signed result, and your backend decides whether to allow the action, ask for more, or send it to review. The rest of the page explains the signals behind the result, how scores relate to decisions, and where to configure rules and inspect checks.
+
+<Info>
+  Fraud is available on the [Enterprise plan](https://radar.com/pricing).
+</Info>
+
+## Quickstart: assess device and network risk
+
+### Before you start
+
+- The device and network risk assessment must be enabled for your project. Contact your Radar account team.
+- The Radar SDK and the fraud plugin installed for your platform. See [Fraud plugin setup](/sdk/fraud). The examples use iOS SDK 3.46.0, Android SDK 4.3.0, and Web SDK 5.3.0 with `@radarlabs/plugin-fraud` 1.6.1. `Radar.revealRisk()` requires iOS SDK 3.38.0 or later, Android SDK 3.35.0 or later, `@radarlabs/plugin-fraud` 1.4.0 or later, or React Native SDK 4.36.0 or later.
+- Your project's JWT secret key, shown under **Fraud** on the [Settings](https://dashboard.radar.com/settings#fraud-settings) page of the Radar dashboard, stored in your backend's secret manager.
+- A backend route that only signed-in users, or users in a known registration flow, can call.
+
+### Get your keys
+
+<EnvironmentAndKeys />
+
+### Request the assessment
+
+Call `Radar.revealRisk()` at the moment you want to assess, such as a login or the start of a payment. The SDK collects the signals and sends them to `POST /v1/reveal/risk` with your publishable key. The call doesn't request location permission and doesn't need a user ID. Send the returned `token` to your backend. Use the other fields only to update your UI.
+
+In these examples, `sendRiskTokenToBackend` and the error handlers are functions you write.
+
+<CodeGroup>
+
+```swift Swift
+import RadarSDK
+
+// After Radar.initialize(publishableKey:) with the fraud plugin installed
+Radar.revealRisk { (status, token) in
+  guard status == .success, let riskToken = token?.token else {
+    // The assessment did not complete, or no signed token was issued.
+    // Tell your backend, so it can choose the cautious path.
+    reportRiskUnavailable(status)
+    return
+  }
+
+  // Your backend validates the token and returns the decision.
+  sendRiskTokenToBackend(riskToken)
+}
+```
+
+```kotlin Kotlin
+import io.radar.sdk.Radar
+
+// After Radar.initialize(...) with fraud = true
+Radar.revealRisk { status, token ->
+  val riskToken = token?.token
+  if (status != Radar.RadarStatus.SUCCESS || riskToken == null) {
+    // The assessment did not complete, or no signed token was issued.
+    // Tell your backend, so it can choose the cautious path.
+    reportRiskUnavailable(status)
+    return@revealRisk
+  }
+
+  // Your backend validates the token and returns the decision.
+  sendRiskTokenToBackend(riskToken)
+}
+```
+
+```javascript JavaScript
+import Radar from 'radar-sdk-js';
+import { createFraudPlugin } from '@radarlabs/plugin-fraud';
+
+Radar.registerPlugin(createFraudPlugin());
+Radar.initialize('prj_test_pk_...');
+
+try {
+  const result = await Radar.fraud.revealRisk();
+
+  if (!result.token) {
+    // No signed token was issued. Choose the cautious path.
+    await reportRiskUnavailable('no_token');
+  } else {
+    // Your backend validates the token and returns the decision.
+    await sendRiskTokenToBackend(result.token);
+  }
+} catch (err) {
+  // The assessment did not complete. Choose the cautious path.
+  await reportRiskUnavailable(err.status);
+}
+```
+
+```javascript React Native
+import Radar from 'react-native-radar';
+
+// After Radar.initialize('prj_test_pk_...', true)
+Radar.revealRisk()
+  .then((result) => {
+    const riskToken = result.token?.token;
+    if (!riskToken) {
+      // No signed token was issued. Choose the cautious path.
+      return reportRiskUnavailable(result.status);
+    }
+    // Your backend validates the token and returns the decision.
+    return sendRiskTokenToBackend(riskToken);
+  })
+  .catch((err) => {
+    // The assessment did not complete. Choose the cautious path.
+    return reportRiskUnavailable(err);
+  });
+```
+
+</CodeGroup>
+
+### Read the result
+
+The SDK returns the assessment as an object and as a signed `token` that carries the same fields. This is a synthetic example of the fields:
+
+```json
+{
+  "_id": "6740a1f2c3d4e5f6a7b8c9d0",
+  "risk": {
+    "level": "medium",
+    "reasons": ["fraud_proxy_known_proxy_ip"]
+  },
+  "network": {
+    "ipAddress": {
+      "ip": "203.0.113.24",
+      "countryCode": "US",
+      "country": "United States",
+      "stateCode": "NY",
+      "state": "New York",
+      "city": "New York",
+      "connectionType": "fixed"
+    },
+    "privacy": {
+      "vpn": true,
+      "proxy": false,
+      "tor": false,
+      "relay": false,
+      "hosting": true,
+      "service": "Example VPN",
+      "residentialProxy": false
+    },
+    "asn": {
+      "asn": "AS64500",
+      "name": "Example Hosting",
+      "domain": "example.net",
+      "type": "hosting",
+      "country": "US"
+    }
+  },
+  "device": {
+    "deviceId": "device-456",
+    "installId": "install-789",
+    "deviceType": "iOS",
+    "deviceMake": "Apple",
+    "deviceModel": "iPhone16,1",
+    "deviceOSName": "iOS",
+    "deviceOSVersion": "18.1",
+    "sdkVersion": "3.46.0",
+    "appId": "com.example.app",
+    "appVersion": "4.2.0"
+  },
+  "expiresIn": 300,
+  "expiresAt": "2026-11-17T15:05:00.000Z"
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `_id` | string | Radar's ID for this assessment. The mobile SDK models expose it as `id`. |
+| `risk.level` | string | One of `none`, `low`, `medium`, or `high`. See [Understand risk scores and decisions](#understand-risk-scores-and-decisions). |
+| `risk.reasons` | array of strings | The signals found, using the same names as verified location check failure reasons, for example `fraud_proxy_known_proxy_ip`. Can be empty. |
+| `network.ipAddress` | object | The IP address and its IP geolocation. Fields other than `ip` can be absent. |
+| `network.privacy` | object | Network privacy flags: `vpn`, `proxy`, `tor`, `relay`, `hosting`, `residentialProxy`, and the `service` name when known. |
+| `network.asn` | object | The network operator: `asn`, `name`, `domain`, `type`, `country`, and `network`. |
+| `device` | object | Device, operating system, SDK, and app details. On web it also includes `userAgent` and browser name and version. |
+| `token` | string | The signed result. Send this to your backend. Optional in the SDK models, so handle its absence. |
+| `expiresAt`, `expiresIn` | datetime, number | When the token expires, and its lifetime in seconds. Present with `token`. Read the lifetime from the token instead of assuming the value in the example. |
+
+The assessment has no `passed` field and no user ID. It reports what Radar observed about the device and network. Your app decides what to do with it.
+
+### Validate the token on your backend
+
+The token is a JSON Web Token signed with `HS256` and your project's JWT secret key, the same key that signs geolocation tokens. Its `jti` claim equals the assessment `_id`. Decoding a token isn't validating it, so verify the signature and expiry before you read any field.
+
+This Node.js example uses the [`jose`](https://github.com/panva/jose) library to verify the signature, the algorithm, and the expiry:
+
+```javascript Node.js
+import { jwtVerify } from 'jose';
+
+// Load the secret from your environment. Never hardcode it.
+const secret = new TextEncoder().encode(process.env.RADAR_JWT_SECRET_KEY);
+
+/**
+ * @param {string | undefined} token Risk token sent by the client
+ * @returns {Promise<{ ok: true, assessment: object } | { ok: false, reason: string }>}
+ */
+export async function validateRiskToken(token) {
+  if (!token) {
+    return { ok: false, reason: 'risk_token_missing' };
+  }
+
+  let payload;
+  try {
+    // Library checks: signature, HS256 only, and exp.
+    ({ payload } = await jwtVerify(token, secret, {
+      algorithms: ['HS256'],
+      clockTolerance: 5, // seconds
+    }));
+  } catch (err) {
+    return { ok: false, reason: 'risk_token_invalid' };
+  }
+
+  if (!payload.risk || typeof payload.risk.level !== 'string') {
+    return { ok: false, reason: 'risk_token_invalid' };
+  }
+
+  return { ok: true, assessment: payload };
+}
+```
+
+The token says nothing about who is asking, so bind it yourself:
+
+- Accept the token only on a request you have already tied to a user or a registration attempt, such as an authenticated session.
+- Record `jti` with the action it was used for, and reject a `jti` you have already used for a different action.
+- Treat a missing, invalid, or expired token as "risk unknown", not as "no risk".
+
+### Use the result
+
+Map the assessment to one of your own outcomes on your backend. This example reads the levels that trigger a stronger check from configuration, because the right policy depends on your product, your users, and what the action is worth. It is an example policy, not a recommended threshold.
+
+```javascript Node.js
+// Example policy. Tune it for each action from your own outcomes.
+const STEP_UP_LEVELS = new Set(
+  (process.env.RISK_STEP_UP_LEVELS ?? 'medium,high').split(',')
+);
+
+/**
+ * @param {Awaited<ReturnType<typeof validateRiskToken>>} result
+ * @returns {{ decision: 'allow' | 'step_up', riskLevel: string | null, reasons: string[] }}
+ */
+export function decideFromRisk(result) {
+  if (!result.ok) {
+    // Risk unknown. Take the cautious path instead of allowing by default.
+    return { decision: 'step_up', riskLevel: null, reasons: [result.reason] };
+  }
+
+  const { level, reasons } = result.assessment.risk;
+
+  if (STEP_UP_LEVELS.has(level)) {
+    return { decision: 'step_up', riskLevel: level, reasons };
+  }
+
+  return { decision: 'allow', riskLevel: level, reasons };
+}
+```
+
+What `step_up` means is your choice: a verified location check, a second authentication factor, a hold for manual review, or a lower limit. [Detect risky transactions and verify precise location](/fraud/risky-transactions) implements the verified location version end to end.
+
+### Verify that it works
+
+1. Run your app with a Test publishable key and trigger the assessment. Confirm that the client receives a `token` and that your backend returns `allow`.
+2. Connect the device to a commercial VPN and repeat. Confirm that `network.privacy.vpn` is `true` or that `risk.reasons` isn't empty, and note the `risk.level` you get. Results depend on the VPN service and on your project configuration.
+3. Change one character of the token and send it. Confirm that your backend returns `step_up` with `risk_token_invalid`.
+4. Send the request with no token. Confirm that your backend returns `step_up` with `risk_token_missing`.
+
+## Decide when to collect precise location
+
+Fraud has two client calls. Both run through the Radar SDK with the fraud plugin, and both return a result signed with your project's JWT secret key.
+
+| | Device and network risk assessment | Verified location check |
+| --- | --- | --- |
+| Method | `Radar.revealRisk()` | `Radar.trackVerified()` |
+| Collects | Device integrity signals and network signals | The same signals, plus the device's precise location |
+| Location permission | Not requested | Required |
+| Tied to a user ID | No. The result describes the device and its network. | Yes. The result carries the `userId` set with `Radar.setUserId()`. |
+| Result | `risk.level`, `risk.reasons`, `network`, `device`, and a signed `token` | `passed`, `failureReasons`, `warningReasons`, `user.fraud`, and a signed geolocation token |
+| Use it for | A low-friction first look at every sensitive moment | Confirming where the user is, and signals that depend on location or on the user's history |
+
+The risk assessment tells you about the device and its network. It can't tell you where the user is, and it doesn't use the user's history. Add a verified location check when you need one of the following:
+
+- **Where the user is**: A location condition for the action, such as being in an allowed region or near an expected address.
+- **Location integrity**: Whether the location is mocked, moved too far too fast, or is too inaccurate to trust. These signals exist only when a location is collected.
+- **User-level signals**: The verified location check carries the `userId`, so it can report how many devices the user has been seen on, how many users a device has been seen with, and whether the same user is active on two devices in inconsistent places.
+
+A verified location check asks the user for location permission. Ask at a moment when the reason is clear to the user, and plan for the user saying no. The three guides show where each call fits.
+
+## Detect location spoofing, VPNs and proxies, screen sharing and remote control, and compromised devices and apps
+
+Radar groups its fraud signals into families. A verified location check reports each family as a boolean flag in `user.fraud` and as one or more detailed reasons in `failureReasons` or `warningReasons`. A risk assessment reports the device and network families as entries in `risk.reasons`.
+
+| Signal family | What it detects | Flag | Example reasons | Available from | Limits on interpretation |
+| --- | --- | --- | --- | --- | --- |
+| Location spoofing | A location supplied by a mock provider or spoofing app, a location that disagrees with the IP address, or movement that is too far too fast | `mocked`, `jumped` | `fraud_mocked_from_mock_provider`, `fraud_mocked_known_spoofing_app`, `fraud_mocked_inconsistent_ip_country`, `fraud_jumped_single_device`, `fraud_jumped_multiple_devices` | Verified location check | IP geolocation can be wrong, especially on cellular networks. Operating systems sometimes return stale coordinates, which can look like a jump. |
+| VPNs and proxies | An IP address that belongs to a known VPN, proxy, or hosting provider, or a network configured to use one | `proxy` | `fraud_proxy_known_proxy_ip`, `fraud_proxy_network_configuration` | Risk assessment and verified location check | Many people use a VPN for privacy or for work. Large venues and corporate networks can share addresses with hosting ranges. Read `privacy` and `asn` for detail before you act. |
+| Screen sharing and remote control | Screen sharing or remote desktop software, extra displays, or virtual input devices that let someone elsewhere operate the device | `sharing` | `fraud_sharing_known_screen_sharing_app`, `fraud_sharing_multiple_displays`, `fraud_sharing_virtual_input_device` | Risk assessment and verified location check. Reasons differ by platform. | External monitors, car displays, and accessibility tools can produce the same observations. |
+| Compromised devices and apps | A jailbroken or rooted device, or a device or app that fails platform attestation | `compromised` | `fraud_compromised_jailbroken`, `fraud_compromised_app_attest`, `fraud_compromised_play_integrity_api` | Risk assessment and verified location check. Attestation requires [App Attest or the Play Integrity API setup](/sdk/fraud). | A development device or an outdated operating system can fail these checks without any intent to commit fraud. |
+
+Two more flags come only from a verified location check. `inaccurate` means the reported location accuracy is too low to rely on. `blocked` and `bypassed` report that a [block or bypass rule](#configure-rules-and-actions) matched.
+
+For the reason names, their meanings, and the platforms that produce each one, see [Failure reasons](/api/geolocation-tokens#failure-reasons). Some reasons aren't published, so handle values you don't recognize without failing. The flags are defined in the [Fraud object](/api/fraud#fraud-object).
+
+A flag reports an observation. It doesn't report intent. Decide what each family means for each action in your product, and prefer a response the user can recover from, such as "disconnect your VPN and try again", when the signal has common innocent causes.
+
+## Understand risk scores and decisions
+
+Four different things are easy to confuse. Keep them separate in your code and in your team's vocabulary.
+
+| Term | What it is | Where you read it | Who produces it |
+| --- | --- | --- | --- |
+| Risk score | A summary of how much risk Radar sees. It ranks cases for attention. | `risk.level` on a risk assessment. `user.fraud.risk` on a verified location check, when risk scores are enabled for your project. | Radar |
+| Warning | A signal that Radar reports without failing the check. | `warningReasons` on a verified location check. | Radar, according to your project configuration |
+| Failure | A signal or condition that makes a verified location check fail. | `failureReasons`, with `passed` set to `false`. `user.fraud.passed` is the result of the fraud checks alone. | Radar, according to your project configuration |
+| Application decision | What your product does: allow, step up, review, or block. | Your backend's response to your client. | You |
+
+### Risk scores
+
+- A risk score isn't a probability of fraud. It is a ranking signal. A higher score means Radar found more, or stronger, signals. It doesn't mean a given percentage of such users are fraudulent, and an individual legitimate user can score high.
+- There is no universal threshold. The level at which you step up, review, or block depends on the action, on what a false positive costs you, and on your own outcome data. Choose it for each action, start by observing, and adjust it from recorded outcomes.
+- `risk.level` on a risk assessment is one of `none`, `low`, `medium`, or `high`. It reflects the device and network signals found in that assessment. `risk.reasons` lists those signals.
+- `user.fraud.risk` on a verified location check is a number. It reflects the signals on that check together with the recent history of the user and the device, over a lookback period configured for your project. Because it includes history, it can stay raised on a check that has no flags of its own. Its presence and behavior depend on your project configuration, so read it as described in [Fraud fields](/api/geolocation-tokens#fraud-fields) and confirm the configuration with your Radar account team before you build logic on specific values.
+- Reasons explain a score. In the dashboard, the user, device, and check pages show the risk score next to the reasons that produced it. Use the reasons, not the number alone, when you review a case.
+
+Radar's machine learning risk model is named RF-1. It is described in the [RF-1 announcement](https://radar.com/blog/introducing-rf-1) as a model that ranks risk and doesn't represent the probability of fraud. This page documents the fields the API returns today under their current names.
+
+### Check-level results and history
+
+| Scope | Fields | What it tells you |
+| --- | --- | --- |
+| This check | `user.fraud.mocked`, `jumped`, `compromised`, `inaccurate`, `proxy`, `sharing`, `failureReasons`, `warningReasons` | What Radar observed on this request. |
+| This user or device over time | `user.fraud.lastMockedAt`, `lastJumpedAt`, `lastCompromisedAt`, `lastInaccurateAt`, `lastProxyAt`, `lastSharingAt` | The last time each flag was raised. |
+| Relationships | `user.fraud.devicesForThisUser`, `user.fraud.usersForThisDevice` | How many devices this user ID has been seen on, and how many user IDs this device has been seen with. |
+| Standing rules | `user.fraud.blocked`, `user.fraud.bypassed` | Whether a block or bypass rule matched. |
+
+A new device, several devices for one user, several users on one device, or a network shared with other accounts is context. None of them is proof of fraud. Households share devices, people replace phones, and offices, campuses, and mobile carriers put many unrelated people behind one IP address.
+
+### From results to a decision
+
+Radar's part ends at the result. Your backend turns it into a decision, and only your backend's decision authorizes an action.
+
+1. Validate the token. An unvalidated value from the client isn't a result.
+2. Read the result: the risk level, the reasons, and for a verified location check, `passed`, the failure reasons, and the warnings.
+3. Combine it with what you know: the user's tenure, the value of the action, and your own records.
+4. Return one decision to the client and record it with the Radar ID of the assessment or check, so an analyst can find it later.
+
+Radar can also act by itself in two ways that you configure: a [block rule or fraud rule](#configure-rules-and-actions) can block a user or device, and a project can be configured to block automatically at a high risk score. In both cases later verified checks fail with a `fraud_blocked_` failure reason, and your backend still makes the decision from the validated result.
+
+## Configure rules and actions
+
+Radar has two kinds of rules. Both are configured in the dashboard.
+
+| | Block rules | Fraud rules |
+| --- | --- | --- |
+| What they match | One specific user ID, device ID, IP address, or MAC address | Conditions evaluated on each location check |
+| What they do | Fail every check for that value (**Blocked**), or pass every check for that value (**Bypassed**) | Open a case, block the associated users, block the associated devices, or a combination |
+| Typical use | Stop a confirmed bad actor. Test your integration. | Catch a pattern across many users and devices, and route it to an analyst |
+
+Bypass rules are for internal testing only. Never apply them to real users.
+
+### Block rules
+
+Create a block rule on the **Block rules** page, or from the menu on a user or device detail page. A rule has a value to match, a description, and a duration. A blocked user fails later verified location checks with `user.fraud.blocked` set to `true` and a failure reason such as `fraud_blocked_user_id`, `fraud_blocked_device_id`, or `fraud_blocked_ip`. A risk assessment has no user ID, so only rules on the device ID, IP address, or MAC address can apply to it.
+
+A block rule can be permanent or temporary. A temporary rule stops applying when its duration ends. To create and remove block rules from your own systems, use the [Fraud API](/api/fraud#block-users-and-devices), which accepts a duration in milliseconds.
+
+### Fraud rules
+
+Create a fraud rule on the **Fraud rules** page. A rule has a name, a status of **Enabled** or **Disabled**, criteria, and actions.
+
+Each criterion compares one field from a location check to a value. Combine criteria with **and** or **or**.
+
+| Criterion | What it matches |
+| --- | --- |
+| Failure reasons | The check has one of the selected failure reasons. |
+| Users for this device | The number of user IDs seen on the device within a time window that you set in minutes, hours, or days. |
+| Devices for this user | The number of devices seen for the user ID within a time window that you set in minutes, hours, or days. |
+| State change, Country change | The user's state or country differs from their previous check. |
+| Consecutive repeat coordinates | The number of consecutive checks from the same coordinates. |
+| Location check reason | The `reason` your app passed to the check, such as `login` or `withdrawal`. |
+| Country, State | The country or state of the check. |
+| Geofence tags, Geofence external IDs | The check is inside a geofence with one of the selected tags or external IDs. |
+| User first seen | When Radar first saw the user. |
+| Device model | The device model. |
+
+The criteria available to you can differ by project. Passing a consistent `reason` with each check makes the location check reason criterion useful, so choose a small, fixed set of reasons early.
+
+A rule can take any combination of these actions when its criteria match:
+
+| Action | What happens |
+| --- | --- |
+| Open case | Radar opens a case for an analyst, with the rule, the associated users and devices, and the checks that triggered it. If the same user or device triggers the rule again, Radar adds to the open case, or reopens it if it was closed. |
+| Block associated users | Radar creates block rules for the users associated with the check. |
+| Block associated devices | Radar creates block rules for the devices associated with the check. |
+
+Two more settings depend on your project:
+
+- **Temporary blocks**: When block durations are enabled for your project, a rule with a blocking action has a **Block duration** of **Forever** or **Temporary**. A temporary duration is a number of minutes, hours, or days. Use a temporary block when the right response is a pause, for example while an analyst reviews the case.
+- **Cooldowns**: When rule cooldowns are enabled for your project, a rule can be suppressed for one user or one device for 7, 30, or 90 days, or until the cooldown is cleared. A cooldown stops that rule from triggering again for a user or device you have already reviewed. It doesn't affect other rules or other users. Ask your Radar account team whether cooldowns are available for your project.
+
+### Cases
+
+A case moves through these statuses: open, investigating, needs review, and closed. An analyst can assign a case, add comments, request a review, and close the case as fraud or as not fraud.
+
+If case webhooks are enabled for your project, Radar sends `case.opened`, `case.updated`, and `case.closed` events to your endpoint, so you can act on cases in your own tools. See [Case event payload](/integrations/webhooks#case-event-payload).
+
+### Labels and feedback
+
+A label records the confirmed outcome for a user: `fraud` or `not_fraud`. Labels are how you tell Radar what turned out to be true, and Radar uses labeled outcomes to improve risk scoring for your project. A label applies to a user ID. You can't label a device.
+
+There are three ways to record a label:
+
+| Source | How |
+| --- | --- |
+| Closing a case | Closing a case as fraud or as not fraud records that label for each user on the case. |
+| Labels API | Send `POST /v1/fraud/labels` from your backend when the outcome is decided in your own systems. See the [Labels API](/api/labels). |
+| Block and unblock requests | Set `label` on an item in a [Fraud API](/api/fraud#block-users-and-devices) block or unblock request. |
+
+Label legitimate outcomes as carefully as fraudulent ones. A stream of only `fraud` labels teaches nothing about false positives.
+
+## Inspect a check
+
+Use this flow to go from a failed or risky verified location check to the reasons behind it.
+
+<Steps>
+  <Step title="Find the check">
+    Open the [Locations](https://dashboard.radar.com/geofencing/locations) page. It lists every location check with its user, device, time, and result. Click **Filters** to narrow the list, for example by user ID, device ID, failure reason, risk score, check reason, or whether the check passed. If you have the check `_id` from a token, your backend logs are the fastest way to find the user ID to filter by.
+  </Step>
+  <Step title="Open the check">
+    Click the row. The check detail page shows a map with the location and its accuracy radius, and the result: passed or failed, with every failure reason.
+  </Step>
+  <Step title="Read the reasons">
+    The **Fraud** section lists each flag (mocked, jumped, compromised, inaccurate, proxy, sharing), whether the user was blocked or bypassed, the number of users for the device and devices for the user, and the risk score with its reasons and lookback period. The **IP address** section lists the IP geolocation, the network operator, and the VPN, proxy, Tor, relay, and hosting flags. The **Token** section shows whether the check passed and when its token expires.
+  </Step>
+  <Step title="Move to the user or device">
+    Click the user ID or device ID on the check to open its detail page. From there you can see the user's other devices, the device's other users, the network view of those relationships, and the location history across checks.
+  </Step>
+  <Step title="Decide and record">
+    Decide whether the check reflects fraud, a legitimate user with an unusual setup, or something you can't tell yet, and record that outcome.
+  </Step>
+</Steps>
+
+For the full investigation path, from a user to related devices, history, an outcome, and a rule, see the guide for your use case:
+
+- [Investigate a suspected takeover or shared account](/fraud/account-takeover-and-sharing#investigate-a-suspected-takeover-or-shared-account)
+- [Investigate a suspicious new account](/fraud/new-account-fraud#investigate-a-suspicious-new-account)
+
+To test how your integration reacts to a blocked user or to a specific failure reason, see [Test, troubleshoot, and go live](/fundamentals/testing-and-launch).
+
+## Choose a guide
+
+The three Fraud guides combine these two calls for different goals:
+
+<CardGroup cols={3}>
+  <Card title="Prevent account takeover and account sharing" icon="user-lock" href="/fraud/account-takeover-and-sharing">
+    Assess risk at login, during a session, and before sensitive account actions.
+  </Card>
+  <Card title="Prevent new account fraud, multi-accounting, and promo abuse" icon="users" href="/fraud/new-account-fraud">
+    Assess risk at registration and redemption, and investigate linked accounts and devices.
+  </Card>
+  <Card title="Detect risky transactions and verify precise location" icon="location-crosshairs" href="/fraud/risky-transactions">
+    Step up to a verified location check only when the risk assessment calls for it.
+  </Card>
+</CardGroup>
+
+## See also
+
+- [Fraud plugin setup](/sdk/fraud): install and initialize the fraud plugin on each platform.
+- [Geolocation token schema](/api/geolocation-tokens): the verified location check payload, failure reasons, and expiry.
+- [Fraud API](/api/fraud): the fraud object, and blocking and unblocking users and devices.
+- [Labels API](/api/labels): recording confirmed outcomes.
+- [Users API](/api/users): reading a user and their latest fraud result from your backend.
+- [Webhooks](/integrations/webhooks): receiving case events.

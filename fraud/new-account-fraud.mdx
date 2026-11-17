@@ -1,0 +1,637 @@
+---
+title: "Prevent new account fraud, multi-accounting, and promo abuse"
+sidebarTitle: "New account fraud and promo abuse"
+description: "Assess risk at registration and promotion redemption, connect accounts to devices with stable identifiers, investigate linked accounts, and send outcomes back to Radar."
+---
+
+import IdentifyUser from '/snippets/identify-user.mdx';
+import FraudInvestigation from '/snippets/fraud-investigation.mdx';
+
+By the end of this guide, your app assesses risk when someone registers and when an account redeems a promotion. Your backend validates each result, combines it with the account-to-device relationships Radar reports, and returns a decision. Your analysts can investigate a suspicious account, and your backend sends confirmed outcomes back to Radar as labels.
+
+A decision for a promotion redemption on a device that several accounts have used:
+
+```json
+{
+  "checkpoint": "promo_redemption",
+  "userId": "user-123",
+  "redemptionId": "redeem-555",
+  "decision": "review",
+  "signals": ["multiple_users_on_device", "device_already_redeemed"],
+  "usersForThisDevice": 4,
+  "radarCheckId": "6740a1f2c3d4e5f6a7b8c9d1"
+}
+```
+
+## Build with an agent
+
+Copy this prompt into a coding agent that has access to your repository.
+
+```text
+Implement Radar risk assessment at registration and promotion redemption in
+this repository using the current Radar documentation.
+
+First inspect the application framework, platform versions, existing Radar code,
+the registration flow, the point where a durable account ID is created, the
+promotion redemption flow, and tests. Preserve existing behavior outside this
+task.
+
+Read:
+- https://docs.radar.com/fraud/new-account-fraud.md
+- https://docs.radar.com/fraud/overview.md
+- https://docs.radar.com/fraud/risky-transactions.md
+- https://docs.radar.com/sdk/fraud.md
+- https://docs.radar.com/api/geolocation-tokens.md
+- https://docs.radar.com/api/labels.md
+
+Implement:
+- Registration, before an account ID exists: call Radar.revealRisk() and send
+  the signed token with the registration request. On the backend, validate it
+  and store the assessment ID and device ID on the registration attempt.
+- After the account is created: call Radar.setUserId() with the new opaque
+  account ID. Do not use an email address or phone number. When location
+  permission is granted, run a verified location check with reason
+  registration. Copy the stored assessment ID onto the account record. Do not
+  call or invent a user-merge API.
+- Redemption: run a verified location check with reason promo_redemption and
+  the redemption ID as transactionId when permission is granted, otherwise the
+  risk assessment alone. On the backend, validate the token, bind it to the
+  session user and the redemption ID, and decide allow, step_up, review, or
+  deny.
+- Treat users-per-device, devices-per-user, and shared networks as context
+  that combines with other signals. Never deny on one of them alone.
+- Outcome feedback: send POST /v1/fraud/labels from the backend with a secret
+  key when an outcome is confirmed, with label fraud or not_fraud.
+
+Read thresholds from configuration. Do not treat a risk score as a fraud
+probability or hardcode a universal threshold. Use environment variables for
+credentials. Never put a secret key or the JWT secret key in client code. Do
+not invent methods, fields, supported platforms, or defaults.
+
+Add backend tests for: a clean registration is allowed; a registration with a
+missing or tampered risk token is treated as risk unknown; the assessment ID
+is carried from the attempt to the account; a redemption token for another
+user or another redemption ID is rejected; several users on one device with no
+other signal is allowed; several users on one device plus a prior redemption on
+that device goes to review; a blocked user is denied; a label request uses the
+documented body and treats 202 as accepted. Run the repository's relevant
+checks. Report changed files, test results, required dashboard setup, and
+anything that still needs confirmation. Do not change production settings or
+deploy without approval.
+```
+
+## Prerequisites
+
+- **Access**: A Radar project with Fraud enabled. The device and network risk assessment must be enabled for your project. Contact your Radar account team. Fraud rules, cases, and the Labels API are also enabled for each project.
+- **Working risk assessment**: Complete the [Fraud quickstart](/fraud/overview#quickstart-assess-device-and-network-risk). This guide reuses its `validateRiskToken` function.
+- **SDK and plugin**: The Radar SDK and fraud plugin for your platform. See [Fraud plugin setup](/sdk/fraud). The examples use iOS SDK 3.46.0, Android SDK 4.3.0, and Web SDK 5.3.0 with `@radarlabs/plugin-fraud` 1.6.1. `Radar.revealRisk()` requires iOS SDK 3.38.0 or later, Android SDK 3.35.0 or later, `@radarlabs/plugin-fraud` 1.4.0 or later, or React Native SDK 4.36.0 or later.
+- **Keys**: A publishable key in your app. On your backend only: the project's JWT secret key, and a secret key (`prj_test_sk_...` or `prj_live_sk_...`) for the Labels API.
+- **Identity**: An opaque account ID that your backend creates at registration and never reuses.
+- **Permission**: None for the risk assessment. A verified location check needs foreground location permission. See [Understand foreground and background location permissions](/fundamentals/location-permissions).
+- **Environment**: Build and test with Test keys. Labels sent with a Test key are recorded for the Test environment.
+
+## How it works
+
+| Party | Responsibility |
+| --- | --- |
+| Your app | Runs the risk assessment during registration. Sets the user ID once the account exists. Runs verified location checks at registration and redemption when permission allows. Sends signed tokens to your backend. |
+| Radar | Returns signed results. Records which devices each user ID is seen on and which user IDs each device is seen with. Evaluates fraud rules on location checks and opens cases. |
+| Your backend | Validates tokens, links the pre-account assessment to the new account in its own records, decides at each checkpoint, and sends confirmed outcomes to the Labels API. |
+| Your analysts | Investigate cases, record outcomes, and tune rules in the Radar dashboard. |
+
+### What is available before an account exists
+
+A registration starts before you have an account ID, so the first assessment can't carry one. Plan your identifiers around that:
+
+| Moment | Identifiers available | Call |
+| --- | --- | --- |
+| Registration form, before submit | Radar's assessment `_id`, and the `device.deviceId` and `device.installId` in the assessment. No user ID. | `Radar.revealRisk()` |
+| Account created | Your new account ID | `Radar.setUserId()` with the new ID |
+| First verified location check | `user.userId`, `user.deviceId`, `user.installId`, and `user.fraud.usersForThisDevice` | `Radar.trackVerified()` with `reason` set to `registration` |
+| Later activity | The same user ID on every check, from any device | `Radar.trackVerified()` with a `reason` for the action |
+
+There is no API call to merge the pre-account assessment into the account, and you don't need one:
+
+- **In your own records**: Store the assessment `_id` and `device.deviceId` on the registration attempt. When the account is created, copy them to the account record. That is the link between the anonymous assessment and the account.
+- **In Radar**: Calling `Radar.setUserId()` on the same app install assigns the user ID to that install's existing record, so earlier activity from the install stays with it. Every later check carries the user ID, and Radar builds the user-to-device relationships from those checks.
+
+Don't use an email address or a phone number as the user ID to make accounts "match". Use the account ID.
+
+## Identify the account once it exists
+
+<IdentifyUser />
+
+For registration, the "anonymous user logs in" row applies: call `Radar.setUserId()` with the new account ID as soon as your backend returns it. At logout, clear the user ID so that the next person to register on the device starts without it.
+
+## Choose your checkpoints
+
+| Checkpoint | Calls | `reason` | `transactionId` |
+| --- | --- | --- | --- |
+| Registration submit | Risk assessment | Not applicable | Not applicable |
+| Account created | Verified location check, when location permission is granted | `registration` | Not needed |
+| Promotion redemption | Verified location check when permission is granted. Otherwise the risk assessment. | `promo_redemption` | The redemption ID from your backend |
+
+## Assess risk at registration
+
+In your app, call `Radar.revealRisk()` when the user submits the form and send the token with the registration request. For the platform-specific call, see [Request the assessment](/fraud/overview#request-the-assessment). If the call fails, submit the registration without a token and let your backend treat risk as unknown.
+
+On your backend, validate the token and store what you need on the attempt before you create the account. The backend examples in this guide use Express-style routes and stores that you implement with your own database.
+
+```javascript Node.js
+// Example policy. Tune it from your own outcomes.
+const STEP_UP_LEVELS = new Set(
+  (process.env.RISK_STEP_UP_LEVELS ?? 'medium,high').split(',')
+);
+const REGISTRATIONS_PER_DEVICE_REVIEW = Number(process.env.REGISTRATIONS_PER_DEVICE_REVIEW ?? 3);
+
+app.post('/api/registrations', async (req, res) => {
+  // validateRiskToken is defined in the Fraud quickstart.
+  const risk = await validateRiskToken(req.body.riskToken);
+  const signals = [];
+
+  let assessmentId = null;
+  let deviceId = null;
+
+  if (!risk.ok) {
+    signals.push('risk_unknown');
+  } else {
+    assessmentId = risk.assessment._id;
+    deviceId = risk.assessment.device?.deviceId ?? null;
+
+    if (STEP_UP_LEVELS.has(risk.assessment.risk.level)) {
+      signals.push('device_or_network_risk');
+    }
+
+    // Your own count of accounts registered from this device. Context, not proof.
+    if (deviceId) {
+      const priorAccounts = await registrations.countByDevice(deviceId);
+      if (priorAccounts >= REGISTRATIONS_PER_DEVICE_REVIEW) {
+        signals.push('many_registrations_on_device');
+      }
+    }
+  }
+
+  const decision = decideRegistration(signals);
+
+  const attempt = await registrations.createAttempt({
+    email: req.body.email,
+    radarAssessmentId: assessmentId,
+    radarDeviceId: deviceId,
+    riskLevel: risk.ok ? risk.assessment.risk.level : null,
+    riskReasons: risk.ok ? risk.assessment.risk.reasons : [],
+    signals,
+    decision,
+  });
+
+  if (decision === 'step_up') {
+    // For example, require phone or document verification before creating the account.
+    return res.status(202).json({ attemptId: attempt.id, decision });
+  }
+
+  // 'allow' and 'review' both create the account. 'review' also queues it for an analyst.
+  const account = await accounts.createFromAttempt(attempt); // Copies the Radar IDs to the account.
+  return res.status(201).json({ userId: account.id, decision });
+});
+
+function decideRegistration(signals) {
+  const has = (signal) => signals.includes(signal);
+
+  // Two independent signals: ask for more before creating the account.
+  if (has('many_registrations_on_device') && (has('device_or_network_risk') || has('risk_unknown'))) {
+    return 'step_up';
+  }
+
+  // One signal: create the account and look at it.
+  if (has('many_registrations_on_device') || has('device_or_network_risk')) {
+    return 'review';
+  }
+
+  return 'allow';
+}
+```
+
+Compare `device.deviceId` values only with other values from risk assessments, and `user.deviceId` values only with other values from verified location checks, unless you have confirmed in your own integration that the two match.
+
+## Run the first verified location check for the new account
+
+When your backend returns the new account ID, set it on the SDK. If the user has granted location permission, run a verified location check with the reason `registration`, so that Radar records the account against the device and returns the relationship counts. If the user hasn't granted permission, skip the check. The account is still identified for every later check.
+
+In these examples, `hasLocationPermission` and `sendRegistrationCheck` are functions you write.
+
+<CodeGroup>
+
+```swift Swift
+import RadarSDK
+
+func onAccountCreated(userId: String) {
+  Radar.setUserId(userId)
+
+  guard hasLocationPermission() else { return }
+
+  Radar.trackVerified(
+    beacons: false,
+    desiredAccuracy: .medium,
+    reason: "registration",
+    transactionId: nil
+  ) { (status, token) in
+    guard status == .success, let jwt = token?.token else { return }
+    // Send the token whether or not the check passed.
+    sendRegistrationCheck(jwt)
+  }
+}
+```
+
+```kotlin Kotlin
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarTrackingOptions
+
+fun onAccountCreated(userId: String) {
+  Radar.setUserId(userId)
+
+  if (!hasLocationPermission()) return
+
+  Radar.trackVerified(
+    beacons = false,
+    desiredAccuracy = RadarTrackingOptions.RadarTrackingOptionsDesiredAccuracy.MEDIUM,
+    reason = "registration",
+    transactionId = null
+  ) { status, token ->
+    if (status != Radar.RadarStatus.SUCCESS || token == null) return@trackVerified
+    // Send the token whether or not the check passed.
+    sendRegistrationCheck(token.token)
+  }
+}
+```
+
+```javascript JavaScript
+import Radar from 'radar-sdk-js';
+
+async function onAccountCreated(userId) {
+  Radar.setUserId(userId);
+
+  if (!(await hasLocationPermission())) return;
+
+  try {
+    const result = await Radar.fraud.trackVerified({ reason: 'registration' });
+    // Send the token whether or not the check passed.
+    await sendRegistrationCheck(result.token);
+  } catch (err) {
+    // The check did not complete. No token was issued.
+  }
+}
+```
+
+```javascript React Native
+import Radar from 'react-native-radar';
+
+async function onAccountCreated(userId) {
+  Radar.setUserId(userId);
+
+  if (!(await hasLocationPermission())) return;
+
+  try {
+    const result = await Radar.trackVerified({ reason: 'registration' });
+    if (result.token) {
+      // Send the token whether or not the check passed.
+      await sendRegistrationCheck(result.token.token);
+    }
+  } catch (err) {
+    // The check did not complete. No token was issued.
+  }
+}
+```
+
+</CodeGroup>
+
+For the verified location check, its parameters, and the web companion app option, see [Request the verified location check](/fraud/risky-transactions#request-the-verified-location-check).
+
+## Decide at promotion redemption
+
+Create the redemption on your backend first, so the redemption ID comes from your backend. In your app, run a verified location check with `reason` set to `promo_redemption` and `transactionId` set to the redemption ID, then send the token. The pattern is the same as [Tie a check to one action](/fraud/risky-transactions#tie-a-check-to-one-action).
+
+On your backend, verify the token, bind it to the session user and the redemption, and decide. This example verifies the token and reads its payload. It performs the signature, algorithm, expiry, user, transaction, and environment steps of the [shared validation procedure](/fraud/risky-transactions#validation-steps). It uses the [`jose`](https://github.com/panva/jose) library.
+
+```javascript Node.js
+import { jwtVerify } from 'jose';
+
+const secret = new TextEncoder().encode(process.env.RADAR_JWT_SECRET_KEY);
+
+// Example policy. Tune it from your own outcomes and your promotion's terms.
+const USERS_PER_DEVICE_CONTEXT = Number(process.env.USERS_PER_DEVICE_CONTEXT ?? 3);
+
+app.post('/api/redemptions/:id/confirm', requireSession, async (req, res) => {
+  const redemption = await redemptions.get(req.params.id);
+  if (!redemption || redemption.userId !== req.session.userId || redemption.status !== 'pending') {
+    return res.status(409).json({ status: redemption?.status ?? 'not_found' });
+  }
+
+  let payload;
+  try {
+    ({ payload } = await jwtVerify(req.body.geolocationToken ?? '', secret, {
+      algorithms: ['HS256'],
+      clockTolerance: 5, // seconds
+    }));
+  } catch (err) {
+    // No token, or an invalid or expired one. Nothing was verified.
+    return res.status(400).json({ redemptionId: redemption.id, decision: 'step_up', signals: ['no_valid_check'] });
+  }
+
+  const user = payload.user ?? {};
+  const bound =
+    user.userId === req.session.userId &&
+    payload.transactionId === redemption.id &&
+    (process.env.NODE_ENV !== 'production' || user.live === true);
+  if (!bound) {
+    return res.status(400).json({ redemptionId: redemption.id, decision: 'step_up', signals: ['token_not_for_this_redemption'] });
+  }
+
+  const fraud = user.fraud ?? {};
+  const signals = [];
+
+  if (fraud.blocked) signals.push('blocked');
+  if (fraud.mocked) signals.push('location_spoofing');
+  if (fraud.compromised) signals.push('compromised_device');
+  if (fraud.proxy) signals.push('vpn_or_proxy');
+  if ((fraud.usersForThisDevice ?? 0) >= USERS_PER_DEVICE_CONTEXT) {
+    signals.push('multiple_users_on_device');
+  }
+  // Your own record: has another account already redeemed this promotion on this device?
+  if (await redemptions.deviceAlreadyRedeemed(redemption.promotionId, user.deviceId, req.session.userId)) {
+    signals.push('device_already_redeemed');
+  }
+
+  const decision = decideRedemption(signals);
+
+  await redemptions.update(redemption.id, {
+    status: decision === 'allow' ? 'granted' : decision === 'deny' ? 'denied' : 'held',
+    radarCheckId: payload._id,
+    radarDeviceId: user.deviceId,
+    signals,
+  });
+
+  return res.json({
+    checkpoint: 'promo_redemption',
+    userId: req.session.userId,
+    redemptionId: redemption.id,
+    decision,
+    signals,
+    usersForThisDevice: fraud.usersForThisDevice ?? null,
+    radarCheckId: payload._id,
+  });
+});
+
+function decideRedemption(signals) {
+  const has = (signal) => signals.includes(signal);
+
+  if (has('blocked')) return 'deny';
+
+  // Location or device integrity problems: ask the user to fix the cause and try again.
+  if (has('location_spoofing') || has('compromised_device')) return 'step_up';
+
+  // Several accounts on one device is context. It needs a second signal.
+  if (has('multiple_users_on_device') && (has('device_already_redeemed') || has('vpn_or_proxy'))) {
+    return 'review';
+  }
+
+  // Your promotion's own terms. For example, one redemption per device.
+  if (has('device_already_redeemed')) return 'review';
+
+  return 'allow';
+}
+```
+
+The example sends the "one redemption per device" case to review instead of denying it, because a second account on a shared device can be a different, legitimate person. If your promotion's terms state one redemption per device, denying is a business rule you can apply here. It is your rule, enforced from your own redemption records, not a Radar verdict.
+
+When location permission isn't granted, run the risk assessment instead, validate it as at registration, and decide from the device and network signals and your own redemption records. User-to-device counts from Radar aren't available on that path.
+
+## Detect new account fraud
+
+The hypothesis is that the account was created to commit fraud and doesn't represent a real, single customer.
+
+| Observation | Where it comes from |
+| --- | --- |
+| A VPN, proxy, or hosting network at registration | `risk.reasons` and `network.privacy` on the risk assessment |
+| A rooted or jailbroken device, or failed attestation | `risk.reasons` on the assessment, or `user.fraud.compromised` on a verified location check |
+| A spoofed location on the first verified location check | `user.fraud.mocked` and its failure reasons |
+| Many registrations from one device in a short time | Your own count by device ID |
+| The account's first actions go straight to a payout or a promotion | Your own event sequence |
+
+Respond before value leaves: ask for stronger verification at registration, hold promotions and payouts for accounts in review, and let legitimate users through the same step.
+
+## Detect multi-accounting
+
+The hypothesis is that one person controls several accounts.
+
+| Observation | Where it comes from |
+| --- | --- |
+| Several user IDs on one device | `user.fraud.usersForThisDevice`, and the device's detail page in the dashboard |
+| One user ID across many devices | `user.fraud.devicesForThisUser`, and the user's detail page |
+| A cluster of accounts linked through shared devices | The network view on a user or device detail page |
+| Accounts that check from exactly the same coordinates repeatedly | Location history, and the **Consecutive repeat coordinates** rule criterion |
+| Accounts created close together in time | **User first seen** in the dashboard, and your own records |
+
+Shared households, workplaces, schools, and public networks produce the first three observations for unrelated, legitimate people. Look for more than one kind of link, and for coordinated behavior: accounts that register together, redeem together, and move value between each other.
+
+A fraud rule on **Users for this device** with a time window surfaces candidates as cases. Keep its action to **Open case** until you know what it matches in your traffic.
+
+## Detect promo abuse
+
+The hypothesis is that a promotion meant for one person, or for people in a particular place, is being claimed repeatedly or from somewhere else.
+
+| Observation | Where it comes from |
+| --- | --- |
+| The promotion already redeemed on this device by another account | Your own redemption records, keyed by the device ID from validated tokens |
+| Several user IDs on the redeeming device | `user.fraud.usersForThisDevice` |
+| A location-restricted promotion redeemed with a spoofed location | `user.fraud.mocked`, `user.fraud.jumped`, and their failure reasons |
+| A location-restricted promotion redeemed from outside the place | The verified location and geofences in the token. See [Verify location for non-gaming use cases](/geo-compliance/non-gaming). |
+| Redemptions concentrated at one place or one set of coordinates | [Location hotspots](#look-for-location-hotspots) |
+
+Bind every redemption check to its redemption with `transactionId`, validate on your backend, and grant the promotion only from your backend. A redemption that your app reports as successful without a validated token isn't a redemption.
+
+### Look for location hotspots
+
+A hotspot is a place where an unusual number of accounts or devices check from, such as one address that produces dozens of registrations.
+
+- On the [Locations](https://dashboard.radar.com/geofencing/locations) page, select **Map and feed**, search for an address, and filter the list to the map area. Add filters such as the check reason `registration` or `promo_redemption` to see who checked there and when.
+- Use the **Analysis** view on the same page to count checks, unique users, or unique devices over time for the filters you set.
+- To watch a known place, create a geofence around it with a tag such as `review-zone`, and create a fraud rule with the **Geofence tags** criterion and the **Open case** action.
+
+A busy place isn't a fraudulent place. An apartment building, a campus, a stadium, or a store running your promotion at the counter is a hotspot of legitimate users. Combine the place with device links and behavior before you act.
+
+### Prevent SMS verification abuse
+
+If your registration sends an SMS code, automated sign-ups can run up messaging costs by requesting codes at volume. The registration checkpoint in this guide applies unchanged: run the risk assessment and validate it on your backend before you send the SMS, not after. When the result is `step_up` or `review`, or the risk token is missing, delay or withhold the message and rate limit further requests from that `device.deviceId` in your own records. Radar doesn't send or inspect SMS messages. The decision to send is made by your backend.
+
+## Investigate a suspicious new account
+
+When a decision is `review` or a fraud rule opens a case, an analyst works from the new account outward: to the device it registered on, to the other accounts on that device, and to where those accounts check from.
+
+<FraudInvestigation />
+
+### Configure rules for new accounts and promotions
+
+Rules that suit this use case, each starting with **Open case** as the only action:
+
+| Goal | Criteria |
+| --- | --- |
+| Surface possible multi-accounting | **Users for this device** above a number you choose, within a time window |
+| Surface repeated redemptions from one spot | **Location check reason** is `promo_redemption`, and **Consecutive repeat coordinates** above a number you choose |
+| Surface spoofed redemptions | **Location check reason** is `promo_redemption`, and **Failure reasons** includes the location spoofing reasons you select |
+| Watch a known hotspot | **Geofence tags** includes the tag of a geofence you drew around the place |
+| Focus on new accounts | Add **User first seen** to any of the above |
+
+A rule with **Block associated users** or **Block associated devices** blocks everyone linked to the matching check, which on a shared device includes legitimate users. If block durations are available for your project, prefer a temporary block while an analyst reviews. See [Configure rules and actions](/fraud/overview#configure-rules-and-actions).
+
+### Submit an outcome as a label
+
+When an outcome is confirmed outside the dashboard, for example a chargeback, a failed identity check, or a support review that clears the account, send it to Radar from your backend. Closing a case in the dashboard as fraud or not fraud records a label for you, so send API labels only for outcomes decided elsewhere.
+
+<Info>
+  The Labels API must be enabled for your project. Contact your Radar account team.
+</Info>
+
+This request records a `fraud` label for `user-123`:
+
+```bash
+curl "https://api.radar.io/v1/fraud/labels" \
+  -H "Authorization: prj_test_sk_..." \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"userId": "user-123", "label": "fraud", "fraudType": "promo_abuse", "incidentTime": "2026-11-10T14:30:00Z"}'
+```
+
+| Parameter | Required | Description |
+| --- | --- | --- |
+| `userId` | Yes | The same ID your app sets with `Radar.setUserId()`. Labels apply to users, not devices. |
+| `label` | Yes | `fraud` or `not_fraud`. |
+| `fraudType` | No | A category you define, such as `promo_abuse` or `multi_accounting`. Up to 100 characters: letters, numbers, dashes, underscores, spaces, periods, and commas. |
+| `incidentTime` | No | When the incident happened, as an ISO 8601 datetime. If omitted, Radar uses the time it received the label. |
+
+If the Labels API isn't enabled for your project, the request returns `404`. A `202` response means the label was accepted for processing:
+
+```json
+{
+  "meta": {
+    "code": 202
+  }
+}
+```
+
+Send the label from your backend, and treat any status other than `202` as a failure:
+
+```javascript Node.js
+/**
+ * @param {{ userId: string, label: 'fraud' | 'not_fraud', fraudType?: string, incidentTime?: string }} outcome
+ */
+export async function sendFraudLabel(outcome) {
+  const response = await fetch('https://api.radar.io/v1/fraud/labels', {
+    method: 'POST',
+    headers: {
+      Authorization: process.env.RADAR_SECRET_KEY, // prj_live_sk_... in production
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(outcome),
+  });
+
+  if (response.status !== 202) {
+    // 400: invalid field. 401: bad key. 404: labels not enabled. 429: rate limited.
+    throw new Error(`Radar label request failed with status ${response.status}`);
+  }
+}
+
+// A cleared account is as useful as a confirmed one.
+await sendFraudLabel({ userId: 'user-124', label: 'not_fraud' });
+```
+
+The response doesn't confirm that a user with that ID exists, and the label is processed asynchronously. Send the user ID exactly as your app sets it. For the full contract, see [Labels API](/api/labels).
+
+### Evaluate false positives
+
+Every rule and every policy number in this guide matches some legitimate users. Measure that before you automate anything.
+
+1. **Run in observe mode first**: For the first weeks, compute decisions and store them without enforcing `step_up`, `review`, or `deny`. Give new fraud rules the **Open case** action only.
+2. **Review a sample of matches**: For each rule and each decision type, have an analyst investigate a sample and close each case as fraud or not fraud.
+3. **Compute the false positive share**: For each rule, divide the cases closed as not fraud by all closed cases. Do the same for your backend decisions, using your own outcome records.
+4. **Find what the false positives have in common**: Typical causes are households and roommates on one device, workplaces and campuses on one network, a store running a promotion on its own tablet, and travelers on hotel or airline Wi-Fi.
+5. **Adjust**: Raise a count, add a second criterion, narrow a time window, or exclude a place. Then measure again.
+6. **Label both ways**: Send `not_fraud` for cleared accounts as well as `fraud` for confirmed ones.
+7. **Add automatic blocking last**: Add it only to rules whose matches are consistently confirmed. Give blocked users a way to reach support.
+
+## Handle results and errors
+
+Your backend reads these fields from each result:
+
+| Result | Fields your backend reads | Use |
+| --- | --- | --- |
+| Risk assessment | `_id`, `risk.level`, `risk.reasons`, `network.privacy`, `device.deviceId`, `device.installId` | The only Radar signal before an account exists. See [Read the result](/fraud/overview#read-the-result). |
+| Verified location check | `user.userId`, `user.deviceId`, `transactionId`, `reason`, `passed`, `failureReasons`, `warningReasons`, `user.fraud`, `_id` | Account-to-device relationships and location integrity. See the [Geolocation token schema](/api/geolocation-tokens). |
+
+- `user.fraud.usersForThisDevice` and `user.fraud.devicesForThisUser` are counts. To see which users and devices, open the dashboard.
+- `user.fraud.risk` is present when risk scores are enabled for your project. Record it for analysts. This guide doesn't base a decision on specific values. See [Understand risk scores and decisions](/fraud/overview#understand-risk-scores-and-decisions).
+- `passed` set to `false` means a check failed according to your project configuration. Read `failureReasons` to see which one.
+- A risk score isn't a probability of fraud, and no count is a universal limit. The numbers in the examples are configuration that you tune.
+
+### Recover from errors and degraded paths
+
+Each situation in this table ends in a defined result:
+
+| Situation | What your backend receives | Result |
+| --- | --- | --- |
+| Risk assessment failed during registration | No risk token | `risk_unknown`. The example policy creates the account unless your own device count also raises a signal. Don't block registration only because the assessment was unavailable. |
+| Risk token invalid or expired | A token that fails validation | Same as no risk token. Don't store its contents. |
+| Location permission not granted | No geolocation token | No verified location check. The account is identified for later checks. Redemption falls back to the risk assessment. |
+| Verified check returned a technical error | No geolocation token | Not a failed check and not a pass. At redemption, return `step_up` and let the user try again with the same redemption ID. |
+| Geolocation token expired | A token that fails validation | Run a new check with the same redemption ID. |
+| Token for another user or redemption | A valid token that doesn't match the session or the redemption | Not accepted. Set the correct user ID or redemption ID in your app and check again. |
+| User abandons registration | An attempt with no account | Keep the attempt record. It is useful context if the device registers again. |
+| User registers, logs out, and another person registers on the same device | Two accounts with the same device ID | Two separate accounts and two separate records. `usersForThisDevice` becomes 2, which is context. |
+
+For the client status values for technical errors, see [Handle a technical error](/fraud/risky-transactions#handle-a-technical-error).
+
+## Test the integration
+
+Use the Test environment and dedicated test accounts. Test your backend with tokens signed by a test-only secret.
+
+| Test | How | Expected result |
+| --- | --- | --- |
+| Clean registration | Register on a normal network | `allow`. The attempt stores the assessment ID and device ID, and the account record has both. |
+| Risk unavailable | Submit the registration with no risk token, and with a token that has one character changed | The account is created with `risk_unknown` recorded |
+| Flagged network | Register while connected to a commercial VPN | `review` or `step_up`, if the assessment returns a level in your configuration. Note the level and reasons you get. |
+| Identity after registration | Register, grant location permission, and let the first check run | The check appears on the [Locations](https://dashboard.radar.com/geofencing/locations) page with the new user ID and the reason `registration` |
+| Second account on one device | Register `test-user-123`, log out, register `test-user-456` on the same device, and run a check | The second account's token has `user.fraud.usersForThisDevice` of at least 2. With no other signal, redemption is `allow`. |
+| Repeat redemption on one device | Redeem the same promotion from both test accounts on that device | The second redemption is `review` with `device_already_redeemed` |
+| Token for another redemption | Send a valid token whose `transactionId` is a different redemption ID | Not accepted. The redemption stays `pending`. |
+| Token for another user | Send `test-user-123`'s token in `test-user-456`'s session | Not accepted |
+| Blocked user | Create a block rule for the test user, then redeem | `deny` |
+| Rule and case | Create a fraud rule on **Users for this device** with a low number and **Open case**, then repeat the second-account test | A case opens on the **Cases** page listing both test users and the device |
+| Label | Send a `not_fraud` label for a test user with a Test secret key | `202` |
+| Client-only redemption | Call your grant route without a validated token | Refused |
+
+To create and remove the block rule, see [Produce a failed check on demand](/fraud/risky-transactions#produce-a-failed-check-on-demand). Disable or delete test rules, and close test cases, when you finish.
+
+## Production checklist
+
+- [ ] The user ID is an opaque account ID, set after account creation and cleared at logout.
+- [ ] The registration attempt stores the Radar assessment ID and device ID, and the account record keeps them.
+- [ ] Both tokens are validated on your backend with the JWT secret key and an explicit `HS256` allowlist.
+- [ ] Redemption tokens are bound to the session user and to the redemption ID, and each redemption is granted at most once, from your backend.
+- [ ] No rule or code path denies on a user count, a device count, or a shared network alone.
+- [ ] Policy numbers come from configuration and have an owner who reviews them against recorded outcomes.
+- [ ] A missing or invalid risk token is recorded as unknown risk, not as no risk.
+- [ ] New fraud rules start with **Open case** only, and their false positive share is measured before any blocking action is added.
+- [ ] Analysts have dashboard access and close cases with an outcome.
+- [ ] Outcomes decided outside the dashboard are sent to the Labels API with a Live secret key that is stored only on your backend.
+- [ ] Production builds use a Live publishable key, and tokens aren't written to logs.
+- [ ] No bypass rule exists in the Live environment for a real user.
+
+## See also
+
+- [Fraud overview and quickstart](/fraud/overview): the risk assessment, signal families, scores, rules, and labels.
+- [Detect risky transactions and verify precise location](/fraud/risky-transactions): the verified location check and token validation in full.
+- [Fraud plugin setup](/sdk/fraud): plugin installation and attestation setup.
+- [Geolocation token schema](/api/geolocation-tokens): the verified location check payload.
+- [Labels API](/api/labels): recording confirmed outcomes.
+- [Fraud API](/api/fraud): blocking and unblocking from your own systems.
+- [Webhooks](/integrations/webhooks#case-event-payload): receiving case events.
+
+To have a coding agent implement this guide, use the prompt in [Build with an agent](#build-with-an-agent).
