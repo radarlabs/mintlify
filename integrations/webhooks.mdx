@@ -1,23 +1,148 @@
 ---
 title: "Webhooks"
-description: "Send Radar events and user state to your server, a cloud function, or any HTTP endpoint with webhooks, including payloads and signature verification."
+description: "Receive Radar events and user state at your own HTTP endpoint, verify the signature, and handle retries and duplicates safely."
 ---
 
-You can use webhooks to send events and user state from Radar to your server, a [Google or Firebase Cloud Function](https://firebase.google.com/docs/functions/functions-and-firebase), an [AWS Lambda Function](https://aws.amazon.com/lambda/), or any HTTP endpoint. From there, you can store events and user state in a database, send them to a marketing automation or analytics platform, and more.
+By the end of this page, your backend receives a `POST` request from Radar each time Radar generates an event, verifies that the request came from Radar, and processes each event exactly once.
+
+Use webhooks to store events in your own database, trigger backend workflows, or forward Radar data to a platform that has no [native integration](/integrations/integrations). To receive events inside your app instead, use the [Radar SDK](/sdk/sdk).
+
+## Prerequisites
+
+- A Radar project that generates events. If you haven't set one up, start with [Geofencing overview and quickstart](/geofencing/overview).
+- Access to the [Integrations](https://dashboard.radar.com/integrations) page in the Radar dashboard for that project.
+- An HTTP endpoint that accepts `POST` requests with a JSON body. Radar must be able to reach it from the public internet. A webhook for the Live environment needs an `https://` URL.
 
 ## Configuration
 
-Create a webhook on the Radar [Integrations page](https://dashboard.radar.com/integrations) under _Webhooks_. For _Environment_, choose _Test_ to receive callbacks for events in the _Test_ environment, or choose _Live_ to receive callbacks for events in the _Live_ environment. For _Event Delivery_, choose _Single Event_ to receive a single event in each request, or choose _Multiple Events_ to receive multiple events in each request when events occur simultaneously. Finally, enter a URL.
+<Steps>
+  <Step title="Create the webhook">
+    On the [Integrations](https://dashboard.radar.com/integrations) page, find the **Webhooks** section and click **New**. The **New webhook** dialog opens.
+  </Step>
+  <Step title="Choose the environment and URL">
+    For **Environment**, select **Test** to receive events from the Test environment, or **Live** to receive events from the Live environment. A webhook receives events from one environment only, so create one webhook per environment. Leave **Enabled** set to **Yes** and enter your endpoint in **URL**.
+  </Step>
+  <Step title="Choose the event delivery mode">
+    For **Event delivery**, select **Single event** to receive one event per request, or **Multiple events** to receive the events from one update together in one request. The mode changes the shape of the request body. See [Request format](#request-format).
+  </Step>
+  <Step title="Set filters (optional)">
+    Use **Event type allowlist**, **Request key blocklist**, and **Geofence tag blocklist** to limit what Radar sends. See [Filtering](#filtering).
+  </Step>
+  <Step title="Save and copy the security token">
+    Click **Create**. The webhook appears in the **Webhooks** table with its **Environment**, **Event delivery**, **URL**, and **Security token**. Copy the security token and store it as a secret on your backend. You need it to [verify signatures](#verify-the-signature).
+  </Step>
+</Steps>
 
-Whenever events are generated, Radar will send a `POST` request containing event and user data to the specified URL. You can also click the _Test_ button to send test event and user data. If you chose _Single Event_, the request body will contain an `event` dictionary and a `user` dictionary. If you chose _Multiple Events_, the request body will contain an `events` array and a `user` dictionary. For multiple events, if there are over 5 events, the events will be chunked out in groups of 5 into separate `POST` requests.
+You can create more than one webhook per environment. Radar sends each event to every enabled webhook for that environment.
 
-To acknowledge receipt of the request, your webhook should return a `2xx` status code (e.g., `200 OK`, `201 Created`, or `202 Accepted`).
+### Webhook types
 
-Each webhook has a random security token. The authenticity of a request made to a webhook URL can be verified using the `X-Radar-Signature` header. The header will contain an `HMAC-SHA1` hash of the `X-Radar-Signing-Id` header using the security token as the key.
+Some projects show a **Type** field in the dialog. It appears only when an additional webhook type is enabled for your account.
 
-Note that you can also receive events client-side via the [SDK](/sdk).
+| Type | What it sends | Availability |
+| --- | --- | --- |
+| **User events** | Events and user state, as described on this page. | All projects. This is the type used when the **Type** field isn't shown. |
+| **Case Events** | `case.opened`, `case.updated`, and `case.closed` events for Fraud cases. See [Case event payload](#case-event-payload). | Account-specific. Contact your Radar account team. |
+| **Locations** | A request for each location update, including updates that generate no events. The **Event delivery** and **Event type allowlist** fields don't apply. | Account-specific. Contact your Radar account team. |
 
-**Sample request body**
+### Custom headers
+
+The dialog has a **Headers** field for up to 10 static headers that Radar adds to each request. Header names can contain letters, digits, hyphens, and underscores. Standard HTTP headers such as `Content-Type` and `Host`, and the `X-Radar-Signature` header, aren't allowed. Sending custom headers is account-specific: if your saved headers don't arrive at your endpoint, contact your Radar account team.
+
+## Request format
+
+Radar sends a `POST` request with `Content-Type: application/json` and these headers:
+
+| Header | Value |
+| --- | --- |
+| `X-Radar-Signing-Id` | The ID that the signature is computed from. See [Verify the signature](#verify-the-signature). |
+| `X-Radar-Signature` | A hex-encoded HMAC-SHA1 of the `X-Radar-Signing-Id` value, keyed with the webhook's security token. |
+
+The body depends on **Event delivery**:
+
+| Event delivery | Body |
+| --- | --- |
+| **Single event** | An `event` object and a `user` object. When one update generates several events, Radar sends one request per event. |
+| **Multiple events** | An `events` array and a `user` object. |
+
+In both modes, `user` is the user's state after the update that generated the events. Each event also contains a `user` object with the identifying fields. Event fields are described in the [Events API](/api/events) and user fields in the [Users API](/api/users).
+
+With **Multiple events**, don't assume that one request holds every event from an update. When an update generates more than 5 events, Radar can split them into groups of 5 and send each group in its own request.
+
+### Event and user state payload
+
+A **Single event** request body:
+
+```json
+{
+  "event": {
+    "_id": "56db1f4613012711002229f6",
+    "type": "user.entered_geofence",
+    "createdAt": "2026-06-12T13:44:10.535Z",
+    "actualCreatedAt": "2026-06-12T13:44:10.535Z",
+    "live": false,
+    "user": {
+      "_id": "56db1f4613012711002229f4",
+      "userId": "user-123",
+      "deviceId": "C305F2DB-56DC-404F-B6C1-BC52F0B680D8",
+      "metadata": {
+        "loyaltyTier": "gold"
+      }
+    },
+    "geofence": {
+      "_id": "56db1f4613012711002229fb",
+      "tag": "store",
+      "externalId": "store-42",
+      "description": "Store #42",
+      "metadata": {
+        "parking": false
+      }
+    },
+    "location": {
+      "type": "Point",
+      "coordinates": [-73.977797, 40.783826]
+    },
+    "locationAccuracy": 5,
+    "confidence": 3,
+    "foreground": true
+  },
+  "user": {
+    "_id": "56db1f4613012711002229f4",
+    "live": false,
+    "userId": "user-123",
+    "deviceId": "C305F2DB-56DC-404F-B6C1-BC52F0B680D8",
+    "metadata": {
+      "loyaltyTier": "gold"
+    },
+    "updatedAt": "2026-06-12T13:44:10.535Z",
+    "createdAt": "2026-06-10T11:23:58.741Z",
+    "location": {
+      "type": "Point",
+      "coordinates": [-73.977797, 40.783826]
+    },
+    "locationAccuracy": 5,
+    "locationAuthorization": "GRANTED_FOREGROUND",
+    "locationAccuracyAuthorization": "FULL",
+    "stopped": true,
+    "foreground": true,
+    "deviceType": "iOS",
+    "ip": "203.0.113.10",
+    "geofences": [
+      {
+        "_id": "56db1f4613012711002229fb",
+        "tag": "store",
+        "externalId": "store-42",
+        "description": "Store #42",
+        "metadata": {
+          "parking": false
+        }
+      }
+    ]
+  }
+}
+```
+
+A **Multiple events** request body has the same `user` object and an `events` array in place of `event`:
 
 ```json
 {
@@ -25,201 +150,317 @@ Note that you can also receive events client-side via the [SDK](/sdk).
     {
       "_id": "56db1f4613012711002229f6",
       "type": "user.entered_geofence",
-      "createdAt": "2018-06-12T13:44:10.535Z",
-      "live": true,
+      "createdAt": "2026-06-12T13:44:10.535Z",
+      "actualCreatedAt": "2026-06-12T13:44:10.535Z",
+      "live": false,
       "user": {
-        "userId": "1",
-        "deviceId": "C305F2DB-56DC-404F-B6C1-BC52F0B680D8",
-        "metadata": {
-          "customId": "abc",
-          "customFlag": false
-        },
-        "locationAuthorization": "GRANTED_FOREGROUND",
-        "locationAccuracyAuthorization": "FULL"
+        "_id": "56db1f4613012711002229f4",
+        "userId": "user-123",
+        "deviceId": "C305F2DB-56DC-404F-B6C1-BC52F0B680D8"
       },
       "geofence": {
+        "_id": "56db1f4613012711002229fb",
         "tag": "store",
-        "externalId": "123",
-        "description": "Store #123",
-        "metadata": {
-          "parking": false
-        }
+        "externalId": "store-42",
+        "description": "Store #42"
       },
       "location": {
         "type": "Point",
-        "coordinates": [
-          -73.977797,
-          40.783826
-        ]
+        "coordinates": [-73.977797, 40.783826]
       },
       "locationAccuracy": 5,
       "confidence": 3,
-      "foreground": true,
-      "actualCreatedAt": "2018-06-12T13:44:10.535Z"
+      "foreground": true
     },
     {
       "_id": "56db1f4613012711002229f7",
       "type": "user.entered_place",
-      "createdAt": "2018-06-12T13:44:10.535Z",
-      "live": true,
+      "createdAt": "2026-06-12T13:44:10.535Z",
+      "actualCreatedAt": "2026-06-12T13:44:10.535Z",
+      "live": false,
       "user": {
         "_id": "56db1f4613012711002229f4",
-        "userId": "1",
-        "deviceId": "C305F2DB-56DC-404F-B6C1-BC52F0B680D8",
-        "metadata": {
-          "customId": "abc",
-          "customFlag": false
-        },
-        "locationAuthorization": "GRANTED_FOREGROUND",
-        "locationAccuracyAuthorization": "FULL"
+        "userId": "user-123",
+        "deviceId": "C305F2DB-56DC-404F-B6C1-BC52F0B680D8"
       },
       "place": {
-        "name": "Starbucks",
+        "_id": "5a631784f61757fe9bb9847a",
+        "name": "Example Coffee",
         "chain": {
-          "name": "Starbucks",
-          "slug": "starbucks",
-          "externalId": "123",
-          "metadata": {
-            "customFlag": true
-          }
+          "name": "Example Coffee",
+          "slug": "example-coffee"
         },
-        "categories": [
-          "food-beverage",
-          "coffee-shop"
-        ],
+        "categories": ["food-beverage", "cafe", "coffee-shop"],
         "location": {
           "type": "Point",
-          "coordinates": [
-            -73.977797,
-            40.783826
-          ]
+          "coordinates": [-73.977797, 40.783826]
         }
       },
       "location": {
         "type": "Point",
-        "coordinates": [
-          -73.977797,
-          40.783826
-        ]
+        "coordinates": [-73.977797, 40.783826]
       },
       "locationAccuracy": 5,
       "confidence": 2,
-      "foreground": true,
-      "actualCreatedAt": "2018-06-12T13:44:10.535Z"
+      "foreground": true
     }
   ],
   "user": {
     "_id": "56db1f4613012711002229f4",
-    "live": true,
-    "userId": "1",
+    "live": false,
+    "userId": "user-123",
     "deviceId": "C305F2DB-56DC-404F-B6C1-BC52F0B680D8",
-    "metadata": {
-      "customId": "abc",
-      "customFlag": false
-    },
-    "updatedAt": "2018-06-12T13:44:10.535Z",
-    "createdAt": "2018-06-10T11:23:58.741Z",
+    "updatedAt": "2026-06-12T13:44:10.535Z",
     "location": {
       "type": "Point",
-      "coordinates": [
-        -73.977797,
-        40.783826
-      ]
+      "coordinates": [-73.977797, 40.783826]
     },
     "locationAccuracy": 5,
-    "locationAuthorization": "GRANTED_FOREGROUND",
-    "locationAccuracyAuthorization": "FULL",
-    "stopped": true,
-    "foreground": false,
-    "deviceType": "iOS",
-    "ip": "173.14.0.1",
-    "geofences": [
-      {
-        "tag": "store",
-        "externalId": "123",
-        "description": "Store #123",
-        "metadata": {
-          "parking": false
-        }
-      }
-    ],
-    "place": {
-      "name": "Starbucks",
-      "chain": {
-        "name": "Starbucks",
-        "slug": "starbucks"
-      },
-      "categories": [
-        "food-beverage",
-        "coffee-shop"
-      ],
-      "location": {
-        "type": "Point",
-        "coordinates": [
-          -73.977797,
-          40.783826
-        ]
-      }
-    },
-    "country": {
-      "code": "US",
-      "name": "United States",
-      "flag": "🇺🇸"
-    },
-    "state": {
-      "code": "MD",
-      "name": "Maryland",
-      "passed": false,
-      "allowed": true,
-      "distanceToBorder": 1092.3,
-      "inBufferZone": false,
-      "inExclusionZone": false
-    },
-    "dma": {
-      "code": "26",
-      "name": "Baltimore"
-    },
-    "postalCode": {
-      "code": "21014",
-      "name": "21014"
-    },
-    "segments": [
-      {
-        "description": "Starbucks Visitors",
-        "externalId": "starbucks-visitors"
-      }
-    ],
-    "topChains": [
-      {
-        "name": "Starbucks",
-        "slug": "starbucks",
-        "externalId": "123"
-      },
-      {
-        "name": "Walmart",
-        "slug": "walmart",
-        "externalId": "456"
-      }
-    ],
-    "fraud": {
-      "verified": true,
-      "passed": false,
-      "bypassed": false,
-      "blocked": false,
-      "mocked": true,
-      "jumped": false,
-      "compromised": false,
-      "inaccurate": false,
-      "proxy": false,
-      "sharing": false,
-      "lastMockedAt": "2023-07-27T17:18:28.536Z",
-      "lastJumpedAt": "2023-07-27T17:18:28.536Z",
-      "lastCompromisedAt": null,
-      "lastInaccurateAt": null,
-      "lastProxyAt": null,
-      "lastSharingAt": null
-    }
+    "deviceType": "iOS"
   }
 }
 ```
 
+The `user` object carries more state when the matching features are enabled for your project, for example `place`, `country`, `state`, `dma`, `postalCode`, `segments`, `topChains`, `trip`, `beacons`, and `fraud`. Treat unknown fields as optional and ignore the ones you don't use, so that new fields don't break your parser.
+
+Two details to rely on:
+
+- Coordinates are GeoJSON, so longitude comes before latitude.
+- Geofence geometry isn't included in webhook payloads. Look a geofence up by `_id`, or by `tag` and `externalId`, with the [Geofences API](/api/geofences) if you need its shape.
+
+### Case event payload
+
+A webhook with **Type** set to **Case Events** sends an `event` object (or an `events` array with **Multiple events**) and no `user` object:
+
+```json
+{
+  "event": {
+    "_id": "69aee5fc9b08c3f147dc12b0",
+    "type": "case.opened",
+    "case": {
+      "_id": "69aee5fc8581c72e89dfe90e",
+      "ruleId": "68deb69ced45959e3208bd94",
+      "ruleType": "example_rule_type",
+      "associatedUserIds": ["user-123", "user-456"],
+      "associatedDeviceIds": ["C305F2DB-56DC-404F-B6C1-BC52F0B680D8"]
+    },
+    "createdAt": "2026-06-12T13:44:10.535Z"
+  }
+}
+```
+
+| Field | Description |
+| --- | --- |
+| `event._id` | The ID of this event. |
+| `event.type` | `case.opened`, `case.updated`, or `case.closed`. |
+| `event.case._id` | The ID of the case. This is also the value of `X-Radar-Signing-Id` for case events. |
+| `event.case.ruleId` | The ID of the rule that triggered the case. |
+| `event.case.ruleType` | The type of the rule that triggered the case. The value above is a placeholder. |
+| `event.case.associatedUserIds` | The user IDs associated with the case. |
+| `event.case.associatedDeviceIds` | The device IDs associated with the case. |
+
+## Verify the signature
+
+Each webhook has a security token: a random 40-character hex string that Radar generates when you create the webhook. It is shown in the **Security token** column of the **Webhooks** table.
+
+Radar signs each request like this:
+
+1. It takes a signing ID and sends it in the `X-Radar-Signing-Id` header.
+2. It computes an HMAC-SHA1 of that signing ID, using the security token as the key, and sends the hex digest in the `X-Radar-Signature` header.
+
+The signing ID depends on the request:
+
+| Request | Signing ID |
+| --- | --- |
+| **Single event** | The `_id` of the event. |
+| **Multiple events** | The `_id` of the first event in the `events` array. |
+| **Case Events** | The `_id` of the case (of the first case with **Multiple events**). |
+| **Locations** | The `_id` of the user. |
+
+To verify a request, compute the same HMAC from the `X-Radar-Signing-Id` header and compare it with `X-Radar-Signature`. This Node.js example uses Express:
+
+```javascript
+const crypto = require('crypto');
+const express = require('express');
+
+const app = express();
+app.use(express.json());
+
+// Load the security token from your secret store. Never hard-code it.
+const RADAR_WEBHOOK_TOKEN = process.env.RADAR_WEBHOOK_TOKEN;
+
+function isFromRadar(req) {
+  const signingId = req.get('X-Radar-Signing-Id');
+  const signature = req.get('X-Radar-Signature');
+  if (!signingId || !signature) {
+    return false;
+  }
+
+  const expected = crypto
+    .createHmac('sha1', RADAR_WEBHOOK_TOKEN)
+    .update(signingId)
+    .digest('hex');
+
+  const a = Buffer.from(signature, 'utf8');
+  const b = Buffer.from(expected, 'utf8');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+app.post('/webhooks/radar', (req, res) => {
+  if (!isFromRadar(req)) {
+    return res.sendStatus(401);
+  }
+
+  // For Single event and Case Events webhooks, also check that the signed ID
+  // matches the body. Use req.body.events[0]._id for Multiple events.
+  const signingId = req.get('X-Radar-Signing-Id');
+  const event = req.body.event;
+  const bodyId = event && (event.case ? event.case._id : event._id);
+  if (bodyId !== signingId) {
+    return res.sendStatus(400);
+  }
+
+  // Acknowledge first, then process asynchronously.
+  res.sendStatus(200);
+  enqueueForProcessing(req.body);
+});
+
+function enqueueForProcessing(body) {
+  // Hand the payload to your own queue or worker.
+}
+
+app.listen(3000);
+```
+
+Know what the signature does and doesn't prove:
+
+- It proves that the sender knows your security token. Compare signatures with a constant-time function, as in the example.
+- It is computed from the signing ID only. It doesn't cover the rest of the request body, and it doesn't include a timestamp. Check that the signing ID matches the corresponding ID in the body, as in the example, and serve your endpoint over HTTPS so that the body can't be altered in transit.
+- A captured request stays valid if it is sent again. Process each event ID once so that a repeated request has no effect. See [Consume events idempotently](#consume-events-idempotently).
+
+## Filtering
+
+In the **Webhooks** table, open the row menu for your webhook and select **Edit webhook**.
+
+| Field | Effect |
+| --- | --- |
+| **Event type allowlist** | When you select one or more event types, Radar sends only those types to this webhook. With nothing selected, Radar sends every event type. |
+| **Request key blocklist** | Removes the listed keys from the request body at any depth, in both the events and the user. For example, add `ip` to stop sending the user's IP address. |
+| **Geofence tag blocklist** | Skips events for geofences that have one of the listed tags. |
+
+To pause a webhook without deleting it, select **No** for **Enabled**.
+
+## Delivery behavior
+
+### Response handling
+
+Return a `2xx` status code to acknowledge a request. Radar classifies your response like this:
+
+| Your response | How Radar treats it |
+| --- | --- |
+| `2xx` | Delivered. |
+| `429`, any `5xx`, a connection error, or no response before the timeout | Failed. Eligible for retry when retries are enabled for your project. |
+| Any other status, including `3xx` and `4xx` | Not delivered and not retried. Radar doesn't follow the response with another attempt, so don't use a `4xx` to ask for redelivery. |
+
+By default, Radar waits 5 seconds for a response. Acknowledge the request as soon as you have verified and stored it, and do slow work afterward.
+
+### Retries
+
+Don't assume that Radar retries a failed delivery. Retries are a project-level setting that your Radar account team turns on, and a project without it gets one delivery attempt per request. Ask your account team whether retries are enabled for your project and how many attempts are configured.
+
+When retries are enabled:
+
+- Radar queues the failed request again with the same body, so every event keeps its `_id`.
+- For **Single event** webhooks, Radar retries only the event whose request failed. For **Multiple events** webhooks, it retries the whole request.
+- If your response includes a `Retry-After` header, in seconds or as an HTTP date, Radar waits that long before the next attempt, up to a maximum of 900 seconds.
+
+A failed delivery doesn't remove the event from Radar. While the event is within your project's data retention period, it remains available in the dashboard and through the [Events API](/api/events), so you can backfill after an outage.
+
+### Ordering
+
+Radar doesn't guarantee the order in which requests arrive. With **Single event**, the requests for events from one update are sent in parallel, and a retried request can arrive after newer ones. To order events, use these fields:
+
+| Field | Meaning |
+| --- | --- |
+| `createdAt` | When the event occurred, based on the timestamp of the location that generated it. |
+| `actualCreatedAt` | When Radar's server created the event. This is later than `createdAt` when a device replays a location that it couldn't send earlier. |
+
+Because `user` is the state at the time of the update, don't overwrite newer user state with the `user` object from a request that arrived late. Compare `user.updatedAt` before you write.
+
+### Duplicates
+
+Radar doesn't deduplicate deliveries for you and doesn't send a separate idempotency key. You can receive the same event more than once when a delivery is retried, when two of your webhooks point at the same endpoint, or when you [rotate a security token](#rotate-the-security-token).
+
+### Consume events idempotently
+
+Use the event `_id` as the idempotency key:
+
+1. For each event in the request, try to insert its `_id` into a store with a unique constraint.
+2. If the insert succeeds, process the event.
+3. If the insert fails because the `_id` exists, skip the event and still return `2xx`.
+
+With **Multiple events**, apply this per event and not per request. A retried request repeats all of its events, including the ones you already processed.
+
+## Test the integration
+
+<Steps>
+  <Step title="Send a test delivery">
+    In the **Webhooks** table, open the row menu for your webhook and select **Test webhook**. Radar sends a signed sample request to your URL. The dashboard reports `Webhook responded with a status of 200.`, with the status code that your endpoint returned, or `Webhook did not respond.` if Radar couldn't get a response.
+  </Step>
+  <Step title="Check the sample on your backend">
+    The sample user has a `userId` of `1`. A **Single event** webhook receives one `user.entered_geofence` event, and a **Multiple events** webhook receives one geofence event and one place event. If you set an **Event type allowlist**, the sample events use the first allowed type. Confirm that your signature check passes and that your handler parses the body.
+  </Step>
+  <Step title="Generate a real event">
+    Sample deliveries reuse the same event IDs each time, so they exercise your duplicate handling but not your full path. To generate a real event in the Test environment, create a geofence, then send a location inside it with your Test publishable key through the SDK or the [Tracking API](/api/tracking). Confirm that the event appears on the [Events](https://dashboard.radar.com/geofencing/events) page of the dashboard and arrives at your endpoint with the same `_id`.
+  </Step>
+</Steps>
+
+To check your verification code without waiting for Radar, compute a signature locally and send your own request. Replace the token with your webhook's security token:
+
+```bash
+SIGNING_ID="56db1f4613012711002229f6"
+TOKEN="your-webhook-security-token"
+SIGNATURE=$(printf '%s' "$SIGNING_ID" | openssl dgst -sha1 -hmac "$TOKEN" | awk '{print $NF}')
+
+curl -i "https://example.com/webhooks/radar" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "X-Radar-Signing-Id: $SIGNING_ID" \
+  -H "X-Radar-Signature: $SIGNATURE" \
+  -d '{"event":{"_id":"56db1f4613012711002229f6","type":"user.entered_geofence"},"user":{"userId":"user-123"}}'
+```
+
+Your endpoint returns `200`. Change one character of the signature and confirm that it returns `401`.
+
+## Troubleshoot delivery
+
+In the **Webhooks** section, click **View integration logs**, or open a webhook's row menu and click **View integration logs** to see the deliveries for that URL only. Each row shows the **Timestamp**, the **Request** body that Radar sent, and the **Response** status and body that your endpoint returned. Filter by date range and response to find failed deliveries.
+
+| What you see | Likely cause | What to do |
+| --- | --- | --- |
+| No log rows for the webhook | No events were generated in the webhook's environment, or the webhook is for the other environment. | Check the Events page for that environment and the webhook's **Environment**. |
+| A response of `skipped` with `Integration disabled.` | **Enabled** is **No**. | Edit the webhook and select **Yes** for **Enabled**. |
+| A response of `skipped` with `Event type ... is not allowed.` or `Geofence tag '...' is blocklisted.` | A filter excluded the event. | Review the allowlist and blocklists. |
+| A response of `skipped` with `Invalid URL.` | The URL didn't pass Radar's validation, for example because it doesn't resolve to a public address. | Use a publicly reachable URL. |
+| A timeout or connection error | Your endpoint didn't respond in time or refused the connection. | Check availability and firewall rules, and acknowledge before doing slow work. |
+| A `401` or `403` from your endpoint | Your signature check or another auth layer rejected the request. | Confirm that you use the token of this webhook and compute the HMAC from `X-Radar-Signing-Id`. |
+
+## Rotate the security token
+
+Radar generates the security token when the webhook is created. Editing a webhook doesn't change its token, and the dashboard has no control that regenerates it. To rotate a token, replace the webhook:
+
+1. Create a second webhook with the same environment, URL, event delivery mode, and filters. It gets a new security token.
+2. Update your endpoint to accept a signature from either token.
+3. Confirm in the integration logs that deliveries from the new webhook succeed.
+4. Open the old webhook's row menu and select **Delete webhook**, then remove the old token from your endpoint.
+
+While both webhooks exist, your endpoint receives every event twice. [Idempotent consumption](#consume-events-idempotently) makes the overlap safe.
+
+## Limitations
+
+- The signature covers the signing ID only, not the full body or a timestamp. See [Verify the signature](#verify-the-signature).
+- Retries are off unless they are enabled for your project, and Radar doesn't guarantee delivery order.
+- A webhook delivers only when an event is generated. To receive every location update, you need the account-specific **Locations** webhook type.
+- A webhook belongs to one project and one environment.
+- Geofence geometry isn't included in payloads.
+- The security token can't be regenerated in place.

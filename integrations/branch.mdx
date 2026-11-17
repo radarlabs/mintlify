@@ -1,310 +1,380 @@
 ---
 title: "Branch"
-description: "Send Radar location events to Branch to attribute offline actions to online campaigns."
+description: "Send Radar events to Branch as custom events, map Radar devices to Branch identifiers, and verify that events arrive."
 ---
 
 <Info>
-  The Branch integration is available on the [**Enterprise plan**](https://radar.com/pricing).
+  The Branch integration is available on the [Enterprise plan](https://radar.com/pricing).
 </Info>
 
-Radar can send events to [Branch](https://branch.io).
+By the end of this page, each Radar event for your project arrives in Branch as a custom event on the matching device, so that you can attribute location activity to the campaigns that Branch tracks.
 
-Use the Branch integration to attribute offline actions to online campaigns and measure the ROI of location-based features.
+Use the integration to attribute offline actions, such as store visits, to online campaigns. It is a server-side integration: Radar's servers call Branch. Radar sends events only. It doesn't create or update Branch user profiles beyond the device identifiers on each event.
+
+## Prerequisites
+
+- A Radar project on the Enterprise plan that generates events. See [Geofencing overview and quickstart](/geofencing/overview).
+- Access to the [Integrations](https://dashboard.radar.com/integrations) page in the Radar dashboard.
+- A Branch app and permission to view its Branch key.
+- The Branch SDK in the same app or site as the Radar SDK, so that Branch already knows the devices that Radar reports. For web, you also need the code in [User mapping](#user-mapping).
 
 ## Configuration
 
-On the Branch _Account Settings_ page under _Profile_, copy your Branch key.
-
-Then, on the Radar [Integrations page](https://dashboard.radar.com/integrations) under _Branch_, set _Enabled_ to _Yes_ and paste your key. Note that you can set separate keys for the _Test_ and _Live_ environments.
-
-Whenever events are generated, Radar will send custom events to Branch.
+<Steps>
+  <Step title="Copy your Branch key">
+    In Branch, open **Account Settings**, select **Profile**, and copy your Branch key. Branch provides a live key and a test key. Copy both if you use both environments.
+  </Step>
+  <Step title="Enable the integration in Radar">
+    On the [Integrations](https://dashboard.radar.com/integrations) page, find the **Branch** section and select **Yes** for **Enabled**. Credential fields appear.
+  </Step>
+  <Step title="Enter your keys">
+    Enter the Branch live key in **Live branch key** and the Branch test key in **Test branch key**. Radar uses the Live key for events from the Radar Live environment and the Test key for events from the Radar Test environment. If you leave a field empty, Radar sends nothing for that environment.
+  </Step>
+  <Step title="Save">
+    Click **Save**. From now on, Radar sends each new event to Branch. Events generated before you saved aren't sent.
+  </Step>
+</Steps>
 
 ## User mapping
 
-Radar `deviceId` maps to `idfv` for iOS devices and `android_id` for Android devices in Branch. For web devices, set Radar `metadata.branchFingerprintId` to the Branch Browser Fingerprint Id.
+Branch matches events to devices, not to your user IDs. Radar sends these identifiers in the `user_data` of each event:
+
+| Radar user field | Branch `user_data` field | Sent when |
+| --- | --- | --- |
+| `deviceType` | `os` | The device type is `iOS`, `Android`, or `Web`. |
+| `deviceId` | `idfv` | The device type is iOS. |
+| `deviceId` | `android_id` | The device type is Android. |
+| Advertising ID | `idfa` (iOS) or `aaid` (Android) | Radar has an advertising ID for the device and the user hasn't opted out. |
+| `metadata.branchFingerprintId` | `browser_fingerprint_id` | The device type is Web. |
+| `ip` | `ip` | Radar has an IP address for the user. |
+| `locationAuthorization` | `radar_location_authorization` | Always. `"(null)"` when unknown. |
+| `locationAccuracyAuthorization` | `radar_location_accuracy_authorization` | Always. `"(null)"` when unknown. |
+
+Radar doesn't send the Radar `userId` to Branch.
+
+On iOS and Android, no extra code is needed. On the web, Radar has no device identifier that Branch recognizes, so you must pass the Branch browser fingerprint ID to Radar. Do this after both SDKs are initialized:
 
 ```javascript
-branch.getBrowserFingerprintId(function(err, data) {
-    Radar.setMetadata({ 'branchFingerprintId': data });
+// Assumes the Branch web SDK and the Radar web SDK are already initialized.
+branch.getBrowserFingerprintId(function (err, fingerprintId) {
+  if (err || !fingerprintId) {
+    return;
+  }
+  Radar.setMetadata({ branchFingerprintId: fingerprintId });
 });
 ```
 
+Until `metadata.branchFingerprintId` is set, Radar skips events from web users for Branch and logs `Identifier missing.` The same applies to any user whose device type isn't iOS, Android, or Web.
+
 ## Event mapping
 
-| Radar Event                         | Context Type                       | Branch Event                   |
-| ----------------------------------- | ---------------------------------- | ------------------------------ |
-| `user.entered_geofence`             | [Geofences](/geofencing/geofences) | `entered_geofence`             |
-| `user.exited_geofence`              | [Geofences](/geofencing/geofences) | `exited_geofence`              |
-| `user.dwelled_in_geofence`          | [Geofences](/geofencing/geofences) | `dwelled_in_geofence`          |
-| `user.entered_place`                | [Places](/geofencing/places)       | `entered_place`                |
-| `user.exited_place`                 | [Places](/geofencing/places)       | `exited_place`                 |
-| `user.entered_region_country`       | [Regions](/geofencing/regions)     | `entered_country`              |
-| `user.exited_region_country`        | [Regions](/geofencing/regions)     | `exited_country`               |
-| `user.entered_region_state`         | [Regions](/geofencing/regions)     | `entered_state`                |
-| `user.exited_region_state`          | [Regions](/geofencing/regions)     | `exited_state`                 |
-| `user.entered_region_dma`           | [Regions](/geofencing/regions)     | `entered_dma`                  |
-| `user.exited_region_dma`            | [Regions](/geofencing/regions)     | `exited_dma`                   |
-| `user.started_trip`                 | [Trip Tracking](/geofencing/trips) | `started_trip`                 |
-| `user.updated_trip`                 | [Trip Tracking](/geofencing/trips) | `updated_trip`                 |
-| `user.approaching_trip_destination` | [Trip Tracking](/geofencing/trips) | `approaching_trip_destination` |
-| `user.arrived_at_trip_destination`  | [Trip Tracking](/geofencing/trips) | `arrived_at_trip_destination`  |
-| `user.stopped_trip`                 | [Trip Tracking](/geofencing/trips) | `stopped_trip`                 |
-| `user.entered_beacon`               | [Beacons](/geofencing/beacons)     | `entered_beacon`               |
-| `user.exited_beacon`                | [Beacons](/geofencing/beacons)     | `exited_beacon`                |
+Radar sends one Branch custom event per Radar event. The Branch event name is the Radar event type without the `user.` prefix.
+
+| Radar event | Branch event | Context |
+| --- | --- | --- |
+| `user.entered_geofence` | `entered_geofence` | Geofences |
+| `user.exited_geofence` | `exited_geofence` | Geofences |
+| `user.dwelled_in_geofence` | `dwelled_in_geofence` | Geofences |
+| `user.entered_place` | `entered_place` | Places |
+| `user.exited_place` | `exited_place` | Places |
+| `user.entered_region_country` | `entered_region_country` | Regions |
+| `user.exited_region_country` | `exited_region_country` | Regions |
+| `user.entered_region_state` | `entered_region_state` | Regions |
+| `user.exited_region_state` | `exited_region_state` | Regions |
+| `user.entered_region_dma` | `entered_region_dma` | Regions |
+| `user.exited_region_dma` | `exited_region_dma` | Regions |
+| `user.entered_region_postal_code` | `entered_region_postal_code` | Regions |
+| `user.exited_region_postal_code` | `exited_region_postal_code` | Regions |
+| `user.started_trip` | `started_trip` | Trips |
+| `user.updated_trip` | `updated_trip` | Trips |
+| `user.approaching_trip_destination` | `approaching_trip_destination` | Trips |
+| `user.arrived_at_trip_destination` | `arrived_at_trip_destination` | Trips |
+| `user.stopped_trip` | `stopped_trip` | Trips |
+| `user.entered_beacon` | `entered_beacon` | Beacons |
+| `user.exited_beacon` | `exited_beacon` | Beacons |
+
+### Custom data on every event
+
+| Radar event field | Branch custom data key | Type | Notes |
+| --- | --- | --- | --- |
+| `foreground` | `foreground` | boolean | |
+| `replayed` | `replayed` | boolean | Sent only when `true`. |
+
+On geofence and place events, when the event has region context, Radar also sends:
+
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `country.code` | `country_code` | string | `"US"` |
+| `country.name` | `country_name` | string | `"United States"` |
+| `state.code` | `state_code` | string | `"MD"` |
+| `state.name` | `state_name` | string | `"Maryland"` |
+| `dma.code` | `dma_code` | string | `"26"` |
+| `dma.name` | `dma_name` | string | `"Baltimore"` |
+| `postalCode.code` | `postal_code` | string | `"21014"` |
+
+The sections below list the custom data that is specific to each event type. `confidence` is one of `"none"`, `"low"`, `"medium"`, or `"high"`. A key is omitted when the Radar field has no value.
 
 ### entered_geofence
 
-| Radar Event Field          | Branch Event Property     | Type    | Example Value                |
-| -------------------------- | ------------------------- | ------- | ---------------------------- |
-| `geofence._id`             | `geofence_id`             | string  | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description`     | `geofence_description`    | string  | `"Store #123"`               |
-| `geofence.tag`             | `geofence_tag`            | string  | `"store"`                    |
-| `geofence.externalId`      | `geofence_external_id`    | string  | `"123"`                      |
-| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type    | `{value}`                    |
-| `confidence`               | `confidence`              | string  | `"high"`                     |
-| `foreground`               | `foreground`              | boolean | `true`                       |
-
-If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
-
-| Radar Event Field | Branch Event Property | Type   | Example Value     |
-| ----------------- | --------------------- | ------ | ----------------- |
-| `country.code`    | `country_code`        | string | `"US"`            |
-| `country.name`    | `country_name`        | string | `"United States"` |
-| `state.code`      | `state_code`          | string | `"MD"`            |
-| `state.name`      | `state_name`          | string | `"Maryland"`      |
-| `dma.code`        | `dma_code`            | string | `"26"`            |
-| `dma.name`        | `dma_name`            | string | `"Baltimore"`     |
-| `postalCode.code` | `postal_code`         | string | `"21014"`         |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `geofence._id` | `geofence_id` | string | `"5b2c0906f5874b001aecfd8e"` |
+| `geofence.description` | `geofence_description` | string | `"Store #42"` |
+| `geofence.tag` | `geofence_tag` | string | `"store"` |
+| `geofence.externalId` | `geofence_external_id` | string | `"store-42"` |
+| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type of the value | `{value}` |
+| `confidence` | `confidence` | string | `"high"` |
 
 ### exited_geofence
 
-| Radar Event Field          | Branch Event Property     | Type             | Example Value                |
-| -------------------------- | ------------------------- | ---------------- | ---------------------------- |
-| `geofence._id`             | `geofence_id`             | string           | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description`     | `geofence_description`    | string           | `"Store #123"`               |
-| `geofence.tag`             | `geofence_tag`            | string           | `"store"`                    |
-| `geofence.externalId`      | `geofence_external_id`    | string           | `"123"`                      |
-| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type             | `{value}`                    |
-| `confidence`               | `confidence`              | string           | `"high"`                     |
-| `duration`                 | `duration`                | number (minutes) | `42.1`                       |
-| `foreground`               | `foreground`              | boolean          | `true`                       |
-
-If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
-
-| Radar Event Field | Branch Event Property | Type   | Example Value     |
-| ----------------- | --------------------- | ------ | ----------------- |
-| `country.code`    | `country_code`        | string | `"US"`            |
-| `country.name`    | `country_name`        | string | `"United States"` |
-| `state.code`      | `state_code`          | string | `"MD"`            |
-| `state.name`      | `state_name`          | string | `"Maryland"`      |
-| `dma.code`        | `dma_code`            | string | `"26"`            |
-| `dma.name`        | `dma_name`            | string | `"Baltimore"`     |
-| `postalCode.code` | `postal_code`         | string | `"21014"`         |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `geofence._id` | `geofence_id` | string | `"5b2c0906f5874b001aecfd8e"` |
+| `geofence.description` | `geofence_description` | string | `"Store #42"` |
+| `geofence.tag` | `geofence_tag` | string | `"store"` |
+| `geofence.externalId` | `geofence_external_id` | string | `"store-42"` |
+| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type of the value | `{value}` |
+| `confidence` | `confidence` | string | `"high"` |
+| `duration` | `duration` | string (minutes, rounded to 2 decimals) | `"42.1"` |
 
 ### dwelled_in_geofence
 
-| Radar Event Field          | Branch Event Property     | Type             | Example Value                |
-| -------------------------- | ------------------------- | ---------------- | ---------------------------- |
-| `geofence._id`             | `geofence_id`             | string           | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description`     | `geofence_description`    | string           | `"Store #123"`               |
-| `geofence.tag`             | `geofence_tag`            | string           | `"store"`                    |
-| `geofence.externalId`      | `geofence_external_id`    | string           | `"123"`                      |
-| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type             | `{value}`                    |
-| `confidence`               | `confidence`              | string           | `"high"`                     |
-| `duration`                 | `duration`                | number (minutes) | `5`                          |
-| `foreground`               | `foreground`              | boolean          | `true`                       |
-
-If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
-
-| Radar Event Field | Branch Event Property | Type   | Example Value     |
-| ----------------- | --------------------- | ------ | ----------------- |
-| `country.code`    | `country_code`        | string | `"US"`            |
-| `country.name`    | `country_name`        | string | `"United States"` |
-| `state.code`      | `state_code`          | string | `"MD"`            |
-| `state.name`      | `state_name`          | string | `"Maryland"`      |
-| `dma.code`        | `dma_code`            | string | `"26"`            |
-| `dma.name`        | `dma_name`            | string | `"Baltimore"`     |
-| `postalCode.code` | `postal_code`         | string | `"21014"`         |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `geofence._id` | `geofence_id` | string | `"5b2c0906f5874b001aecfd8e"` |
+| `geofence.description` | `geofence_description` | string | `"Store #42"` |
+| `geofence.tag` | `geofence_tag` | string | `"store"` |
+| `geofence.externalId` | `geofence_external_id` | string | `"store-42"` |
+| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type of the value | `{value}` |
+| `confidence` | `confidence` | string | `"high"` |
+| `duration` | `duration` | string (minutes, rounded to 2 decimals) | `"42.1"` |
 
 ### entered_place
 
-| Radar Event Field             | Branch Event Property        | Type                     | Example Value                      |
-| ----------------------------- | ---------------------------- | ------------------------ | ---------------------------------- |
-| `place._id`                   | `place_id`                   | string                   | `"59302bcf8f27e8a156bd4f91"`       |
-| `place.name`                  | `place_name`                 | string                   | `"Starbucks"`                      |
-| `place.chain.slug`            | `place_chain_id`             | string                   | `"starbucks"`                      |
-| `place.chain.name`            | `place_chain_name`           | string                   | `"Starbucks"`                      |
-| `place.chain.externalId`      | `place_chain_external_id`    | string                   | `"123"`                            |
-| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | type                     | `{value}`                          |
-| `place.categories`            | `place_categories`           | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` |
-| `confidence`                  | `confidence`                 | string                   | `"high"`                           |
-| `foreground`                  | `foreground`                 | boolean                  | `true`                             |
-
-If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
-
-| Radar Event Field | Branch Event Property | Type   | Example Value     |
-| ----------------- | --------------------- | ------ | ----------------- |
-| `country.code`    | `country_code`        | string | `"US"`            |
-| `country.name`    | `country_name`        | string | `"United States"` |
-| `state.code`      | `state_code`          | string | `"MD"`            |
-| `state.name`      | `state_name`          | string | `"Maryland"`      |
-| `dma.code`        | `dma_code`            | string | `"26"`            |
-| `dma.name`        | `dma_name`            | string | `"Baltimore"`     |
-| `postalCode.code` | `postal_code`         | string | `"21014"`         |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `place._id` | `place_id` | string | `"59302bcf8f27e8a156bd4f91"` |
+| `place.name` | `place_name` | string | `"Example Coffee"` |
+| `place.chain.slug` | `place_chain_slug` | string | `"example-coffee"` |
+| `place.chain.name` | `place_chain_name` | string | `"Example Coffee"` |
+| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | type of the value | `{value}` |
+| `place.categories` | `place_categories` | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` |
+| `confidence` | `confidence` | string | `"high"` |
 
 ### exited_place
 
-| Radar Event Field             | Branch Event Property        | Type                     | Example Value                      |
-| ----------------------------- | ---------------------------- | ------------------------ | ---------------------------------- |
-| `place._id`                   | `place_id`                   | string                   | `"59302bcf8f27e8a156bd4f91"`       |
-| `place.name`                  | `place_name`                 | string                   | `"Starbucks"`                      |
-| `place.chain.slug`            | `place_chain_id`             | string                   | `"starbucks"`                      |
-| `place.chain.name`            | `place_chain_name`           | string                   | `"Starbucks"`                      |
-| `place.chain.externalId`      | `place_chain_external_id`    | string                   | `"123"`                            |
-| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | type                     | `{value}`                          |
-| `place.categories`            | `place_categories`           | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` |
-| `confidence`                  | `confidence`                 | string                   | `"high"`                           |
-| `duration`                    | `duration`                   | number (minutes)         | `42.1`                             |
-| `foreground`                  | `foreground`                 | boolean                  | `true`                             |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `place._id` | `place_id` | string | `"59302bcf8f27e8a156bd4f91"` |
+| `place.name` | `place_name` | string | `"Example Coffee"` |
+| `place.chain.slug` | `place_chain_slug` | string | `"example-coffee"` |
+| `place.chain.name` | `place_chain_name` | string | `"Example Coffee"` |
+| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | type of the value | `{value}` |
+| `place.categories` | `place_categories` | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` |
+| `confidence` | `confidence` | string | `"high"` |
+| `duration` | `duration` | string (minutes, rounded to 2 decimals) | `"42.1"` |
 
-If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
+### entered_region_country
 
-| Radar Event Field | Branch Event Property | Type   | Example Value               |
-| ----------------- | --------------------- | ------ | --------------------------- |
-| `country.code`    | `country_code`        | string | `"US"`                      |
-| `country.name`    | `country_name`        | string | `"United States"`(/regions) |
-| `state.code`      | `state_code`          | string | `"MD"`                      |
-| `state.name`      | `state_name`          | string | `"Maryland"`                |
-| `dma.code`        | `dma_code`            | string | `"26"`                      |
-| `dma.name`        | `dma_name`            | string | `"Baltimore"`               |
-| `postalCode.code` | `postal_code`         | string | `"21014"`                   |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `region.code` | `region_code` | string | `"US"` |
+| `region.name` | `region_name` | string | `"United States"` |
+| `confidence` | `confidence` | string | `"high"` |
 
-### entered_country
+### exited_region_country
 
-| Radar Event Attribute | Branch Event Property | Type    | Example Value     |
-| --------------------- | --------------------- | ------- | ----------------- |
-| `region.code`         | `region_code`         | string  | `"US"`            |
-| `region.name`         | `region_name`         | string  | `"United States"` |
-| `confidence`          | `confidence`          | string  | `"high"`          |
-| `foreground`          | `foreground`          | boolean | `true`            |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `region.code` | `region_code` | string | `"US"` |
+| `region.name` | `region_name` | string | `"United States"` |
+| `confidence` | `confidence` | string | `"high"` |
+| `duration` | `duration` | string (minutes, rounded to 2 decimals) | `"42.1"` |
 
-### exited_country
+### entered_region_state
 
-| Radar Event Attribute | Branch Event Property | Type    | Example Value     |
-| --------------------- | --------------------- | ------- | ----------------- |
-| `region.code`         | `region_code`         | string  | `"US"`            |
-| `region.name`         | `region_name`         | string  | `"United States"` |
-| `confidence`          | `confidence`          | string  | `"high"`          |
-| `foreground`          | `foreground`          | boolean | `true`            |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `region.code` | `region_code` | string | `"MD"` |
+| `region.name` | `region_name` | string | `"Maryland"` |
+| `confidence` | `confidence` | string | `"high"` |
 
-### entered_state
+### exited_region_state
 
-| Radar Event Attribute | Branch Event Property | Type    | Example Value |
-| --------------------- | --------------------- | ------- | ------------- |
-| `region.code`         | `region_code`         | string  | `"MD"`        |
-| `region.name`         | `region_name`         | string  | `"Maryland"`  |
-| `confidence`          | `confidence`          | string  | `"high"`      |
-| `foreground`          | `foreground`          | boolean | `true`        |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `region.code` | `region_code` | string | `"MD"` |
+| `region.name` | `region_name` | string | `"Maryland"` |
+| `confidence` | `confidence` | string | `"high"` |
+| `duration` | `duration` | string (minutes, rounded to 2 decimals) | `"42.1"` |
 
-### exited_state
+### entered_region_dma
 
-| Radar Event Attribute | Branch Event Property | Type    | Example Value |
-| --------------------- | --------------------- | ------- | ------------- |
-| `region.code`         | `region_code`         | string  | `"MD"`        |
-| `region.name`         | `region_name`         | string  | `"Maryland"`  |
-| `confidence`          | `confidence`          | string  | `"high"`      |
-| `foreground`          | `foreground`          | boolean | `true`        |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `region.code` | `region_code` | string | `"26"` |
+| `region.name` | `region_name` | string | `"Baltimore"` |
+| `confidence` | `confidence` | string | `"high"` |
 
-### entered_dma
+### exited_region_dma
 
-| Radar Event Attribute | Branch Event Property | Type    | Example Value |
-| --------------------- | --------------------- | ------- | ------------- |
-| `region.code`         | `region_code`         | string  | `"26"`        |
-| `region.name`         | `region_name`         | string  | `"Baltimore"` |
-| `confidence`          | `confidence`          | string  | `"high"`      |
-| `foreground`          | `foreground`          | boolean | `true`        |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `region.code` | `region_code` | string | `"26"` |
+| `region.name` | `region_name` | string | `"Baltimore"` |
+| `confidence` | `confidence` | string | `"high"` |
+| `duration` | `duration` | string (minutes, rounded to 2 decimals) | `"42.1"` |
 
-### exited_dma
+### entered_region_postal_code
 
-| Radar Event Attribute | Branch Event Property | Type    | Example Value |
-| --------------------- | --------------------- | ------- | ------------- |
-| `region.code`         | `region_code`         | string  | `"26"`        |
-| `region.name`         | `region_name`         | string  | `"Baltimore"` |
-| `confidence`          | `confidence`          | string  | `"high"`      |
-| `foreground`          | `foreground`          | boolean | `true`        |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `region.code` | `region_code` | string | `"21014"` |
+| `region.name` | `region_name` | string | `"21014"` |
+| `confidence` | `confidence` | string | `"high"` |
+
+### exited_region_postal_code
+
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `region.code` | `region_code` | string | `"21014"` |
+| `region.name` | `region_name` | string | `"21014"` |
+| `confidence` | `confidence` | string | `"high"` |
+| `duration` | `duration` | string (minutes, rounded to 2 decimals) | `"42.1"` |
 
 ### started_trip
 
-| Radar Event Attribute                | Branch Event Property                   | Type    | Example Value |
-| ------------------------------------ | --------------------------------------- | ------- | ------------- |
-| `trip.externalId`                    | `trip_external_id`                      | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | type    | `{value}`     |
-| `trip.destinationGeofenceTag`        | `trip_destination_geofence_tag`         | string  | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string  | `"123"`       |
-| `foreground`                         | `foreground`                            | boolean | `true`        |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `trip.externalId` | `trip_external_id` | string | `"order-299"` |
+| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` |
+| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` |
+| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` |
+| `confidence` | `confidence` | string | `"high"` |
 
 ### updated_trip
 
-| Radar Event Attribute                | Branch Event Property                   | Type    | Example Value |
-| ------------------------------------ | --------------------------------------- | ------- | ------------- |
-| `trip.externalId`                    | `trip_external_id`                      | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | type    | `{value}`     |
-| `trip.destinationGeofenceTag`        | `trip_destination_geofence_tag`         | string  | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string  | `"123"`       |
-| `foreground`                         | `foreground`                            | boolean | `true`        |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `trip.externalId` | `trip_external_id` | string | `"order-299"` |
+| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` |
+| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` |
+| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` |
+| `confidence` | `confidence` | string | `"high"` |
 
 ### approaching_trip_destination
 
-| Radar Event Attribute                | Branch Event Property                   | Type    | Example Value |
-| ------------------------------------ | --------------------------------------- | ------- | ------------- |
-| `trip.externalId`                    | `trip_external_id`                      | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | type    | `{value}`     |
-| `trip.destinationGeofenceTag`        | `trip_destination_geofence_tag`         | string  | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string  | `"123"`       |
-| `foreground`                         | `foreground`                            | boolean | `true`        |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `trip.externalId` | `trip_external_id` | string | `"order-299"` |
+| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` |
+| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` |
+| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` |
+| `confidence` | `confidence` | string | `"high"` |
 
 ### arrived_at_trip_destination
 
-| Radar Event Attribute                | Branch Event Property                   | Type    | Example Value |
-| ------------------------------------ | --------------------------------------- | ------- | ------------- |
-| `trip.externalId`                    | `trip_external_id`                      | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | type    | `{value}`     |
-| `trip.destinationGeofenceTag`        | `trip_destination_geofence_tag`         | string  | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string  | `"123"`       |
-| `foreground`                         | `foreground`                            | boolean | `true`        |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `trip.externalId` | `trip_external_id` | string | `"order-299"` |
+| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` |
+| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` |
+| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` |
+| `confidence` | `confidence` | string | `"high"` |
 
 ### stopped_trip
 
-| Radar Event Attribute                | Branch Event Property                   | Type    | Example Value |
-| ------------------------------------ | --------------------------------------- | ------- | ------------- |
-| `trip.externalId`                    | `trip_external_id`                      | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | type    | `{value}`     |
-| `trip.destinationGeofenceTag`        | `trip_destination_geofence_tag`         | string  | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string  | `"123"`       |
-| `foreground`                         | `foreground`                            | boolean | `true`        |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `trip.externalId` | `trip_external_id` | string | `"order-299"` |
+| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` |
+| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` |
+| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` |
+| `confidence` | `confidence` | string | `"high"` |
 
 ### entered_beacon
 
-| Radar Event Attribute    | Branch Event Property   | Type    | Example Value                |
-| ------------------------ | ----------------------- | ------- | ---------------------------- |
-| `beacon._id`             | `beacon_id`             | string  | `"5b2c0906f5874b001aecfd8f"` |
-| `beacon.description`     | `beacon_description`    | string  | `"Store #123 - Drive-Thru"`  |
-| `beacon.tag`             | `beacon_tag`            | string  | `"drive-thru"`               |
-| `beacon.externalId`      | `beacon_external_id`    | string  | `"123"`                      |
-| `beacon.metadata[{key}]` | `beacon_metadata_{key}` | type    | `{value}`                    |
-| `confidence`             | `confidence`            | string  | `"high"`                     |
-| `foreground`             | `foreground`            | boolean | `true`                       |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `beacon._id` | `beacon_id` | string | `"5b2c0906f5874b001aecfd8f"` |
+| `beacon.description` | `beacon_description` | string | `"Store #42 drive-thru"` |
+| `beacon.tag` | `beacon_tag` | string | `"drive-thru"` |
+| `beacon.externalId` | `beacon_external_id` | string | `"store-42-drive-thru"` |
+| `beacon.metadata[{key}]` | `beacon_metadata_{key}` | type of the value | `{value}` |
+| `confidence` | `confidence` | string | `"high"` |
 
 ### exited_beacon
 
-| Radar Event Attribute    | Branch Event Property   | Type             | Example Value                |
-| ------------------------ | ----------------------- | ---------------- | ---------------------------- |
-| `beacon._id`             | `beacon_id`             | string           | `"5b2c0906f5874b001aecfd8f"` |
-| `beacon.description`     | `beacon_description`    | string           | `"Store #123 - Drive-Thru"`  |
-| `beacon.tag`             | `beacon_tag`            | string           | `"drive-thru"`               |
-| `beacon.externalId`      | `beacon_external_id`    | string           | `"123"`                      |
-| `beacon.metadata[{key}]` | `beacon_metadata_{key}` | type             | `{value}`                    |
-| `confidence`             | `confidence`            | string           | `"high"`                     |
-| `duration`               | `duration`              | number (minutes) | `1.42`                       |
-| `foreground`             | `foreground`            | boolean          | `true`                       |
+| Radar event field | Branch custom data key | Type | Example value |
+| --- | --- | --- | --- |
+| `beacon._id` | `beacon_id` | string | `"5b2c0906f5874b001aecfd8f"` |
+| `beacon.description` | `beacon_description` | string | `"Store #42 drive-thru"` |
+| `beacon.tag` | `beacon_tag` | string | `"drive-thru"` |
+| `beacon.externalId` | `beacon_external_id` | string | `"store-42-drive-thru"` |
+| `beacon.metadata[{key}]` | `beacon_metadata_{key}` | type of the value | `{value}` |
+| `confidence` | `confidence` | string | `"high"` |
+| `duration` | `duration` | string (minutes, rounded to 2 decimals) | `"1.42"` |
 
+## Filtering
+
+On the [Integrations](https://dashboard.radar.com/integrations) page, click **Show advanced** in the **Branch** section.
+
+| Field | Effect |
+| --- | --- |
+| **Event type allowlist** | When you select one or more event types, Radar sends only those types to Branch. With nothing selected, Radar sends every event type. |
+| **Request key blocklist (comma-separated)** | Removes the listed keys from the request at any depth. For example, `ip,geofence_id` removes the IP address from `user_data` and the geofence ID from the custom data. |
+| **Geofence tag blocklist (comma-separated)** | Skips events for geofences that have one of the listed tags. |
+| **Chain blocklist** | Skips place events for the listed chain slugs. |
+
+Radar forwards every event type that passes the filters, including types that aren't in the [event mapping](#event-mapping) table. To keep unmapped event types out of Branch, select only the types you want in **Event type allowlist**.
+
+## Delivery behavior
+
+- **Requests**: Radar sends one request to Branch per event, using Branch's HTTP API for custom events. When one Radar update generates several events, the requests are sent in parallel, so Branch can receive them in any order.
+- **Timing**: Radar sends events from its servers shortly after it generates them.
+- **Attempts**: Radar makes one delivery attempt per event and waits up to 5 seconds for Branch to respond. It doesn't retry a failed request. Use the [integration logs](#troubleshoot-delivery) to find failures, and the [Events API](/api/events) if you need to backfill.
+- **Deduplication**: Radar doesn't send a deduplication ID to Branch.
+- **Environment**: The event's environment selects the key. Radar doesn't send a Test event with the Live key or the reverse.
+
+## Test the integration
+
+<Steps>
+  <Step title="Use the Test environment">
+    Confirm that **Test branch key** holds your Branch test key and that the integration is saved with **Enabled** set to **Yes**.
+  </Step>
+  <Step title="Generate an event from a device that Branch knows">
+    Create a geofence in the Radar Test environment. Then run a test build of your app that includes both the Branch SDK, using the Branch test key, and the Radar SDK, using your Radar Test publishable key. Enter the geofence, or simulate a location inside it, so that Radar generates a `user.entered_geofence` event. Confirm the event on the Events page of the Radar dashboard.
+  </Step>
+  <Step title="Check Radar's log">
+    In the **Branch** section, click **View integration logs**. Find a row for the event with the request that Radar sent and a success response from Branch. In the request, confirm that `name` is `entered_geofence` and that `user_data` has the `idfv` or `android_id` of your test device.
+  </Step>
+  <Step title="Check Branch">
+    In Branch, switch to the test environment and look for the `entered_geofence` custom event from your test device, with the `geofence_external_id` of your geofence in its custom data.
+  </Step>
+</Steps>
+
+You can also generate the Radar event with the [Tracking API](/api/tracking) by sending `deviceType=iOS` or `deviceType=Android`. Branch attributes the event only if the `deviceId` you send is an identifier that Branch has already seen.
+
+## Troubleshoot delivery
+
+On the [Integrations](https://dashboard.radar.com/integrations) page, click **View integration logs** in the **Branch** section. Each row shows the request and Branch's response. Radar redacts the Branch key in the logged request.
+
+| What you see | Likely cause | What to do |
+| --- | --- | --- |
+| No rows | No events were generated in that environment, or the integration isn't saved as enabled. | Check the Events page for the environment and the **Enabled** setting. |
+| `skipped`: `Integration key(s) missing.` | The Branch key for the event's environment is empty. | Enter the **Test branch key** or **Live branch key**. |
+| `skipped`: `Identifier missing.` | The user is a web user without `metadata.branchFingerprintId`, or has no device type. | Set the fingerprint ID as described in [User mapping](#user-mapping). For API-created users, send `deviceType`. |
+| `skipped`: `Event type ... is not allowed.` | The event type isn't selected in **Event type allowlist**. | Select the type or clear the allowlist. |
+| `skipped`: `Geofence tag '...' is blocklisted.` or `Chain '...' is blocklisted.` | A blocklist excluded the event. | Remove the tag or chain from the blocklist. |
+| A `4xx` response | Branch rejected the request. | Read the response body in the log, and check that the Branch key matches the environment. |
+| A success response but no attributed event in Branch | Branch doesn't recognize the device identifier. | Confirm that the Branch SDK has run on the same device, and compare the identifiers in the logged request with the device in Branch. |
+
+## Limitations
+
+- Radar sends events to Branch, not user properties.
+- Events are matched by device identifiers. The Radar `userId` isn't sent.
+- Web users need `metadata.branchFingerprintId`, and users with no device type are skipped.
+- Region context is included on geofence and place events only.
+- Radar doesn't retry failed deliveries to Branch and doesn't send a deduplication ID.
+- You can't rename events or custom data keys. Use the request key blocklist to drop keys you don't want.
+- Events generated before you enabled the integration aren't sent.

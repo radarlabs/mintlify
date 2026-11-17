@@ -1,352 +1,327 @@
 ---
 title: "Cordial"
-description: "Send Radar location events and user attributes to Cordial to trigger location-based messages."
+description: "Send Radar location events and contact attributes to Cordial to trigger and target location-based messages."
 ---
 
 <Info>
-  The Cordial integration is available on the [**Enterprise plan**](https://radar.com/pricing).
+  The Cordial integration is available on the [Enterprise plan](https://radar.com/pricing).
 </Info>
 
-Radar can send events and user attributes to [Cordial](https://cordial.com).
+By the end of this page, Radar sends contact activities and updated contact attributes to [Cordial](https://cordial.com) each time it generates a location event for a user, and you have confirmed delivery for one test contact.
 
-Use the Cordial integration to send location-triggered and location-targeted messages to increase engagement and conversion.
+Radar sends this data from its servers to Cordial's asynchronous API. Your app sets one metadata value so Radar knows which Cordial contact to update.
+
+## Prerequisites
+
+- A Radar project on the Enterprise plan, with the Radar SDK generating events. See [Detect geofence events and place visits](/geofencing/geofences-and-places).
+- A Cordial account, with permission to create API keys.
+- A contact identifier that your app knows. This is either the Cordial contact ID or a secondary key that the Cordial team has created for your contacts, for example `emailHash`.
+- Your Cordial async API endpoint, for example `https://integrations-ingest-svc.usw2.cordial.com`.
 
 ## Configuration
 
-On the Cordial _API Keys_ page, create and copy a new API key with _Contact Activities_ permissions. Additionally, ask the Cordial team to create a secondary key for contacts (e.g., `emailHash`) that you can pass to Radar.
+<Steps>
+  <Step title="Create a Cordial API key">
+    In Cordial, open the **API Keys** page and create an API key with **Contact Activities** permissions. Copy it.
+  </Step>
+  <Step title="Agree on a contact identifier">
+    If your app doesn't have the Cordial contact ID, ask the Cordial team to create a secondary key for contacts, such as `emailHash`, that your app can pass to Radar.
+  </Step>
+  <Step title="Enter the settings in Radar">
+    In the Radar dashboard, open the [Integrations](https://dashboard.radar.com/integrations) page, find the **Cordial** section, and select **Yes** for **Enabled**. Enter these values:
 
-Then, on the Radar [Integrations page](https://dashboard.radar.com/integrations#cordial) under _Cordial_, set _Enabled_ to _Yes_ and paste your API key. Note that you can set separate API keys and app identifiers for the _Test_ and _Live_ environments. Then, paste your async API endpoint, like `https://integrations-ingest-svc.usw2.cordial.com`. Finally, enter the secondary key.
+    | Field | Value |
+    | --- | --- |
+    | **Async API endpoint** | Required. Your Cordial async API endpoint, without a trailing path. Radar posts to `/api/createContactactivities` on this host. |
+    | **Live API key** | The API key for events from the Live environment. |
+    | **Test API key** | The API key for events from the Test environment. |
+    | **Cordial secondary key** | The name of the secondary key, for example `emailHash`. Leave empty if you identify contacts by Cordial contact ID only. |
 
-Whenever events are generated, Radar will send custom events and user attributes to Cordial.
+    Click **Save**.
+  </Step>
+  <Step title="Set the contact identifier in your app">
+    Set the metadata described in [Identity mapping](#identity-mapping).
+  </Step>
+</Steps>
 
-Set `metadata[cordial:{secondaryKey}]` to map Radar users to the secondary key on Cordial contacts. For example, if your secondary key is `emailHash`:
+## Identity mapping
+
+Radar doesn't use the Radar `userId` to identify a Cordial contact. It picks the identifier in this order:
+
+| Priority | Radar value | Sent to Cordial as |
+| --- | --- | --- |
+| 1 | `metadata.cordialId` | The `cID` contact identifier |
+| 2 | `metadata["cordial:{secondaryKey}"]`, where `{secondaryKey}` is the **Cordial secondary key** setting | The secondary key identifier, for example `emailHash` |
+
+If neither is set, Radar skips the event and logs `Identifier missing.`
+
+For example, if your secondary key is `emailHash`:
 
 <CodeGroup>
 
 ```swift Swift
+import RadarSDK
+
 Radar.setMetadata(["cordial:emailHash": emailHash])
 ```
 
-
 ```kotlin Kotlin
+import io.radar.sdk.Radar
+import org.json.JSONObject
+
 Radar.setMetadata(JSONObject().put("cordial:emailHash", emailHash))
 ```
 
 </CodeGroup>
 
+The metadata key must match the setting exactly, including case. `Radar.setMetadata()` replaces the whole metadata object, so include any other metadata keys you use in the same call. When the user logs out or changes, update the metadata so events stop going to the previous contact.
+
+Radar marks the contact as updatable in each request, so attributes are written to a contact that already exists.
+
 ## User mapping
 
-| Radar User Field                     | Cordial Contact Attribute                     | Type          | Example Value                                | Context Type                       |
-| ------------------------------------ | --------------------------------------------- | ------------- | -------------------------------------------- | ---------------------------------- |
-| `metadata[cordial:{secondaryKey}]`   | `{secondaryKey}`                              | string        | `"2aae6c35c94fcfb415dbe95f408b9ce91ee846ed"` |                                    |
-| `_id`                                | `radar_id`                                    | string        | `"5b2c0906f5874b001aecfd8d"`                 |                                    |
-| `location`                           | `current_location`                            | location      | `(39.525665, -76.350663)`                    |                                    |
-| `locationAuthorization`              | `radar_location_authorization`                | string        | `"GRANTED_FOREGROUND"`                       |                                    |
-| `locationAccuracyAuthorization`      | `radar_location_accuracy_authorization`       | string        | `"FULL"`                                     |                                    |
-| `updatedAt`                          | `radar_updated_at`                            | timestamp     | `"2018-06-22T15:23:39.000Z"`                 |                                    |
-| `segments[*].externalId`             | `radar_segment_external_ids`                  | array[string] | `["starbucks-visitors"]`                     |                                    |
-| `topChains[*].slug`                  | `radar_top_chain_slugs`                       | array[string] | `["starbucks", "walmart"]`                   |                                    |
-| `topChains[*].externalId`            | `radar_top_chain_external_ids`                | array[string] | `["123", "456"]`                             |                                    |
-| `geofences[*]._id`                   | `radar_geofence_ids`                          | array[string] | `["5b2c0906f5874b001aecfd8e"]`               | [Geofences](/geofencing/geofences) |
-| `geofences[*].description`           | `radar_geofence_descriptions`                 | array[string] | `["Store #123"]`                             | [Geofences](/geofencing/geofences) |
-| `geofences[*].tag`                   | `radar_geofence_tags`                         | array[string] | `["store"]`                                  | [Geofences](/geofencing/geofences) |
-| `geofences[*].externalId`            | `radar_geofence_external_ids`                 | array[string] | `["123"]`                                    | [Geofences](/geofencing/geofences) |
-| `place._id`                          | `radar_place_id`                              | string        | `"59302bcf8f27e8a156bd4f91"`                 | [Places](/geofencing/places)       |
-| `place.name`                         | `radar_place_name`                            | string        | `"Starbucks"`                                | [Places](/geofencing/places)       |
-| `place.categories`                   | `radar_place_categories`                      | array[string] | `["food-beverage", "cafe", "coffee-shop"]`   | [Places](/geofencing/places)       |
-| `place.chain.slug`                   | `radar_place_chain_id`                        | string        | `"starbucks"`                                | [Places](/geofencing/places)       |
-| `place.chain.name`                   | `radar_place_chain_name`                      | string        | `"Starbucks"`                                | [Places](/geofencing/places)       |
-| `country.code`                       | `radar_region_country_code`                   | string        | `"US"`                                       | [Regions](/geofencing/regions)     |
-| `country.name`                       | `radar_region_country_name`                   | string        | `"United States"`                            | [Regions](/geofencing/regions)     |
-| `state.code`                         | `radar_region_state_code`                     | string        | `"MD"`                                       | [Regions](/geofencing/regions)     |
-| `state.name`                         | `radar_region_state_name`                     | string        | `"Maryland"`                                 | [Regions](/geofencing/regions)     |
-| `dma.code`                           | `radar_region_dma_code`                       | string        | `"26"`                                       | [Regions](/geofencing/regions)     |
-| `dma.name`                           | `radar_region_dma_name`                       | string        | `"Baltimore"`                                | [Regions](/geofencing/regions)     |
-| `postalCode.code`                    | `radar_region_postal_code`                    | string        | `"21014"`                                    | [Regions](/geofencing/regions)     |
-| `trip.externalId`                    | `radar_trip_external_id`                      | string        | `"299"`                                      | [Trips](/geofencing/trips)         |
-| `trip.destinationGeofenceTag`        | `radar_trip_destination_geofence_tag`         | string        | `"store"`                                    | [Trips](/geofencing/trips)         |
-| `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string        | `"123"`                                      | [Trips](/geofencing/trips)         |
-| `beacons[*]._id`                     | `radar_beacon_ids`                            | array[string] | `["5b2c0906f5874b001aecfd8f]"`               | [Beacons](/geofencing/beacons)     |
-| `beacons[*].description`             | `radar_beacon_descriptions`                   | array[string] | `["Store #123 - Drive-Thru"]`                | [Beacons](/geofencing/beacons)     |
-| `beacons[*].tag`                     | `radar_beacon_tags`                           | array[string] | `["drive-thru"]`                             | [Beacons](/geofencing/beacons)     |
-| `beacons[*].externalId`              | `radar_beacon_external_ids`                   | array[string] | `["123"]`                                    | [Beacons](/geofencing/beacons)     |
+Radar sends these contact attributes with every request. Attributes for a context type are sent only when that feature is enabled for your project. An attribute with no current value is sent as `null`, and array attributes are sent as empty arrays.
+
+| Radar user field | Cordial contact attribute | Type | Example value | Context |
+| --- | --- | --- | --- | --- |
+| `metadata.cordialId` | `cID` identifier | string | Your Cordial contact ID | |
+| `metadata["cordial:{secondaryKey}"]` | `{secondaryKey}` identifier | string | `"2aae6c35c94fcfb415dbe95f408b9ce91ee846ed"` | |
+| `userId` | `radar_external_id` | string | `"user-123"` | |
+| `_id` | `radar_id` | string | `"5b2c0906f5874b001aecfd8d"` | |
+| `location` | `current_location` | object with `latitude` and `longitude` | `(39.525665, -76.350663)` | |
+| `locationAuthorization` | `radar_location_authorization` | string | `"GRANTED_FOREGROUND"` | |
+| `locationAccuracyAuthorization` | `radar_location_accuracy_authorization` | string | `"FULL"` | |
+| `updatedAt` | `radar_updated_at` | timestamp with UTC offset | `"2026-06-22T15:23:39+00:00"` | |
+| `segments[*].externalId` | `radar_segment_external_ids` | array[string] | `["coffee-visitors"]` | |
+| `topChains[*].slug` | `radar_top_chain_slugs` | array[string] | `["example-coffee", "example-grocery"]` | |
+| `topChains[*].externalId` | `radar_top_chain_external_ids` | array[string] | `["123", "456"]` | |
+| `geofences[*]._id` | `radar_geofence_ids` | array[string] | `["5b2c0906f5874b001aecfd8e"]` | Geofences |
+| `geofences[*].description` | `radar_geofence_descriptions` | array[string] | `["Store #42"]` | Geofences |
+| `geofences[*].tag` | `radar_geofence_tags` | array[string] | `["store"]` | Geofences |
+| `geofences[*].externalId` | `radar_geofence_external_ids` | array[string] | `["store-42"]` | Geofences |
+| `place._id` | `radar_place_id` | string | `"59302bcf8f27e8a156bd4f91"` | Places |
+| `place.name` | `radar_place_name` | string | `"Example Coffee"` | Places |
+| `place.categories` | `radar_place_categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | Places |
+| `place.chain.slug` | `radar_place_chain_id` | string | `"example-coffee"` | Places |
+| `place.chain.name` | `radar_place_chain_name` | string | `"Example Coffee"` | Places |
+| `place.chain.externalId` | `radar_place_chain_external_id` | string | `"123"` | Places |
+| `country.code` | `radar_region_country_code` | string | `"US"` | Regions |
+| `country.name` | `radar_region_country_name` | string | `"United States"` | Regions |
+| `state.code` | `radar_region_state_code` | string | `"MD"` | Regions |
+| `state.name` | `radar_region_state_name` | string | `"Maryland"` | Regions |
+| `dma.code` | `radar_region_dma_code` | string | `"26"` | Regions |
+| `dma.name` | `radar_region_dma_name` | string | `"Baltimore"` | Regions |
+| `postalCode.code` | `radar_region_postal_code` | string | `"21014"` | Regions |
+| `trip.externalId` | `radar_trip_external_id` | string | `"order-299"` | Trips |
+| `trip.destinationGeofenceTag` | `radar_trip_destination_geofence_tag` | string | `"store"` | Trips |
+| `trip.destinationGeofenceExternalId` | `radar_trip_destination_geofence_external_id` | string | `"store-42"` | Trips |
+| `beacons[*]._id` | `radar_beacon_ids` | array[string] | `["5b2c0906f5874b001aecfd8f"]` | Beacons |
+| `beacons[*].description` | `radar_beacon_descriptions` | array[string] | `["Store #42 - Drive-Thru"]` | Beacons |
+| `beacons[*].tag` | `radar_beacon_tags` | array[string] | `["drive-thru"]` | Beacons |
+| `beacons[*].externalId` | `radar_beacon_external_ids` | array[string] | `["123"]` | Beacons |
 
 ## Event mapping
 
-| Radar Event                         | Context Type                       | Cordial Event                  |
-| ----------------------------------- | ---------------------------------- | ------------------------------ |
-| `user.entered_geofence`             | [Geofences](/geofencing/geofences) | `entered_geofence`             |
-| `user.exited_geofence`              | [Geofences](/geofencing/geofences) | `exited_geofence`              |
-| `user.dwelled_in_geofence`          | [Geofences](/geofencing/geofences) | `dwelled_in_geofence`          |
-| `user.entered_place`                | [Places](/geofencing/places)       | `entered_place`                |
-| `user.exited_place`                 | [Places](/geofencing/places)       | `exited_place`                 |
-| `user.entered_region_country`       | [Regions](/geofencing/regions)     | `entered_country`              |
-| `user.exited_region_country`        | [Regions](/geofencing/regions)     | `exited_country`               |
-| `user.entered_region_state`         | [Regions](/geofencing/regions)     | `entered_state`                |
-| `user.exited_region_state`          | [Regions](/geofencing/regions)     | `exited_state`                 |
-| `user.entered_region_dma`           | [Regions](/geofencing/regions)     | `entered_dma`                  |
-| `user.exited_region_dma`            | [Regions](/geofencing/regions)     | `exited_dma`                   |
-| `user.started_trip`                 | [Trips](/geofencing/trips)         | `started_trip`                 |
-| `user.updated_trip`                 | [Trips](/geofencing/trips)         | `updated_trip`                 |
-| `user.approaching_trip_destination` | [Trips](/geofencing/trips)         | `approaching_trip_destination` |
-| `user.arrived_at_trip_destination`  | [Trips](/geofencing/trips)         | `arrived_at_trip_destination`  |
-| `user.stopped_trip`                 | [Trips](/geofencing/trips)         | `stopped_trip`                 |
-| `user.entered_beacon`               | [Beacons](/geofencing/beacons)     | `entered_beacon`               |
-| `user.exited_beacon`                | [Beacons](/geofencing/beacons)     | `exited_beacon`                |
+Each Radar event becomes a Cordial contact activity. The activity name is the Radar event type without the `user.` prefix.
+
+| Radar event | Cordial contact activity | Context |
+| --- | --- | --- |
+| `user.entered_geofence` | `entered_geofence` | Geofences |
+| `user.exited_geofence` | `exited_geofence` | Geofences |
+| `user.dwelled_in_geofence` | `dwelled_in_geofence` | Geofences |
+| `user.entered_place` | `entered_place` | Places |
+| `user.exited_place` | `exited_place` | Places |
+| `user.nearby_place_chain` | `nearby_place_chain` | Places |
+| `user.entered_region_country` | `entered_region_country` | Regions |
+| `user.exited_region_country` | `exited_region_country` | Regions |
+| `user.entered_region_state` | `entered_region_state` | Regions |
+| `user.exited_region_state` | `exited_region_state` | Regions |
+| `user.entered_region_dma` | `entered_region_dma` | Regions |
+| `user.exited_region_dma` | `exited_region_dma` | Regions |
+| `user.entered_region_postal_code` | `entered_region_postal_code` | Regions |
+| `user.exited_region_postal_code` | `exited_region_postal_code` | Regions |
+| `user.started_trip` | `started_trip` | Trips |
+| `user.updated_trip` | `updated_trip` | Trips |
+| `user.approaching_trip_destination` | `approaching_trip_destination` | Trips |
+| `user.arrived_at_trip_destination` | `arrived_at_trip_destination` | Trips |
+| `user.stopped_trip` | `stopped_trip` | Trips |
+| `user.entered_beacon` | `entered_beacon` | Beacons |
+| `user.exited_beacon` | `exited_beacon` | Beacons |
+
+Radar doesn't send other event types to Cordial.
+
+### Properties on every activity
+
+| Radar event field | Cordial activity property | Type | Example value |
+| --- | --- | --- | --- |
+| `location.coordinates[1]` | `latitude` | number | `39.525665` |
+| `location.coordinates[0]` | `longitude` | number | `-76.350663` |
+| `locationAccuracy` | `accuracy` | number (meters) | `12` |
+| `createdAt` | `created_at` | timestamp with UTC offset | `"2026-06-22T15:23:39+00:00"` |
+| `foreground` | `foreground` | boolean | `true` |
+| `replayed` | `replayed` | boolean, sent only when `true` | `true` |
+
+Radar also fills the activity's `time` with the event's `createdAt` and the activity's `geo` object with the event's coordinates and, when available, state name, postal code, and country name.
+
+When the event carries region context, Radar also sends:
+
+| Radar event field | Cordial activity property | Type | Example value |
+| --- | --- | --- | --- |
+| `country.code` | `country_code` | string | `"US"` |
+| `country.name` | `country_name` | string | `"United States"` |
+| `state.code` | `state_code` | string | `"MD"` |
+| `state.name` | `state_name` | string | `"Maryland"` |
+| `dma.code` | `dma_code` | string | `"26"` |
+| `dma.name` | `dma_name` | string | `"Baltimore"` |
+| `postalCode.code` | `postal_code` | string | `"21014"` |
 
 ### entered_geofence
 
-| Radar Event Field          | Cordial Event Property    | Type    | Example Value                |
-| -------------------------- | ------------------------- | ------- | ---------------------------- |
-| `geofence._id`             | `geofence_id`             | string  | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description`     | `geofence_description`    | string  | `"Store #123"`               |
-| `geofence.tag`             | `geofence_tag`            | string  | `"store"`                    |
-| `geofence.externalId`      | `geofence_external_id`    | string  | `"123"`                      |
-| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type    | `{value}`                    |
-| `confidence`               | `confidence`              | string  | `"high"`                     |
-| `foreground`               | `foreground`              | boolean | `true`                       |
-
-If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
-
-| Radar Event Field | Cordial Event Property | Type   | Example Value     |
-| ----------------- | ---------------------- | ------ | ----------------- |
-| `country.code`    | `country_code`         | string | `"US"`            |
-| `country.name`    | `country_name`         | string | `"United States"` |
-| `state.code`      | `state_code`           | string | `"MD"`            |
-| `state.name`      | `state_name`           | string | `"Maryland"`      |
-| `dma.code`        | `dma_code`             | string | `"26"`            |
-| `dma.name`        | `dma_name`             | string | `"Baltimore"`     |
-| `postalCode.code` | `postal_code`          | string | `"21014"`         |
+| Radar event field | Cordial activity property | Type | Example value |
+| --- | --- | --- | --- |
+| `geofence._id` | `geofence_id` | string | `"5b2c0906f5874b001aecfd8e"` |
+| `geofence.description` | `geofence_description` | string | `"Store #42"` |
+| `geofence.tag` | `geofence_tag` | string | `"store"` |
+| `geofence.externalId` | `geofence_external_id` | string | `"store-42"` |
+| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type of the value | `{value}` |
+| `geofence.geometryCenter` | `geofence_center` | object with `lat` and `lon` | `(39.5257, -76.3507)` |
+| `confidence` | `confidence` | string | `"high"` |
 
 ### exited_geofence
 
-| Radar Event Field          | Cordial Event Property    | Type             | Example Value                |
-| -------------------------- | ------------------------- | ---------------- | ---------------------------- |
-| `geofence._id`             | `geofence_id`             | string           | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description`     | `geofence_description`    | string           | `"Store #123"`               |
-| `geofence.tag`             | `geofence_tag`            | string           | `"store"`                    |
-| `geofence.externalId`      | `geofence_external_id`    | string           | `"123"`                      |
-| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type             | `{value}`                    |
-| `confidence`               | `confidence`              | string           | `"high"`                     |
-| `duration`                 | `duration`                | number (minutes) | `42.1`                       |
-| `foreground`               | `foreground`              | boolean          | `true`                       |
+Same properties as [`entered_geofence`](#entered_geofence), plus:
 
-If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
-
-| Radar Event Field | Cordial Event Property | Type   | Example Value     |
-| ----------------- | ---------------------- | ------ | ----------------- |
-| `country.code`    | `country_code`         | string | `"US"`            |
-| `country.name`    | `country_name`         | string | `"United States"` |
-| `state.code`      | `state_code`           | string | `"MD"`            |
-| `state.name`      | `state_name`           | string | `"Maryland"`      |
-| `dma.code`        | `dma_code`             | string | `"26"`            |
-| `dma.name`        | `dma_name`             | string | `"Baltimore"`     |
-| `postalCode.code` | `postal_code`          | string | `"21014"`         |
+| Radar event field | Cordial activity property | Type | Example value |
+| --- | --- | --- | --- |
+| `duration` | `duration` | number (minutes) | `42.1` |
 
 ### dwelled_in_geofence
 
-| Radar Event Field          | Cordial Event Property    | Type             | Example Value                |
-| -------------------------- | ------------------------- | ---------------- | ---------------------------- |
-| `geofence._id`             | `geofence_id`             | string           | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description`     | `geofence_description`    | string           | `"Store #123"`               |
-| `geofence.tag`             | `geofence_tag`            | string           | `"store"`                    |
-| `geofence.externalId`      | `geofence_external_id`    | string           | `"123"`                      |
-| `geofence.metadata[{key}]` | `geofence_metadata_{key}` | type             | `{value}`                    |
-| `confidence`               | `confidence`              | string           | `"high"`                     |
-| `duration`                 | `duration`                | number (minutes) | `5`                          |
-| `foreground`               | `foreground`              | boolean          | `true`                       |
-
-If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
-
-| Radar Event Field | Cordial Event Property | Type   | Example Value     |
-| ----------------- | ---------------------- | ------ | ----------------- |
-| `country.code`    | `country_code`         | string | `"US"`            |
-| `country.name`    | `country_name`         | string | `"United States"` |
-| `state.code`      | `state_code`           | string | `"MD"`            |
-| `state.name`      | `state_name`           | string | `"Maryland"`      |
-| `dma.code`        | `dma_code`             | string | `"26"`            |
-| `dma.name`        | `dma_name`             | string | `"Baltimore"`     |
-| `postalCode.code` | `postal_code`          | string | `"21014"`         |
+Same properties as [`exited_geofence`](#exited_geofence). `duration` is the time in the geofence so far.
 
 ### entered_place
 
-| Radar Event Field             | Cordial Event Property       | Type                     | Example Value                      |
-| ----------------------------- | ---------------------------- | ------------------------ | ---------------------------------- |
-| `place._id`                   | `place_id`                   | string                   | `"59302bcf8f27e8a156bd4f91"`       |
-| `place.name`                  | `place_name`                 | string                   | `"Starbucks"`                      |
-| `place.chain.slug`            | `place_chain_id`             | string                   | `"starbucks"`                      |
-| `place.chain.name`            | `place_chain_name`           | string                   | `"Starbucks"`                      |
-| `place.chain.externalId`      | `place_chain_external_id`    | string                   | `"123"`                            |
-| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | type                     | `{value}`                          |
-| `place.categories`            | `place_categories`           | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` |
-| `confidence`                  | `confidence`                 | string                   | `"high"`                           |
-| `foreground`                  | `foreground`                 | boolean                  | `true`                             |
-
-If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
-
-| Radar Event Field | Cordial Event Property | Type   | Example Value     |
-| ----------------- | ---------------------- | ------ | ----------------- |
-| `country.code`    | `country_code`         | string | `"US"`            |
-| `country.name`    | `country_name`         | string | `"United States"` |
-| `state.code`      | `state_code`           | string | `"MD"`            |
-| `state.name`      | `state_name`           | string | `"Maryland"`      |
-| `dma.code`        | `dma_code`             | string | `"26"`            |
-| `dma.name`        | `dma_name`             | string | `"Baltimore"`     |
-| `postalCode.code` | `postal_code`          | string | `"21014"`         |
+| Radar event field | Cordial activity property | Type | Example value |
+| --- | --- | --- | --- |
+| `place._id` | `place_id` | string | `"59302bcf8f27e8a156bd4f91"` |
+| `place.name` | `place_name` | string | `"Example Coffee"` |
+| `place.chain.slug` | `place_chain_id` | string | `"example-coffee"` |
+| `place.chain.name` | `place_chain_name` | string | `"Example Coffee"` |
+| `place.chain.externalId` | `place_chain_external_id` | string | `"123"` |
+| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | type of the value | `{value}` |
+| `place.categories` | `place_categories` | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` |
+| `confidence` | `confidence` | string | `"high"` |
 
 ### exited_place
 
-| Radar Event Field             | Cordial Event Property       | Type                     | Example Value                      |
-| ----------------------------- | ---------------------------- | ------------------------ | ---------------------------------- |
-| `place._id`                   | `place_id`                   | string                   | `"59302bcf8f27e8a156bd4f91"`       |
-| `place.name`                  | `place_name`                 | string                   | `"Starbucks"`                      |
-| `place.chain.slug`            | `place_chain_id`             | string                   | `"starbucks"`                      |
-| `place.chain.name`            | `place_chain_name`           | string                   | `"Starbucks"`                      |
-| `place.chain.externalId`      | `place_chain_external_id`    | string                   | `"123"`                            |
-| `place.chain.metadata[{key}]` | `place_chain_metadata_{key}` | type                     | `{value}`                          |
-| `place.categories`            | `place_categories`           | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` |
-| `confidence`                  | `confidence`                 | string                   | `"high"`                           |
-| `duration`                    | `duration`                   | number (minutes)         | `42.1`                             |
-| `foreground`                  | `foreground`                 | boolean                  | `true`                             |
+Same properties as [`entered_place`](#entered_place), plus `duration` (number, minutes).
 
-If [Regions](/geofencing/regions) is enabled, Radar will also send the following attributes:
+### Region activities
 
-| Radar Event Field | Cordial Event Property | Type   | Example Value     |
-| ----------------- | ---------------------- | ------ | ----------------- |
-| `country.code`    | `country_code`         | string | `"US"`            |
-| `country.name`    | `country_name`         | string | `"United States"` |
-| `state.code`      | `state_code`           | string | `"MD"`            |
-| `state.name`      | `state_name`           | string | `"Maryland"`      |
-| `dma.code`        | `dma_code`             | string | `"26"`            |
-| `dma.name`        | `dma_name`             | string | `"Baltimore"`     |
-| `postalCode.code` | `postal_code`          | string | `"21014"`         |
+`entered_region_country`, `exited_region_country`, `entered_region_state`, `exited_region_state`, `entered_region_dma`, `exited_region_dma`, `entered_region_postal_code`, and `exited_region_postal_code` carry:
 
-### entered_country
-
-| Radar Event Attribute | Cordial Event Property | Type    | Example Value     |
-| --------------------- | ---------------------- | ------- | ----------------- |
-| `region.code`         | `region_code`          | string  | `"US"`            |
-| `region.name`         | `region_name`          | string  | `"United States"` |
-| `confidence`          | `confidence`           | string  | `"high"`          |
-| `foreground`          | `foreground`           | boolean | `true`            |
-
-### exited_country
-
-| Radar Event Attribute | Cordial Event Property | Type    | Example Value     |
-| --------------------- | ---------------------- | ------- | ----------------- |
-| `region.code`         | `region_code`          | string  | `"US"`            |
-| `region.name`         | `region_name`          | string  | `"United States"` |
-| `confidence`          | `confidence`           | string  | `"high"`          |
-| `foreground`          | `foreground`           | boolean | `true`            |
-
-### entered_state
-
-| Radar Event Attribute | Cordial Event Property | Type    | Example Value |
-| --------------------- | ---------------------- | ------- | ------------- |
-| `region.code`         | `region_code`          | string  | `"MD"`        |
-| `region.name`         | `region_name`          | string  | `"Maryland"`  |
-| `confidence`          | `confidence`           | string  | `"high"`      |
-| `foreground`          | `foreground`           | boolean | `true`        |
-
-### exited_state
-
-| Radar Event Attribute | Cordial Event Property | Type    | Example Value |
-| --------------------- | ---------------------- | ------- | ------------- |
-| `region.code`         | `region_code`          | string  | `"MD"`        |
-| `region.name`         | `region_name`          | string  | `"Maryland"`  |
-| `confidence`          | `confidence`           | string  | `"high"`      |
-| `foreground`          | `foreground`           | boolean | `true`        |
-
-### entered_dma
-
-| Radar Event Attribute | Cordial Event Property | Type    | Example Value |
-| --------------------- | ---------------------- | ------- | ------------- |
-| `region.code`         | `region_code`          | string  | `"26"`        |
-| `region.name`         | `region_name`          | string  | `"Baltimore"` |
-| `confidence`          | `confidence`           | string  | `"high"`      |
-| `foreground`          | `foreground`           | boolean | `true`        |
-
-### exited_dma
-
-| Radar Event Attribute | Cordial Event Property | Type    | Example Value |
-| --------------------- | ---------------------- | ------- | ------------- |
-| `region.code`         | `region_code`          | string  | `"26"`        |
-| `region.name`         | `region_name`          | string  | `"Baltimore"` |
-| `confidence`          | `confidence`           | string  | `"high"`      |
-| `foreground`          | `foreground`           | boolean | `true`        |
+| Radar event field | Cordial activity property | Type | Example value |
+| --- | --- | --- | --- |
+| `region.code` | `region_code` | string | `"MD"` |
+| `region.name` | `region_name` | string | `"Maryland"` |
+| `confidence` | `confidence` | string | `"high"` |
 
 ### started_trip
 
-| Radar Event Attribute                | Cordial Event Property                  | Type    | Example Value |
-| ------------------------------------ | --------------------------------------- | ------- | ------------- |
-| `trip.externalId`                    | `trip_external_id`                      | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | type    | `{value}`     |
-| `trip.destinationGeofenceTag`        | `trip_destination_geofence_tag`         | string  | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string  | `"123"`       |
-| `foreground`                         | `foreground`                            | boolean | `true`        |
+| Radar event field | Cordial activity property | Type | Example value |
+| --- | --- | --- | --- |
+| `trip.externalId` | `trip_external_id` | string | `"order-299"` |
+| `trip.metadata[{key}]` | `trip_metadata_{key}` | type of the value | `{value}` |
+| `trip.destinationGeofenceTag` | `trip_destination_geofence_tag` | string | `"store"` |
+| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string | `"store-42"` |
+| `confidence` | `confidence` | string | `"high"` |
 
 ### updated_trip
 
-| Radar Event Attribute                | Cordial Event Property                  | Type    | Example Value |
-| ------------------------------------ | --------------------------------------- | ------- | ------------- |
-| `trip.externalId`                    | `trip_external_id`                      | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | type    | `{value}`     |
-| `trip.destinationGeofenceTag`        | `trip_destination_geofence_tag`         | string  | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string  | `"123"`       |
-| `foreground`                         | `foreground`                            | boolean | `true`        |
+Same properties as [`started_trip`](#started_trip).
 
 ### approaching_trip_destination
 
-| Radar Event Attribute                | Cordial Event Property                  | Type    | Example Value |
-| ------------------------------------ | --------------------------------------- | ------- | ------------- |
-| `trip.externalId`                    | `trip_external_id`                      | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | type    | `{value}`     |
-| `trip.destinationGeofenceTag`        | `trip_destination_geofence_tag`         | string  | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string  | `"123"`       |
-| `foreground`                         | `foreground`                            | boolean | `true`        |
+Same properties as [`started_trip`](#started_trip).
 
 ### arrived_at_trip_destination
 
-| Radar Event Attribute                | Cordial Event Property                  | Type    | Example Value |
-| ------------------------------------ | --------------------------------------- | ------- | ------------- |
-| `trip.externalId`                    | `trip_external_id`                      | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | type    | `{value}`     |
-| `trip.destinationGeofenceTag`        | `trip_destination_geofence_tag`         | string  | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string  | `"123"`       |
-| `foreground`                         | `foreground`                            | boolean | `true`        |
+Same properties as [`started_trip`](#started_trip).
 
 ### stopped_trip
 
-| Radar Event Attribute                | Cordial Event Property                  | Type    | Example Value |
-| ------------------------------------ | --------------------------------------- | ------- | ------------- |
-| `trip.externalId`                    | `trip_external_id`                      | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `trip_metadata_{key}`                   | type    | `{value}`     |
-| `trip.destinationGeofenceTag`        | `trip_destination_geofence_tag`         | string  | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `trip_destination_geofence_external_id` | string  | `"123"`       |
-| `foreground`                         | `foreground`                            | boolean | `true`        |
+Same properties as [`started_trip`](#started_trip).
 
 ### entered_beacon
 
-| Radar Event Attribute    | Cordial Event Property       | Type    | Example Value                |
-| ------------------------ | ---------------------------- | ------- | ---------------------------- |
-| `beacon._id`             | `beacon_id`                  | string  | `"5b2c0906f5874b001aecfd8f"` |
-| `beacon.description`     | `radar_beacon_description`   | string  | `"Store #123 - Drive-Thru"`  |
-| `beacon.tag`             | `radar_beacon_tag`           | string  | `"drive-thru"`               |
-| `beacon.externalId`      | `radar_beacon_external_id`   | string  | `"123"`                      |
-| `beacon.metadata[{key}]` | `radar_beacon_metadata{key}` | type    | `{value}`                    |
-| `confidence`             | `confidence`                 | string  | `"high"`                     |
-| `foreground`             | `foreground`                 | boolean | `true`                       |
+| Radar event field | Cordial activity property | Type | Example value |
+| --- | --- | --- | --- |
+| `beacon._id` | `beacon_id` | string | `"5b2c0906f5874b001aecfd8f"` |
+| `beacon.description` | `beacon_description` | string | `"Store #42 - Drive-Thru"` |
+| `beacon.tag` | `beacon_tag` | string | `"drive-thru"` |
+| `beacon.externalId` | `beacon_external_id` | string | `"123"` |
+| `beacon.metadata[{key}]` | `beacon_metadata_{key}` | type of the value | `{value}` |
+| `confidence` | `confidence` | string | `"high"` |
 
 ### exited_beacon
 
-| Radar Event Attribute    | Cordial Event Property       | Type             | Example Value                |
-| ------------------------ | ---------------------------- | ---------------- | ---------------------------- |
-| `beacon._id`             | `beacon_id`                  | string           | `"5b2c0906f5874b001aecfd8f"` |
-| `beacon.description`     | `radar_beacon_description`   | string           | `"Store #123 - Drive-Thru"`  |
-| `beacon.tag`             | `radar_beacon_tag`           | string           | `"drive-thru"`               |
-| `beacon.externalId`      | `radar_beacon_external_id`   | string           | `"123"`                      |
-| `beacon.metadata[{key}]` | `radar_beacon_metadata{key}` | type             | `{value}`                    |
-| `confidence`             | `confidence`                 | string           | `"high"`                     |
-| `duration`               | `radar_duration`             | number (minutes) | `1.42`                       |
-| `foreground`             | `foreground`                 | boolean          | `true`                       |
+Same properties as [`entered_beacon`](#entered_beacon), plus `duration` (number, minutes).
 
+## Filtering
+
+On the [Integrations](https://dashboard.radar.com/integrations) page, click **Show advanced** in the **Cordial** section.
+
+| Setting | Effect |
+| --- | --- |
+| **Event type allowlist** | Radar sends only the selected event types. Check this list first when an activity you expect is missing. |
+| **Request key blocklist** | Comma-separated keys to remove from the request, for example `radar_geofence_ids,geofence_id`. Applies to contact attributes and activity properties. |
+| **Geofence tag blocklist** | Comma-separated geofence tags. Radar skips events for geofences with these tags. |
+
+For the filters that every event integration shares, see [Filters](/integrations/integrations#filters).
+
+## Delivery behavior
+
+- Radar sends to Cordial only when it generates an event for the user. A location update that produces no event doesn't update contact attributes.
+- Events generated by one location update are sent together in one request, with the contact attributes.
+- Delivery is asynchronous and doesn't block the SDK. Radar posts to Cordial's asynchronous API, so a `2xx` response in the Radar logs means Cordial accepted the request.
+- Radar sends each request once. It doesn't retry a request that Cordial rejects or that times out. The outcome is recorded in the integration logs.
+- Events without a location aren't sent.
+- Events from the Test environment use the Test API key, and events from the Live environment use the Live API key. Both use the same endpoint and secondary key.
+
+## Verify integration data delivery
+
+<Steps>
+  <Step title="Prepare a test contact">
+    On a test device, set the contact identifier in Radar metadata for a contact that exists in Cordial.
+  </Step>
+  <Step title="Generate an event">
+    Generate an event for that user. Either open the [Simulator](https://dashboard.radar.com/geofencing/simulate) page, choose the user, and move it into a geofence, or use a test build of your app and enter the geofence.
+  </Step>
+  <Step title="Check Radar's log">
+    On the [Events](https://dashboard.radar.com/geofencing/events) page, click **View** on the new event and find the **Logs** section. Confirm that it shows a Cordial request to `/api/createContactactivities` with a `2xx` response.
+  </Step>
+  <Step title="Check Cordial">
+    In Cordial, open the contact and confirm the `entered_geofence` activity and the `radar_geofence_tags` attribute.
+  </Step>
+</Steps>
+
+## Troubleshoot delivery
+
+Click **View integration logs** in the **Cordial** section of the [Integrations](https://dashboard.radar.com/integrations) page. Each row shows the timestamp, the request URL, and the response code, and expands to the request and response bodies. New rows can take a few minutes to appear.
+
+| Log response | Meaning |
+| --- | --- |
+| `skipped`: `Integration key(s) missing.` | No API key for the event's environment. |
+| `skipped`: `Identifier missing.` | The user has neither `metadata.cordialId` nor the `cordial:{secondaryKey}` metadata key that matches the setting. |
+| `skipped`, "Event type ... isn't allowed." | The event type isn't selected in the allowlist. |
+| `skipped`: `Geofence tag '...' is blocklisted.` | The geofence tag is in the blocklist. |
+| A `4xx` response | Cordial rejected the request. The response body in the log gives the reason. Check the API key, its permissions, and the async API endpoint. |
+| `2xx`, but no data on the contact | Check that the identifier value matches the Cordial contact you are looking at, then ask the Cordial team how the request was processed. |
+
+## Limitations
+
+- A user without a Cordial identifier in metadata is skipped. The Radar `userId` alone isn't enough.
+- Contact attributes are updated only when an event is generated.
+- There is one async API endpoint and one secondary key setting for both environments.
+- There is no automatic retry. A request that fails during a Cordial outage isn't resent.
+- Events without a location, and event types not listed under [Event mapping](#event-mapping), aren't sent.

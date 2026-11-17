@@ -1,373 +1,390 @@
 ---
 title: "Iterable"
-description: "Send Radar location events and user data to Iterable to trigger location-based messages."
+description: "Send Radar location events and user data fields to Iterable to trigger and target location-based messages."
 ---
 
 <Info>
-  The Iterable integration is available on the [**Enterprise plan**](https://radar.com/pricing).
+  The Iterable integration is available on the [Enterprise plan](https://radar.com/pricing).
 </Info>
 
-Radar can send custom events and user data to [Iterable](https://iterable.com).
+By the end of this page, Radar sends a custom event to [Iterable](https://iterable.com) for each location event it generates and updates the user's Radar data fields, and you have confirmed delivery for one test user.
 
-Use the Iterable integration to send location-triggered and location-targeted messages to increase engagement and conversion.
+Radar sends this data from its servers to the Iterable API at `https://api.iterable.com/api`. Your app only needs to make sure Radar and Iterable agree on the user ID.
+
+## Prerequisites
+
+- A Radar project on the Enterprise plan, with the Radar SDK generating events. See [Detect geofence events and place visits](/geofencing/geofences-and-places).
+- An Iterable project, with permission to create API keys.
+- Users identified in Iterable by `userId`. Radar sends a `userId`, not an email address.
 
 ## Configuration
 
-On the Iterable _API Keys_ page, create and copy a Mobile API key.
+<Steps>
+  <Step title="Create an Iterable API key">
+    In Iterable, open the **API Keys** page, create a Mobile API key, and copy it. Create a second key in your test project if you keep test data separate.
+  </Step>
+  <Step title="Enter the keys in Radar">
+    In the Radar dashboard, open the [Integrations](https://dashboard.radar.com/integrations) page, find the **Iterable** section, and select **Yes** for **Enabled**. Enter the keys in **Live API key** and **Test API key**, then click **Save**.
+  </Step>
+  <Step title="Align user IDs in your app">
+    Make the Radar user ID match the Iterable user ID, or set the Iterable user ID in Radar metadata. See [Identity mapping](#identity-mapping).
+  </Step>
+</Steps>
 
-Then, on the Radar [Integrations page](https://dashboard.radar.com/integrations) under _Iterable_, set _Enabled_ to _Yes_ and paste your key. Note that you can set separate keys for the _Test_ and _Live_ environments.
+## Identity mapping
 
-Whenever events are generated, Radar will send custom events and user data to Iterable.
+Radar picks the Iterable `userId` in this order:
 
-User IDs must be aligned between Iterable and Radar for the integration to function properly. This is easiest if the user ID in matches the Iterable user ID. For example:
+| Priority | Radar value | Sent to Iterable as |
+| --- | --- | --- |
+| 1 | `metadata["iterable:user_id"]` | `userId` |
+| 2 | `userId` | `userId` |
+
+If neither is set, Radar skips the event and logs `Identifier missing.` Anonymous Radar users aren't sent to Iterable.
+
+The simplest setup uses the same ID in both SDKs:
 
 <CodeGroup>
 
 ```swift Swift
+import RadarSDK
+
+// The Iterable call depends on your Iterable SDK version.
 IterableAPI.userId = userId
 Radar.setUserId(userId)
-let dataField = ["userId": userId]
-IterableAPI.updateUser(dataField, mergeNestedObjects: false)
 ```
 
-
 ```kotlin Kotlin
+import io.radar.sdk.Radar
+
+// The Iterable call depends on your Iterable SDK version.
 IterableApi.getInstance().setUserId(userId)
 Radar.setUserId(userId)
-val dataFields = JSONObject()
-dataFields.put("userId",userId)
-IterableApi.getInstance().updateUser(dataFields)
 ```
 
 </CodeGroup>
 
-
-If your Iterable user ID differs from your Radar user ID, you can instead specify the Iterable user ID in your user's metadata. When set, this value will be used as the `userId` in the Iterable integration instead of the Radar user ID.
-
+If your Iterable user ID differs from your Radar user ID, set it in Radar metadata. Radar then uses this value as the Iterable `userId`.
 
 <CodeGroup>
 
 ```swift Swift
+import RadarSDK
+
 Radar.setMetadata(["iterable:user_id": iterableUserId])
 ```
 
 ```kotlin Kotlin
-val metadata = JSONObject()
-metadata.put("iterable:user_id", iterableUserId)
-Radar.setMetadata(metadata)
+import io.radar.sdk.Radar
+import org.json.JSONObject
+
+Radar.setMetadata(JSONObject().put("iterable:user_id", iterableUserId))
 ```
 
 </CodeGroup>
 
-## Example use cases
-
-Learn how to create powerful location-based messaging campaigns using Radar and Iterable.
-
-### Send a personalized push notification when user is near a store
-
-You'll need access to both Radar and Iterable to build this messaging campaign. In this campaign, we'll set up a simple push notification based on a Radar geofence entry event.
-
-#### Configure geofences in Radar
-
-1. First, ensure your [Geofences](/geofencing/geofences) are configured in Radar. For a "nearby" use case, we typically suggest something like a 500 meter radius. You may also want to take advantage of _isochrone_ (time-based) geofences, which would allow you to define, for example, a geofence with boundaries set to all points within a 10 minute walk from your target location.
-2. Note the **tag** for the nearby geofences you've set up in step one. You can find your geofence tags in Radar by viewing your [geofences](https://dashboard.radar.com/geofencing/geofences).
-
-#### Create a new Journey in Iterable
-
-3. In Iterable, navigate to [Journeys](https://app.iterable.com/workflows) and click **\+ New journey**. For more on Journeys in Iterable, please refer to [Iterable's documentation](https://support.iterable.com/hc/en-us/articles/4405798856212-Introduction-to-Journeys-).
-4. New Journeys in Iterable have a "start" node by default. Double click this node and change the **Received Api Trigger** dropdown value to **Triggered Custom Event**. Under _Event name_, start typing _Radar_ and you should see a list of available events begin to auto-populate. Select _radarGeofenceEntered_.
-5. Change the **Use Filter** option to _Yes_.
-6. Where it says **Select a property**, start typing _RadarGeofence_ and look for the _radarGeofenceEntered.geofenceTag_ property. Set this property to _contain_ (use Iterable's **Contains** operator) the tag you set up in step one and verified in step two.
-7. Click **Update Node**.
-8. Add a new node via Iterable's drag and drop functionality. For this example, drag in the **Send Push** node, then connect the _Start_ node with the _Send Push_ node.
-
-#### Set up a push notification template in Iterable
-
- 9. Now, we'll need to create an [Iterable Template](https://support.iterable.com/hc/en-us/articles/205480315-Introduction-to-Templates-) to create a personalized push to be used for this campaign. Navigate to Content -\> Templates, and click **\+ New template** -\> **Push** -\> **Create template** (giving it a name as needed).
-10. We're going to customize the title of the Template using data from Radar so your message can say "You're near `{{Store name}}` ", with `{{Store name}}` representing the name of the nearby store whose geofence the user has entered. In the **Title** text box, enter `**{{radarGeofenceEntered.geofenceDescription}}**`. This syntax is called _Handlebar_ notation. You can read more about it in Iterable's [documentation](https://support.iterable.com/hc/en-us/articles/205480365-Using-Merge-Parameters-and-Handlebars-Logic-for-Personalization).
-11. Add in a Push message, then click **Save Template**.
-12. Back in the _Journey_, double click on the **Send mobile push** node and change the template to the one you just created.
-
-#### Test your campaign
-
-To test this campaign, you can either trigger the Journey on a test app by moving physically into the geofence, _or_ you can take advantage of the [Radar simulator](/geofencing/testing#simulator). The simulator allows you to simulate a specific user as if they were moving throughout the world.
-
-Navigate to the **Users** page in Radar and select a user who exists in Iterable and is linked via Radar user id. Then, click the _Simulate_ button at the top of the page. Click around on the map and enter a geofence which will trigger the campaign you built in the steps above. If hooked up correctly, you should receive the relevant notification on your device.
-
-### Filter users in an Iterable Journey whose last known location is X minutes away from a store
-
-You'll need access to both Radar and Iterable to build this messaging campaign. In this example, we'll set up a push campaign that is sent to users who have opened an email associated with a specific Iterable campaign **and** are within 10 minutes drive of a store. We can add isochrone (time-based) geofences (via import, the UI, or the API) in Radar to support this use case.
-
-#### Configure geofences in Radar
-
-1. First, let's configure [Geofences](/geofencing/geofences) in Radar. Read more about creating geofences [here](/geofencing/geofences#create-geofences). Set up isochrone geofences with a 10 minute drive time.
-2. Note the **tag** for the 10 minute drive geofences you've set up in step one. You can find your geofence tags in Radar by viewing your [geofences](https://dashboard.radar.com/geofencing/geofences).
-
-#### Create a new Journey in Iterable
-
-3. In Iterable, navigate to [Journeys](https://app.iterable.com/workflows) and click **\+ New journey**. For more on Journeys in Iterable, please refer to [Iterable's documentation](https://support.iterable.com/hc/en-us/articles/4405798856212-Introduction-to-Journeys-).
-4. Iterable will start your Journey with a "start" node by default. Double click this node and change the **Received Api Trigger** dropdown value to **Opened An Email**. Select the campaign and filter as desired. Click **Update Node**.
-5. Now, we'll add a new node that filters this initial trigger down based on Radar data. Under _Filters_ on the left sidebar of Iterable's Journey builder, drag **Fields Match** in below the Start node.
-6. Double click on this new **Filter users** node. Where it says _Choose a property_, select _Contact Property_. Type in _radarGeofenceTags_, and set it to _contain_ (use Iterable's **Contains** operator) the tag you set up in step one and verified in step two. Click **Update Node**.
-7. Connect the _Start_ node with the _Filter users_ node.
-
-#### Set up a push notification template in Iterable
-
- 8. Now, we'll need to create an [Iterable Template](https://support.iterable.com/hc/en-us/articles/205480315-Introduction-to-Templates-) to create a personalized push to be used for this campaign. Navigate to Content -\> Templates, and click **\+ New template** -\> **Push** -\> **Create template** (giving it a name as needed).
- 9. Add in a Push message, then click **Save Template**.
-10. Back in the _Journey_, drag a _Send Push_ action into the Journey builder. Double click on the **Send mobile push** node and change the template to the one you just created. Finally, drag from the _Yes_ option under the _Filter users_ node to the _Send Push_ node to finish the Journey connection.
-
-#### Test your campaign
-
-To test this campaign, you can either trigger the Journey on a test app by moving physically into the geofence, _or_ you can take advantage of the [Radar simulator](/geofencing/testing#simulator). The simulator allows you to simulate a specific user as if they were moving throughout the world.
-
-Navigate to the **Users** page in Radar and select a user who exists in Iterable and is linked via Radar user id. Then, click the _Simulate_ button at the top of the page. Click around on the map and enter a geofence which will trigger the campaign you built in the steps above. If hooked up correctly, you should receive the relevant notification on your device.
+`Radar.setMetadata()` replaces the whole metadata object, so include any other metadata keys you use in the same call. When the user logs out or changes, update the user ID or metadata so events stop going to the previous user.
 
 ## User mapping
 
-Note that Radar uses the special string `"(null)"` to represent `null` user data field values.
+After each event, Radar calls Iterable's `users/update` endpoint with these data fields. A field with no current value is sent as the string `"(null)"`, so filter on that string, not on an empty field.
 
-| Radar User Field                     | Iterable User Data Field                 | Type          | Example Value                              | Context Type                       |
-| ------------------------------------ | ---------------------------------------- | ------------- | ------------------------------------------ | ---------------------------------- |
-| `userId` or `metadata['iterable:user_id']` | `userId`                           | string        | `"1"`                                      |                                    |
-| `location.coordinates[0]`            | `radar_geo_location.lon`                 | number        | `-76.350663`                               |                                    |
-| `location.coordinates[1]`            | `radar_geo_location.lat`                 | number        | `39.525665`                                |                                    |
-| `locationAuthorization`              | `radarLocationAuthorization`             | string        | `"GRANTED_FOREGROUND"`                     |                                    |
-| `locationAccuracyAuthorization`      | `radarLocationAccuracyAuthorization`     | string        | `"FULL"`                                   |                                    |
-| `_id`                                | `radarId`                                | string        | `"5b2c0906f5874b001aecfd8d"`               |                                    |
-| `updatedAt`                          | `radarUpdatedAt`                         | timestamp     | `"2018-06-22T15:23:39.000Z"`               |                                    |
-| `segments[*].externalId`             | `radarSegmentExternalIds`                | array[string] | `["starbucks-visitors"]`                   |                                    |
-| `topChains[*].slug`                  | `radarTopChainSlugs`                     | array[string] | `["starbucks", "walmart"]`                 |                                    |
-| `topChains[*].externalId`            | `radarTopChainExternalIds`               | array[string] | `["123", "456"]`                           |                                    |
-| `geofences[*]._id`                   | `radarGeofenceIds`                       | array[string] | `["5b2c0906f5874b001aecfd8e"]`             | [Geofences](/geofencing/geofences) |
-| `geofences[*].description`           | `radarGeofenceDescriptions`              | array[string] | `["Store #123"]`                           | [Geofences](/geofencing/geofences) |
-| `geofences[*].tag`                   | `radarGeofenceTags`                      | array[string] | `["store"]`                                | [Geofences](/geofencing/geofences) |
-| `geofences[*].externalId`            | `radarGeofenceExternalIds`               | array[string] | `["123"]`                                  | [Geofences](/geofencing/geofences) |
-| `place._id`                          | `radarPlaceId`                           | string        | `"59302bcf8f27e8a156bd4f91"`               | [Places](/geofencing/places)       |
-| `place.name`                         | `radarPlaceName`                         | string        | `"Starbucks"`                              | [Places](/geofencing/places)       |
-| `place.categories`                   | `radarPlaceCategories`                   | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | [Places](/geofencing/places)       |
-| `place.chain.slug`                   | `radarPlaceChainSlug`                    | string        | `"starbucks"`                              | [Places](/geofencing/places)       |
-| `place.chain.name`                   | `radarPlaceChainName`                    | string        | `"Starbucks"`                              | [Places](/geofencing/places)       |
-| `country.code`                       | `radarRegionCountryCode`                 | string        | `"US"`                                     | [Regions](/geofencing/regions)     |
-| `country.name`                       | `radarRegionCountryName`                 | string        | `"United States"`                          | [Regions](/geofencing/regions)     |
-| `state.code`                         | `radarRegionStateCode`                   | string        | `"MD"`                                     | [Regions](/geofencing/regions)     |
-| `state.name`                         | `radarRegionStateName`                   | string        | `"Maryland"`                               | [Regions](/geofencing/regions)     |
-| `dma.code`                           | `radarRegionDMACode`                     | string        | `"26"`                                     | [Regions](/geofencing/regions)     |
-| `dma.name`                           | `radarRegionDMAName`                     | string        | `"Baltimore"`                              | [Regions](/geofencing/regions)     |
-| `postalCode.code`                    | `radarRegionPostalCode`                  | string        | `"21014"`                                  | [Regions](/geofencing/regions)     |
-| `trip.externalId`                    | `radarTripExternalId`                    | string        | `"299"`                                    | [Trip Tracking](/geofencing/trips) |
-| `trip.destinationGeofenceTag`        | `radarTripDestinationGeofenceTag`        | string        | `"store"`                                  | [Trip Tracking](/geofencing/trips) |
-| `trip.destinationGeofenceExternalId` | `radarTripDestinationGeofenceExternalId` | string        | `"123"`                                    | [Trip Tracking](/geofencing/trips) |
-| `beacons[*]._id`                     | `radarBeaconIds`                         | array[string] | `["5b2c0906f5874b001aecfd8f"]`             | [Beacons](/geofencing/beacons)     |
-| `beacons[*].description`             | `radarBeaconDescriptions`                | array[string] | `["Store #123 - Drive-Thru"]`              | [Beacons](/geofencing/beacons)     |
-| `beacons[*].tag`                     | `radarBeaconTags`                        | array[string] | `["drive-thru"]`                           | [Beacons](/geofencing/beacons)     |
-| `beacons[*].externalId`              | `radarBeaconExternalIds`                 | array[string] | `["123"]`                                  | [Beacons](/geofencing/beacons)     |
+| Radar user field | Iterable user data field | Type | Example value | Context |
+| --- | --- | --- | --- | --- |
+| `metadata["iterable:user_id"]` or `userId` | `userId` | string | `"user-123"` | |
+| `location.coordinates[0]` | `radar_geo_location.lon` | number | `-76.350663` | |
+| `location.coordinates[1]` | `radar_geo_location.lat` | number | `39.525665` | |
+| `locationAuthorization` | `radarLocationAuthorization` | string | `"GRANTED_FOREGROUND"` | |
+| `locationAccuracyAuthorization` | `radarLocationAccuracyAuthorization` | string | `"FULL"` | |
+| `_id` | `radarId` | string | `"5b2c0906f5874b001aecfd8d"` | |
+| `updatedAt` | `radarUpdatedAt` | number (Unix seconds) | `1782141819` | |
+| `segments[*].externalId` | `radarSegmentExternalIds` | array[string] | `["coffee-visitors"]` | |
+| `topChains[*].slug` | `radarTopChainSlugs` | array[string] | `["example-coffee", "example-grocery"]` | |
+| `topChains[*].externalId` | `radarTopChainExternalIds` | array[string] | `["123", "456"]` | |
+| `geofences[*]._id` | `radarGeofenceIds` | array[string] | `["5b2c0906f5874b001aecfd8e"]` | Geofences |
+| `geofences[*].description` | `radarGeofenceDescriptions` | array[string] | `["Store #42"]` | Geofences |
+| `geofences[*].tag` | `radarGeofenceTags` | array[string] | `["store"]` | Geofences |
+| `geofences[*].externalId` | `radarGeofenceExternalIds` | array[string] | `["store-42"]` | Geofences |
+| `place._id` | `radarPlaceId` | string | `"59302bcf8f27e8a156bd4f91"` | Places |
+| `place.name` | `radarPlaceName` | string | `"Example Coffee"` | Places |
+| `place.categories` | `radarPlaceCategories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | Places |
+| `place.chain.slug` | `radarPlaceChainSlug` | string | `"example-coffee"` | Places |
+| `place.chain.name` | `radarPlaceChainName` | string | `"Example Coffee"` | Places |
+| `place.chain.externalId` | `radarPlaceChainExternalId` | string | `"123"` | Places |
+| `country.code` | `radarRegionCountryCode` | string | `"US"` | Regions |
+| `country.name` | `radarRegionCountryName` | string | `"United States"` | Regions |
+| `state.code` | `radarRegionStateCode` | string | `"MD"` | Regions |
+| `state.name` | `radarRegionStateName` | string | `"Maryland"` | Regions |
+| `dma.code` | `radarRegionDMACode` | string | `"26"` | Regions |
+| `dma.name` | `radarRegionDMAName` | string | `"Baltimore"` | Regions |
+| `postalCode.code` | `radarRegionPostalCode` | string | `"21014"` | Regions |
+| `trip.externalId` | `radarTripExternalId` | string | `"order-299"` | Trips |
+| `trip.destinationGeofenceTag` | `radarTripDestinationGeofenceTag` | string | `"store"` | Trips |
+| `trip.destinationGeofenceExternalId` | `radarTripDestinationGeofenceExternalId` | string | `"store-42"` | Trips |
+| `beacons[*]._id` | `radarBeaconIds` | array[string] | `["5b2c0906f5874b001aecfd8f"]` | Beacons |
+| `beacons[*].description` | `radarBeaconDescriptions` | array[string] | `["Store #42 - Drive-Thru"]` | Beacons |
+| `beacons[*].tag` | `radarBeaconTags` | array[string] | `["drive-thru"]` | Beacons |
+| `beacons[*].externalId` | `radarBeaconExternalIds` | array[string] | `["123"]` | Beacons |
+
+`radar_geo_location` uses the `_geo_location` suffix so Iterable treats it as a geo-location field.
 
 ## Event mapping
 
-| Radar Event                         | Context Type                       | Iterable Event                    |
-| ----------------------------------- | ---------------------------------- | --------------------------------- |
-| `user.entered_geofence`             | [Geofences](/geofencing/geofences) | `radarGeofenceEntered`            |
-| `user.exited_geofence`              | [Geofences](/geofencing/geofences) | `radarGeofenceExited`             |
-| `user.dwelled_in_geofence`          | [Geofences](/geofencing/geofences) | `radarDwelledInGeofence`          |
-| `user.entered_place`                | [Places](/geofencing/places)       | `radarPlaceEntered`               |
-| `user.exited_place`                 | [Places](/geofencing/places)       | `radarPlaceExited`                |
-| `user.entered_region_country`       | [Regions](/geofencing/regions)     | `radarCountryEntered`             |
-| `user.exited_region_country`        | [Regions](/geofencing/regions)     | `radarCountryExited`              |
-| `user.entered_region_state`         | [Regions](/geofencing/regions)     | `radarStateEntered`               |
-| `user.exited_region_state`          | [Regions](/geofencing/regions)     | `radarStateExited`                |
-| `user.entered_region_dma`           | [Regions](/geofencing/regions)     | `radarDMAEntered`                 |
-| `user.exited_region_dma`            | [Regions](/geofencing/regions)     | `radarDMAExited`                  |
-| `user.started_trip`                 | [Trip Tracking](/geofencing/trips) | `radarTripStarted`                |
-| `user.updated_trip`                 | [Trip Tracking](/geofencing/trips) | `radarTripUpdated`                |
-| `user.approaching_trip_destination` | [Trip Tracking](/geofencing/trips) | `radarApproachingTripDestination` |
-| `user.arrived_at_trip_destination`  | [Trip Tracking](/geofencing/trips) | `radarArrivedTripDestination`     |
-| `user.stopped_trip`                 | [Trip Tracking](/geofencing/trips) | `radarTripStopped`                |
-| `user.entered_beacon`               | [Beacons](/geofencing/beacons)     | `radarBeaconEntered`              |
-| `user.exited_beacon`                | [Beacons](/geofencing/beacons)     | `radarBeaconExited`               |
+| Radar event | Iterable event | Context |
+| --- | --- | --- |
+| `user.entered_geofence` | `radarGeofenceEntered` | Geofences |
+| `user.exited_geofence` | `radarGeofenceExited` | Geofences |
+| `user.dwelled_in_geofence` | `radarDwelledInGeofence` | Geofences |
+| `user.entered_place` | `radarPlaceEntered` | Places |
+| `user.exited_place` | `radarPlaceExited` | Places |
+| `user.nearby_place_chain` | `radarPlaceChainNearby` | Places |
+| `user.entered_region_country` | `radarCountryEntered` | Regions |
+| `user.exited_region_country` | `radarCountryExited` | Regions |
+| `user.entered_region_state` | `radarStateEntered` | Regions |
+| `user.exited_region_state` | `radarStateExited` | Regions |
+| `user.entered_region_dma` | `radarDMAEntered` | Regions |
+| `user.exited_region_dma` | `radarDMAExited` | Regions |
+| `user.entered_region_postal_code` | `radarPostalCodeEntered` | Regions |
+| `user.exited_region_postal_code` | `radarPostalCodeExited` | Regions |
+| `user.started_trip` | `radarTripStarted` | Trips |
+| `user.updated_trip` | `radarTripUpdated` | Trips |
+| `user.approaching_trip_destination` | `radarApproachingTripDestination` | Trips |
+| `user.arrived_at_trip_destination` | `radarArrivedTripDestination` | Trips |
+| `user.stopped_trip` | `radarTripStopped` | Trips |
+| `user.entered_beacon` | `radarBeaconEntered` | Beacons |
+| `user.exited_beacon` | `radarBeaconExited` | Beacons |
+
+Radar has no Iterable event name for other event types. Keep them unselected in the event type allowlist.
+
+### Fields on every event
+
+Radar sets the Iterable event `id` to the Radar event ID and `createdAt` to the Radar event's `createdAt` in Unix seconds. These data fields are sent on every event when they apply:
+
+| Radar event field | Iterable event data field | Type | Example value |
+| --- | --- | --- | --- |
+| `actualCreatedAt` | `actualCreatedAt` | number (Unix seconds) | `1782141821` |
+| `foreground` | `foreground` | boolean, sent only when `true` | `true` |
+| `replayed` | `replayed` | boolean, sent only when `true` | `true` |
+| `country.code` | `countryCode` | string | `"US"` |
+| `country.name` | `countryName` | string | `"United States"` |
+| `state.code` | `stateCode` | string | `"MD"` |
+| `state.name` | `stateName` | string | `"Maryland"` |
+| `dma.code` | `dmaCode` | string | `"26"` |
+| `dma.name` | `dmaName` | string | `"Baltimore"` |
+| `postalCode.code` | `postalCode` | string | `"21014"` |
 
 ### radarGeofenceEntered
 
-| Radar Event Field          | Iterable Event Data Field | Type    | Example                      |
-| -------------------------- | ------------------------- | ------- | ---------------------------- |
-| `geofence._id`             | `geofenceId`              | string  | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description`     | `geofenceDescription`     | string  | `"Store #123"`               |
-| `geofence.tag`             | `geofenceTag`             | string  | `"store"`                    |
-| `geofence.externalId`      | `geofenceExternalId`      | string  | `"123"`                      |
-| `geofence.metadata[{key}]` | `geofenceMetadata{key}`   | type    | `{value}`                    |
-| `confidence`               | `confidence`              | string  | `"high"`                     |
-| `foreground`               | `foreground`              | boolean | `true`                       |
+| Radar event field | Iterable event data field | Type | Example value |
+| --- | --- | --- | --- |
+| `geofence._id` | `geofenceId` | string | `"5b2c0906f5874b001aecfd8e"` |
+| `geofence.description` | `geofenceDescription` | string | `"Store #42"` |
+| `geofence.tag` | `geofenceTag` | string | `"store"` |
+| `geofence.externalId` | `geofenceExternalId` | string | `"store-42"` |
+| `geofence.metadata[{key}]` | `geofenceMetadata{key}` | type of the value | `{value}` |
+| `confidence` | `confidence` | string | `"high"` |
+
+Metadata keys are appended to the prefix unchanged. A geofence metadata key `parking` becomes `geofenceMetadataparking`.
 
 ### radarGeofenceExited
 
-| Radar Event Field          | Iterable Event Data Field | Type             | Example                      |
-| -------------------------- | ------------------------- | ---------------- | ---------------------------- |
-| `geofence._id`             | `geofenceId`              | string           | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description`     | `geofenceDescription`     | string           | `"Store #123"`               |
-| `geofence.tag`             | `geofenceTag`             | string           | `"store"`                    |
-| `geofence.externalId`      | `geofenceExternalId`      | string           | `"123"`                      |
-| `geofence.metadata[{key}]` | `geofenceMetadata{key}`   | type             | `{value}`                    |
-| `confidence`               | `confidence`              | string           | `"high"`                     |
-| `duration`                 | `duration`                | number (minutes) | `42.1`                       |
-| `foreground`               | `foreground`              | boolean          | `true`                       |
+Same data fields as [`radarGeofenceEntered`](#radargeofenceentered), plus:
+
+| Radar event field | Iterable event data field | Type | Example value |
+| --- | --- | --- | --- |
+| `duration` | `duration` | number (minutes) | `42.1` |
 
 ### radarDwelledInGeofence
 
-| Radar Event Field          | Iterable Event Data Field | Type             | Example                      |
-| -------------------------- | ------------------------- | ---------------- | ---------------------------- |
-| `geofence._id`             | `geofenceId`              | string           | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description`     | `geofenceDescription`     | string           | `"Store #123"`               |
-| `geofence.tag`             | `geofenceTag`             | string           | `"store"`                    |
-| `geofence.externalId`      | `geofenceExternalId`      | string           | `"123"`                      |
-| `geofence.metadata[{key}]` | `geofenceMetadata{key}`   | type             | `{value}`                    |
-| `confidence`               | `confidence`              | string           | `"high"`                     |
-| `duration`                 | `duration`                | number (minutes) | `5`                          |
-| `foreground`               | `foreground`              | boolean          | `true`                       |
+Same data fields as [`radarGeofenceExited`](#radargeofenceexited). `duration` is the time in the geofence so far.
 
 ### radarPlaceEntered
 
-| Radar Event Field             | Iterable Event Data Field | Type          | Example                                    |
-| ----------------------------- | ------------------------- | ------------- | ------------------------------------------ |
-| `place._id`                   | `placeId`                 | string        | `"59302bcf8f27e8a156bd4f91"`               |
-| `place.name`                  | `placeName`               | string        | `"Starbucks"`                              |
-| `place.chain.slug`            | `placeChainSlug`          | string        | `"starbucks"`                              |
-| `place.chain.name`            | `placeChainName`          | string        | `"Starbucks"`                              |
-| `place.categories`            | `placeCategories`         | array[string] | `["food-beverage", "cafe", "coffee-shop"]` |
-| `place.chain.externalId`      | `placeChainExternalId`    | string        | `"123"`                                    |
-| `place.chain.metadata[{key}]` | `placeChainMetadata{key}` | type          | `{value}`                                  |
-| `confidence`                  | `confidence`              | string        | `"high"`                                   |
-| `foreground`                  | `foreground`              | boolean       | `true`                                     |
+| Radar event field | Iterable event data field | Type | Example value |
+| --- | --- | --- | --- |
+| `place._id` | `placeId` | string | `"59302bcf8f27e8a156bd4f91"` |
+| `place.name` | `placeName` | string | `"Example Coffee"` |
+| `place.chain.slug` | `placeChainSlug` | string | `"example-coffee"` |
+| `place.chain.name` | `placeChainName` | string | `"Example Coffee"` |
+| `place.chain.externalId` | `placeChainExternalId` | string | `"123"` |
+| `place.chain.metadata[{key}]` | `placeChainMetadata{key}` | type of the value | `{value}` |
+| `place.categories` | `placeCategories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` |
+| `confidence` | `confidence` | string | `"high"` |
 
 ### radarPlaceExited
 
-| Radar Event Field             | Iterable Event Data Field | Type             | Example                                    |
-| ----------------------------- | ------------------------- | ---------------- | ------------------------------------------ |
-| `place._id`                   | `placeId`                 | string           | `"59302bcf8f27e8a156bd4f91"`               |
-| `place.name`                  | `placeName`               | string           | `"Starbucks"`                              |
-| `place.chain.slug`            | `placeChainSlug`          | string           | `"starbucks"`                              |
-| `place.chain.name`            | `placeChainName`          | string           | `"Starbucks"`                              |
-| `place.categories`            | `placeCategories`         | array[string]    | `["food-beverage", "cafe", "coffee-shop"]` |
-| `place.chain.externalId`      | `placeChainExternalId`    | string           | `"123"`                                    |
-| `place.chain.metadata[{key}]` | `placeChainMetadata{key}` | type             | `{value}`                                  |
-| `confidence`                  | `confidence`              | string           | `"high"`                                   |
-| `duration`                    | `duration`                | number (minutes) | `42.1`                                     |
-| `foreground`                  | `foreground`              | boolean          | `true`                                     |
+Same data fields as [`radarPlaceEntered`](#radarplaceentered), plus `duration` (number, minutes).
 
 ### radarCountryEntered
 
-| Radar Event Field | Iterable Event Data Field | Type    | Example Value     |
-| ----------------- | ------------------------- | ------- | ----------------- |
-| `region.code`     | `regionCode`              | string  | `"US"`            |
-| `region.name`     | `regionName`              | string  | `"United States"` |
-| `confidence`      | `confidence`              | string  | `"high"`          |
-| `foreground`      | `foreground`              | boolean | `true`            |
+| Radar event field | Iterable event data field | Type | Example value |
+| --- | --- | --- | --- |
+| `region.code` | `regionCode` | string | `"US"` |
+| `region.name` | `regionName` | string | `"United States"` |
+| `confidence` | `confidence` | string | `"high"` |
 
 ### radarCountryExited
 
-| Radar Event Field | Iterable Event Data Field | Type    | Example Value     |
-| ----------------- | ------------------------- | ------- | ----------------- |
-| `region.code`     | `regionCode`              | string  | `"US"`            |
-| `region.name`     | `regionName`              | string  | `"United States"` |
-| `confidence`      | `confidence`              | string  | `"high"`          |
-| `foreground`      | `foreground`              | boolean | `true`            |
+Same data fields as [`radarCountryEntered`](#radarcountryentered).
 
 ### radarStateEntered
 
-| Radar Event Field | Iterable Event Data Field | Type    | Example Value |
-| ----------------- | ------------------------- | ------- | ------------- |
-| `region.code`     | `regionCode`              | string  | `"MD"`        |
-| `region.name`     | `regionName`              | string  | `"Maryland"`  |
-| `confidence`      | `confidence`              | string  | `"high"`      |
-| `foreground`      | `foreground`              | boolean | `true`        |
+Same data fields as [`radarCountryEntered`](#radarcountryentered), with the state's code and name, for example `"MD"` and `"Maryland"`.
 
 ### radarStateExited
 
-| Radar Event Field | Iterable Event Data Field | Type    | Example Value |
-| ----------------- | ------------------------- | ------- | ------------- |
-| `region.code`     | `regionCode`              | string  | `"MD"`        |
-| `region.name`     | `regionName`              | string  | `"Maryland"`  |
-| `confidence`      | `confidence`              | string  | `"high"`      |
-| `foreground`      | `foreground`              | boolean | `true`        |
+Same data fields as [`radarStateEntered`](#radarstateentered).
 
 ### radarDMAEntered
 
-| Radar Event Field | Iterable Event Data Field | Type    | Example Value |
-| ----------------- | ------------------------- | ------- | ------------- |
-| `region.code`     | `regionCode`              | string  | `"26"`        |
-| `region.name`     | `regionName`              | string  | `"Baltimore"` |
-| `confidence`      | `confidence`              | string  | `"high"`      |
-| `foreground`      | `foreground`              | boolean | `true`        |
+Same data fields as [`radarCountryEntered`](#radarcountryentered), with the DMA's code and name, for example `"26"` and `"Baltimore"`.
 
 ### radarDMAExited
 
-| Radar Event Field | Iterable Event Data Field | Type    | Example Value |
-| ----------------- | ------------------------- | ------- | ------------- |
-| `region.code`     | `regionCode`              | string  | `"26"`        |
-| `region.name`     | `regionName`              | string  | `"Baltimore"` |
-| `confidence`      | `confidence`              | string  | `"high"`      |
-| `foreground`      | `foreground`              | boolean | `true`        |
+Same data fields as [`radarDMAEntered`](#radardmaentered).
+
+### radarPostalCodeEntered and radarPostalCodeExited
+
+Same data fields as [`radarCountryEntered`](#radarcountryentered), with the postal code in `regionCode`.
 
 ### radarTripStarted
 
-| Radar Event Attribute                | Iterable Event Data Field       | Type    | Example Value |
-| ------------------------------------ | ------------------------------- | ------- | ------------- |
-| `trip.externalId`                    | `tripExternalId`                | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `tripMetadata{key}`             | type    | `{value}`     |
-| `trip.destinationGeofenceTag`        | `destinationGeofenceTag`        | string  | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `destinationGeofenceExternalId` | string  | `"123"`       |
-| `foreground`                         | `foreground`                    | boolean | `true`        |
+| Radar event field | Iterable event data field | Type | Example value |
+| --- | --- | --- | --- |
+| `trip.externalId` | `tripExternalId` | string | `"order-299"` |
+| `trip.metadata[{key}]` | `tripMetadata{key}` | type of the value | `{value}` |
+| `trip.destinationGeofenceTag` | `destinationGeofenceTag` | string | `"store"` |
+| `trip.destinationGeofenceExternalId` | `destinationGeofenceExternalId` | string | `"store-42"` |
+| `confidence` | `confidence` | string | `"high"` |
+
+### radarTripUpdated
+
+Same data fields as [`radarTripStarted`](#radartripstarted).
 
 ### radarApproachingTripDestination
 
-| Radar Event Attribute                | Iterable Event Data Field       | Type    | Example Value |
-| ------------------------------------ | ------------------------------- | ------- | ------------- |
-| `trip.externalId`                    | `tripExternalId`                | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `tripMetadata{key}`             | type    | `{value}`     |
-| `trip.destinationGeofenceTag`        | `destinationGeofenceTag`        | string  | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `destinationGeofenceExternalId` | string  | `"123"`       |
-| `foreground`                         | `foreground`                    | boolean | `true`        |
+Same data fields as [`radarTripStarted`](#radartripstarted).
 
 ### radarArrivedTripDestination
 
-| Radar Event Attribute                | Iterable Event Data Field       | Type    | Example Value |
-| ------------------------------------ | ------------------------------- | ------- | ------------- |
-| `trip.externalId`                    | `tripExternalId`                | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `tripMetadata{key}`             | type    | `{value}`     |
-| `trip.destinationGeofenceTag`        | `destinationGeofenceTag`        | string  | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `destinationGeofenceExternalId` | string  | `"123"`       |
-| `foreground`                         | `foreground`                    | boolean | `true`        |
+Same data fields as [`radarTripStarted`](#radartripstarted).
 
 ### radarTripStopped
 
-| Radar Event Attribute                | Iterable Event Data Field       | Type    | Example Value |
-| ------------------------------------ | ------------------------------- | ------- | ------------- |
-| `trip.externalId`                    | `tripExternalId`                | string  | `"299"`       |
-| `trip.metadata[{key}]`               | `tripMetadata{key}`             | type    | `{value}`     |
-| `trip.destinationGeofenceTag`        | `destinationGeofenceTag`        | string  | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `destinationGeofenceExternalId` | string  | `"123"`       |
-| `foreground`                         | `foreground`                    | boolean | `true`        |
+Same data fields as [`radarTripStarted`](#radartripstarted).
 
 ### radarBeaconEntered
 
-| Radar Event Attribute    | Iterable Event Data Field | Type    | Example Value                |
-| ------------------------ | ------------------------- | ------- | ---------------------------- |
-| `beacon._id`             | `beaconId`                | string  | `"5b2c0906f5874b001aecfd8f"` |
-| `beacon.description`     | `beaconDescription`       | string  | `"Store #123 - Drive-Thru"`  |
-| `beacon.tag`             | `beaconTag`               | string  | `"drive-thru"`               |
-| `beacon.externalId`      | `beaconExternalId`        | string  | `"123"`                      |
-| `beacon.metadata[{key}]` | `beaconMetadata{key}`     | type    | `{value}`                    |
-| `confidence`             | `confidence`              | string  | `"high"`                     |
-| `foreground`             | `foreground`              | boolean | `true`                       |
+| Radar event field | Iterable event data field | Type | Example value |
+| --- | --- | --- | --- |
+| `beacon._id` | `beaconId` | string | `"5b2c0906f5874b001aecfd8f"` |
+| `beacon.description` | `beaconDescription` | string | `"Store #42 - Drive-Thru"` |
+| `beacon.tag` | `beaconTag` | string | `"drive-thru"` |
+| `beacon.externalId` | `beaconExternalId` | string | `"123"` |
+| `beacon.metadata[{key}]` | `beaconMetadata{key}` | type of the value | `{value}` |
+| `confidence` | `confidence` | string | `"high"` |
 
 ### radarBeaconExited
 
-| Radar Event Attribute    | Iterable Event Data Field | Type             | Example Value                |
-| ------------------------ | ------------------------- | ---------------- | ---------------------------- |
-| `beacon._id`             | `beaconId`                | string           | `"5b2c0906f5874b001aecfd8f"` |
-| `beacon.description`     | `beaconDescription`       | string           | `"Store #123 - Drive-Thru"`  |
-| `beacon.tag`             | `beaconTag`               | string           | `"drive-thru"`               |
-| `beacon.externalId`      | `beaconExternalId`        | string           | `"123"`                      |
-| `beacon.metadata[{key}]` | `beaconMetadata{key}`     | type             | `{value}`                    |
-| `confidence`             | `confidence`              | string           | `"high"`                     |
-| `duration`               | `duration`                | number (minutes) | `1.42`                       |
-| `foreground`             | `foreground`              | boolean          | `true`                       |
+Same data fields as [`radarBeaconEntered`](#radarbeaconentered), plus `duration` (number, minutes).
+
+## Filtering
+
+On the [Integrations](https://dashboard.radar.com/integrations) page, click **Show advanced** in the **Iterable** section.
+
+| Setting | Effect |
+| --- | --- |
+| **Event type allowlist** | Radar sends only the selected event types. Check this list first when an event you expect is missing. |
+| **Request key blocklist** | Comma-separated keys to remove from the requests, for example `radarGeofenceIds,geofenceId`. Applies to user data fields and event data fields. |
+| **Geofence tag blocklist** | Comma-separated geofence tags. Radar skips events for geofences with these tags. |
+
+For the filters that every event integration shares, see [Filters](/integrations/integrations#filters).
+
+## Delivery behavior
+
+- Radar sends to Iterable only when it generates an event for the user. A location update that produces no event doesn't update user data fields.
+- Each batch of Radar events produces one `users/update` request and one `events/track` request per event. The requests are sent in parallel, so the event can reach Iterable before the user update does.
+- Delivery is asynchronous and doesn't block the SDK.
+- Radar sends each request once. It doesn't retry a request that Iterable rejects or that times out. The outcome is recorded in the integration logs.
+- Events from the Test environment use the Test API key, and events from the Live environment use the Live API key.
+
+## Verify integration data delivery
+
+<Steps>
+  <Step title="Prepare a test user">
+    Choose a Radar user whose `userId`, or `iterable:user_id` metadata, matches a user in your Iterable project.
+  </Step>
+  <Step title="Generate an event">
+    Generate an event for that user. Either open the [Simulator](https://dashboard.radar.com/geofencing/simulate) page, choose the user, and move it into a geofence, or use a test build of your app and enter the geofence.
+  </Step>
+  <Step title="Check Radar's log">
+    On the [Events](https://dashboard.radar.com/geofencing/events) page, click **View** on the new event and find the **Logs** section. Confirm that it shows Iterable requests to `users/update` and `events/track`, each with a `2xx` response.
+  </Step>
+  <Step title="Check Iterable">
+    In Iterable, open the user and confirm the `radarGeofenceEntered` event and the `radarGeofenceTags` data field.
+  </Step>
+</Steps>
+
+## Troubleshoot delivery
+
+Click **View integration logs** in the **Iterable** section of the [Integrations](https://dashboard.radar.com/integrations) page. Each row shows the timestamp, the request URL, and the response code, and expands to the request and response bodies. New rows can take a few minutes to appear.
+
+| Log response | Meaning |
+| --- | --- |
+| `skipped`: `Integration key(s) missing.` | No API key for the event's environment. |
+| `skipped`: `Identifier missing.` | The user has neither a `userId` nor `iterable:user_id` metadata. |
+| `skipped`, "Event type ... isn't allowed." | The event type isn't selected in the allowlist. |
+| `skipped`: `Geofence tag '...' is blocklisted.` | The geofence tag is in the blocklist. |
+| A `4xx` response | Iterable rejected the request. The response body in the log gives the reason. Check the API key and its project. |
+| `2xx`, but the data is on a different user | The Radar and Iterable user IDs don't match. See [Identity mapping](#identity-mapping). |
+
+## Example use cases
+
+Menu names in Iterable can change. If a label in these steps doesn't match what you see, follow Iterable's documentation.
+
+### Send a personalized push notification when user is near a store
+
+This campaign sends a push notification when a user enters a Radar geofence around a store.
+
+#### Configure geofences in Radar
+
+1. Create [geofences](/geofencing/geofences-and-places) around your stores. For a "nearby" campaign, a radius of a few hundred meters is a common starting point. You can also use isochrone geofences, which cover every point within a travel time such as a 10-minute walk.
+2. Note the tag you gave those geofences. Tags are listed on the [Geofences](https://dashboard.radar.com/geofencing/geofences) page.
+
+#### Create a new Journey in Iterable
+
+3. In Iterable, open [Journeys](https://app.iterable.com/workflows) and click **New journey**.
+4. Open the start node and change the trigger to **Triggered Custom Event**. For the event name, choose `radarGeofenceEntered`.
+5. For **Use Filter**, select **Yes**.
+6. For the property, choose `radarGeofenceEntered.geofenceTag`, select the **Contains** operator, and enter your geofence tag.
+7. Click **Update Node**.
+8. Add a **Send Push** node and connect the start node to it.
+
+#### Set up a push notification template in Iterable
+
+9. Under **Content**, open **Templates** and create a new push template.
+10. To include the store name, put `{{radarGeofenceEntered.geofenceDescription}}` in the title or body. This is Iterable's Handlebars syntax for event data fields.
+11. Save the template.
+12. Back in the journey, open the **Send Push** node and select the template.
+
+#### Test your campaign
+
+Enter the geofence on a test device, or open the [Users](https://dashboard.radar.com/geofencing/users) page, select a user who also exists in Iterable with the same user ID, and click **Simulate**. Move the simulated user into a geofence with your tag. The notification arrives on that user's device.
+
+### Filter users in an Iterable Journey whose last known location is X minutes away from a store
+
+This campaign sends a push notification to users who opened a specific email and whose last known location is within a 10-minute drive of a store.
+
+1. In Radar, create isochrone geofences with a 10-minute drive time around your stores, and note their tag.
+2. In Iterable, create a journey whose start node is triggered by **Opened An Email** for the campaign you choose.
+3. Add a **Fields Match** filter node below the start node. For the property, choose the contact property `radarGeofenceTags`, select the **Contains** operator, and enter your geofence tag. Connect the start node to the filter node.
+4. Create a push template, add a **Send Push** node that uses it, and connect the filter node's **Yes** branch to it.
+5. Test as in the previous example. The filter uses the user's data fields, which reflect the geofences the user was in at their last Radar event.
+
+## Limitations
+
+- Radar sends to `https://api.iterable.com/api`. There is no setting for another Iterable API host.
+- Users are identified by `userId` only. Radar doesn't send an email address.
+- User data fields are updated only when an event is generated, so `radarUpdatedAt` can be older than the user's last location update.
+- Empty fields are sent as the string `"(null)"`.
+- There is no automatic retry. A request that fails during an Iterable outage isn't resent.

@@ -1,98 +1,138 @@
 ---
-title: "Integrations"
-description: "Overview of Radar's server-side integrations for sending events to other systems, syncing geofences, and sharing trip ETAs."
+title: "Integrations overview"
+sidebarTitle: "Overview"
+description: "Choose a Radar integration to send events and user state to your own systems, analytics and messaging platforms, order systems, or an AI assistant."
 ---
 
-Radar supports a number of server-side integrations. _Event integrations_ like webhooks, mParticle, and Braze allow you to send events from Radar to other systems. _Geofence integrations_ like geofence sync and Yext allow you to sync geofences from other systems to Radar. Finally, _trip integrations_ allow you to [start and stop trips](/geofencing/trips) and send live ETAs to other platforms.
+Pick the integration that matches where your Radar data needs to go, then learn the settings and delivery behavior that the server-side event integrations share.
 
-## **Event integrations**
+Radar integrations fall into three kinds:
 
-<CardGroup cols={3}>
-  <Card title="Webhooks" href="/integrations/webhooks" img="/images/integrations/webhooks.png">
-    
-  </Card>
-  <Card title="Braze" href="/integrations/braze" img="/images/integrations/braze.png">
-    
-  </Card>
-  <Card title="Airship" href="/integrations/airship" img="/images/integrations/airship.png">
-    
-  </Card>
-  <Card title="OneSignal" href="/integrations/onesignal" img="/images/integrations/onesignal.png">
-    
-  </Card>
-  <Card title="mParticle" href="/integrations/mparticle" img="/images/integrations/mparticle.png">
-    
-  </Card>
-  <Card title="Segment" href="/integrations/segment" img="/images/integrations/segment.png">
-    
-  </Card>
-  <Card title="Branch" href="/integrations/branch" img="/images/integrations/branch.png">
-    
-  </Card>
-  <Card title="Lytics" href="/integrations/lytics" img="/images/integrations/lytics.png">
-    
-  </Card>
-  <Card title="Iterable" href="/integrations/iterable" img="/images/integrations/iterable.png">
-    
-  </Card>
-  <Card title="Leanplum" href="/integrations/leanplum" img="/images/integrations/leanplum.png">
-    
-  </Card>
-  <Card title="Salesforce" href="/integrations/salesforce" img="/images/integrations/salesforce.png">
-    
-  </Card>
-  <Card title="Amplitude" href="/integrations/amplitude" img="/images/integrations/amplitude.png">
-    
-  </Card>
-  <Card title="Mixpanel" href="/integrations/mixpanel" img="/images/integrations/mixpanel.png">
-    
-  </Card>
-  <Card title="Amazon Pinpoint" href="/integrations/aws-pinpoint" img="/images/integrations/amazonpinpoint.png">
-    
-  </Card>
-  <Card title="Attentive" href="/integrations/attentive" img="/images/integrations/attentive.png">
-    
-  </Card>
-  <Card title="Cordial" href="/integrations/cordial" img="/images/integrations/cordial.png">
-    
-  </Card>
+- **Event integrations**: Run on Radar's servers. When Radar generates an event, such as a geofence entry or a trip update, it forwards the event and the current user state to the destinations you enable. Webhooks, the analytics platforms, and the messaging platforms work this way.
+- **Data export**: Delivers events and locations in bulk to storage that you own. AWS S3 works this way.
+- **Operational and AI integrations**: Connect Radar to another product's workflow: Olo for order firing, and the MCP server for querying Radar data from an AI assistant.
 
-  <Card title="MoEngage" href="/integrations/moengage" img="/images/integrations/moengage.png">
-
-</Card>
-  
-</CardGroup>
-
-### **Filters**
-
-Click _Show Advanced_ on the [Integrations page](https://dashboard.radar.com/integrations) under an integration to show advanced filters.
-
-To filter event types sent to an integration, select or unselect event types under _Event Type Allowlist_.
-
-To filter keys from the request body sent to an integration, add keys, comma-separated, to _Request Key Blocklist_. For example, to skip sending `radar_geofence_ids` to the Segment `identify` call and to skip sending `geofence_id` to the Segment `track` call, add `radar_geofence_ids,geofence_id` to _Request Key Blocklist_.
-
-To filter events sent to an integration based upon a [Geofence](/geofencing/geofences) tag, add tags, comma-separated to _Geofence Tag Blocklist_. For example, to skip sending all events to the Amplitude integration for geofences tagged `gas-station` and `cafe`, add `gas-station,cafe` to _Geofence Tag Blocklist_.
-
-## **Geofence integrations**
-
-_Geofence integrations_ allow you to sync geofences from other systems to Radar.
+## General
 
 <CardGroup cols={3}>
-  <Card title="Yext" href="/integrations/yext" img="/images/integrations/yext.png">
-    
-  </Card>
-  <Card title="Brandify" href="/integrations/brandify" img="/images/integrations/brandify.png">
-    
-  </Card>
-  <Card title="Census" href="/integrations/census" img="/images/integrations/census.png">
-    
+  <Card title="Webhooks" icon="webhook" href="/integrations/webhooks">
+    Send events and user state to any HTTP endpoint you control.
   </Card>
 </CardGroup>
 
-## **Trip integrations**
+Webhooks are also the route to any system that has no native integration listed here. Receive the request on your backend and forward it in the format the other system expects.
+
+## Data and analytics
 
 <CardGroup cols={3}>
-  <Card title="Olo" href="/integrations/olo" img="/images/integrations/olo.png">
-    
+  <Card title="AWS S3" icon="database" href="/integrations/aws-s3">
+    Export events and locations as Parquet files to your S3 bucket.
+  </Card>
+  <Card title="Amplitude" icon="chart-line" href="/integrations/amplitude">
+    Send events and user properties to Amplitude.
+  </Card>
+  <Card title="Branch" icon="code-branch" href="/integrations/branch">
+    Send events to Branch as custom events.
+  </Card>
+  <Card title="Mixpanel" icon="chart-simple" href="/integrations/mixpanel">
+    Send events and user profile properties to Mixpanel.
+  </Card>
+  <Card title="Segment" icon="arrows-split-up-and-left" href="/integrations/segment">
+    Send `identify` and `track` calls to a Segment source.
+  </Card>
+  <Card title="mParticle" icon="diagram-project" href="/integrations/mparticle">
+    Send events and user attributes to mParticle input feeds, or install Radar as a kit.
   </Card>
 </CardGroup>
+
+## Messaging
+
+<CardGroup cols={3}>
+  <Card title="Airship" icon="paper-plane" href="/integrations/airship">
+    Trigger and personalize Airship messages with Radar events.
+  </Card>
+  <Card title="Braze" icon="message" href="/integrations/braze">
+    Send events and user attributes to Braze.
+  </Card>
+  <Card title="Cordial" icon="envelope" href="/integrations/cordial">
+    Send events and contact attributes to Cordial.
+  </Card>
+  <Card title="Iterable" icon="envelope-open-text" href="/integrations/iterable">
+    Send events and user fields to Iterable.
+  </Card>
+  <Card title="MoEngage" icon="bell" href="/integrations/moengage">
+    Send events and user attributes to MoEngage.
+  </Card>
+  <Card title="Salesforce Marketing Cloud" icon="cloud" href="/integrations/salesforce">
+    Send events to Salesforce Marketing Cloud.
+  </Card>
+</CardGroup>
+
+## Operations
+
+<CardGroup cols={3}>
+  <Card title="Olo pickup and order firing" icon="bag-shopping" href="/integrations/olo">
+    Start trips from Olo orders and fire orders to the kitchen as customers approach.
+  </Card>
+</CardGroup>
+
+## MCP / AI
+
+<CardGroup cols={3}>
+  <Card title="MCP server" icon="robot" href="/integrations/mcp">
+    Query your Radar data from Claude, ChatGPT, or another MCP client.
+  </Card>
+</CardGroup>
+
+## How event integrations work
+
+The following applies to webhooks and to the analytics and messaging integrations. Each integration page lists its own exceptions.
+
+### Where you configure them
+
+You configure event integrations on the [Integrations](https://dashboard.radar.com/integrations) page of the Radar dashboard. Each integration has its own section with an **Enabled** selector, credential fields, and a **Save** button. Settings belong to the project that is selected in the dashboard.
+
+Most integrations take separate Test and Live credentials. Events from the Test environment use the Test credential and events from the Live environment use the Live credential. If the credential for an environment is empty, Radar skips events from that environment and records the reason in the integration logs. For how environments and keys work, see [Set up organizations, projects, accounts, and authentication](/fundamentals/authentication-and-access).
+
+Many native integrations require the [Enterprise plan](https://radar.com/pricing), and each integration page states its requirement. When your plan doesn't include an integration, its section shows an upgrade prompt in place of the form.
+
+### What triggers a delivery
+
+Radar generates events when it processes a location update, a trip change, or another server-side state change. Each delivery carries the events from one update together with the user's state after that update. An integration that is enabled receives nothing until an event is generated, so a location update that produces no event produces no delivery.
+
+Geofence geometry is removed from payloads before delivery.
+
+### Filters
+
+Click **Show advanced** in an integration's section to show its filters. For webhooks, the same fields are in the **New webhook** and **Edit webhook** dialogs.
+
+| Field | Effect |
+| --- | --- |
+| **Event type allowlist** | When you select one or more event types, Radar sends only those types. With nothing selected, Radar sends every event type. |
+| **Request key blocklist** | Removes the listed keys from the request body, at any depth. Enter keys comma-separated. For example, `radar_geofence_ids,geofence_id` removes `radar_geofence_ids` from the Segment `identify` call and `geofence_id` from the Segment `track` call. |
+| **Geofence tag blocklist** | Skips events for geofences that have one of the listed tags. Enter tags comma-separated. For example, `gas-station,cafe` skips every event for geofences tagged `gas-station` or `cafe`. |
+
+A filtered event is skipped for that integration only. Other integrations still receive it, and the event still appears in the dashboard and the [Events API](/api/events).
+
+### Inspect deliveries and failures
+
+Each integration's section has a **View integration logs** button. The logs page lists one row per delivery attempt with the **Timestamp**, **Integration**, **Request**, and **Response**, and you can filter by date range, response, and integration.
+
+Skipped events appear in the logs with a response of `skipped` and one of these reasons:
+
+| Reason | Meaning |
+| --- | --- |
+| `Integration disabled.` | **Enabled** is **No**, or the webhook is disabled. |
+| `Integration key(s) missing.` | No credential is saved for the event's environment or device type. |
+| `Identifier missing.` | The user has no identifier that the destination requires. The integration page says which one. |
+| `Event type ... is not allowed.` | The event type isn't selected in **Event type allowlist**. |
+| `Geofence tag '...' is blocklisted.` | The geofence's tag is in **Geofence tag blocklist**. |
+
+### Events without a native integration
+
+To send Radar data to a platform that isn't listed on this page, use one of these routes:
+
+- **Server-side**: Create a [webhook](/integrations/webhooks) and forward the payload from your own endpoint.
+- **Client-side**: Receive events in your app from the [Radar SDK](/sdk/sdk) and pass them to the other platform's SDK.
+
+To load geofences into Radar from a CSV file on a schedule, including a CSV stored in S3, see geofence sync in [Detect geofence events and place visits](/geofencing/geofences-and-places).

@@ -1,282 +1,445 @@
 ---
 title: "Mixpanel"
-description: "Send Radar location events and user properties to Mixpanel to add location context to analytics and build user segments."
+description: "Send Radar events and user profile properties to Mixpanel, map Radar users to Mixpanel distinct IDs, and verify that events arrive."
 ---
 
 <Info>
-  The Mixpanel integration is available on the [**Enterprise plan**](https://radar.com/pricing).
+  The Mixpanel integration is available on the [Enterprise plan](https://radar.com/pricing).
 </Info>
 
-Radar can send events and user properties to [Mixpanel](https://www.mixpanel.com).
+By the end of this page, each Radar event for an identified user appears in Mixpanel as a `Radar` event on that user's profile, with Radar's location context as profile properties.
 
-Use the Mixpanel integration to enrich behavioral events with location context, measure the ROI of location-based features, and build location-based user segments.
+Use the integration to add location context to behavioral analytics, measure location-based features, and build location-based cohorts. It is a server-side integration: Radar's servers call Mixpanel.
+
+## Prerequisites
+
+- A Radar project on the Enterprise plan that generates events. See [Geofencing overview and quickstart](/geofencing/overview).
+- Access to the [Integrations](https://dashboard.radar.com/integrations) page in the Radar dashboard.
+- A Mixpanel project and permission to view its project token. Use a separate Mixpanel project for testing if you have one.
+- A Mixpanel distinct ID for each user that Radar can use. Radar skips events for users that have none. See [User mapping](#user-mapping).
 
 ## Configuration
 
-On the Mixpanel _Project Settings_ page, copy the token from the Access Keys section. Then, on the Radar [Integrations page](https://dashboard.radar.com/integrations) under _Mixpanel_, set _Enabled_ to _Yes_ and paste your token. Note that you can set separate tokens for the _Test_ and _Live_ environments.
-
-Whenever events are generated, Radar will send custom events and user properties to Mixpanel.
-
-By default, Radar `userId` maps to Mixpanel `distinct ID` for logged in users. However, you can specify a custom mapping by setting Radar `metadata.mixpanelDistinctId`. For example, on iOS:
-
-```swift
-Radar.setMetadata(["mixpanelDistinctId": distinctIdValue])
-```
+<Steps>
+  <Step title="Copy your Mixpanel project token">
+    In Mixpanel, open **Project Settings** and copy the project token from the access keys section. If you have a separate development project, copy that token too.
+  </Step>
+  <Step title="Enable the integration in Radar">
+    On the [Integrations](https://dashboard.radar.com/integrations) page, find the **Mixpanel** section and select **Yes** for **Enabled**. Credential fields appear.
+  </Step>
+  <Step title="Enter your tokens">
+    Enter the production token in **Live token** and the development token in **Test token**. Radar uses the Live token for events from the Live environment and the Test token for events from the Test environment. If you leave a field empty, Radar sends nothing for that environment.
+  </Step>
+  <Step title="Save">
+    Click **Save**. From now on, Radar sends each new event to Mixpanel. Events generated before you saved aren't sent.
+  </Step>
+  <Step title="Make sure users have a distinct ID">
+    Set the Radar `userId`, or set `metadata.mixpanelDistinctId`, as described in the next section.
+  </Step>
+</Steps>
 
 ## User mapping
 
-Note that Radar uses the special string `"(null)"` to represent `null` user property values.
+### Identifiers
 
-| Radar User Field                          | Mixpanel User Property                        | Type          | Example Value                              | Context Type                    |
-| ----------------------------------------- | --------------------------------------------- | ------------- | ------------------------------------------ | ------------------------------- |
-| `location.coordinates[1]`                 | `$latitude`                                   | number        | `39.525665`                                |                                 |
-| `location.coordinates[0]`                 | `$longitude`                                  | number        | `-76.350663`                               |                                 |
-| `metadata.mixpanelDistinctId` or `userId` | `Distinct ID`                                 | string        | `"1"`                                      |                                 |
-| `location.coordinates[0]`                 | `Radar Location Longitude`                    | number        | `-76.350663`                               |                                 |
-| `location.coordinates[1]`                 | `Radar Location Latitude`                     | number        | `39.525665`                                |                                 |
-| `locationAuthorization`                   | `Radar Location Authorization`                | string        | `"GRANTED_FOREGROUND"`                     |                                 |
-| `locationAccuracyAuthorization`           | `Radar Location Accuracy Authorization`       | string        | `"FULL"`                                   |                                 |
-| `_id`                                     | `Radar ID`                                    | string        | `"5b2c0906f5874b001aecfd8d"`               |                                 |
-| `updatedAt`                               | `Radar Updated At`                            | timestamp     | `"2018-06-22T15:23:39.000Z"`               |                                 |
-| `segments[*].externalId`                  | `Radar Segment External IDs`                  | array[string] | `["starbucks-visitors"]`                   |                                 |
-| `topChains[*].slug`                       | `Radar Top Chain Slugs`                       | array[string] | `["starbucks", "walmart"]`                 |                                 |
-| `topChains[*].externalId`                 | `Radar Top Chain External IDs`                | array[string] | `["123", "456"]`                           |                                 |
-| `geofences[*]._id`                        | `Radar Geofence IDs`                          | array[string] | `["5b2c0906f5874b001aecfd8e"]`             | [Geofences](/geofencing/geofences)         |
-| `geofences[*].description`                | `Radar Geofence Descriptions`                 | array[string] | `["Store #123"]`                           | [Geofences](/geofencing/geofences)         |
-| `geofences[*].tag`                        | `Radar Geofence Tags`                         | array[string] | `["store"]`                                | [Geofences](/geofencing/geofences)         |
-| `geofences[*].externalId`                 | `Radar Geofence External IDs`                 | array[string] | `["123"]`                                  | [Geofences](/geofencing/geofences)         |
-| `place._id`                               | `Radar Place ID`                              | string        | `"59302bcf8f27e8a156bd4f91"`               | [Places](/geofencing/places)               |
-| `place.name`                              | `Radar Place Name`                            | string        | `"Starbucks"`                              | [Places](/geofencing/places)               |
-| `place.categories`                        | `Radar Place Categories`                      | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | [Places](/geofencing/places)               |
-| `place.chain.slug`                        | `Radar Place Chain Slug`                      | string        | `"starbucks"`                              | [Places](/geofencing/places)               |
-| `place.chain.name`                        | `Radar Place Chain Name`                      | string        | `"Starbucks"`                              | [Places](/geofencing/places)               |
-| `country.code`                            | `Radar Region Country Code`                   | string        | `"US"`                                     | [Regions](/geofencing/regions)             |
-| `country.name`                            | `Radar Region Country Name`                   | string        | `"United States"`                          | [Regions](/geofencing/regions)             |
-| `state.code`                              | `Radar Region State Code`                     | string        | `"MD"`                                     | [Regions](/geofencing/regions)             |
-| `state.name`                              | `Radar Region State Name`                     | string        | `"Maryland"`                               | [Regions](/geofencing/regions)             |
-| `dma.code`                                | `Radar Region DMA Code`                       | string        | `"26"`                                     | [Regions](/geofencing/regions)             |
-| `dma.name`                                | `Radar Region DMA Name`                       | string        | `"Baltimore"`                              | [Regions](/geofencing/regions)             |
-| `postalCode.code`                         | `Radar Region Postal Code`                    | string        | `"21014"`                                  | [Regions](/geofencing/regions)             |
-| `trip.externalId`                         | `Radar Trip External ID`                      | string        | `"299"`                                    | [Trip Tracking](/geofencing/trips) |
-| `trip.destinationGeofenceTag`             | `Radar Trip Destination Geofence Tag`         | string        | `"store"`                                  | [Trip Tracking](/geofencing/trips) |
-| `trip.destinationGeofenceExternalId`      | `Radar Trip Destination Geofence External ID` | string        | `"123"`                                    | [Trip Tracking](/geofencing/trips) |
-| `beacons[*]._id`                          | `Radar Beacon IDs`                            | array[string] | `["5b2c0906f5874b001aecfd8f"]`             | [Beacons](/geofencing/beacons)             |
-| `beacons[*].description`                  | `Radar Beacon Descriptions`                   | array[string] | `["Store #123 - Drive-Thru"]`              | [Beacons](/geofencing/beacons)             |
-| `beacons[*].tag`                          | `Radar Beacon Tags`                           | array[string] | `["drive-thru"]`                           | [Beacons](/geofencing/beacons)             |
-| `beacons[*].externalId`                   | `Radar Beacon External IDs`                   | array[string] | `["123"]`                                  | [Beacons](/geofencing/beacons)             |
+Radar chooses the Mixpanel distinct ID in this order:
+
+1. `metadata.mixpanelDistinctId`, when it is set on the Radar user.
+2. Otherwise, the Radar `userId`.
+
+If the user has neither, Radar skips that user's events for Mixpanel and logs `Identifier missing.` Radar doesn't fall back to the device ID.
+
+If your app's Mixpanel distinct ID is the same value as the Radar `userId`, you need no extra code. If it differs, pass the Mixpanel value in the user's metadata.
+
+<CodeGroup>
+
+```swift Swift
+import RadarSDK
+
+// distinctId is the value your app uses as the Mixpanel distinct ID.
+Radar.setMetadata(["mixpanelDistinctId": distinctId])
+```
+
+```kotlin Kotlin
+import io.radar.sdk.Radar
+import org.json.JSONObject
+
+// distinctId is the value your app uses as the Mixpanel distinct ID.
+Radar.setMetadata(JSONObject().put("mixpanelDistinctId", distinctId))
+```
+
+</CodeGroup>
+
+Call `Radar.setMetadata()` after you [initialize the SDK](/sdk/sdk) and whenever the distinct ID changes.
+
+### User properties
+
+On each delivery, Radar updates the user's Mixpanel profile with these properties. A property that has no value is set to the string `"(null)"`, so a user who leaves all geofences gets `"(null)"` in the geofence properties and not a stale value.
+
+| Radar user field | Mixpanel profile property | Type | Example value | Context |
+| --- | --- | --- | --- | --- |
+| `metadata.mixpanelDistinctId` or `userId` | `$distinct_id` | string | `"user-123"` | |
+| `location.coordinates[1]` | `$latitude` | number | `39.525665` | |
+| `location.coordinates[0]` | `$longitude` | number | `-76.350663` | |
+| `_id` | `Radar ID` | string | `"5b2c0906f5874b001aecfd8d"` | |
+| `location.coordinates[1]` | `Radar Location Latitude` | number | `39.525665` | |
+| `location.coordinates[0]` | `Radar Location Longitude` | number | `-76.350663` | |
+| `locationAuthorization` | `Radar Location Authorization` | string | `"GRANTED_FOREGROUND"` | |
+| `locationAccuracyAuthorization` | `Radar Location Accuracy Authorization` | string | `"FULL"` | |
+| `updatedAt` | `Radar Updated At` | timestamp | `"2026-06-22T15:23:39.000Z"` | |
+| `segments[*].externalId` | `Radar Segment External IDs` | array[string] | `["loyalty-members"]` | |
+| `topChains[*].slug` | `Radar Top Chain Slugs` | array[string] | `["example-coffee", "example-grocery"]` | |
+| `topChains[*].externalId` | `Radar Top Chain External IDs` | array[string] | `["chain-7", "chain-9"]` | |
+| `geofences[*]._id` | `Radar Geofence IDs` | array[string] | `["5b2c0906f5874b001aecfd8e"]` | Geofences |
+| `geofences[*].description` | `Radar Geofence Descriptions` | array[string] | `["Store #42"]` | Geofences |
+| `geofences[*].tag` | `Radar Geofence Tags` | array[string] | `["store"]` | Geofences |
+| `geofences[*].externalId` | `Radar Geofence External IDs` | array[string] | `["store-42"]` | Geofences |
+| `place._id` | `Radar Place ID` | string | `"59302bcf8f27e8a156bd4f91"` | Places |
+| `place.name` | `Radar Place Name` | string | `"Example Coffee"` | Places |
+| `place.categories` | `Radar Place Categories` | array[string] | `["food-beverage", "cafe", "coffee-shop"]` | Places |
+| `place.chain.slug` | `Radar Place Chain Slug` | string | `"example-coffee"` | Places |
+| `place.chain.name` | `Radar Place Chain Name` | string | `"Example Coffee"` | Places |
+| `place.chain.externalId` | `Radar Place Chain External ID` | string | `"chain-7"` | Places |
+| `country.code` | `Radar Region Country Code` | string | `"US"` | Regions |
+| `country.name` | `Radar Region Country Name` | string | `"United States"` | Regions |
+| `state.code` | `Radar Region State Code` | string | `"MD"` | Regions |
+| `state.name` | `Radar Region State Name` | string | `"Maryland"` | Regions |
+| `dma.code` | `Radar Region DMA Code` | string | `"26"` | Regions |
+| `dma.name` | `Radar Region DMA Name` | string | `"Baltimore"` | Regions |
+| `postalCode.code` | `Radar Region Postal Code` | string | `"21014"` | Regions |
+| `trip.externalId` | `Radar Trip External ID` | string | `"order-299"` | Trips |
+| `trip.destinationGeofenceTag` | `Radar Trip Destination Geofence Tag` | string | `"store"` | Trips |
+| `trip.destinationGeofenceExternalId` | `Radar Trip Destination Geofence External ID` | string | `"store-42"` | Trips |
+| `beacons[*]._id` | `Radar Beacon IDs` | array[string] | `["5b2c0906f5874b001aecfd8f"]` | Beacons |
+| `beacons[*].description` | `Radar Beacon Descriptions` | array[string] | `["Store #42 drive-thru"]` | Beacons |
+| `beacons[*].tag` | `Radar Beacon Tags` | array[string] | `["drive-thru"]` | Beacons |
+| `beacons[*].externalId` | `Radar Beacon External IDs` | array[string] | `["store-42-drive-thru"]` | Beacons |
+
+A property has a value only when the matching Radar feature is enabled for your project and applies to the user.
 
 ## Event mapping
 
-| Radar Event                         | Context Type                       | Mixpanel Event                       |
-| ----------------------------------- | ---------------------------------- | ------------------------------------ |
-| `user.entered_geofence`             | [Geofences](/geofencing/geofences) | `Radar Geofence Entered`             |
-| `user.exited_geofence`              | [Geofences](/geofencing/geofences) | `Radar Geofence Exited`              |
-| `user.dwelled_in_geofence`          | [Geofences](/geofencing/geofences) | `Radar Dwelled in Geofence`          |
-| `user.entered_place`                | [Places](/geofencing/places)       | `Radar Place Entered`                |
-| `user.exited_place`                 | [Places](/geofencing/places)       | `Radar Place Exited`                 |
-| `user.entered_region_country`       | [Regions](/geofencing/regions)     | `Radar Country Entered`              |
-| `user.exited_region_country`        | [Regions](/geofencing/regions)     | `Radar Country Exited`               |
-| `user.entered_region_state`         | [Regions](/geofencing/regions)     | `Radar State Entered`                |
-| `user.exited_region_state`          | [Regions](/geofencing/regions)     | `Radar State Exited`                 |
-| `user.entered_region_dma`           | [Regions](/geofencing/regions)     | `Radar DMA Entered`                  |
-| `user.exited_region_dma`            | [Regions](/geofencing/regions)     | `Radar DMA Exited`                   |
-| `user.started_trip`                 | [Trip Tracking](/geofencing/trips) | `Radar Started Trip`                 |
-| `user.updated_trip`                 | [Trip Tracking](/geofencing/trips)    | `Radar Updated Trip`                 |
-| `user.approaching_trip_destination` | [Trip Tracking](/geofencing/trips)    | `Radar Approaching Trip Destination` |
-| `user.arrived_at_trip_destination`  | [Trip Tracking](/geofencing/trips)    | `Radar Arrived at Trip Destination`  |
-| `user.stopped_trip`                 | [Trip Tracking](/geofencing/trips) | `Radar Stopped Trip`                 |
-| `user.entered_beacon`               | [Beacons](/geofencing/beacons)     | `Radar Beacon Entered`               |
-| `user.exited_beacon`                | [Beacons](/geofencing/beacons)     | `Radar Beacon Exited`                |
+Radar sends one Mixpanel event per Radar event. The Mixpanel event name is the Radar event name in title case with a `Radar` prefix.
+
+| Radar event | Mixpanel event | Context |
+| --- | --- | --- |
+| `user.entered_geofence` | `Radar Geofence Entered` | Geofences |
+| `user.exited_geofence` | `Radar Geofence Exited` | Geofences |
+| `user.dwelled_in_geofence` | `Radar Dwelled in Geofence` | Geofences |
+| `user.entered_place` | `Radar Place Entered` | Places |
+| `user.exited_place` | `Radar Place Exited` | Places |
+| `user.entered_region_country` | `Radar Country Entered` | Regions |
+| `user.exited_region_country` | `Radar Country Exited` | Regions |
+| `user.entered_region_state` | `Radar State Entered` | Regions |
+| `user.exited_region_state` | `Radar State Exited` | Regions |
+| `user.entered_region_dma` | `Radar DMA Entered` | Regions |
+| `user.exited_region_dma` | `Radar DMA Exited` | Regions |
+| `user.entered_region_postal_code` | `Radar Postal Code Entered` | Regions |
+| `user.exited_region_postal_code` | `Radar Postal Code Exited` | Regions |
+| `user.started_trip` | `Radar Started Trip` | Trips |
+| `user.updated_trip` | `Radar Updated Trip` | Trips |
+| `user.approaching_trip_destination` | `Radar Approaching Trip Destination` | Trips |
+| `user.arrived_at_trip_destination` | `Radar Arrived at Trip Destination` | Trips |
+| `user.stopped_trip` | `Radar Stopped Trip` | Trips |
+| `user.entered_beacon` | `Radar Beacon Entered` | Beacons |
+| `user.exited_beacon` | `Radar Beacon Exited` | Beacons |
+
+### Properties on every event
+
+| Radar field | Mixpanel event property | Type | Notes |
+| --- | --- | --- | --- |
+| `metadata.mixpanelDistinctId` or `userId` | `distinct_id` | string | |
+| `event.createdAt` | `time` | timestamp | When the event occurred. |
+| `event.location.coordinates[1]` | `$latitude` and `Latitude` | number | |
+| `event.location.coordinates[0]` | `$longitude` and `Longitude` | number | |
+| `event.locationAccuracy` | `Accuracy` | number (meters) | |
+| `event.foreground` | `Foreground` | boolean | |
+| `event.replayed` | `Replayed` | boolean | Sent only when `true`. |
+
+Radar also sets `$partner_id` to `radar` on every event.
+
+When the event has region context, Radar also sends these properties on every event type:
+
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `country.code` | `Country Code` | string | `"US"` |
+| `country.name` | `Country Name` | string | `"United States"` |
+| `state.code` | `State Code` | string | `"MD"` |
+| `state.name` | `State Name` | string | `"Maryland"` |
+| `dma.code` | `DMA Code` | string | `"26"` |
+| `dma.name` | `DMA Name` | string | `"Baltimore"` |
+| `postalCode.code` | `Postal Code` | string | `"21014"` |
+
+The sections below list the properties that are specific to each event type. `Confidence` is one of `"none"`, `"low"`, `"medium"`, or `"high"`. A property is omitted when the Radar field has no value.
 
 ### Radar Geofence Entered
 
-| Radar Event Field          | Mixpanel Event Property   | Type   | Example                      |
-| -------------------------- | ------------------------- | ------ | ---------------------------- |
-| `geofence._id`             | `Geofence ID`             | string | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description`     | `Geofence Description`    | string | `"Store #123"`               |
-| `geofence.tag`             | `Geofence Tag`            | string | `"store"`                    |
-| `geofence.externalId`      | `Geofence External ID`    | string | `"123"`                      |
-| `geofence.metadata[{key}]` | `Geofence Metadata {key}` | type   | `{value}`                    |
-| `confidence`               | `Confidence`              | string | `"high"`                     |
-| `foreground`               | `Foreground`              | string | `true`                       |
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `geofence._id` | `Geofence ID` | string | `"5b2c0906f5874b001aecfd8e"` |
+| `geofence.description` | `Geofence Description` | string | `"Store #42"` |
+| `geofence.tag` | `Geofence Tag` | string | `"store"` |
+| `geofence.externalId` | `Geofence External ID` | string | `"store-42"` |
+| `geofence.metadata[{key}]` | `Geofence Metadata {key}` | type of the value | `{value}` |
+| `confidence` | `Confidence` | string | `"high"` |
 
 ### Radar Geofence Exited
 
-| Radar Event Field          | Mixpanel Event Property   | Type             | Example                      |
-| -------------------------- | ------------------------- | ---------------- | ---------------------------- |
-| `geofence._id`             | `Geofence ID`             | string           | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description`     | `Geofence Description`    | string           | `"Store #123"`               |
-| `geofence.tag`             | `Geofence Tag`            | string           | `"store"`                    |
-| `geofence.externalId`      | `Geofence External ID`    | string           | `"123"`                      |
-| `geofence.metadata[{key}]` | `Geofence Metadata {key}` | type             | `{value}`                    |
-| `confidence`               | `Confidence`              | string           | `"high"`                     |
-| `duration`                 | `Duration`                | number (minutes) | `42.1`                       |
-| `foreground`               | `Foreground`              | string           | `true`                       |
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `geofence._id` | `Geofence ID` | string | `"5b2c0906f5874b001aecfd8e"` |
+| `geofence.description` | `Geofence Description` | string | `"Store #42"` |
+| `geofence.tag` | `Geofence Tag` | string | `"store"` |
+| `geofence.externalId` | `Geofence External ID` | string | `"store-42"` |
+| `geofence.metadata[{key}]` | `Geofence Metadata {key}` | type of the value | `{value}` |
+| `confidence` | `Confidence` | string | `"high"` |
+| `duration` | `Duration` | number (minutes) | `42.1` |
 
 ### Radar Dwelled in Geofence
 
-| Radar Event Field          | Mixpanel Event Property   | Type             | Example                      |
-| -------------------------- | ------------------------- | ---------------- | ---------------------------- |
-| `geofence._id`             | `Geofence ID`             | string           | `"5b2c0906f5874b001aecfd8e"` |
-| `geofence.description`     | `Geofence Description`    | string           | `"Store #123"`               |
-| `geofence.tag`             | `Geofence Tag`            | string           | `"store"`                    |
-| `geofence.externalId`      | `Geofence External ID`    | string           | `"123"`                      |
-| `geofence.metadata[{key}]` | `Geofence Metadata {key}` | type             | `{value}`                    |
-| `confidence`               | `Confidence`              | string           | `"high"`                     |
-| `duration`                 | `Duration`                | number (minutes) | `5`                          |
-| `foreground`               | `Foreground`              | string           | `true`                       |
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `geofence._id` | `Geofence ID` | string | `"5b2c0906f5874b001aecfd8e"` |
+| `geofence.description` | `Geofence Description` | string | `"Store #42"` |
+| `geofence.tag` | `Geofence Tag` | string | `"store"` |
+| `geofence.externalId` | `Geofence External ID` | string | `"store-42"` |
+| `geofence.metadata[{key}]` | `Geofence Metadata {key}` | type of the value | `{value}` |
+| `confidence` | `Confidence` | string | `"high"` |
+| `duration` | `Duration` | number (minutes) | `42.1` |
 
 ### Radar Place Entered
 
-| Radar Event Field  | Mixpanel Event Property | Type          | Example                                    |
-| ------------------ | ----------------------- | ------------- | ------------------------------------------ |
-| `place._id`        | `Place ID`              | string        | `"59302bcf8f27e8a156bd4f91"`               |
-| `place.name`       | `Place Name`            | string        | `"Starbucks"`                              |
-| `place.chain.slug` | `Place Chain ID`        | string        | `"starbucks"`                              |
-| `place.chain.name` | `Place Chain Name`      | string        | `"Starbucks"`                              |
-| `place.categories` | `Place Categories`      | array[string] | `["food-beverage", "cafe", "coffee-shop"]` |
-| `confidence`       | `Confidence`            | string        | `"high"`                                   |
-| `foreground`       | `Foreground`            | string        | `true`                                     |
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `place._id` | `Place ID` | string | `"59302bcf8f27e8a156bd4f91"` |
+| `place.name` | `Place Name` | string | `"Example Coffee"` |
+| `place.chain.slug` | `Place Chain Slug` | string | `"example-coffee"` |
+| `place.chain.name` | `Place Chain Name` | string | `"Example Coffee"` |
+| `place.categories` | `Place Categories` | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` |
+| `confidence` | `Confidence` | string | `"high"` |
 
 ### Radar Place Exited
 
-| Radar Event Field  | Mixpanel Event Property | Type             | Example                                    |
-| ------------------ | ----------------------- | ---------------- | ------------------------------------------ |
-| `place._id`        | `Place ID`              | string           | `"59302bcf8f27e8a156bd4f91"`               |
-| `place.name`       | `Place Name`            | string           | `"Starbucks"`                              |
-| `place.chain.slug` | `Place Chain ID`        | string           | `"starbucks"`                              |
-| `place.chain.name` | `Place Chain Name`      | string           | `"Starbucks"`                              |
-| `place.categories` | `Place Categories`      | array[string]    | `["food-beverage", "cafe", "coffee-shop"]` |
-| `confidence`       | `Confidence`            | string           | `"high"`                                   |
-| `duration`         | `Duration`              | number (minutes) | `42.1`                                     |
-| `foreground`       | `Foreground`            | string           | `true`                                     |
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `place._id` | `Place ID` | string | `"59302bcf8f27e8a156bd4f91"` |
+| `place.name` | `Place Name` | string | `"Example Coffee"` |
+| `place.chain.slug` | `Place Chain Slug` | string | `"example-coffee"` |
+| `place.chain.name` | `Place Chain Name` | string | `"Example Coffee"` |
+| `place.categories` | `Place Categories` | string (comma-separated) | `"food-beverage,cafe,coffee-shop"` |
+| `confidence` | `Confidence` | string | `"high"` |
+| `duration` | `Duration` | number (minutes) | `42.1` |
 
 ### Radar Country Entered
 
-| Radar Event Field | Mixpanel Event Property | Type   | Example Value     |
-| ----------------- | ----------------------- | ------ | ----------------- |
-| `region.code`     | `Region Code`           | string | `"US"`            |
-| `region.name`     | `Region Name`           | string | `"United States"` |
-| `confidence`      | `Confidence`            | string | `"high"`          |
-| `foreground`      | `Foreground`            | string | `true`            |
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `region.code` | `Region Code` | string | `"US"` |
+| `region.name` | `Region Name` | string | `"United States"` |
+| `confidence` | `Confidence` | string | `"high"` |
 
 ### Radar Country Exited
 
-| Radar Event Field | Mixpanel Event Property | Type   | Example Value     |
-| ----------------- | ----------------------- | ------ | ----------------- |
-| `region.code`     | `Region Code`           | string | `"US"`            |
-| `region.name`     | `Region Name`           | string | `"United States"` |
-| `confidence`      | `Confidence`            | string | `"high"`          |
-| `foreground`      | `Foreground`            | string | `true`            |
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `region.code` | `Region Code` | string | `"US"` |
+| `region.name` | `Region Name` | string | `"United States"` |
+| `confidence` | `Confidence` | string | `"high"` |
+| `duration` | `Duration` | number (minutes) | `42.1` |
 
 ### Radar State Entered
 
-| Radar Event Field | Mixpanel Event Property | Type   | Example Value |
-| ----------------- | ----------------------- | ------ | ------------- |
-| `region.code`     | `Region Code`           | string | `"MD"`        |
-| `region.name`     | `Region Name`           | string | `"Maryland"`  |
-| `confidence`      | `Confidence`            | string | `"high"`      |
-| `foreground`      | `Foreground`            | string | `true`        |
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `region.code` | `Region Code` | string | `"MD"` |
+| `region.name` | `Region Name` | string | `"Maryland"` |
+| `confidence` | `Confidence` | string | `"high"` |
 
 ### Radar State Exited
 
-| Radar Event Field | Mixpanel Event Property | Type   | Example Value |
-| ----------------- | ----------------------- | ------ | ------------- |
-| `region.code`     | `Region Code`           | string | `"MD"`        |
-| `region.name`     | `Region Name`           | string | `"Maryland"`  |
-| `confidence`      | `Confidence`            | string | `"high"`      |
-| `foreground`      | `Foreground`            | string | `true`        |
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `region.code` | `Region Code` | string | `"MD"` |
+| `region.name` | `Region Name` | string | `"Maryland"` |
+| `confidence` | `Confidence` | string | `"high"` |
+| `duration` | `Duration` | number (minutes) | `42.1` |
 
 ### Radar DMA Entered
 
-| Radar Event Field | Mixpanel Event Property | Type   | Example Value |
-| ----------------- | ----------------------- | ------ | ------------- |
-| `region.code`     | `Region Code`           | string | `"26"`        |
-| `region.name`     | `Region Name`           | string | `"Baltimore"` |
-| `confidence`      | `Confidence`            | string | `"high"`      |
-| `foreground`      | `Foreground`            | string | `true`        |
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `region.code` | `Region Code` | string | `"26"` |
+| `region.name` | `Region Name` | string | `"Baltimore"` |
+| `confidence` | `Confidence` | string | `"high"` |
 
 ### Radar DMA Exited
 
-| Radar Event Field | Mixpanel Event Property | Type   | Example Value |
-| ----------------- | ----------------------- | ------ | ------------- |
-| `region.code`     | `Region Code`           | string | `"26"`        |
-| `region.name`     | `Region Name`           | string | `"Baltimore"` |
-| `confidence`      | `Confidence`            | string | `"high"`      |
-| `foreground`      | `Foreground`            | string | `true`        |
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `region.code` | `Region Code` | string | `"26"` |
+| `region.name` | `Region Name` | string | `"Baltimore"` |
+| `confidence` | `Confidence` | string | `"high"` |
+| `duration` | `Duration` | number (minutes) | `42.1` |
+
+### Radar Postal Code Entered
+
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `region.code` | `Region Code` | string | `"21014"` |
+| `region.name` | `Region Name` | string | `"21014"` |
+| `confidence` | `Confidence` | string | `"high"` |
+
+### Radar Postal Code Exited
+
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `region.code` | `Region Code` | string | `"21014"` |
+| `region.name` | `Region Name` | string | `"21014"` |
+| `confidence` | `Confidence` | string | `"high"` |
+| `duration` | `Duration` | number (minutes) | `42.1` |
 
 ### Radar Started Trip
 
-| Radar Event Attribute                | Mixpanel Event Property                 | Type   | Example Value |
-| ------------------------------------ | --------------------------------------- | ------ | ------------- |
-| `trip.externalId`                    | `Trip External ID`                      | string | `"299"`       |
-| `trip.metadata[{key}]`               | `Trip Metadata {key}`                   | type   | `{value}`     |
-| `trip.destinationGeofenceTag`        | `Trip Destination Geofence Tag`         | string | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string | `"123"`       |
-| `foreground`                         | `Foreground`                            | string | `true`        |
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `trip.externalId` | `Trip External ID` | string | `"order-299"` |
+| `trip.metadata[{key}]` | `Trip Metadata {key}` | type of the value | `{value}` |
+| `trip.destinationGeofenceTag` | `Trip Destination Geofence Tag` | string | `"store"` |
+| `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string | `"store-42"` |
+| `confidence` | `Confidence` | string | `"high"` |
 
 ### Radar Updated Trip
 
-| Radar Event Attribute                | Mixpanel Event Property                 | Type   | Example Value |
-| ------------------------------------ | --------------------------------------- | ------ | ------------- |
-| `trip.externalId`                    | `Trip External ID`                      | string | `"299"`       |
-| `trip.metadata[{key}]`               | `Trip Metadata {key}`                   | type   | `{value}`     |
-| `trip.destinationGeofenceTag`        | `Trip Destination Geofence Tag`         | string | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string | `"123"`       |
-| `foreground`                         | `Foreground`                            | string | `true`        |
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `trip.externalId` | `Trip External ID` | string | `"order-299"` |
+| `trip.metadata[{key}]` | `Trip Metadata {key}` | type of the value | `{value}` |
+| `trip.destinationGeofenceTag` | `Trip Destination Geofence Tag` | string | `"store"` |
+| `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string | `"store-42"` |
+| `confidence` | `Confidence` | string | `"high"` |
 
 ### Radar Approaching Trip Destination
 
-| Radar Event Attribute                | Mixpanel Event Property                 | Type   | Example Value |
-| ------------------------------------ | --------------------------------------- | ------ | ------------- |
-| `trip.externalId`                    | `Trip External ID`                      | string | `"299"`       |
-| `trip.metadata[{key}]`               | `Trip Metadata {key}`                   | type   | `{value}`     |
-| `trip.destinationGeofenceTag`        | `Trip Destination Geofence Tag`         | string | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string | `"123"`       |
-| `foreground`                         | `Foreground`                            | string | `true`        |
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `trip.externalId` | `Trip External ID` | string | `"order-299"` |
+| `trip.metadata[{key}]` | `Trip Metadata {key}` | type of the value | `{value}` |
+| `trip.destinationGeofenceTag` | `Trip Destination Geofence Tag` | string | `"store"` |
+| `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string | `"store-42"` |
+| `confidence` | `Confidence` | string | `"high"` |
 
 ### Radar Arrived at Trip Destination
 
-| Radar Event Attribute                | Mixpanel Event Property                 | Type   | Example Value |
-| ------------------------------------ | --------------------------------------- | ------ | ------------- |
-| `trip.externalId`                    | `Trip External ID`                      | string | `"299"`       |
-| `trip.metadata[{key}]`               | `Trip Metadata {key}`                   | type   | `{value}`     |
-| `trip.destinationGeofenceTag`        | `Trip Destination Geofence Tag`         | string | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string | `"123"`       |
-| `foreground`                         | `Foreground`                            | string | `true`        |
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `trip.externalId` | `Trip External ID` | string | `"order-299"` |
+| `trip.metadata[{key}]` | `Trip Metadata {key}` | type of the value | `{value}` |
+| `trip.destinationGeofenceTag` | `Trip Destination Geofence Tag` | string | `"store"` |
+| `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string | `"store-42"` |
+| `confidence` | `Confidence` | string | `"high"` |
 
 ### Radar Stopped Trip
 
-| Radar Event Attribute                | Mixpanel Event Property                 | Type   | Example Value |
-| ------------------------------------ | --------------------------------------- | ------ | ------------- |
-| `trip.externalId`                    | `Trip External ID`                      | string | `"299"`       |
-| `trip.metadata[{key}]`               | `Trip Metadata {key}`                   | type   | `{value}`     |
-| `trip.destinationGeofenceTag`        | `Trip Destination Geofence Tag`         | string | `"store"`     |
-| `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string | `"123"`       |
-| `foreground`                         | `Foreground`                            | string | `true`        |
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `trip.externalId` | `Trip External ID` | string | `"order-299"` |
+| `trip.metadata[{key}]` | `Trip Metadata {key}` | type of the value | `{value}` |
+| `trip.destinationGeofenceTag` | `Trip Destination Geofence Tag` | string | `"store"` |
+| `trip.destinationGeofenceExternalId` | `Trip Destination Geofence External ID` | string | `"store-42"` |
+| `confidence` | `Confidence` | string | `"high"` |
 
 ### Radar Beacon Entered
 
-| Radar Event Attribute    | Mixpanel Event Property | Type   | Example Value                |
-| ------------------------ | ----------------------- | ------ | ---------------------------- |
-| `beacon._id`             | `Beacon ID`             | string | `"5b2c0906f5874b001aecfd8f"` |
-| `beacon.description`     | `Beacon Description`    | string | `"Store #123 - Drive-Thru"`  |
-| `beacon.tag`             | `Beacon Tag`            | string | `"drive-thru"`               |
-| `beacon.externalId`      | `Beacon External ID`    | string | `"123"`                      |
-| `beacon.metadata[{key}]` | `Beacon Metadata {key}` | type   | `{value}`                    |
-| `confidence`             | `Confidence`            | string | `"high"`                     |
-| `foreground`             | `Foreground`            | string | `true`                       |
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `beacon._id` | `Beacon ID` | string | `"5b2c0906f5874b001aecfd8f"` |
+| `beacon.description` | `Beacon Description` | string | `"Store #42 drive-thru"` |
+| `beacon.tag` | `Beacon Tag` | string | `"drive-thru"` |
+| `beacon.externalId` | `Beacon External ID` | string | `"store-42-drive-thru"` |
+| `beacon.metadata[{key}]` | `Beacon Metadata {key}` | type of the value | `{value}` |
+| `confidence` | `Confidence` | string | `"high"` |
 
 ### Radar Beacon Exited
 
-| Radar Event Attribute    | Mixpanel Event Property | Type             | Example Value                |
-| ------------------------ | ----------------------- | ---------------- | ---------------------------- |
-| `beacon._id`             | `Beacon ID`             | string           | `"5b2c0906f5874b001aecfd8f"` |
-| `beacon.description`     | `Beacon Description`    | string           | `"Store #123 - Drive-Thru"`  |
-| `beacon.tag`             | `Beacon Tag`            | string           | `"drive-thru"`               |
-| `beacon.externalId`      | `Beacon External ID`    | string           | `"123"`                      |
-| `beacon.metadata[{key}]` | `Beacon Metadata {key}` | type             | `{value}`                    |
-| `confidence`             | `Confidence`            | string           | `"high"`                     |
-| `duration`               | `Duration`              | number (minutes) | `1.42`                       |
-| `foreground`             | `Foreground`            | string           | `true`                       |
+| Radar event field | Mixpanel event property | Type | Example value |
+| --- | --- | --- | --- |
+| `beacon._id` | `Beacon ID` | string | `"5b2c0906f5874b001aecfd8f"` |
+| `beacon.description` | `Beacon Description` | string | `"Store #42 drive-thru"` |
+| `beacon.tag` | `Beacon Tag` | string | `"drive-thru"` |
+| `beacon.externalId` | `Beacon External ID` | string | `"store-42-drive-thru"` |
+| `beacon.metadata[{key}]` | `Beacon Metadata {key}` | type of the value | `{value}` |
+| `confidence` | `Confidence` | string | `"high"` |
+| `duration` | `Duration` | number (minutes) | `1.42` |
 
+## Filtering
+
+On the [Integrations](https://dashboard.radar.com/integrations) page, click **Show advanced** in the **Mixpanel** section.
+
+| Field | Effect |
+| --- | --- |
+| **Event type allowlist** | When you select one or more event types, Radar sends only those types to Mixpanel. With nothing selected, Radar sends every event type. |
+| **Request key blocklist (comma-separated)** | Removes the listed keys from the request at any depth. For example, `Radar Place Name,Latitude,Longitude` removes one profile property and two event properties. |
+| **Geofence tag blocklist (comma-separated)** | Skips events for geofences that have one of the listed tags. |
+
+Radar forwards every event type that passes the filters, including types that aren't in the [event mapping](#event-mapping) table. To keep unmapped event types out of Mixpanel, select only the types you want in **Event type allowlist**.
+
+## Delivery behavior
+
+- **Requests**: For each Radar update that generates events, Radar sends one profile update to `https://api.mixpanel.com/engage/` and one request with the events to `https://api.mixpanel.com/track/`. If your Mixpanel project ingests through a different endpoint, ask your Radar account team whether it is supported before you enable the integration.
+- **Events without a location**: Radar doesn't send an event that has no location to Mixpanel.
+- **Timing**: Radar sends events from its servers shortly after it generates them.
+- **Attempts**: Radar makes one delivery attempt per request and waits up to 5 seconds for Mixpanel to respond. It doesn't retry a failed request. Use the [integration logs](#troubleshoot-delivery) to find failures, and the [Events API](/api/events) if you need to backfill.
+- **Environment**: The event's environment selects the token. Radar doesn't send a Test event with the Live token or the reverse.
+
+## Test the integration
+
+<Steps>
+  <Step title="Use the Test environment">
+    Confirm that **Test token** holds the token of a Mixpanel project that you can inspect, and that the integration is saved with **Enabled** set to **Yes**.
+  </Step>
+  <Step title="Generate an event for an identified user">
+    Create a geofence in the Test environment, then send a location inside it with your Test publishable key. Include a `userId`, because Mixpanel delivery requires a distinct ID. Replace the coordinates with a point inside your geofence:
+
+    ```bash
+    curl "https://api.radar.io/v1/track" \
+      -H "Authorization: prj_test_pk_..." \
+      -X POST \
+      -d "deviceId=test-device-1" \
+      -d "userId=user-123" \
+      -d "latitude=40.78382" \
+      -d "longitude=-73.97536" \
+      -d "accuracy=10"
+    ```
+
+    The response includes a `user.entered_geofence` event the first time the user enters the geofence. For the parameters, see [Tracking API](/api/tracking).
+  </Step>
+  <Step title="Check Radar's log">
+    In the **Mixpanel** section, click **View integration logs**. Find two rows for the event: one for the `/engage/` request and one for the `/track/` request, each with a `200` response.
+  </Step>
+  <Step title="Check Mixpanel">
+    In the Mixpanel project that owns the Test token, open the profile with distinct ID `user-123`. Confirm that the profile has a `Radar Geofence Entered` event with the `Geofence External ID` of your geofence, and `Radar Geofence External IDs` among the profile properties.
+  </Step>
+</Steps>
+
+## Troubleshoot delivery
+
+On the [Integrations](https://dashboard.radar.com/integrations) page, click **View integration logs** in the **Mixpanel** section. Each row shows the request and Mixpanel's response. Radar redacts the token in the logged request.
+
+| What you see | Likely cause | What to do |
+| --- | --- | --- |
+| No rows | No events were generated in that environment, or the integration isn't saved as enabled. | Check the Events page for the environment and the **Enabled** setting. |
+| `skipped`: `Integration key(s) missing.` | The token for the event's environment is empty. | Enter the **Test token** or **Live token**. |
+| `skipped`: `Identifier missing.` | The user has no `userId` and no `metadata.mixpanelDistinctId`. | Set one of them. Anonymous users aren't sent to Mixpanel. |
+| `skipped`: `Event type ... is not allowed.` | The event type isn't selected in **Event type allowlist**. | Select the type or clear the allowlist. |
+| `skipped`: `Geofence tag '...' is blocklisted.` | The geofence's tag is in **Geofence tag blocklist**. | Remove the tag from the blocklist. |
+| A success response but no event on the expected profile | The distinct ID differs between Radar and your app, or the token belongs to another project. | Compare `distinct_id` in the logged request with the profile, and check the token. |
+
+## Limitations
+
+- Radar sends events only for users that have a `userId` or `metadata.mixpanelDistinctId`.
+- Radar doesn't retry failed deliveries to Mixpanel, and doesn't send a deduplication ID with events.
+- Events without a location aren't sent.
+- You can't rename events or properties. Use the request key blocklist to drop properties you don't want.
+- Events generated before you enabled the integration aren't sent.
+- The integration has no setting for the Mixpanel ingestion endpoint.
+- Profile properties reflect the user's state when the event was generated. Radar doesn't update Mixpanel when a user's state changes without generating an event.

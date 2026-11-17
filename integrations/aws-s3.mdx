@@ -1,134 +1,267 @@
 ---
 title: "AWS S3"
-description: "Stream Radar events and location data to an AWS S3 bucket for analysis in your own data systems."
+description: "Export Radar events and locations to your AWS S3 bucket as Parquet files, and tell that export apart from syncing geofences from a CSV in S3."
 ---
 
 <Info>
-  The AWS S3 integration is available on the [**Enterprise plan**](https://radar.com/pricing).
+  The AWS S3 export is available on the [Enterprise plan](https://radar.com/pricing) and must be enabled for your project. Contact your Radar account team.
 </Info>
 
-Radar can stream both events and locations to [AWS S3](https://aws.amazon.com/s3/).
+By the end of this page, Radar delivers your project's events and locations to an S3 bucket in your AWS account as Parquet files, and you have queried a delivered file to confirm it.
 
-Use the AWS S3 integration to make Radar data available in a simple object storage format within your own systems, making your locations and events data more easily accessible by your engineers and data scientists.
+## Two S3 features
 
-By having all of your event and location data in S3, you can integrate your location data with other analysis tools like AWS Athena or Snowflake. Files are delivered via an [AWS Kinesis Data Firehose](https://aws.amazon.com/kinesis/data-firehose/) as snappy-compressed parquet files. Each `/dt=YYYY-MM-DD/` folder will have multiple files in it. This format should be consumable out-of-the-box with Apache Spark, AWS Athena, or other data engineering tools. This can enable you to build custom dashboard visualizations of data like foot traffic, trip duration, or dwell time in a location.
+Radar works with S3 in two unrelated ways. This page covers the first.
+
+| | Export events and locations | Sync geofences from a CSV |
+| --- | --- | --- |
+| Direction | Radar writes to your bucket. | Radar reads from your bucket. |
+| Data | Events and locations, as Parquet. | Geofence definitions, as CSV. |
+| Set up by | Your Radar account team, after you create the bucket and policy. | You, in the **Geofence sync** section of the Integrations page. |
+| AWS access | A bucket policy that lets Radar's delivery role write objects. | An IAM user's access key with `GetObject` permission. |
+| Documentation | This page. | [Sync geofences from a CSV in S3](#sync-geofences-from-a-csv-in-s3) |
+
+## Prerequisites
+
+- A Radar project on the Enterprise plan.
+- A contact on your Radar account team. They enable the export and give you the AWS values for the bucket policy. The Radar dashboard has no control for this export.
+- Permission in your AWS account to create an S3 bucket and edit its bucket policy.
+
+## How the export works
+
+Radar streams new events and locations through an [Amazon Data Firehose](https://aws.amazon.com/firehose/) delivery stream in Radar's AWS account. The stream buffers records and writes them to your bucket through cross-account delivery:
+
+1. Radar generates an event or records a location.
+2. The record enters Radar's delivery stream.
+3. The stream flushes a file to your bucket after 10 minutes or 128 MB of data, whichever comes first.
+
+Files are Snappy-compressed Parquet. Tools that read Parquet from S3, such as Amazon Athena and Apache Spark, can query them without conversion.
+
+Radar can use [AWS KMS](https://aws.amazon.com/kms/) for [server-side encryption of the stream](https://docs.aws.amazon.com/streams/latest/dev/server-side-encryption.html). Ask your account team if you need it.
 
 ## Configuration
 
-Contact your customer success manager to enable this feature.
-
-The AWS S3 integration uses an [AWS Kinesis Data Firehose](https://aws.amazon.com/kinesis/data-firehose/) to stream new Radar locations and events. The AWS Kinesis Data Firehose flushes data to your S3 bucket after 10 minutes or 128 MB of data, whichever happens first. Additionally, [AWS KMS](https://aws.amazon.com/kms/) can be used [to encrypt Kinesis data streams server-side](https://docs.aws.amazon.com/streams/latest/dev/server-side-encryption.html).
-
-![Aws S3 Diagram Pn](/images/aws-s3-diagram.png)
-
 ### Create a bucket
 
-Create an S3 bucket for Radar to deliver data to, for example, `s3://com.example.bucket/`. Data will be delivered to `s3://com.example.bucket/radar/events/project=$PROJECT/dt=YYYY-MM-DD/X.parquet.snappy`. Provide the name of the bucket to your customer success manager.
+Create an S3 bucket for Radar to deliver to, for example `s3://com.example.bucket/`. Send the bucket name to your Radar account team.
+
+Radar delivers event files under this path, partitioned by project and delivery date:
+
+```text
+s3://com.example.bucket/radar/events/project=$PROJECT/dt=YYYY-MM-DD/X.parquet.snappy
+```
+
+Each `dt=YYYY-MM-DD` folder contains multiple files. `$PROJECT` is your Radar project ID.
 
 ### Create an AWS Cross-Account IAM policy
 
-Create an IAM Policy that allows Radar to deliver data to this bucket. To do this, implement step 2 in the [Cross-Account Delivery to an Amazon S3 Destination IAM Policy documentation](https://docs.aws.amazon.com/firehose/latest/dev/controlling-access.html#cross-account-delivery-s3). Radar will implement steps 1 and 3. Contact your Customer Support Manager to obtain the values for the `accountA-id` and `iam-role-name` values to use in the IAM Policy.
+Allow Radar's delivery role to write to the bucket:
+
+1. Ask your Radar account team for the `accountA-id` and `iam-role-name` values for your export.
+2. Follow step 2 of AWS's [cross-account delivery to an Amazon S3 destination](https://docs.aws.amazon.com/firehose/latest/dev/controlling-access.html#cross-account-delivery-s3) instructions to attach a bucket policy that grants that role access. Radar performs steps 1 and 3.
+3. Tell your account team that the policy is in place so that they can start delivery.
+
+### Environment
+
+Every record has a `live` column: `true` for the Live environment and `false` for the Test environment. Filter on `live` in your queries so that Test data doesn't mix with Live data.
+
+## Identity and field mapping
+
+The export uses Radar's own field names, lowercased. Two columns identify the user in each dataset:
+
+| Dataset | Radar's ID for the user | Your ID for the user |
+| --- | --- | --- |
+| Locations | `userid` | `userexternalid` |
+| Events | `user` | `userexternalid` |
+
+`userexternalid` is the value that you set as `userId` in the SDK or API. Join to your own user tables on that column.
+
+Metadata columns (`usermetadata`, and `metadata` on locations) hold stringified JSON. Parse them in your query engine.
 
 ### Location Schema
 
-| Name                            | Type            | Description                                                                      |
-| ------------------------------- | --------------- | -------------------------------------------------------------------------------- |
-| `locationid`                    | `string`        | Unique ID of the location                                                        |
-| `userid`                        | `string`        | Radar ID of user                                                                 |
-| `userexternalid`                | `string`        | External ID of user                                                              |
-| `usermetadata`                  | `string`        | Metadata of the user                                                             |
-| `organization`                  | `string`        | Radar ID of the org                                                              |
-| `locationaccuracy`              | `double`        | The accuracy reported by the device in meters                                    |
-| `updatedat`                     | `string`        | Location update time                                                             |
-| `devicetype`                    | `string`        | The type of device                                                               |
-| `live`                          | `boolean`       | Live/test mode                                                                   |
-| `foreground`                    | `boolean`       | Did the user send up the location in foreground or background                    |
-| `stopped`                       | `boolean`       | Did the user stop                                                                |
-| `sdkversion`                    | `string`        | The Radar SDK version                                                            |
-| `floorlevel`                    | `double`        | The floor level as reported by the device                                        |
-| `altitude`                      | `double`        | The altitude level as reported by the device                                     |
-| `verticalaccuracy`              | `double`        | The altitude accuracy as reported by the device                                  |
-| `latitude`                      | `double`        | The latitude of the location                                                     |
-| `longitude`                     | `double`        | The longitude of the location                                                    |
-| `timezoneoffset`                | `int`           | The timezone offset of the user                                                  |
-| `source`                        | `string`        | The sdk source they generated the location                                       |
-| `events`                        | `array<string>` | A list of events associated with this location                                   |
-| `sessionid`                     | `string`        | The session id created by the SDK                                                |
-| `appstandbybucket`              | `int`           | The App Standby Bucket as reported by the OS                                     |
-| `locationauthorization`         | `string`        | What type of location authorization was granted? (e.g. foreground or background) |
-| `locationaccuracyauthorization` | `string`        | How precise is the location granted? (e.g. precise location vs coarse location)  |
-| `devicemake`                    | `string`        | The make of the device                                                           |
-| `devicemodel`                   | `string`        | The device model                                                                 |
-| `deviceos`                      | `string`        | The OS of the device                                                             |
-| `metadata`                      | `string`        | Metadata such as tracking options used by the device                             |
-| `project`                       | `string`        | Partition key. The Radar Project ID publishing locations                         |
-| `dt`                            | `string`        | Partition key. The day of location delivery, formatted as YYYY-MM-DD             |
+| Field | Type | Description |
+| --- | --- | --- |
+| `locationid` | `string` | Unique ID of the location. |
+| `userid` | `string` | Radar ID of the user. |
+| `userexternalid` | `string` | External ID of the user. |
+| `usermetadata` | `string` | Metadata of the user. |
+| `organization` | `string` | Radar ID of the organization. |
+| `locationaccuracy` | `double` | The accuracy reported by the device, in meters. |
+| `updatedat` | `string` | Location update time. |
+| `devicetype` | `string` | The type of device. |
+| `live` | `boolean` | `true` for the Live environment, `false` for Test. |
+| `foreground` | `boolean` | Whether the location was sent in the foreground or the background. |
+| `stopped` | `boolean` | Whether the user was stopped. |
+| `sdkversion` | `string` | The Radar SDK version. |
+| `floorlevel` | `double` | The floor level reported by the device. |
+| `altitude` | `double` | The altitude reported by the device. |
+| `verticalaccuracy` | `double` | The altitude accuracy reported by the device. |
+| `latitude` | `double` | The latitude of the location. |
+| `longitude` | `double` | The longitude of the location. |
+| `timezoneoffset` | `int` | The time zone offset of the user. |
+| `source` | `string` | The SDK source that generated the location. |
+| `events` | `array<string>` | A list of events associated with this location. |
+| `sessionid` | `string` | The session ID created by the SDK. |
+| `appstandbybucket` | `int` | The App Standby Bucket reported by the OS. |
+| `locationauthorization` | `string` | The location authorization granted, for example foreground or background. |
+| `locationaccuracyauthorization` | `string` | The location precision granted, for example precise or approximate. |
+| `devicemake` | `string` | The make of the device. |
+| `devicemodel` | `string` | The device model. |
+| `deviceos` | `string` | The OS of the device. |
+| `metadata` | `string` | Metadata such as the tracking options used by the device. |
+| `project` | `string` | Partition key. The Radar project ID publishing locations. |
+| `dt` | `string` | Partition key. The day of location delivery, formatted as `YYYY-MM-DD`. |
 
 ### Event Schema
 
-| Name                                | Type            | Description                                                                      |
-| ----------------------------------- | --------------- | -------------------------------------------------------------------------------- |
-| `_id`                               | `string`        | Radar ID of the event                                                            |
-| `createdat`                         | `timestamp`     | Event creation time of the event from the Radar SDK                              |
-| `actualcreatedat`                   | `timestamp`     | Event creation time on the server                                                |
-| `organization`                      | `string`        | The Radar organization ID                                                        |
-| `live`                              | `boolean`       | Live/test mode                                                                   |
-| `locationaccuracy`                  | `double`        | The accuracy reported by the device in meters                                    |
-| `confidence`                        | `int`           | Event confidence                                                                 |
-| `place`                             | `string`        | The Radar ID of a place                                                          |
-| `placecategories`                   | `string`        | The categories of the place                                                      |
-| `placechainname`                    | `string`        | The chain name of the place                                                      |
-| `placechainslug`                    | `string`        | The chain slug of the place                                                      |
-| `placegroup`                        | `string`        | The group of the place                                                           |
-| `placename`                         | `string`        | The name of the place                                                            |
-| `alternateplaces`                   | `array<string>` | Alternate candidate places where the user entered                                |
-| `placecandidates`                   | `array<string>` | Alternate candidate places where the user entered with extra metadata            |
-| `duration`                          | `double`        | The length of the geofence entry                                                 |
-| `longitude`                         | `double`        | The longitude of the event                                                       |
-| `latitude`                          | `double`        | The latitude of the event                                                        |
-| `user`                              | `string`        | The Radar ID of the user                                                         |
-| `geofence`                          | `string`        | The Radar ID of the geofence                                                     |
-| `geofencedescription`               | `string`        | The description of the geofence                                                  |
-| `geofencetag`                       | `string`        | The tag of the geofence                                                          |
-| `geofenceexternalid`                | `string`        | The customer-provided ID of the geofence                                         |
-| `region`                            | `string`        | The Radar ID of the region                                                       |
-| `countryregionname`                 | `string`        | The name of the country                                                          |
-| `countryregioncode`                 | `string`        | The ISO code of the country                                                      |
-| `countryregion`                     | `string`        | The Radar ID of the country                                                      |
-| `dmaregion`                         | `string`        | The Radar ID of the DMA                                                          |
-| `dmaregionname`                     | `string`        | The name of the DMA                                                              |
-| `dmaregioncode`                     | `string`        | The ISO code of the DMA                                                          |
-| `stateregion`                       | `string`        | The Radar ID of the state                                                        |
-| `stateregionname`                   | `string`        | The name of the state                                                            |
-| `stateregioncode`                   | `string`        | The ISO code of the state                                                        |
-| `postalcoderegion`                  | `string`        | The Radar ID of the postal code                                                  |
-| `postalcoderegioncode`              | `string`        | The postal cod                                                                   |
-| `replayed`                          | `boolean`       | Did the SDK send this up in an event of a retry from a failed request            |
-| `type`                              | `string`        | The event type                                                                   |
-| `timezoneoffset`                    | `int`           | The timezone offset of the user                                                  |
-| `trip`                              | `string`        | The Radar ID of the trip                                                         |
-| `beacon`                            | `string`        | The Radar ID of the beacon                                                       |
-| `foreground`                        | `boolean`       | Did the user send up the event in foreground or background                       |
-| `locationaccuracyauthorization`     | `string`        | How precise is the location granted? (e.g. precise location vs coarse location)  |
-| `locationauthorization`             | `string`        | What type of location authorization was granted? (e.g. foreground or background) |
-| `devicetype`                        | `string`        | The type of device                                                               |
-| `devicemake`                        | `string`        | The make of the device                                                           |
-| `devicemodel`                       | `string`        | The device model                                                                 |
-| `deviceos`                          | `string`        | The OS of the device                                                             |
-| `sdkversion`                        | `string`        | The Radar SDK version                                                            |
-| `stopped`                           | `boolean`       | Did the user stop                                                                |
-| `beacontag`                         | `string`        | The tag of the beacon                                                            |
-| `beaconexternalid`                  | `string`        | The customer-specified ID of the beacon                                          |
-| `beacontype`                        | `string`        | The type of beacon                                                               |
-| `beaconmajor`                       | `string`        | The major version of the beacon                                                  |
-| \`beaconminor                       | `string`        | The minor version of the beacon                                                  |
-| `beaconuuid`                        | `string`        | The UUID of the beacon                                                           |
-| `tripexternalid`                    | `string`        | The user-specified ID of the trip                                                |
-| `tripdestinationgeofencetag`        | `string`        | The geofence tag of the trip destination                                         |
-| `tripdestinationgeofenceexternalid` | `string`        | The customer-specified geofence ID of the trip destination                       |
-| `userexternalid`                    | `string`        | The user externalId specified by the customer                                    |
-| `usermetadata`                      | `string`        | User metadata as stringified JSON                                                |
-| `traveling`                         | `string`        | Whether a user is traveling or not                                               |
-| `project`                           | `string`        | Partition key. The Radar Project ID publishing events                            |
-| `dt`                                | `string`        | Partition key. The day of event delivery, formatted as YYYY-MM-DD                |
+| Field | Type | Description |
+| --- | --- | --- |
+| `_id` | `string` | Radar ID of the event. |
+| `createdat` | `timestamp` | Creation time of the event from the Radar SDK. |
+| `actualcreatedat` | `timestamp` | Creation time of the event on the server. |
+| `organization` | `string` | The Radar organization ID. |
+| `live` | `boolean` | `true` for the Live environment, `false` for Test. |
+| `locationaccuracy` | `double` | The accuracy reported by the device, in meters. |
+| `confidence` | `int` | Event confidence. |
+| `place` | `string` | The Radar ID of the place. |
+| `placecategories` | `string` | The categories of the place. |
+| `placechainname` | `string` | The chain name of the place. |
+| `placechainslug` | `string` | The chain slug of the place. |
+| `placegroup` | `string` | The group of the place. |
+| `placename` | `string` | The name of the place. |
+| `alternateplaces` | `array<string>` | Alternate candidate places. |
+| `placecandidates` | `array<string>` | Alternate candidate places, with extra metadata. |
+| `duration` | `double` | The length of the geofence entry. |
+| `longitude` | `double` | The longitude of the event. |
+| `latitude` | `double` | The latitude of the event. |
+| `user` | `string` | The Radar ID of the user. |
+| `geofence` | `string` | The Radar ID of the geofence. |
+| `geofencedescription` | `string` | The description of the geofence. |
+| `geofencetag` | `string` | The tag of the geofence. |
+| `geofenceexternalid` | `string` | Your external ID for the geofence. |
+| `region` | `string` | The Radar ID of the region. |
+| `countryregionname` | `string` | The name of the country. |
+| `countryregioncode` | `string` | The code of the country. |
+| `countryregion` | `string` | The Radar ID of the country. |
+| `dmaregion` | `string` | The Radar ID of the DMA. |
+| `dmaregionname` | `string` | The name of the DMA. |
+| `dmaregioncode` | `string` | The code of the DMA. |
+| `stateregion` | `string` | The Radar ID of the state. |
+| `stateregionname` | `string` | The name of the state. |
+| `stateregioncode` | `string` | The code of the state. |
+| `postalcoderegion` | `string` | The Radar ID of the postal code. |
+| `postalcoderegioncode` | `string` | The postal code. |
+| `replayed` | `boolean` | Whether the SDK sent this as a retry of a failed request. |
+| `type` | `string` | The event type. |
+| `timezoneoffset` | `int` | The time zone offset of the user. |
+| `trip` | `string` | The Radar ID of the trip. |
+| `beacon` | `string` | The Radar ID of the beacon. |
+| `foreground` | `boolean` | Whether the event was generated in the foreground or the background. |
+| `locationaccuracyauthorization` | `string` | The location precision granted, for example precise or approximate. |
+| `locationauthorization` | `string` | The location authorization granted, for example foreground or background. |
+| `devicetype` | `string` | The type of device. |
+| `devicemake` | `string` | The make of the device. |
+| `devicemodel` | `string` | The device model. |
+| `deviceos` | `string` | The OS of the device. |
+| `sdkversion` | `string` | The Radar SDK version. |
+| `stopped` | `boolean` | Whether the user was stopped. |
+| `beacontag` | `string` | The tag of the beacon. |
+| `beaconexternalid` | `string` | Your external ID for the beacon. |
+| `beacontype` | `string` | The type of beacon. |
+| `beaconmajor` | `string` | The major value of the beacon. |
+| `beaconminor` | `string` | The minor value of the beacon. |
+| `beaconuuid` | `string` | The UUID of the beacon. |
+| `tripexternalid` | `string` | Your external ID for the trip. |
+| `tripdestinationgeofencetag` | `string` | The geofence tag of the trip destination. |
+| `tripdestinationgeofenceexternalid` | `string` | Your geofence external ID for the trip destination. |
+| `userexternalid` | `string` | Your `userId` for the user. |
+| `usermetadata` | `string` | User metadata as stringified JSON. |
+| `traveling` | `string` | Whether the user is traveling. |
+| `project` | `string` | Partition key. The Radar project ID publishing events. |
+| `dt` | `string` | Partition key. The day of event delivery, formatted as `YYYY-MM-DD`. |
 
+## Filtering
+
+The export has two datasets: every event that your project generates, and every location that your project records. It has no event type allowlist, key blocklist, or geofence tag blocklist. The [filters](/integrations/integrations#filters) on the Integrations page apply to webhooks and the other event integrations, not to this export.
+
+To limit what you store or query:
+
+- Filter by `type`, `live`, `geofencetag`, or any other column when you query.
+- Use the `project` and `dt` partitions to restrict the files that a query scans.
+- Apply an S3 lifecycle rule to expire objects that you no longer need.
+
+## Delivery behavior
+
+- **Latency**: Records arrive in batches. Expect a file within about 10 minutes of the first record in it, or sooner when 128 MB accumulates first. This export isn't a real-time feed. Use [webhooks](/integrations/webhooks) when you need to react to an event as it happens.
+- **Partition date**: `dt` is the day the file was delivered, not the day the event occurred. An event near midnight, or a location that a device replays later, can land in a later `dt` folder than its own timestamp suggests. Use `createdat`, `actualcreatedat`, or `updatedat` for time-based analysis.
+- **Scope**: Delivery starts when Radar enables the export. Ask your account team about historical data.
+- **Uniqueness**: Treat `_id` (events) and `locationid` (locations) as the record keys, and deduplicate on them if your pipeline requires exactly one row per record.
+
+## Test the integration
+
+<Steps>
+  <Step title="Generate data">
+    After your account team confirms that delivery is on, generate at least one event in the project. For example, send a location inside a geofence through the SDK or the [Tracking API](/api/tracking), and confirm that the event appears on the [Events](https://dashboard.radar.com/geofencing/events) page of the Radar dashboard.
+  </Step>
+  <Step title="Check for files">
+    Wait at least 10 minutes, then list the day's folder. Replace the bucket, project ID, and date:
+
+    ```bash
+    aws s3 ls "s3://com.example.bucket/radar/events/project=YOUR_PROJECT_ID/dt=2026-06-12/"
+    ```
+
+    The command lists one or more `.parquet.snappy` objects.
+  </Step>
+  <Step title="Query a file">
+    Point your query engine at the `radar/events/` prefix, with `project` and `dt` as partition columns and the columns from the [event schema](#event-schema). In Amazon Athena, after you create the table and load its partitions, this query returns the event that you generated:
+
+    ```sql
+    SELECT _id, type, userexternalid, geofenceexternalid, createdat
+    FROM radar_events
+    WHERE dt = '2026-06-12'
+      AND live = false
+    ORDER BY createdat DESC
+    LIMIT 10;
+    ```
+
+    `radar_events` is the table name that you chose. Match the `_id` to the event ID shown in the dashboard.
+  </Step>
+</Steps>
+
+## Troubleshoot delivery
+
+Delivery runs in Radar's AWS account, so delivery errors aren't visible in your account or in the dashboard's integration logs. If no files arrive:
+
+| Check | What to look for |
+| --- | --- |
+| Events exist | The project generated events in the period you are checking. Look at the Events page. |
+| Bucket name | The bucket name you sent to Radar matches the bucket exactly. |
+| Bucket policy | The policy names the `accountA-id` and `iam-role-name` that Radar gave you, and covers both the bucket and its objects, as in the AWS instructions. |
+| Bucket encryption and ownership settings | Settings that reject cross-account writes, such as a required customer-managed KMS key, can block delivery. Tell your account team which settings the bucket enforces. |
+| Timing | At least 10 minutes have passed since the first event. |
+
+If these are correct, contact your Radar account team with the bucket name, project ID, and the time window. They can check the delivery stream.
+
+## Load the data into a warehouse
+
+The export ends at your S3 bucket. Radar doesn't provide a connector to Snowflake, BigQuery, Redshift, Databricks, or any other warehouse, and doesn't manage tables in them.
+
+Because the files are standard Parquet with Hive-style `project=` and `dt=` partitions, you can load them with your warehouse's own S3 ingestion, such as an external table or a scheduled copy job. You own that pipeline, its schedule, and its schema changes.
+
+## Limitations
+
+- Setup and changes go through your Radar account team. There is no self-serve control in the dashboard.
+- The export is batched, not real time.
+- The export can't be filtered by event type, tag, or field.
+- `dt` reflects delivery date, not event date.
+- Nested values such as metadata are delivered as strings.
+- The export writes to S3 only.
+
+## Sync geofences from a CSV in S3
+
+Geofence sync is a separate feature that imports geofences into Radar. It doesn't use the export described above, and you can use either one without the other.
+
+With geofence sync, you put a geofence CSV in a private S3 bucket and Radar reads it on a schedule. You configure it yourself on the [Integrations](https://dashboard.radar.com/integrations) page, in the **Geofence sync** section: select **AWS S3** for **Protocol**, then enter the bucket **Region**, the **Bucket** name, the **Live CSV object key** and **Test CSV object key**, and the **Access key ID** and **Secret access key** of an IAM user that has `GetObject` permission for those objects.
+
+For the CSV format, the sync schedule, and how to verify a sync, see [Detect geofence events and place visits](/geofencing/geofences-and-places).
