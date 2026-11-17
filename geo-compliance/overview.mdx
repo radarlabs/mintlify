@@ -1,13 +1,8 @@
 ---
 title: "Geo-compliance overview and quickstart"
 sidebarTitle: "Overview and quickstart"
-description: "Understand how Radar verified location checks work, then run one check end to end and read the pass or fail result on your backend."
+description: "Run one Radar verified location check end to end, and read the pass or fail result on your backend."
 ---
-
-import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
-import VerifiedCheck from '/snippets/verified-check.mdx';
-import CheckResults from '/snippets/check-results.mdx';
-import TokenValidation from '/snippets/token-validation.mdx';
 
 Geo-compliance verifies that a user is in a location where your product is allowed, and that the location can be trusted. At the end of this quickstart, your app runs one verified location check, your backend verifies the returned geolocation token and reads `passed`, and you have seen both a passed and a failed check.
 
@@ -17,7 +12,13 @@ Geo-compliance verifies that a user is in a location where your product is allow
 
 ## Quickstart
 
-This is the whole implementation at a glance: the client runs one check on each platform, and the sections below explain each part.
+Before you start:
+
+- Enable Fraud for your project: under **Fraud** on the [Settings](https://dashboard.radar.com/settings#fraud-settings) page of the Radar dashboard, select **Yes** for **Enabled**. In the same section, allow the state you are testing from in the country and state lists. An empty list allows every country or state.
+- Install the Radar SDK and the fraud plugin for your platform. See [Fraud plugin setup](/sdk/fraud). The Mac and Windows SDKs are available on request.
+- Get a Test publishable key for your app, and your project's JWT secret key for your backend. The JWT secret key is shown in the same **Fraud** section. See [Choose the right API key](/fundamentals/authentication-and-access#choose-the-right-api-key).
+
+The client initializes the SDK, sets the signed-in user, requests location permission, runs one check, and sends the token to your backend:
 
 <CodeGroup>
 
@@ -316,127 +317,60 @@ def place_wager():
 
 </CodeGroup>
 
-The rest of the quickstart has four parts: configure where your product is allowed, run a check in your app, validate the token on your backend, and produce both results.
-
-### Before you start
-
-- Enable Fraud for your project: under **Fraud** on the [Settings](https://dashboard.radar.com/settings#fraud-settings) page of the Radar dashboard, select **Yes** for **Enabled**.
-- Have a backend route that knows which user is signed in.
-- For a native macOS or Windows app, ask your Radar account team for the Mac or Windows SDK. See [Verify from a native desktop app](/geo-compliance/gaming#verify-from-a-native-desktop-app).
-
-<EnvironmentAndKeys />
-
-Your backend also needs your project's JWT secret key, which is a different value from the API keys in the table. [Validate the token on your backend](#validate-the-token-on-your-backend) shows where to find it.
-
-## Configure where your product is allowed
-
-In the **Fraud** section of the [Settings](https://dashboard.radar.com/settings#fraud-settings) page, set the country list and state list for your project. Each list is an allowlist or a blocklist, and an empty list allows every country or state. For this quickstart, allow the state you are testing from, so that the first check passes.
-
-Whether you can edit these lists yourself is account-specific. If the controls are read-only, ask your Radar account team to set them.
-
-## Run a check in your app
-
-<VerifiedCheck />
-
-## Validate the token on your backend
-
-<TokenValidation />
+Your backend decides, not your app. The `passed` value on the client is for your UI. For every validation step, see [Validate a token](/api/geolocation-tokens#validate-a-token).
 
 ## See a passed and a failed result
 
-Run the flow twice, once for each result.
-
-For the passed result, sign in as `user-123` from an allowed state and trigger the action. After signature verification, the decoded payload includes these fields:
+Sign in as `user-123` from an allowed state and trigger the action. After signature verification, the payload includes these fields, and your backend performs the action:
 
 ```json
 {
-  "_id": "66f1c2a9e4b0a1b2c3d4e5f6",
   "passed": true,
   "failureReasons": [],
-  "warningReasons": [],
   "product": "sportsbook",
   "reason": "login",
-  "expiresIn": 1200,
   "user": {
     "userId": "user-123",
-    "live": false,
-    "state": {
-      "code": "NJ",
-      "allowed": true,
-      "passed": true
-    },
-    "fraud": {
-      "passed": true,
-      "verified": true
-    }
+    "state": { "code": "NJ", "allowed": true, "passed": true },
+    "fraud": { "passed": true, "verified": true }
   }
 }
 ```
 
-`passed` is `true`, so your backend performs the action.
-
-For the failed result, produce a failed check without changing location. On the **Block rules** page in the dashboard, create a rule that blocks the user ID `user-123`, then trigger the action again. The request succeeds, and the token now carries a failed result:
+To see a failed result without changing location, create a rule on the **Block rules** page in the dashboard that blocks the user ID `user-123`, then trigger the action again. The request succeeds, the token carries a failed result, and your backend rejects the action:
 
 ```json
 {
-  "_id": "66f1c2a9e4b0a1b2c3d4e5f7",
   "passed": false,
   "failureReasons": ["fraud_blocked_user_id"],
-  "warningReasons": [],
   "product": "sportsbook",
   "reason": "login",
-  "expiresIn": 1200,
   "user": {
     "userId": "user-123",
-    "live": false,
-    "state": {
-      "code": "NJ",
-      "allowed": true,
-      "passed": true
-    },
-    "fraud": {
-      "passed": false,
-      "verified": true,
-      "blocked": true
-    }
+    "state": { "code": "NJ", "allowed": true, "passed": true },
+    "fraud": { "passed": false, "verified": true, "blocked": true }
   }
 }
 ```
 
-`passed` is `false`, so your backend rejects the action and returns `failureReasons`.
-
-The payloads are synthetic and omit most fields, and your `expiresIn` differs because Radar sets the expiry for each check. For the full payload, see [Geolocation token schema](/api/geolocation-tokens).
-
-Now confirm that your backend reads `passed` from the token and from nowhere else. With the block rule in place, send the protected request to your backend directly, with `"passed": true` in the request body and the failed token. Your backend must still reject it.
-
-Remove the block rule when you finish. For the full test procedure, including bypass rules for internal testing, see [Test the integration](/geo-compliance/gaming#test-the-integration).
-
-## How it works
-
-Every Geo-compliance integration follows the same eight steps. The two guides add the details for each kind of product.
-
-| Step | Where it happens | What you do |
-| --- | --- | --- |
-| 1. Configure the product and footprint | The dashboard | Enable Fraud, define products if you have more than one, and set the countries and states where each is allowed. |
-| 2. Initialize the SDK | Your app | Install the Radar SDK and the fraud plugin, and initialize with a publishable key. |
-| 3. Identify the user | Your app | Call `Radar.setUserId()` with the ID of the signed-in user. |
-| 4. Run a verified location check | Your app | Call `Radar.trackVerified()` with a reason. Radar returns a signed geolocation token. |
-| 5. Send the token to your backend | Your app to your backend | Send it on an authenticated request. |
-| 6. Validate the token | Your backend | Verify the signature and expiry, then check the user and product. |
-| 7. Enforce the result | Your backend | Read `passed`. Perform the action when it is `true`, and reject it when it is `false`. |
-| 8. Recheck | Your app | Run a new check before the token expires, when the product or user changes, and before sensitive actions. |
-
-A backend can't produce a verified location result by itself. The check has to run on the user's device, because that is where the location and integrity signals come from.
+Remove the block rule when you finish. See [Force a pass or a fail](/fundamentals/testing-and-launch#force-a-pass-or-a-fail), and for the full payload, [Geolocation token schema](/api/geolocation-tokens).
 
 ## Understand check results
 
-<CheckResults />
+A check produces four separate facts. They aren't interchangeable:
+
+- **The request succeeded**: The client returned a success status and a token. The token can still carry `passed` set to `false`.
+- **The token is authentic**: Your backend verified the signature and expiry with your JWT secret key. That doesn't say the token belongs to this user, product, or action.
+- **The location was verified**: `passed` is `true` in the verified payload, so the jurisdiction and fraud checks passed.
+- **The user is eligible**: The token is authentic, belongs to the signed-in user and the intended product, hasn't expired, and has `passed` set to `true`.
+
+Perform a protected action only when the last statement holds.
 
 ## Choose a guide
 
 <CardGroup cols={2}>
   <Card title="Gaming" icon="dice" href="/geo-compliance/gaming">
-    Sportsbooks, casinos, daily fantasy sports, prediction markets, and sweepstakes: per-product footprints, when to check, the web path, testing, and rollout.
+    Sportsbooks, casinos, daily fantasy sports, prediction markets, and sweepstakes: products, when to check, the web path, and testing.
   </Card>
   <Card title="Non-gaming use cases" icon="location-dot" href="/geo-compliance/non-gaming">
     Verify presence in a region, at a store or workplace, or near an expected address.
@@ -447,8 +381,7 @@ To assess device and network risk without a location requirement, start with [Fr
 
 ## See also
 
-- [Geolocation token schema](/api/geolocation-tokens): every field, the [failure reasons](/api/geolocation-tokens#failure-reasons), and [expiry](/api/geolocation-tokens#expiry).
+- [Geolocation token schema](/api/geolocation-tokens): token validation, every field, [failure reasons](/api/geolocation-tokens#failure-reasons), and [expiry](/api/geolocation-tokens#expiry).
 - [Fraud plugin setup](/sdk/fraud): install and initialize the fraud plugin on each platform.
-- [Set up organizations, projects, accounts, and authentication](/fundamentals/authentication-and-access): roles and keys.
-- [Test, troubleshoot, and go live](/fundamentals/testing-and-launch): test procedures and launch steps.
-- [Understand geofences, places, regions, beacons, and fraud context](/fundamentals/context-types)
+- [Understand foreground and background location permissions](/fundamentals/location-permissions)
+- [Test, troubleshoot, and go live](/fundamentals/testing-and-launch)

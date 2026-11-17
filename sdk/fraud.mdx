@@ -261,11 +261,155 @@ Pass `skipVerifyApp` to `Radar.fraud.trackVerified()`, `Radar.fraud.startTrackin
 
 To customize the Radar Verify installer or branding, contact your Radar account team.
 
+### Web plugin methods
+
+The plugin adds these methods on `Radar.fraud`. The sections below give the parameters and defaults of each verified location method.
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `Radar.fraud.trackVerified(params?)` | `Promise<RadarTrackVerifiedResponse>` | Runs one verified location check. |
+| `Radar.fraud.startTrackingVerified(params)` | Nothing | Starts automatic checks. |
+| `Radar.fraud.stopTrackingVerified()` | Nothing | Stops automatic checks. |
+| `Radar.fraud.getVerifiedLocationToken(params?)` | `Promise<RadarTrackVerifiedResponse \| null>` | Returns the last token if it is still valid, or runs a new check if not. |
+| `Radar.fraud.clearVerifiedLocationToken()` | Nothing | Clears the last token. |
+| `Radar.fraud.onTokenUpdated(callback)` | Nothing | Registers a callback that receives the result of each check. |
+| `Radar.fraud.onIpChanged(callback)` | Nothing | Registers a callback for IP address changes. |
+| `Radar.fraud.setExpectedJurisdiction(countryCode?, stateCode?)` | Nothing | Sets the user's expected country and state for jurisdiction checks. |
+| `Radar.fraud.setExpectedAddress(address?)` | Nothing | Sets the user's expected address. |
+| `Radar.fraud.setUserLanguage(language)` | Nothing | Sets the user's preferred language as a BCP 47 language tag, such as `"en"` or `"es-PR"`. Pass `null` to clear it. |
+| `Radar.fraud.revealRisk()` | `Promise<RadarRevealRiskResponse>` | Runs a device risk check without location. See [Fraud overview and quickstart](/fraud/overview). |
+| `Radar.fraud.clearRevealRiskId()` | Nothing | Clears the ID of the last device risk check, which the next verified location check would otherwise send. |
+
+`Radar.fraud.errors` holds the plugin's error classes, such as `Radar.fraud.errors.RadarVerifyAppError`.
+
+The deprecated aliases on `Radar` cover `trackVerified()`, `startTrackingVerified()`, `stopTrackingVerified()`, `getVerifiedLocationToken()`, `clearVerifiedLocationToken()`, `setExpectedJurisdiction()`, and `onTokenUpdated()`. The other methods are on `Radar.fraud` only.
+
+#### `Radar.fraud.trackVerified()`
+
+Runs one verified location check and resolves with the geolocation token and the client result.
+
+```typescript
+Radar.fraud.trackVerified(params?: RadarTrackVerifiedParams): Promise<RadarTrackVerifiedResponse>
+```
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `skipVerifyApp` | boolean | `false` | `false` runs the check through the Radar Verify companion app. `true` runs the check in the browser. See [Choose the companion app or the no-download path](#choose-the-companion-app-or-the-no-download-path). |
+| `reason` | string | None | A label for why you ran the check. See [Request parameters](#request-parameters). |
+| `transactionId` | string | None | Your identifier for the action the check protects. See [Request parameters](#request-parameters). |
+| `userId` | string | The value set with `Radar.setUserId()` | A stable unique ID for the user. A value you pass here is saved as the user ID for later calls. |
+| `description` | string | The value set with `Radar.setDescription()` | A description for the user. |
+| `metadata` | object | The value set with `Radar.setMetadata()` | Custom key-value pairs for the user. |
+
+The check also sends the product set with `Radar.setProduct()` and the values set with `Radar.fraud.setExpectedJurisdiction()` and `Radar.fraud.setExpectedAddress()`.
+
+The promise resolves with these fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `token` | string | The signed geolocation token. Send it to your backend and validate it there. See [Geolocation token schema](/api/geolocation-tokens). |
+| `passed` | boolean | Whether the user passed all jurisdiction and fraud checks. |
+| `failureReasons` | array of string | Why the check didn't pass. See [Failure reasons](/api/geolocation-tokens#failure-reasons). |
+| `expiresAt` | `Date` | When the token expires. |
+| `expiresIn` | number | Seconds until the token expires. |
+| `_id` | string | The Radar ID of the check. |
+| `user` | object | The user. |
+| `events` | array of object | The events generated, if any. |
+| `location` | object | The `latitude`, `longitude`, and `accuracy` used for the check. |
+
+When the check can't complete, the promise rejects and there is no token. The error's `status` has the reason. On the companion app path, the error is a `RadarVerifyAppError` with the status `ERROR_VERIFY_APP` when the app isn't running.
+
+Each completed check becomes the last token that `Radar.fraud.getVerifiedLocationToken()` returns, and is passed to the callback registered with `Radar.fraud.onTokenUpdated()`.
+
+This example runs a check in the browser and sends a passing token to your backend. `sendTokenToBackend`, `showFailure`, and `showCheckError` are functions you write.
+
+```javascript
+try {
+  const result = await Radar.fraud.trackVerified({ skipVerifyApp: true, reason: 'login' });
+
+  if (result.passed) {
+    await sendTokenToBackend(result.token);
+  } else {
+    showFailure(result.failureReasons);
+  }
+} catch (err) {
+  showCheckError(err.status);
+}
+```
+
+#### `Radar.fraud.startTrackingVerified()`
+
+Starts automatic checks. If the last token is still valid, the first check is scheduled from it. Otherwise a check runs immediately.
+
+```typescript
+Radar.fraud.startTrackingVerified(params: RadarStartTrackingVerifiedParams): void
+```
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `interval` | number | `300` | The longest time between checks, in seconds. |
+| `skipVerifyApp` | boolean | `false` | The path each automatic check uses, as for `Radar.fraud.trackVerified()`. |
+| `ipChanges` | boolean | `false` | When `true`, the plugin checks the device IP address every 30 seconds and runs a new check when it changes. |
+
+The next check runs 10 seconds before the interval ends or the last token expires, whichever is sooner, and never less than 10 seconds after the previous one. Automatic checks don't send a `reason` or a `transactionId`. A check that fails with an error is logged, not thrown, and the next check is still scheduled.
+
+To stop automatic checks, call `Radar.fraud.stopTrackingVerified()`.
+
+#### `Radar.fraud.onTokenUpdated()`
+
+Registers one callback that receives the result of every completed check, whether you ran it with `Radar.fraud.trackVerified()` or the plugin ran it automatically. The argument has the same fields as the `Radar.fraud.trackVerified()` result. Registering a second callback replaces the first.
+
+```javascript
+Radar.fraud.onTokenUpdated((result) => {
+  sendTokenToBackend(result.token);
+});
+
+Radar.fraud.startTrackingVerified({ interval: 1200, skipVerifyApp: true, ipChanges: true });
+```
+
+#### `Radar.fraud.getVerifiedLocationToken()`
+
+Returns the last token when it passed and hasn't expired. Otherwise it runs a new check with `Radar.fraud.trackVerified()` and returns that result, so it rejects with the same errors. It takes the same options as `Radar.fraud.trackVerified()`, which apply only when a new check runs.
+
+```javascript
+const result = await Radar.fraud.getVerifiedLocationToken({ skipVerifyApp: true });
+```
+
+#### `Radar.fraud.clearVerifiedLocationToken()`
+
+Clears the last token, so that the next `Radar.fraud.getVerifiedLocationToken()` call runs a new check. Call it after you change the product with `Radar.setProduct()` or the expected jurisdiction, because the last token was issued for the earlier values.
+
+#### `Radar.fraud.onIpChanged()`
+
+Registers a callback, with no arguments, that the plugin calls when the device IP address changes. While a callback is registered, the plugin checks the IP address every 30 seconds. When the address changes, the plugin clears the last token and then calls the callback. Pass `null` to remove the callback.
+
+```javascript
+Radar.fraud.onIpChanged(() => {
+  checkLocation('ip_change');
+});
+```
+
+#### `Radar.fraud.setExpectedJurisdiction()`
+
+Sets the country code and state code you expect the user to be in. Later checks send both values, and a check in a different jurisdiction fails with `country_not_expected` or `state_not_expected`. See [Failure reasons](/api/geolocation-tokens#failure-reasons). Call it with no arguments to clear both values.
+
+```javascript
+Radar.fraud.setExpectedJurisdiction('US', 'NJ');
+```
+
+#### `Radar.fraud.setExpectedAddress()`
+
+Sets the address you expect the user to be at, as a string. Later checks send it, and the token reports the result in the [expected address fields](/api/geolocation-tokens#expected-address-fields). Call it with no arguments to clear it.
+
+```javascript
+Radar.fraud.setExpectedAddress('841 Broadway, New York, NY 10003');
+```
+
 ## Desktop
 
 For desktop web apps, use the web plugin with the Radar Verify companion app described in [Web](#web).
 
-For native desktop apps, a Mac SDK (macOS 12.4 or later), a Windows SDK (Windows 10 or later with .NET 8 or later), and an Electron plugin are available on request. Contact your Radar account team for access.
+For native desktop apps, a Mac SDK (macOS 12.4 or later), a Windows SDK (Windows 10 or later with .NET 8 or later), and an Electron plugin are available on request. Contact your Radar account team for access. For how their calls differ from the mobile and web SDKs, see [Desktop apps](#desktop-apps).
 
 ## React Native
 
@@ -449,6 +593,272 @@ Each constraint you set must match the value the SDK sends with a location updat
 | `ERROR_PLUGIN` | The plugin is missing, or its version isn't compatible with the core SDK. Check the [compatibility table](#compatibility). |
 | `ERROR_FORBIDDEN` | Device attestation couldn't run. Check the SDK logs, the OS version, and Google Play services. |
 | `ERROR_VERIFY_APP` | Web companion app path: Radar Verify isn't installed or not running. |
+
+## Supported clients
+
+These clients can run a verified location check. The method column gives the form that takes every option.
+
+| Client | Method | `reason` and `transactionId` |
+| --- | --- | --- |
+| iOS SDK | `Radar.trackVerified(beacons:desiredAccuracy:reason:transactionId:completionHandler:)` | Yes |
+| Android SDK | `Radar.trackVerified(beacons, desiredAccuracy, reason, transactionId, callback)` | Yes |
+| Web SDK with `@radarlabs/plugin-fraud` | `Radar.fraud.trackVerified({ skipVerifyApp, reason, transactionId })` | Yes |
+| React Native SDK | `Radar.trackVerified({ beacons, desiredAccuracy, reason, transactionId })` | Yes |
+| Capacitor SDK | `Radar.trackVerified({ beacons, desiredAccuracy, reason, transactionId })` | Yes |
+| Mac SDK | `RadarVerify.trackVerified(publishableKey:userId:expectedCountryCode:expectedStateCode:product:reason:transactionId:metadata:)` | Yes |
+| Windows SDK | `Radar.TrackVerified(publishableKey, userId, expectedCountryCode, expectedStateCode, product, reason, transactionId, metadata)` | Yes |
+| Flutter SDK | `Radar.trackVerified({bool? beacons})` | No |
+| Cordova SDK | `Radar.trackVerifiedToken(options?, callback)` | No |
+| .NET MAUI SDK | `Radar.TrackVerifiedToken(bool beacons = false)` | No |
+
+The Flutter, Cordova, and .NET MAUI SDKs expose earlier verified location methods that don't accept `reason` or `transactionId`. See the verified location section of the [Flutter SDK](/sdk/flutter#verified-location), [Cordova SDK](/sdk/cordova#verified-location), or [.NET MAUI SDK](/sdk/maui#verified-location) reference.
+
+The Capacitor SDK includes its own fraud plugins, as described in [Compatibility](#compatibility). The Mac and Windows SDKs are covered in [Desktop apps](#desktop-apps).
+
+For every native method signature, the token object, and the delegate or receiver, see the verified location section of the [iOS SDK](/sdk/ios#verified-location), [Android SDK](/sdk/android#verified-location), [React Native SDK](/sdk/react-native#verified-location), or [Capacitor SDK](/sdk/capacitor#verified-location) reference. For web, see [Web plugin methods](#web-plugin-methods).
+
+## Request parameters
+
+A verified location check takes these parameters. All of them are optional.
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `reason` | string | No | A label for why you ran the check, such as `login` or `withdrawal`. Radar returns it in the token as `reason` and shows it in the Radar dashboard and reports. The value is a free-form string that you choose. Use a small, fixed set of values so that checks are easy to filter. |
+| `transactionId` | string | No | Your identifier for the action the check protects. Radar returns it in the token as `transactionId`. Radar doesn't check it for uniqueness. Your backend compares it to the action it is authorizing. |
+| `beacons` | boolean | No | Mobile SDKs only. Ranges nearby beacons and includes them in the check. Defaults to `false`. See [Zones and beacons](#zones-and-beacons). |
+| `desiredAccuracy` | string | No | iOS, Android, React Native, and Capacitor. Location accuracy for the check: high, medium, or low. Defaults to medium. On iOS and Android the value is a `RadarTrackingOptionsDesiredAccuracy` enum case. |
+| `skipVerifyApp` | boolean | No | Web only. `false` (the default) runs the check through the Radar Verify companion app on the user's computer. `true` runs the check in the browser without the app. |
+
+On web, `Radar.fraud.trackVerified()` also accepts `userId`, `description`, and `metadata`. See [Web plugin methods](#web-plugin-methods).
+
+The user, product, and expected location aren't parameters of the check on mobile and web. Set them before the check:
+
+| Value | Set with | In the token |
+| --- | --- | --- |
+| User ID | `Radar.setUserId()` | `user.userId` |
+| Product | `Radar.setProduct()`, for example `sportsbook`, when your project has more than one product configured | `product` |
+| Expected jurisdiction | `Radar.setExpectedJurisdiction()` (`Radar.fraud.setExpectedJurisdiction()` on web) | Failure reasons `country_not_expected` and `state_not_expected` |
+| Expected address | `Radar.setExpectedAddress()` (`Radar.fraud.setExpectedAddress()` on web) | `user.expectedAddress` |
+
+The Mac and Windows SDKs take the publishable key, user ID, product, and expected jurisdiction as parameters of each call. See [Desktop apps](#desktop-apps).
+
+## Manual and automatic checks
+
+There are two ways to run checks. Backend validation is the same for both.
+
+| | Manual checks | Automatic checks |
+| --- | --- | --- |
+| Method | `Radar.trackVerified()` | `Radar.startTrackingVerified()`, then `Radar.getVerifiedLocationToken()` |
+| Who starts each check | Your app | The SDK |
+| When checks run | When you call the method | When tracking starts, then at your interval, sooner when the last token expires before the interval, and when the device IP address changes |
+| Token delivery | The completion handler or promise of your call | `RadarVerifiedDelegate.didUpdateToken()` on iOS, `RadarVerifiedReceiver.onTokenUpdated()` on Android, `Radar.fraud.onTokenUpdated()` on web, and the result of `getVerifiedLocationToken()` |
+| `reason` | You pass a reason on every check | On iOS and Android, the SDK sets the reason on the checks it starts: `interval`, `ip_change`, or `last_token_invalid`. On web, no reason is sent. |
+| `transactionId` | Supported | Not sent on checks the SDK starts |
+| Last token | You keep the last token and reuse it until it expires | `getVerifiedLocationToken()` returns the last token if it is still valid, and requests a new one if not |
+
+On web, these methods are on `Radar.fraud`, and automatic checks respond to IP address changes only when you pass `ipChanges: true`. You can combine the two modes: run automatic checks for the session, and call `Radar.trackVerified()` with a `reason` and a `transactionId` before a single-use action.
+
+With automatic checks, call `Radar.clearVerifiedLocationToken()` (`Radar.fraud.clearVerifiedLocationToken()` on web) after you change the product with `Radar.setProduct()`, so that the next call returns a token for the new product.
+
+A manual integration follows three rules:
+
+- **Reuse the token until it expires**: Each token carries its own expiry in `expiresAt`, and tokens issued close to a border expire sooner. Compare the current time to `expiresAt` instead of using a fixed interval. See [Expiry](/api/geolocation-tokens#expiry).
+- **Check again on expiry or IP change**: Run a new check when the token has expired or the SDK reports that the device IP address changed.
+- **Run one check at a time**: If a check is in progress when another is triggered, wait for the first result instead of starting a second request.
+
+The SDK reports an IP address change through a callback:
+
+| Platform | How to receive the change | When the SDK monitors |
+| --- | --- | --- |
+| iOS | Set a `RadarVerifiedDelegate` with `Radar.setVerifiedDelegate()` and implement `didChangeIP()`. | While a verified delegate is set or automatic checks are running. |
+| Android | Set a `RadarVerifiedReceiver` with `Radar.setVerifiedReceiver()` and override `onIpChanged(context)`. | While a verified receiver is set or automatic checks are running. |
+| Web | Register a callback with `Radar.fraud.onIpChanged()`. Pass `null` to remove it. | While a callback is registered, or automatic checks are running with `ipChanges: true`. |
+| React Native | Register the `onIpChanged` listener. See [React Native SDK](/sdk/react-native). | As on the native platform. |
+
+There is no separate callback for a location change. Movement toward a border is handled by the shorter expiry on the token.
+
+These examples apply the three rules in one function, `checkLocation`, that you call before each restricted action and when the app returns to the foreground. `sendTokenToBackend`, `showFailure`, and `showCheckError` are functions you write.
+
+<CodeGroup>
+
+```swift Swift
+import RadarSDK
+
+final class LocationChecker: NSObject, RadarVerifiedDelegate {
+  private var lastToken: RadarVerifiedLocationToken?
+  private var isChecking = false
+
+  override init() {
+    super.init()
+    Radar.setVerifiedDelegate(self)
+  }
+
+  func checkLocation(reason: String) {
+    // Reuse the last token until it expires.
+    if let last = lastToken, last.passed, let expiresAt = last.expiresAt, expiresAt > Date() { return }
+
+    // One check at a time.
+    guard !isChecking else { return }
+    isChecking = true
+
+    Radar.trackVerified(
+      beacons: false,
+      desiredAccuracy: .medium,
+      reason: reason,
+      transactionId: nil
+    ) { (status, token) in
+      self.isChecking = false
+
+      guard status == .success, let token = token, let jwt = token.token else {
+        showCheckError(status)
+        return
+      }
+
+      self.lastToken = token
+      if token.passed {
+        sendTokenToBackend(jwt)
+      } else {
+        showFailure(token.failureReasons ?? [])
+      }
+    }
+  }
+
+  func didChangeIP() {
+    lastToken = nil
+    checkLocation(reason: "ip_change")
+  }
+}
+```
+
+```kotlin Kotlin
+import android.content.Context
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarVerifiedReceiver
+import io.radar.sdk.model.RadarVerifiedLocationToken
+import java.util.Date
+
+object LocationChecker : RadarVerifiedReceiver() {
+  private var lastToken: RadarVerifiedLocationToken? = null
+  private var isChecking = false
+
+  // Call once after Radar.initialize().
+  fun start() = Radar.setVerifiedReceiver(this)
+
+  fun checkLocation(reason: String) {
+    // Reuse the last token until it expires.
+    val last = lastToken
+    if (last != null && last.passed && last.expiresAt.after(Date())) return
+
+    // One check at a time.
+    if (isChecking) return
+    isChecking = true
+
+    Radar.trackVerified(reason = reason) { status, token ->
+      isChecking = false
+
+      if (status != Radar.RadarStatus.SUCCESS || token == null) {
+        showCheckError(status)
+        return@trackVerified
+      }
+
+      lastToken = token
+      if (token.passed) {
+        sendTokenToBackend(token.token)
+      } else {
+        showFailure(token.failureReasons)
+      }
+    }
+  }
+
+  override fun onTokenUpdated(context: Context, token: RadarVerifiedLocationToken) {}
+
+  override fun onIpChanged(context: Context) {
+    lastToken = null
+    checkLocation("ip_change")
+  }
+}
+```
+
+```javascript JavaScript
+import Radar from 'radar-sdk-js';
+
+let lastResult = null;
+let inFlight = null;
+
+export function checkLocation(reason) {
+  // Reuse the last token until it expires.
+  if (lastResult?.passed && lastResult.expiresAt > new Date()) {
+    return Promise.resolve(lastResult);
+  }
+
+  // One check at a time. Callers share the check that is running.
+  inFlight ??= Radar.fraud
+    .trackVerified({ reason })
+    .then(async (result) => {
+      lastResult = result;
+      if (result.passed) {
+        await sendTokenToBackend(result.token);
+      } else {
+        showFailure(result.failureReasons);
+      }
+      return result;
+    })
+    .finally(() => {
+      inFlight = null;
+    });
+
+  return inFlight;
+}
+
+Radar.fraud.onIpChanged(() => {
+  lastResult = null;
+  checkLocation('ip_change').catch(showCheckError);
+});
+```
+
+</CodeGroup>
+
+For a single-use action such as a withdrawal, call `Radar.trackVerified()` directly with a `transactionId` instead of reusing the last token. Your backend enforces the expiry on every restricted request. See [Validate a token](/api/geolocation-tokens#validate-a-token).
+
+## Zones and beacons
+
+Radar evaluates the location against your allowed countries and states, and against the zones below. Each zone result is in the token's [country and state fields](/api/geolocation-tokens#country-and-state-fields), and a failed zone test adds a value to `failureReasons`. See [Failure reasons](/api/geolocation-tokens#failure-reasons).
+
+<Info>
+  Buffer zones and exclusion zones must be enabled for your project. Contact your Radar account team.
+</Info>
+
+- **Buffer zones**: A buffer zone fails a check that is too close to a border, based on a jurisdiction threshold or the accuracy reported by the device. The token sets `user.state.inBufferZone` and `user.state.distanceToBorder`, and the failure reason is `state_in_buffer_zone`.
+- **Exclusion zones**: An exclusion zone fails a check inside a zone within an otherwise allowed state. Exclusion zones can be turned on for all states or for specific states, under **Fraud** on the [Settings](https://dashboard.radar.com/settings#fraud-settings) page. The token sets `user.state.inExclusionZone`, and the failure reason is `state_in_exclusion_zone`.
+- **Inclusion zones**: An inclusion zone lets a check inside it pass the allowed-state test. The token sets `user.state.inInclusionZone`.
+- **Custom geofence zones**: To fail or pass checks inside a property, create a custom geofence on the [Geofences](https://dashboard.radar.com/geofencing/geofences) page and set its fraud zone type to a state exclusion zone or a state inclusion zone. The geofence takes effect for checks made after you save it, and it appears in `user.geofences`. Geofences without a zone type don't change `passed`.
+
+A state check passes when the state matches the expected jurisdiction if you set one, the location isn't in an exclusion zone, the location isn't in a buffer zone, and the state is allowed or the location is in an inclusion zone.
+
+On iOS and Android, a check can also range nearby beacons. Pass `beacons: true` to `Radar.trackVerified()`. When beacons are enabled for your project, the beacons in range are returned with the user in the verified payload. A beacon doesn't change `passed`, so if your rule depends on being near a beacon, apply it on your backend after you validate the token. For beacon setup and ranging, see [Track indoor location with beacons](/geofencing/beacons).
+
+## Desktop apps
+
+A native macOS or Windows app runs the check itself with the Radar Verify SDK, without the web SDK or the companion app. The desktop SDKs differ from the mobile and web SDKs in three ways:
+
+- **Call setup first**: Call `RadarVerify.setup()` on macOS, or `Radar.Setup()` on Windows (`using RadarVerify;`), once at launch before the first check. On macOS it requests location permission, on Windows it checks it, and on both it warms up location services.
+- **Pass identity on each call**: There is no separate initialize, `setUserId()`, or `setProduct()` call. Pass the publishable key, user ID, and product to each `RadarVerify.trackVerified(...)` call on macOS, or `Radar.TrackVerified()` call on Windows.
+- **Read a status and a token**: The result is a status and a token. The token has `token`, `passed`, `failureReasons`, `expiresAt`, and `expiresIn`. A status other than success means the check didn't complete and there is no token.
+
+Both SDKs take the same parameters:
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `publishableKey` | string | Yes | Your publishable key. |
+| `userId` | string | No | The ID of the authenticated user. Your backend compares it to the session user when it validates the token. |
+| `product` | string | No | The product name, when your project has more than one product configured. |
+| `reason` | string | No | A label for why you ran the check. See [Request parameters](#request-parameters). |
+| `transactionId` | string | No | Your identifier for the action the check protects. See [Request parameters](#request-parameters). |
+| `expectedCountryCode` | string | No | The country code you expect the user to be in. |
+| `expectedStateCode` | string | No | The state code you expect the user to be in. |
+| `metadata` | object | No | Custom key-value pairs for the user. |
+
+Your backend validates a desktop token the same way as any other. For the complete macOS and Windows examples, see [Verify from a native desktop app](/geo-compliance/gaming#verify-from-a-native-desktop-app).
 
 ## See also
 
