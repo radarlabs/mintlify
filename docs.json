@@ -66,7 +66,7 @@
     },
     {
       "source": "/regions",
-      "destination": "/geofencing/geofences-and-places#regions"
+      "destination": "/fundamentals/context-types#regions"
     },
     {
       "source": "/fraud",
@@ -74,7 +74,7 @@
     },
     {
       "source": "/campaigns",
-      "destination": "/geofencing/geofences-and-places#use-radar-campaigns"
+      "destination": "/geofencing/campaigns"
     },
     {
       "source": "/sdk",
@@ -102,15 +102,11 @@
     },
     {
       "source": "/geofencing/regions",
-      "destination": "/geofencing/geofences-and-places#regions"
+      "destination": "/fundamentals/context-types#regions"
     },
     {
       "source": "/geofencing/user-insights",
-      "destination": "/geofencing/geofences-and-places#user-insights"
-    },
-    {
-      "source": "/geofencing/campaigns",
-      "destination": "/geofencing/geofences-and-places#use-radar-campaigns"
+      "destination": "/fundamentals/context-types#user-insights"
     },
     {
       "source": "/geofencing/testing",
@@ -250,8 +246,7 @@
         "group": "Fraud",
         "pages": [
           "fraud/overview",
-          "fraud/account-takeover-and-sharing",
-          "fraud/new-account-fraud",
+          "fraud/account-fraud",
           "fraud/risky-transactions"
         ]
       },

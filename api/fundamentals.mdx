@@ -103,7 +103,7 @@ The API uses standard HTTP response codes. An error response has the same `meta`
 | `404` | Not found | The object doesn't exist in this project and environment, or the operation isn't enabled for your project. |
 | `409` | Conflict | The request conflicts with the current state of the object, for example creating an object that already exists. |
 | `429` | Too many requests | A rate limit was exceeded, or the request was throttled. See [Rate limits](#rate-limits). |
-| `451` | Unavailable for legal reasons | The location update is in a country that your project's country allowlist or blocklist excludes. See [Regions](/geofencing/geofences-and-places#regions). |
+| `451` | Unavailable for legal reasons | The location update is in a country that your project's country allowlist or blocklist excludes. See [Regions](/fundamentals/context-types#regions). |
 | `500` | Internal server error | Retry with backoff. If the error persists, contact [Radar support](https://radar.com/support) with the [request ID](#request-ids). |
 | `503` | Service temporarily unavailable | Retry with backoff. |
 

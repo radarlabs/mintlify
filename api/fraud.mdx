@@ -86,7 +86,7 @@ Creates block rules for existing users or devices. Each item targets exactly one
 - **Endpoint**: `POST /v1/fraud/block`
 - **Authentication**: Secret key
 - **Rate limit**: 5 requests per second
-- **Used by**: [Prevent account takeover and account sharing](/fraud/account-takeover-and-sharing), [Prevent new account fraud, multi-accounting, and promo abuse](/fraud/new-account-fraud)
+- **Used by**: [Prevent account takeover and account sharing](/fraud/account-fraud), [Prevent new account fraud, multi-accounting, and promo abuse](/fraud/account-fraud)
 
 Each successful block creates a new rule, even if the target is already blocked. If a user or device doesn't exist in the project and environment of your API key, the item succeeds without creating a rule.
 
