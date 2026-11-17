@@ -3,7 +3,7 @@ title: "Migration SDK"
 description: "Migrate a Google Maps web implementation to Radar Maps by swapping a script with the Radar Maps Migration SDK."
 ---
 
-The Radar Maps Migration SDK converts a web page built on the Google Maps JavaScript API to Radar Maps by replacing the script import tag. For the overall migration path, including Google web services and other map libraries, see [Migrate to Radar Maps](/maps/overview#migrate-to-radar-maps).
+The Radar Maps Migration SDK converts a web page built on the Google Maps JavaScript API to Radar Maps by replacing the script import tag. It doesn't cover Google web services that you call over HTTP. To port those, see [Google Maps Platform web services](#google-maps-platform-web-services). For other map libraries, see [Migrate to Radar Maps](/maps/overview#migrate-to-radar-maps).
 
 ## How it works
 
@@ -53,6 +53,28 @@ To set a callback or a Radar map style, add the query parameters in [Configurati
 | `key` | string | None | Required. Your Radar publishable key. |
 | `style` | string | `radar-default-v1` | The map style: `radar-default-v1`, `radar-light-v1`, `radar-dark-v1`, or a [custom style](/maps/maps#custom-styles) ID. See [Styles](/maps/maps#styles). |
 | `callback` | string | None | The name of a maps callback function to call after the library is imported. |
+
+## Google Maps Platform web services
+
+Google web services called from your backend or app (geocoding, places, routes) are separate HTTP APIs, and the Migration SDK doesn't serve them. Port each call to the Radar endpoint that does the same job:
+
+| Google Maps Platform | Radar |
+| --- | --- |
+| Dynamic Maps | [Display maps](/maps/maps) |
+| Static Maps | [Static maps](/api/maps#static-maps) |
+| Geocoding API | [Forward geocode](/api/geocoding#forward-geocode) |
+| Reverse Geocoding API | [Reverse geocode](/api/geocoding#reverse-geocode) |
+| Autocomplete API | [Autocomplete](/api/search#autocomplete) |
+| Place Autocomplete UI | [Autocomplete component](/maps/addresses#add-the-autocomplete-component) |
+| Address Validation API | [Validate an address](/api/geocoding#validate-an-address) |
+| Nearby Search API | [Search places](/api/search#search-places) |
+| Distance Matrix API | [Matrix](/api/routing#matrix) |
+| Directions API | [Directions](/api/routing#directions) |
+| Snap to Roads API | [Route match](/api/routing#route-match) |
+| Speed Limits API | [Route match](/api/routing#route-match), with `speedLimit` in the `roadAttributes` parameter |
+| Compute Routes API | [Matrix](/api/routing#matrix), [Directions](/api/routing#directions), or [Optimize route](/api/routing#optimize-route) |
+
+Request parameters and response shapes differ between the two platforms, so each ported call needs its own request mapping and response parsing. Radar also offers [IP geocoding](/api/geocoding#ip-geocode), which has no direct Google Maps Platform equivalent in this table.
 
 ## Coverage
 

@@ -3,16 +3,15 @@ title: "Display maps"
 description: "Render an interactive Radar map with markers, popups, shapes, and custom styles on web and native, or generate a static map image."
 ---
 
-import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
 import { RadarMapDemo } from '/snippets/radar-demos.jsx';
 
-By the end of this guide you have an interactive map in a web page that loads a Radar style, shows your own locations as markers with popups, fits the view to them, shows a loading message, and reports a load failure to the user. Later sections cover styles, shapes, routes, static map images, and native apps.
+By the end of this guide you have an interactive Radar map that shows a marker with a popup and tells the user when the map fails to load. Later sections cover popups, styles, shapes, static map images, and native apps.
 
 <RadarMapDemo />
 
 ## Complete example
 
-Each tab renders a Radar map centered on Union Square in New York, adds one marker, and shows a message if the map fails to load, and the sections below explain each part.
+Each tab renders a Radar map centered on Union Square in New York, adds one marker, and shows a message if the map fails to load.
 
 <CodeGroup>
 
@@ -313,333 +312,105 @@ export default function RadarMap() {
 
 </CodeGroup>
 
-## Build with an agent
-
-Copy this prompt into a coding agent that has access to your repository.
-
-```text
-Add an interactive Radar map to this repository using the current Radar documentation.
-
-First inspect the application framework, platform versions, existing map or Radar
-code, how environment variables reach the client, and the existing tests. Preserve
-existing behavior outside this task.
-
-Read:
-- https://docs.radar.com/maps/maps.md
-- https://docs.radar.com/sdk/web.md
-- https://docs.radar.com/api/maps.md
-
-Implement the documented setup for this platform: install the core SDK and the maps
-plugin (or MapLibre with a Radar style URL on native), import the plugin stylesheet,
-register the plugin before use, initialize with a publishable key read from
-configuration, give the map container an explicit width and height, and render
-markers from the application's own location data. Show a loading state, handle the
-map error event, remove the map when its view unmounts, and keep the Radar logo and
-map attribution visible. Use a publishable key only. Never put a secret key in
-client code. Do not invent methods, options, style names, or defaults.
-
-Add tests or a manual test script for: the map loads and shows markers; the
-container has a non-zero size; an invalid key shows the error state instead of a
-blank area; the view unmounts without leaking a map instance; the layout works at
-a narrow mobile width. Run the repository's relevant checks. Report changed files,
-test results, required dashboard setup (keys, custom style ID), and anything that
-still needs confirmation. Do not change production settings or deploy without
-approval.
-```
-
 ## Prerequisites
 
-- A Radar account and a publishable key. See [Keys](#keys).
-- **Web**: A browser with WebGL. The examples use `radar-sdk-js` 5.3.0 and `@radarlabs/plugin-maps` 1.2.0. The maps plugin requires `radar-sdk-js` 5.1.0 or later and `maplibre-gl` as a peer dependency (2.4, 3.x, 4.x, 5.0.1 or later, or 6.4.1 or later).
-- **Native**: MapLibre Native for iOS or Android, the Radar React Native SDK with `@maplibre/maplibre-react-native` 11, or `maplibre_gl` for Flutter. See [Compatibility](#compatibility).
-- **Permissions**: None to display a map. You need location permission only if you also show the user's position.
-- **Plan**: Satellite and hybrid styles are available on the [Enterprise plan](https://radar.com/pricing).
+- A publishable key. See [Choose the right API key](/fundamentals/authentication-and-access#choose-the-right-api-key). Never put a secret key in client code.
+- **Web**: A browser with WebGL. The examples use `radar-sdk-js` 5.3.0 and `@radarlabs/plugin-maps` 1.2.0. The plugin requires `radar-sdk-js` 5.1.0 or later.
+- **Native**: MapLibre Native or the Radar React Native SDK. See [Compatibility](#compatibility).
 
-### Keys
+## Load the SDK and stylesheet
 
-<EnvironmentAndKeys />
+Maps are a plugin to the web SDK. With script tags, load the stylesheet, the core SDK, and the plugin, in that order, as the JavaScript tab does. The plugin script registers itself and bundles MapLibre GL JS.
 
-Map display uses a publishable key only. The web SDK sends it as a request header. Style URLs that you give to another map library, and static map URLs, carry it in a `publishableKey` query parameter.
-
-## How it works
-
-| Part | Responsibility |
-| --- | --- |
-| Your page or app | Loads the SDK and stylesheet, provides a sized container, creates the map, and adds markers and shapes from your data. |
-| Radar web SDK and maps plugin | Resolves the Radar style, attaches your publishable key to style and tile requests, adds the Radar logo, attribution, and zoom controls, and exposes `Radar.ui.map()`, `Radar.ui.marker()`, and `Radar.ui.popup()`. |
-| Radar | Serves the style, vector tiles, fonts, and hosted marker images. |
-| Your backend | Supplies the locations to show. It isn't involved in rendering the map and doesn't need a Radar key for this guide. |
-
-`Radar.ui.map()` returns a `RadarMap`, which extends the MapLibre GL JS [`Map`](https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/) class. Every MapLibre map method and event is available on it. The MapLibre module itself is available as `Radar.ui.maplibregl`.
-
-## Getting started
-
-Add the Radar SDK and the maps plugin to your app. In web SDK 5 and later, maps are a separate plugin, and `Radar.ui` doesn't exist until the plugin is registered.
-
-### With npm or yarn
-
-Install the core SDK, the maps plugin, and MapLibre GL JS:
+With npm, install the core SDK, the plugin, and MapLibre GL JS:
 
 ```bash
 npm install radar-sdk-js @radarlabs/plugin-maps maplibre-gl
 ```
 
-Import the plugin stylesheet, register the plugin, then initialize with your publishable key:
+Then import the plugin stylesheet and register the plugin before you use `Radar.ui`, as the React tab does. Without the stylesheet, controls, markers, and popups are mispositioned.
+
+## Size the container
+
+Give the map container an explicit width and height. A container with no height renders nothing. If the container changes size later, call `map.resize()`.
+
+## Create a map
+
+Call `Radar.initialize()` with your publishable key, then pass the container's ID or element to `Radar.ui.map()`. Coordinates are `[longitude, latitude]`. Swapping them is the most common cause of a marker in the wrong place.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `container` | None | Required. The element ID or element to render into. |
+| `style` | `radar-default-v1` | A [style](#styles) name, a custom style ID, a style URL, or a MapLibre style object. |
+| `center` | Estimated from the client's IP address | The initial center. The IP estimate is approximate. |
+| `zoom` | Set by the style | The initial zoom level. Higher numbers are closer. |
+| `language` | None | Label language: a code such as `en`, or `local` for the browser's language. |
+| `showZoomControls` | `true` | Whether to show the zoom buttons. |
+
+`Radar.ui.map()` returns a MapLibre GL JS [`Map`](https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/), so it also accepts any MapLibre [MapOptions](https://maplibre.org/maplibre-gl-js/docs/API/type-aliases/MapOptions/) except `transformRequest`, and every MapLibre method and event works on it. In a single-page app, call `map.remove()` when the view unmounts.
+
+## Add a marker
+
+The example adds its marker in the `load` handler. `Radar.ui.marker()` returns a MapLibre [`Marker`](https://maplibre.org/maplibre-gl-js/docs/API/classes/Marker/). Position it with `setLngLat()` and add it with `addTo(map)`.
+
+| Option | Description |
+| --- | --- |
+| `color`, `scale` | Color (default `#000257`) and scale (default `1`) of the default marker. |
+| `url`, `marker` | An image URL, or the ID of a marker image uploaded to a [custom style](#custom-styles), with optional `width` and `height`. Without a size, the image is capped at 64 by 64 pixels. |
+| `element` | A DOM element to use as the marker. |
+| `popup` | Options for a [popup](#add-popups) that opens when the marker is selected. |
+
+The plugin forwards only `color`, `element`, and `scale` from MapLibre's marker options. For other MapLibre marker behavior, call the marker's methods, for example `marker.setDraggable(true)`.
+
+## Handle load failure
+
+Show a loading message until `load` fires, and listen for the map's `error` event. That event also fires for a single failed tile, so treat an error as fatal only when it arrives before `load`, as the example does. To retry, call `map.remove()` and create the map again. The native tabs use `mapViewDidFailLoadingMap(_:withError:)` on iOS, `addOnDidFailLoadingMapListener()` on Android, and `onDidFailLoadingMap` on React Native.
+
+## Fit the view to markers
+
+`map.fitToMarkers()` centers and zooms the map so every marker is visible. It accepts MapLibre fit options such as `padding` and `maxZoom`.
 
 ```javascript
-import Radar from 'radar-sdk-js';
-import { createMapsPlugin } from '@radarlabs/plugin-maps';
-import '@radarlabs/plugin-maps/dist/radar-maps.css';
+locations.forEach((location) => {
+  Radar.ui.marker({ popup: { text: location.name } })
+    .setLngLat(location.coordinates) // [longitude, latitude]
+    .addTo(map);
+});
 
-Radar.registerPlugin(createMapsPlugin());
-
-Radar.initialize('prj_test_pk_...');
+map.fitToMarkers({ maxZoom: 15, padding: 60 });
 ```
 
-The stylesheet import is required. It includes the MapLibre styles, so you don't import MapLibre's CSS separately. Without it the map canvas, controls, markers, and popups are mispositioned.
+`map.getMarkers()` returns the markers on the map and `map.clearMarkers()` removes them.
 
-### With HTML
+## Add popups
 
-Add the stylesheet, the core SDK, and the maps plugin, in that order. The plugin script registers itself with the core SDK and bundles MapLibre GL JS.
-
-```html
-<link href="https://js.radar.com/maps/v1.2.0/radar-maps.css" rel="stylesheet">
-<script src="https://js.radar.com/v5.3.0/radar.min.js"></script>
-<script src="https://js.radar.com/maps/v1.2.0/radar-maps.min.js"></script>
-```
-
-Then initialize the SDK:
-
-```html
-<script>
-  Radar.initialize('prj_test_pk_...');
-</script>
-```
-
-### Create a map
-
-Give the map a container with an explicit width and height, then pass the container's ID or the element itself to `Radar.ui.map()`. A container with no height renders nothing.
-
-The examples below load three locations, show a loading message until the map's `load` event, add a marker and popup for each location, fit the view to the markers, and show a message if the map fails to load.
-
-<CodeGroup>
-
-```html HTML
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://js.radar.com/maps/v1.2.0/radar-maps.css" rel="stylesheet">
-    <script src="https://js.radar.com/v5.3.0/radar.min.js"></script>
-    <script src="https://js.radar.com/maps/v1.2.0/radar-maps.min.js"></script>
-  </head>
-
-  <body>
-    <p id="map-status" role="status">Loading map...</p>
-    <div id="map" style="width: 100%; height: 500px;"></div>
-
-    <script>
-      // Replace with data from your own API.
-      const locations = [
-        { id: 'store-41', name: 'Union Square', coordinates: [-73.9905, 40.7359] },
-        { id: 'store-42', name: 'Flatiron', coordinates: [-73.9897, 40.7411] },
-        { id: 'store-43', name: 'East Village', coordinates: [-73.9840, 40.7265] },
-      ];
-
-      const statusEl = document.getElementById('map-status');
-      let loaded = false;
-
-      try {
-        Radar.initialize('prj_test_pk_...');
-
-        const map = Radar.ui.map({
-          container: 'map', // or document.getElementById('map')
-          style: 'radar-default-v1',
-          center: [-73.9905, 40.7359], // [longitude, latitude]
-          zoom: 13,
-        });
-
-        map.on('load', () => {
-          loaded = true;
-          statusEl.hidden = true;
-
-          locations.forEach((location) => {
-            Radar.ui.marker({ popup: { text: location.name } })
-              .setLngLat(location.coordinates)
-              .addTo(map);
-          });
-
-          map.fitToMarkers({ maxZoom: 15, padding: 60 });
-        });
-
-        map.on('error', (event) => {
-          console.error('Map error', event.error);
-          if (!loaded) {
-            statusEl.hidden = false;
-            statusEl.textContent = 'The map could not load. Refresh the page to try again.';
-          }
-        });
-      } catch (err) {
-        // Thrown when the key is missing or is a secret key, or when the plugin did not load.
-        console.error(err);
-        statusEl.textContent = 'The map could not load.';
-      }
-    </script>
-  </body>
-</html>
-```
-
-```jsx React
-import { useEffect, useRef, useState } from 'react';
-import Radar from 'radar-sdk-js';
-import { createMapsPlugin } from '@radarlabs/plugin-maps';
-import '@radarlabs/plugin-maps/dist/radar-maps.css';
-
-Radar.registerPlugin(createMapsPlugin());
-Radar.initialize(process.env.REACT_APP_RADAR_PUBLISHABLE_KEY);
-
-// locations: [{ id: 'store-42', name: 'Flatiron', coordinates: [-73.9897, 40.7411] }]
-export default function LocationsMap({ locations }) {
-  const containerRef = useRef(null);
-  const [status, setStatus] = useState('loading');
-
-  useEffect(() => {
-    let loaded = false;
-
-    const map = Radar.ui.map({
-      container: containerRef.current,
-      style: 'radar-default-v1',
-      center: [-73.9905, 40.7359],
-      zoom: 13,
-    });
-
-    map.on('load', () => {
-      loaded = true;
-      setStatus('ready');
-
-      locations.forEach((location) => {
-        Radar.ui.marker({ popup: { text: location.name } })
-          .setLngLat(location.coordinates)
-          .addTo(map);
-      });
-
-      map.fitToMarkers({ maxZoom: 15, padding: 60 });
-    });
-
-    map.on('error', (event) => {
-      console.error('Map error', event.error);
-      if (!loaded) {
-        setStatus('error');
-      }
-    });
-
-    // Remove the map when the component unmounts.
-    return () => map.remove();
-  }, [locations]);
-
-  return (
-    <div>
-      {status === 'loading' && <p role="status">Loading map...</p>}
-      {status === 'error' && <p role="alert">The map could not load. Refresh the page to try again.</p>}
-      <div ref={containerRef} style={{ width: '100%', height: '500px' }} />
-    </div>
-  );
-}
-```
-
-</CodeGroup>
-
-The React example reads the key from `process.env.REACT_APP_RADAR_PUBLISHABLE_KEY`. Use whatever your build tool exposes to client code (for example `import.meta.env.VITE_RADAR_PUBLISHABLE_KEY` with Vite). The value must be a publishable key.
-
-To verify, open the page: the loading message disappears, three markers appear, and the view fits them. The map has zoom buttons and map attribution in the bottom right corner and the Radar logo in the bottom left corner, and selecting a marker opens a popup with the location name. Then replace the key with `prj_test_pk_invalid` and reload. The error message appears in place of a blank area.
-
-## Configuration
-
-### Map
-
-`Radar.ui.map()` accepts any MapLibre [MapOptions](https://maplibre.org/maplibre-gl-js/docs/API/type-aliases/MapOptions/) except `transformRequest`, which the SDK uses to attach your key. These are the options most maps set:
-
-| Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `container` | string or `HTMLElement` | None | Required. The element ID or element to render into. Its width and height set the map size. |
-| `style` | string or object | `radar-default-v1` | The map style: a Radar style name, a custom style ID, a style URL, or a MapLibre style object. See [Styles](#styles). |
-| `center` | `[longitude, latitude]` | Estimated from the client's IP address | The initial center. If you omit it, Radar centers the map on an estimate of the client's location from its IP address. That estimate is approximate. |
-| `zoom` | number | Set by the style | The initial zoom level. Higher numbers are closer. |
-| `language` | string | None | The language for map labels: a language code such as `en` or `es`, or `local` to use the browser's language. |
-| `showZoomControls` | boolean | `true` | Whether to show the zoom in and zoom out buttons. |
-
-The SDK also changes four MapLibre defaults: `maxZoom` is `20`, `dragRotate` is `false`, `touchPitch` is `false`, and MapLibre's own attribution control and logo are replaced by Radar's. Pass any of the first three options to override them.
-
-This example sets the most common options:
+Attach a popup to a marker with the marker's `popup` option, or create a standalone one with `Radar.ui.popup()`. Set its content with `text`, `html`, or `element`. Popups also accept MapLibre popup options.
 
 ```javascript
-const map = Radar.ui.map({
-  container: 'map',
-  style: 'radar-default-v1',
-  center: [-73.990550, 40.735225],
-  zoom: 10,
-  language: 'en',
-});
+Radar.ui.popup({ text: 'Flatiron' })
+  .setLngLat([-73.9897, 40.7411])
+  .addTo(map);
 ```
 
-#### Functions
+<Warning>
+  `html` is inserted as markup. If any part of the content comes from user input or data you don't control, use `text`, or an `element` built with `textContent`.
+</Warning>
 
-`RadarMap` adds these methods to the MapLibre map:
+## Styles
 
-| Function | Arguments | Returns | Description |
-| --- | --- | --- | --- |
-| `getMarkers` | none | `RadarMarker[]` | All markers currently on the map. |
-| `fitToMarkers` | `fitBoundsOptions` (optional), `RadarMarker[]` (optional) | void | Fits the view to all markers, or to the markers you pass. Default padding is 50 pixels. Does nothing when there are no markers. |
-| `clearMarkers` | none | void | Removes all markers. |
-| `getFeatures` | none | `RadarMapFeature[]` | All features added with the methods below. |
-| `fitToFeatures` | `fitBoundsOptions` (optional), `RadarMapFeature[]` (optional) | void | Fits the view to all features, or to the features you pass. |
-| `clearFeatures` | none | void | Removes all features. |
-| `addPolygon` | GeoJSON `Polygon` or `MultiPolygon` feature, options (optional) | `RadarMapFeature` | Adds a [polygon](#polygon-and-multipolygon). |
-| `addLine` | GeoJSON `LineString` feature, options (optional) | `RadarMapFeature` | Adds a [line](#line-and-polyline). |
-| `addPolyline` | encoded polyline string, options (optional) | `RadarMapFeature` | Decodes a polyline and adds it as a line. Precision defaults to 6. |
-
-`fitBoundsOptions` are MapLibre [FitBoundsOptions](https://maplibre.org/maplibre-gl-js/docs/API/type-aliases/FitBoundsOptions/), such as `padding` and `maxZoom`. Use `map.on()` for MapLibre [map events](https://maplibre.org/maplibre-gl-js/docs/API/type-aliases/MapEventType/):
-
-```javascript
-map.on('load', () => {
-  // The style has loaded and the map is ready.
-});
-
-map.on('click', (event) => {
-  console.log(event.lngLat);
-});
-
-map.fitToMarkers({ padding: 20 });
-map.fitToFeatures({ padding: 20 });
-```
-
-### Styles
-
-Radar provides these styles:
+Pass a style name as the `style` option, or call `map.setStyle()` to switch later.
 
 | Style | Description |
 | --- | --- |
-| `radar-default-v1` | Radar's default style, with street-level detail for roads and nearby places. A general-purpose map for most uses. |
-| `radar-light-v1` | A light monochrome style for highlighting your own data. |
-| `radar-dark-v1` | A dark monochrome style for highlighting your own data in dark interfaces. |
+| `radar-default-v1` | The default, with street-level detail. |
+| `radar-light-v1` | Light monochrome, for highlighting your own data. |
+| `radar-dark-v1` | Dark monochrome. |
 | `radar-satellite-v1` | Satellite imagery. Available on the [Enterprise plan](https://radar.com/pricing). |
 | `radar-hybrid-v1` | Satellite imagery with roads and labels. Available on the Enterprise plan. |
 
-To switch styles after the map is created, call MapLibre's `map.setStyle()` with a Radar style name or custom style ID.
+### Custom styles
 
-#### Custom styles
-
-Radar Maps Studio is a visual style editor in the dashboard. Use it to match the map to your brand.
-
-1. In the dashboard, open **Maps** > **Styles** and click **Create style**. Choose a base style and click **Create**.
-2. In the editor, select a layer such as background, roads, or water to show or hide it or change its color.
-3. To add a custom marker image, click **+** next to **Add a marker** in the layer panel and upload an SVG or PNG file. Use the marker's ID with the `marker` option described in [Marker](#marker).
-4. For more control, turn on **Advanced mode**. It exposes every layer, lets you reorder layers, adds attributes such as opacity, border color, text color, and fonts, and lets you edit the style JSON, which follows the [MapLibre Style Spec](https://maplibre.org/maplibre-style-spec).
-5. To use your own font, select the **Settings** tab, click **Upload fonts**, and upload a TTF or OTF file. The font then appears in the **Text font** list. Custom fonts require Advanced mode.
-6. Click **Save**. For a new style, the confirmation dialog shows the style ID. You can also find the ID in the style's **share** dialog. Changes to a style that is already in use are visible to users as soon as you save and confirm.
-
-Pass the style ID as the `style` option:
+To match the map to your brand, open **Maps** > **Styles** in the dashboard, click **Create style**, choose a base style, and edit its layers, colors, fonts, and marker images. When you click **Save**, the confirmation dialog shows the style ID. Pass that ID as the `style` option:
 
 ```javascript
 const map = Radar.ui.map({
@@ -648,115 +419,29 @@ const map = Radar.ui.map({
 });
 ```
 
-### Marker
+Changes to a style that is already in use are visible to users as soon as you save.
 
-`Radar.ui.marker()` returns a `RadarMarker`, which extends the MapLibre [`Marker`](https://maplibre.org/maplibre-gl-js/docs/API/classes/Marker/) class. Position it with `setLngLat([longitude, latitude])` and add it with `addTo(map)`.
+## Display a polygon
 
-| Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `color` | string | `#000257` | Color of the default marker. |
-| `marker` | string | None | ID of a marker image uploaded to a [custom style](#custom-styles). |
-| `url` | string | None | URL of an image to use as the marker. |
-| `element` | `HTMLElement` | None | A DOM element to use as the marker. |
-| `width` | number or string | None | Image width, in pixels or as a CSS value. |
-| `height` | number or string | None | Image height, in pixels or as a CSS value. |
-| `scale` | number | `1` | Scale of the default marker. |
-| `popup` | object | None | [Popup](#popup) options for a popup that opens when the marker is selected. |
-
-When you set `url` or `marker` without a width or height, the image is capped at 64 by 64 pixels. If the image fails to load, the SDK logs an error and shows the default marker.
-
-Only `color`, `element`, and `scale` are passed through from MapLibre's marker options. For other MapLibre marker behavior, call the marker's methods after you create it, for example `marker.setDraggable(true)`.
-
-This example adds a marker with a popup and listens for clicks:
+Pass a GeoJSON `Polygon` or `MultiPolygon` feature to `map.addPolygon()`. Each feature needs a unique `id`, and adding a second feature with the same ID throws an error.
 
 ```javascript
-const marker = Radar.ui.marker({
-  color: '#000257',
-  popup: {
-    text: 'Flatiron',
-  },
-})
-  .setLngLat([-73.9897, 40.7411])
-  .addTo(map);
-
-marker.on('click', (event) => {
-  console.log(event.lngLat, event.target);
-});
-```
-
-Selecting a marker opens its popup and closes any other open marker popup. The marker's `click` event receives `target` (the marker), `lngLat`, `point`, and `originalEvent`. A click on a marker doesn't also fire the map's `click` event.
-
-### Popup
-
-A popup shows text or HTML at a point on the map. Attach one to a marker with the marker's `popup` option, or create a standalone popup with `Radar.ui.popup()`. Popups accept all MapLibre [PopupOptions](https://maplibre.org/maplibre-gl-js/docs/API/type-aliases/PopupOptions/) plus:
-
-| Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `text` | string | None | Plain text to show in the popup. |
-| `html` | string | None | An HTML string to show in the popup. |
-| `element` | `HTMLElement` | None | A DOM element to use as the popup content. |
-
-This example creates a standalone popup:
-
-```javascript
-const popup = Radar.ui.popup({
-  text: 'Flatiron',
-})
-  .setLngLat([-73.9897, 40.7411])
-  .addTo(map);
-```
-
-<Warning>
-  `html` is inserted as markup. If any part of it comes from user input or from data you don't control, use `text` or build an `element` with `textContent` to avoid script injection.
-</Warning>
-
-### Features
-
-Features are lines and polygons that you add to the map, style, and listen to. The input is a [GeoJSON Feature](https://datatracker.ietf.org/doc/html/rfc7946#section-3.2) with `Polygon`, `MultiPolygon`, or `LineString` geometry.
-
-- Each feature needs a unique `id`. Adding a second feature with the same ID throws an error. If you omit the ID, the SDK generates one.
-- `properties` carry your own data and are returned in feature events.
-- `feature.on(type, callback)` supports `click`, `mousemove`, `mouseenter`, and `mouseleave`. The callback receives an object with `type`, `feature`, and `originalEvent` (the MapLibre mouse event, which has `lngLat`).
-- `feature.remove()` removes the feature and its layers.
-
-#### Polygon and MultiPolygon
-
-Add polygons with `map.addPolygon(feature, options)`. The `paint` option supports:
-
-| Property | Possible values | Default |
-| --- | --- | --- |
-| `fill-color` | string (CSS color) | `#FF6F00` |
-| `fill-opacity` | number (0 to 1) | `0.3` |
-| `border-width` | number (pixels) | `2` |
-| `border-color` | string (CSS color) | `#FF6F00` |
-| `border-opacity` | number (0 to 1) | `1` |
-
-This example adds a polygon and opens a popup when the user selects it:
-
-```javascript
-const geojson = {
+const feature = map.addPolygon({
   type: 'Feature',
-  id: 'service-area-1',
-  properties: {
-    name: 'Central Park',
-  },
+  id: 'central-park',
+  properties: { name: 'Central Park' },
   geometry: {
     type: 'Polygon',
     coordinates: [[
-      [-73.95820498349376, 40.80026256420331],
-      [-73.9816545434309, 40.76824212209061],
-      [-73.97283590550576, 40.764244806438285],
-      [-73.94918592197929, 40.79677293396304],
-      [-73.95820498349376, 40.80026256420331],
+      [-73.9582, 40.8003],
+      [-73.9817, 40.7682],
+      [-73.9728, 40.7642],
+      [-73.9492, 40.7968],
+      [-73.9582, 40.8003],
     ]],
   },
-};
-
-const feature = map.addPolygon(geojson, {
-  paint: {
-    'fill-color': 'blue',
-    'fill-opacity': 0.4,
-  },
+}, {
+  paint: { 'fill-color': 'blue', 'fill-opacity': 0.4 },
 });
 
 feature.on('click', ({ feature, originalEvent }) => {
@@ -764,435 +449,82 @@ feature.on('click', ({ feature, originalEvent }) => {
     .setLngLat(originalEvent.lngLat)
     .addTo(map);
 });
+
+map.fitToFeatures({ padding: 40 });
 ```
 
-#### Line and Polyline
+`paint` takes `fill-color`, `fill-opacity`, `border-width`, `border-color`, and `border-opacity`. Remove a feature with `feature.remove()`, or all of them with `map.clearFeatures()`.
 
-Add a GeoJSON `LineString` with `map.addLine(feature, options)`, or an encoded polyline with `map.addPolyline(polyline, options)`. For polylines, `options` also takes `id`, `properties`, and `precision` (default `6`; use `5` for polylines encoded with five decimal places). The `paint` option supports:
+## Display a route
 
-| Property | Possible values | Default |
-| --- | --- | --- |
-| `line-color` | string (CSS color) | `#000257` |
-| `line-width` | number (pixels) | `4` |
-| `line-opacity` | number (0 to 1) | None |
-| `line-cap` | `butt`, `round`, or `square` | `round` |
-| `line-offset` | number (pixels) | None |
-| `line-blur` | number (pixels) | None |
-| `line-dasharray` | array of numbers | None |
-| `line-gap-width` | number (pixels) | None |
-| `line-gradient` | MapLibre [expression](https://maplibre.org/maplibre-gl-js/docs/examples/line-gradient/) | None |
-| `border-width` | number (pixels) | `2` |
-| `border-color` | string (CSS color) | `#FFFFFF` |
-| `border-opacity` | number (0 to 1) | None |
-
-This example adds an encoded polyline as a styled line:
+Add a GeoJSON `LineString` with `map.addLine()`, or an encoded polyline with `map.addPolyline()`. With `geometry: 'linestring'`, each route from `Radar.distance()` has a `geometry` you can pass to `addLine()`:
 
 ```javascript
-const feature = map.addPolyline(encodedPolyline, {
-  id: 'route-1',
-  precision: 6,
-  properties: {
-    name: 'Delivery route',
-  },
-  paint: {
-    'line-color': 'blue',
-    'line-opacity': 0.6,
-    'line-width': 6,
-    'border-width': 2,
-    'border-color': '#FFFFFF',
-  },
+const { routes } = await Radar.distance({
+  origin,       // { latitude, longitude }
+  destination,  // { latitude, longitude }
+  modes: ['car'],
+  geometry: 'linestring',
 });
-```
 
-## Examples
-
-Each example assumes the SDK is initialized and `map` was created as in [Create a map](#create-a-map).
-
-### Fit map to markers
-
-`map.fitToMarkers()` centers and zooms the map so every marker is visible. This example adds a marker where the user clicks, refits the map, and removes a marker when it is selected.
-
-```javascript
-map.on('click', (event) => {
-  const { lng, lat } = event.lngLat;
-
-  const marker = Radar.ui.marker()
-    .setLngLat([lng, lat])
-    .addTo(map);
-
-  map.fitToMarkers({ maxZoom: 14, padding: 80 });
-
-  marker.on('click', () => {
-    marker.remove();
-    map.fitToMarkers({ maxZoom: 14, padding: 80 });
-  });
-});
-```
-
-### Add a custom icon
-
-Pass an image URL as the marker's `url`, or the ID of a marker uploaded to a custom style as `marker`.
-
-```javascript
-map.on('load', () => {
-  Radar.ui.marker({
-    url: 'https://example.com/images/store-pin.png',
-    width: '48px',
-    height: '48px',
-    popup: {
-      text: 'Flatiron',
-    },
-  })
-    .setLngLat([-73.9897, 40.7411])
-    .addTo(map);
-});
-```
-
-The image host must allow cross-origin requests, because the SDK fetches the image before it draws the marker.
-
-### Display a custom popup
-
-Build popup content as a DOM element when it includes your own data. Setting `textContent` keeps location names and addresses from being read as markup.
-
-```javascript
-function buildPopup(location) {
-  const element = document.createElement('div');
-
-  const title = document.createElement('strong');
-  title.textContent = location.name;
-
-  const address = document.createElement('p');
-  address.textContent = location.address;
-
-  element.append(title, address);
-  return element;
-}
-
-Radar.ui.marker({
-  popup: {
-    element: buildPopup({ name: 'Flatiron', address: '123 Example Ave, New York, NY' }),
-    maxWidth: '260px',
-  },
-})
-  .setLngLat([-73.9897, 40.7411])
-  .addTo(map);
-```
-
-### Display a route
-
-Drawing a route is optional. To show one, request it with geometry and add the geometry as a line.
-
-`Radar.distance()` returns each requested travel mode's route. With `geometry: 'linestring'`, the route's `geometry` is a GeoJSON `LineString` that you can pass to `map.addLine()`, as this example does:
-
-```javascript
-async function showRoute(map, origin, destination) {
-  const { routes } = await Radar.distance({
-    origin,       // { latitude, longitude }
-    destination,  // { latitude, longitude }
-    modes: ['car'],
-    units: 'imperial',
-    geometry: 'linestring',
-  });
-
-  if (!routes.car || !routes.car.geometry) {
-    return; // No drivable route between the two points.
-  }
-
-  map.clearFeatures();
-
-  map.addLine({
-    type: 'Feature',
-    id: 'route',
-    properties: { duration: routes.car.duration.text },
-    geometry: routes.car.geometry,
-  }, {
+if (routes.car && routes.car.geometry) {
+  map.addLine({ type: 'Feature', id: 'route', geometry: routes.car.geometry }, {
     paint: { 'line-color': '#000257', 'line-width': 5 },
   });
-
   map.fitToFeatures({ padding: 40 });
 }
-```
-
-The [directions](/api/routing#directions) endpoint returns encoded polylines for routes with several stops. Request `geometry=polyline6` and pass each polyline to `map.addPolyline()`, whose default precision is 6. For live trip routes and ETAs, see [Track pickups, deliveries, and workers](/geofencing/trips).
-
-### Display a polygon
-
-Pass a GeoJSON `Polygon` or `MultiPolygon` feature to `map.addPolygon()`, then fit the view to it.
-
-```javascript
-map.on('load', () => {
-  const feature = map.addPolygon({
-    type: 'Feature',
-    id: 'central-park',
-    properties: { name: 'Central Park' },
-    geometry: {
-      type: 'Polygon',
-      coordinates: [[
-        [-73.95820498349376, 40.80026256420331],
-        [-73.9816545434309, 40.76824212209061],
-        [-73.97283590550576, 40.764244806438285],
-        [-73.94918592197929, 40.79677293396304],
-        [-73.95820498349376, 40.80026256420331],
-      ]],
-    },
-  });
-
-  feature.on('click', ({ feature, originalEvent }) => {
-    Radar.ui.popup({ text: feature.properties.name })
-      .setLngLat(originalEvent.lngLat)
-      .addTo(map);
-  });
-
-  map.fitToFeatures({ padding: 40 });
-});
-```
-
-Because `RadarMap` is a MapLibre map, MapLibre-compatible drawing plugins work with it. If you let users draw shapes and save them as geofences, send the finished geometry to your own backend and create the geofence there with a secret key. See [Detect geofence events and place visits](/geofencing/geofences-and-places) and the [Geofences API](/api/geofences).
-
-### Display a globe
-
-Set the projection to `globe` after the style loads. This requires `maplibre-gl` 5 or later.
-
-```javascript
-const map = Radar.ui.map({
-  container: 'map',
-  style: 'radar-default-v1',
-  zoom: 2,
-  minZoom: 0, // Allow zooming out to the whole globe.
-  center: [-73.9910078, 40.7342465],
-});
-
-map.on('style.load', () => {
-  map.setProjection({ type: 'globe' });
-});
-```
-
-### Change map language
-
-Set `language` to a language code, or to `local` to follow the browser's language.
-
-```javascript
-const map = Radar.ui.map({
-  container: 'map',
-  language: 'local',
-});
 ```
 
 ## Static maps
 
-A static map is an image that Radar renders from a URL. Use one where you can't or don't want to run JavaScript or a map library: emails, receipts, order confirmations, and list thumbnails. A static map doesn't pan or zoom.
-
-Build the URL from the endpoint `https://api.radar.io/maps/static` and query parameters, then use it as the source of an image element. The key goes in the `publishableKey` query parameter, as in this URL:
+A static map is an image that Radar renders from a URL, for emails, receipts, and other places where you can't run a map library. The key goes in the `publishableKey` query parameter.
 
 ```text
 https://api.radar.io/maps/static?width=600&height=400&center=40.73430,-73.99110&zoom=15&style=radar-default-v1&scale=2&markers=color:0x000257|40.73430,-73.99110&publishableKey=prj_live_pk_...
 ```
 
-This returns a 600 by 400 point image at double resolution, centered on the coordinate, with one marker. Give the image element alternative text that describes the place shown.
-
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `width`, `height` | None | Required. Image size in pixels, each between `100` and `2048`. The size multiplied by `scale` must not exceed `2048`. |
-| `center` | None | `latitude,longitude`. Required unless `markers`, `path`, or `bbox` is set. |
-| `zoom` | None | Required when `center` is set. If you omit `center` and `zoom`, the map fits the markers, paths, or bounding box. |
-| `scale` | `1` | A number from `1` to `3`. Use `2` or `3` for high-density screens. The returned image is `width` and `height` multiplied by `scale`, covering the same area. |
-| `style` | `radar-default-v1` | A Radar style name or [custom style](#custom-styles) ID. |
-| `bbox` | None | `min_latitude,min_longitude,max_latitude,max_longitude`. The image fits the box. |
-| `language` | None | A language code for labels. |
-| `markers` | None | One or more markers. See [Static map markers](#static-map-markers). |
-| `path` | None | One or more lines. See [Static map paths](#static-map-paths). |
-| `publishableKey` | None | Required. Your publishable key. |
-
-For every parameter and error, see [Maps API](/api/maps).
-
-### Static map markers
-
-A `markers` value is a set of optional style settings followed by one or more `latitude,longitude` locations, separated by pipes. For example:
-
-```text
-markers=color:0x000257|size:small|40.73430,-73.99110|40.706436,-73.997271
-```
-
-Style settings are `color` (a hex value such as `0xFF428E` or a CSS color name), `size:small` for a smaller marker, and `icon` (the URL of a PNG or SVG file, or the ID of a marker uploaded to a custom style; images are capped at 64 by 64 pixels). To use more than one marker style in an image, repeat the `markers` parameter.
-
-### Static map paths
-
-A `path` value is a set of optional style settings followed by `latitude,longitude` points or an encoded polyline. Points come after the style settings. For example:
-
-```text
-path=stroke:0x000257|width:3|border:white|borderwidth:2|40.7154,-74.0147|40.7094,-74.0149|40.7049,-74.0167
-```
-
-Style settings are `stroke` (line color), `width` (pixels, default `3`), `border` (border color, default white), and `borderwidth` (pixels, default `2`). To pass an encoded polyline, use `enc:` followed by the polyline, or `enc6:` for a polyline with six decimal places. Radar [routing](/api/routing) responses can return route geometry as a polyline, so you can draw a route on a static map without decoding it. Repeat the `path` parameter for several lines, and URL-encode polylines before you place them in a URL.
+This returns a 600 by 400 image at double resolution with one marker. For every parameter, including marker and path styling, see [Static maps](/api/maps#static-maps).
 
 ## Compatibility
 
-Radar maps use the [Mapbox Vector Tile](https://github.com/mapbox/vector-tile-spec) and [TileJSON](https://github.com/mapbox/tilejson-spec) standards and MapLibre styles, so any library that supports MapLibre styles can display them. Outside the Radar web SDK, you load a style by URL, with your publishable key in the query string:
+Radar maps use MapLibre styles, so any library that supports them can display a Radar map. Load the style by URL, with your publishable key in the query string:
 
 ```text
 https://api.radar.io/maps/styles/radar-default-v1?publishableKey=prj_live_pk_...
 ```
 
-Replace `radar-default-v1` with another [style](#styles) name or a custom style ID.
-
-When you use a library directly, you're responsible for two things the Radar web SDK otherwise does for you: keep the library's attribution control visible, and add the Radar logo to the map. See [Attribution](#attribution).
+Outside the Radar web SDK and the React Native `Map` component, keep the library's attribution control visible and add the Radar logo to the map yourself. Logo and marker images are in the [Radar map assets download](https://static.radar.com/downloads/radar-map-assets-v1.zip). See [Attribution](/api/maps#attribution).
 
 ### MapLibre GL JS
 
-Use MapLibre GL JS directly if you want lower-level control or are porting a Mapbox GL JS map. Set the Radar style URL as the map's [style](https://maplibre.org/maplibre-gl-js/docs/API/type-aliases/MapOptions/#style), as in this page:
+Set the Radar style URL as the map's `style`:
 
-```html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.5.1/dist/maplibre-gl.css">
-    <script src="https://unpkg.com/maplibre-gl@4.5.1/dist/maplibre-gl.js"></script>
-    <style>
-      body { margin: 0; padding: 0; }
-      html, body, #map { height: 100%; }
-    </style>
-  </head>
-  <body>
-    <div id="map"></div>
-    <script>
-      const map = new maplibregl.Map({
-        container: 'map',
-        style: 'https://api.radar.io/maps/styles/radar-default-v1?publishableKey=prj_live_pk_...',
-        center: [-122.65, 45.52],
-        zoom: 9,
-      });
-    </script>
-  </body>
-</html>
+```javascript
+const map = new maplibregl.Map({
+  container: 'map',
+  style: 'https://api.radar.io/maps/styles/radar-default-v1?publishableKey=prj_live_pk_...',
+  center: [-122.65, 45.52],
+  zoom: 9,
+});
 ```
 
 ### Leaflet
 
-Use Radar as a Leaflet base map through the [maplibre-gl-leaflet](https://github.com/maplibre/maplibre-gl-leaflet) plugin, with the same style URL, as in this page:
+Use the [maplibre-gl-leaflet](https://github.com/maplibre/maplibre-gl-leaflet) plugin with the same style URL:
 
-```html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <style>
-      html, body, #map { width: 100%; height: 100%; margin: 0; }
-    </style>
-
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css">
-    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-
-    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css">
-    <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
-
-    <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.20/leaflet-maplibre-gl.js"></script>
-  </head>
-
-  <body>
-    <div id="map"></div>
-    <script>
-      const map = L.map('map').setView([38.912753, -77.032194], 15);
-
-      L.marker([38.912753, -77.032194])
-        .bindPopup('Example location')
-        .addTo(map);
-
-      L.maplibreGL({
-        style: 'https://api.radar.io/maps/styles/radar-default-v1?publishableKey=prj_live_pk_...',
-      }).addTo(map);
-    </script>
-  </body>
-</html>
+```javascript
+L.maplibreGL({
+  style: 'https://api.radar.io/maps/styles/radar-default-v1?publishableKey=prj_live_pk_...',
+}).addTo(map);
 ```
 
 ### iOS
 
-Add [MapLibre Native for iOS](https://maplibre.org/maplibre-native/ios/latest/documentation/maplibre/) to your Xcode project, then create an `MLNMapView` with a Radar style URL. Add the Radar logo as an image asset named `radar-logo` (and optionally a marker image named `default-marker`). Logo and marker assets are in the [Radar map assets download](https://static.radar.com/downloads/radar-map-assets-v1.zip).
-
-This SwiftUI example creates the map view, adds the Radar logo, and adds a marker when the style loads:
-
-```swift
-import SwiftUI
-import MapLibre
-
-struct MapView: UIViewRepresentable {
-    func makeCoordinator() -> MapView.Coordinator {
-        Coordinator(self)
-    }
-
-    func makeUIView(context: Context) -> MLNMapView {
-        // Create a map with a Radar style.
-        let style = "radar-default-v1"
-        let publishableKey = "prj_live_pk_..."
-        let styleURL = URL(string: "https://api.radar.io/maps/styles/\(style)?publishableKey=\(publishableKey)")
-
-        let mapView = MLNMapView(frame: .zero, styleURL: styleURL)
-        mapView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        mapView.logoView.isHidden = true // Replaced by the Radar logo.
-
-        mapView.setCenter(
-            CLLocationCoordinate2D(latitude: 40.7342, longitude: -73.9911),
-            zoomLevel: 11,
-            animated: false
-        )
-
-        // Add the Radar logo.
-        let logoImageView = UIImageView(image: UIImage(named: "radar-logo"))
-        logoImageView.translatesAutoresizingMaskIntoConstraints = false
-        mapView.addSubview(logoImageView)
-
-        NSLayoutConstraint.activate([
-            logoImageView.bottomAnchor.constraint(equalTo: mapView.safeAreaLayoutGuide.bottomAnchor, constant: -10),
-            logoImageView.leadingAnchor.constraint(equalTo: mapView.safeAreaLayoutGuide.leadingAnchor, constant: 10),
-            logoImageView.widthAnchor.constraint(equalToConstant: 74),
-            logoImageView.heightAnchor.constraint(equalToConstant: 26)
-        ])
-
-        mapView.delegate = context.coordinator
-
-        return mapView
-    }
-
-    func updateUIView(_ uiView: MLNMapView, context: Context) {
-    }
-
-    class Coordinator: NSObject, MLNMapViewDelegate {
-        var control: MapView
-
-        init(_ control: MapView) {
-            self.control = control
-        }
-
-        // Add a marker when the style finishes loading.
-        func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
-            addMarker(style: style, coordinate: CLLocationCoordinate2D(latitude: 40.7342, longitude: -73.9911))
-        }
-
-        func addMarker(style: MLNStyle, coordinate: CLLocationCoordinate2D) {
-            let point = MLNPointAnnotation()
-            point.coordinate = coordinate
-
-            let shapeSource = MLNShapeSource(identifier: "marker-source", shape: point, options: nil)
-            let shapeLayer = MLNSymbolStyleLayer(identifier: "marker-style", source: shapeSource)
-
-            if let image = UIImage(named: "default-marker") {
-                style.setImage(image, forName: "marker")
-            }
-
-            shapeLayer.iconImageName = NSExpression(forConstantValue: "marker")
-
-            style.addSource(shapeSource)
-            style.addLayer(shapeLayer)
-        }
-    }
-}
-```
+Add [MapLibre Native for iOS](https://maplibre.org/maplibre-native/ios/latest/documentation/maplibre/) to your Xcode project and create an `MLNMapView` with a Radar style URL, as the Swift tab in [Complete example](#complete-example) does. Add the Radar logo to your asset catalog as `radar-logo`, and a marker image as `default-marker`. For the Radar SDK, see [iOS SDK](/sdk/ios).
 
 ### Android
 
-Add [MapLibre Native for Android](https://maplibre.org/maplibre-native/android/examples/getting-started/) to your app's `build.gradle` dependencies. The annotation plugin is optional and only needed for the marker in this example. Check MapLibre for current releases.
+Add [MapLibre Native for Android](https://maplibre.org/maplibre-native/android/examples/getting-started/) to your app's dependencies. The annotation plugin is needed only for markers.
 
 ```groovy build.gradle
 dependencies {
@@ -1201,183 +533,21 @@ dependencies {
 }
 ```
 
-Add the Radar logo (and optionally a marker image) from the [Radar map assets download](https://static.radar.com/downloads/radar-map-assets-v1.zip) to your drawable resources, then put a `MapView` and the logo in your layout:
-
-```xml activity_main.xml
-<?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".MainActivity">
-
-    <org.maplibre.android.maps.MapView
-        android:id="@+id/mapView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-
-    <ImageView
-        android:id="@+id/radarLogo"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:contentDescription="Radar"
-        android:src="@drawable/radar_logo"
-        app:layout_constraintBottom_toBottomOf="@id/mapView"
-        app:layout_constraintStart_toStartOf="@id/mapView"
-        android:layout_marginBottom="10dp"
-        android:layout_marginStart="10dp" />
-
-</androidx.constraintlayout.widget.ConstraintLayout>
-```
-
-Load the Radar style in your `Activity` and forward the lifecycle calls to the `MapView`:
-
-```kotlin
-import android.os.Bundle
-import android.view.Gravity
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.res.ResourcesCompat
-import androidx.core.graphics.drawable.toBitmap
-import org.maplibre.android.MapLibre
-import org.maplibre.android.camera.CameraPosition
-import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.maps.MapView
-// Optional imports for adding a marker.
-import org.maplibre.android.plugins.annotation.SymbolManager
-import org.maplibre.android.plugins.annotation.SymbolOptions
-
-const val MARKER_NAME = "radar-marker"
-
-class MainActivity : AppCompatActivity() {
-
-    private lateinit var mapView: MapView
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        val style = "radar-default-v1"
-        val publishableKey = "prj_live_pk_..."
-        val styleURL = "https://api.radar.io/maps/styles/$style?publishableKey=$publishableKey"
-
-        // Must be called before the layout that contains the MapView is inflated.
-        MapLibre.getInstance(this)
-
-        setContentView(R.layout.activity_main)
-
-        mapView = findViewById(R.id.mapView)
-        mapView.onCreate(savedInstanceState)
-        mapView.getMapAsync { map ->
-            // Hide the MapLibre logo (the layout shows the Radar logo) and keep attribution visible.
-            map.uiSettings.isLogoEnabled = false
-            map.uiSettings.attributionGravity = Gravity.END or Gravity.BOTTOM
-            map.uiSettings.setAttributionMargins(0, 0, 24, 24)
-
-            map.setStyle(styleURL) { loadedStyle ->
-                // Optionally add a marker once the style has loaded.
-                val markerDrawable = ResourcesCompat.getDrawable(
-                    resources,
-                    R.drawable.default_marker,
-                    null
-                )!!
-                loadedStyle.addImage(MARKER_NAME, markerDrawable.toBitmap())
-
-                val symbolManager = SymbolManager(mapView, map, loadedStyle)
-                // Draw the marker over map labels and icons.
-                symbolManager.iconAllowOverlap = true
-                symbolManager.iconIgnorePlacement = true
-
-                val symbol = symbolManager.create(
-                    SymbolOptions()
-                        .withLatLng(LatLng(40.7342, -73.9911))
-                        .withIconImage(MARKER_NAME)
-                        .withIconSize(1.25f)
-                        .withIconAnchor("bottom")
-                )
-
-                map.cameraPosition = CameraPosition.Builder()
-                    .target(symbol.latLng)
-                    .zoom(11.0)
-                    .build()
-            }
-        }
-    }
-
-    override fun onStart() {
-        super.onStart()
-        mapView.onStart()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        mapView.onResume()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        mapView.onPause()
-    }
-
-    override fun onStop() {
-        super.onStop()
-        mapView.onStop()
-    }
-
-    override fun onLowMemory() {
-        super.onLowMemory()
-        mapView.onLowMemory()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        mapView.onDestroy()
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        mapView.onSaveInstanceState(outState)
-    }
-}
-```
+Put an `org.maplibre.android.maps.MapView` and an `ImageView` with the Radar logo in your layout, then load the style and forward the lifecycle calls, as the Kotlin tab in [Complete example](#complete-example) does. For the Radar SDK, see [Android SDK](/sdk/android).
 
 ### React Native
 
-The Radar React Native SDK exports a `Map` component that loads a Radar style, shows the Radar logo and map attribution, and by default shows the user's location when it is available. It depends on [MapLibre React Native](https://github.com/maplibre/maplibre-react-native). React Native SDK 4.39.0 requires `@maplibre/maplibre-react-native` 11.
-
-Install both packages:
+The Radar React Native SDK exports a `Map` component that loads a Radar style and adds the Radar logo and attribution for you. It requires `@maplibre/maplibre-react-native` 11, and renders nothing without it.
 
 ```bash
 npm install react-native-radar @maplibre/maplibre-react-native
 ```
 
-Complete the platform setup in the MapLibre React Native documentation, then initialize Radar and render the map inside a view that has a size:
-
-```jsx
-import { View } from 'react-native';
-import Radar, { Map } from 'react-native-radar';
-
-Radar.initialize('prj_live_pk_...');
-
-export const App = () => (
-  <View style={{ width: '100%', height: '100%' }}>
-    <Map
-      mapOptions={{
-        mapStyle: 'radar-default-v1',
-        showUserLocation: false,
-        onDidFinishLoadingMap: () => console.log('map loaded'),
-        onDidFailLoadingMap: () => console.log('map failed to load'),
-        onRegionDidChange: (event) => console.log(event.center, event.zoom),
-      }}
-    />
-  </View>
-);
-```
-
-`mapOptions` accepts `mapStyle`, `showUserLocation` (default `true`), `mapRef`, `onRegionDidChange`, `onDidFinishLoadingMap`, `onWillStartLoadingMap`, and `onDidFailLoadingMap`. Children of `Map` are rendered inside the MapLibre map, so add markers and layers with MapLibre React Native components. For example, set the starting view with MapLibre's `Camera` component and add a marker with its `Marker` component, as the React Native tab in [Complete example](#complete-example) does. If MapLibre React Native isn't installed, the component logs a warning and renders nothing. See [React Native SDK](/sdk/react-native).
+Complete the MapLibre React Native platform setup, then render `Map` inside a view that has a size, as the React Native tab in [Complete example](#complete-example) does. Children of `Map` render inside the MapLibre map. For `mapOptions`, see [React Native SDK](/sdk/react-native#maps-and-ui-kits).
 
 ### Flutter
 
-Use the [maplibre_gl](https://pub.dev/packages/maplibre_gl) package with a Radar style URL. Add `maplibre_gl` to your `pubspec.yaml`, run `flutter pub get`, and complete the package's platform setup. This example renders a Radar style in a `MapLibreMap` widget:
+Add the [maplibre_gl](https://pub.dev/packages/maplibre_gl) package, complete its platform setup, and pass a Radar style URL to a `MapLibreMap` widget. Add the Radar logo over the map with a `Stack`.
 
 ```dart
 import 'package:flutter/material.dart';
@@ -1415,113 +585,60 @@ class RadarMapsDemo extends StatelessWidget {
 }
 ```
 
-To add markers, load an image with `controller.addImage()` and place it with `controller.addSymbol()`. Add the Radar logo over the map with a `Stack`.
-
-### Google Maps
-
-To move a web page built on the Google Maps JavaScript API to Radar, see [Migration SDK](/maps/migration-sdk) and [Migrate to Radar Maps](/maps/overview#migrate-to-radar-maps).
-
-### Attribution
-
-Radar's terms of use require the Radar logo on the map, and the map data requires attribution.
-
-- **Radar web SDK**: The logo (bottom left) and the attribution control (bottom right) are added for you. Don't hide them with CSS or cover them with your own interface. When the map container is narrower than 380 pixels, the SDK hides the attribution text and keeps the logo.
-- **React Native `Map` component**: The logo and attribution are added for you.
-- **MapLibre GL JS, Leaflet, MapLibre Native, and Flutter**: Keep the library's attribution control enabled, and add the Radar logo yourself as the iOS and Android examples do. Logo files are in the [Radar map assets download](https://static.radar.com/downloads/radar-map-assets-v1.zip).
-- **Static maps**: Don't crop or cover the Radar logo rendered into the image.
-
 ## Coverage
 
-Radar map data comes from [OpenStreetMap](https://www.openstreetmap.org).
-
-The following table describes maps coverage by country, for consumer use cases (for example, store locators) and logistics use cases (for example, ride sharing and delivery).
-
-| Rating | Description |
-| --- | --- |
-| Great | Great data quality and availability |
-| Good | Good data quality and availability |
-| Approximate | Approximate data quality and availability |
-
-| Country and use case | Maps |
-| --- | --- |
-| US (consumer) | Great |
-| US (logistics) | Great |
-| CA (consumer) | Great |
-| CA (logistics) | Great |
-| UK (consumer) | Great |
-| UK (logistics) | Great |
-| Other (consumer) | Great |
-| Other (logistics) | Good |
+Radar map data comes from [OpenStreetMap](https://www.openstreetmap.org). Maps coverage is rated great for consumer and logistics use cases in the US, Canada, and the UK. In other countries it is rated great for consumer use cases, such as store locators, and good for logistics use cases, such as delivery.
 
 ## Handle results and errors
 
-A map has no response body. Your app reacts to its events and state.
-
-| Signal | Meaning | What to do |
+| Signal | What it means | What to do |
 | --- | --- | --- |
-| `load` event | The style and first tiles have loaded. Fires once. | Hide your loading state. Add markers and fit the view. |
-| `map.loaded()` returns `true` | The map is fully loaded and idle. | Safe to read map state. |
-| `style.load` event | A style finished loading, including after `map.setStyle()`. | Reapply projection settings. Lines and polygons you added belong to the previous style, so after a style change call `map.clearFeatures()` and add them again. |
-| `error` event | A style, tile, font, or image request failed, or MapLibre hit a rendering error. The event's `error` property has the details. | See [Loading, errors, and recovery](#loading-errors-and-recovery). |
-| `moveend` event | The user or your code finished moving the map. | Read `map.getCenter()` or `map.getBounds()` to load data for the new view. |
-| Marker `click` event | The user selected a marker. | Open details for that location. The marker's popup, if any, opens on its own. |
-| Feature `click` event | The user selected a line or polygon. | Read `feature.properties` for your data. |
-
-Markers, features, and the map itself use `[longitude, latitude]` order. Radar REST responses and most `Radar.*` method parameters use separate `latitude` and `longitude` fields. Mixing the two orders is the most common cause of markers that land in the wrong place.
-
-### Loading, errors, and recovery
-
-| Situation | What you see | What to do |
-| --- | --- | --- |
-| The maps plugin isn't registered or its script didn't load | `Radar.ui` is undefined and `Radar.ui.map` throws a `TypeError`. | Register the plugin before you create a map, or load the plugin script after the core SDK script. |
-| `Radar.initialize()` is called with no key or a secret key | `Radar.initialize()` throws a `RadarPublishableKeyError`. | Pass a publishable key. |
-| The map is created before `Radar.initialize()` | A console warning that the publishable key isn't set, then failed style requests. | Initialize first. |
-| Wrong or revoked key | The `error` event fires and no map appears. | Show a message in place of the map. Check the key and its environment. |
-| Container has no height | An empty area. The SDK logs a warning when the container has no inline width or height. | Give the container an explicit size. If you size it with a stylesheet, the map renders correctly and you can ignore the warning. |
-| Stylesheet missing | Controls, markers, and popups are unstyled or mispositioned. | Import `radar-maps.css`. |
-| Container resized or shown after being hidden | The map is clipped or stretched. | Call `map.resize()` after the container changes size, for example when a tab or drawer opens. |
-| Network drops after load | Already loaded tiles stay visible. New tiles fail and fire `error` events. | Don't replace a working map with an error message for a tile error. Tiles load again when the user moves the map after the connection returns. |
-| Marker image fails to load | The default marker appears and the SDK logs an error. | Check the image URL and its cross-origin headers. |
-| Duplicate feature ID | `addLine`, `addPolygon`, or `addPolyline` throws an error. | Use unique IDs, or call `feature.remove()` or `map.clearFeatures()` first. |
-| Single-page app navigation | Map instances accumulate and the browser can run out of WebGL contexts. | Call `map.remove()` when the view unmounts. |
-
-Because the `error` event also fires for a single failed tile, treat an error as fatal only when it arrives before `load`, as the [Create a map](#create-a-map) examples do. To retry after a fatal error, call `map.remove()` and create the map again.
-
-On React Native, use `onDidFailLoadingMap`. On iOS, implement the MapLibre Native delegate method `mapViewDidFailLoadingMap(_:withError:)`. On Android, call `mapView.addOnDidFailLoadingMapListener()`. The native tabs in [Complete example](#complete-example) use all three.
+| `load` event | The style and first tiles have loaded. | Hide the loading state, add markers, and fit the view. |
+| `error` event before `load` | The map couldn't load, for example with a wrong or revoked key. | Show a message in place of the map. Check the key and its environment. |
+| `error` event after `load` | A tile, font, or image request failed. | Keep the map. Tiles load again when the user moves the map after the connection returns. |
+| `Radar.initialize()` throws | The key is missing or is a secret key. | Pass a publishable key. |
+| `Radar.ui` is undefined | The maps plugin isn't registered, or its script didn't load. | Register the plugin, or load its script after the core SDK. |
+| Empty area, no error | The container has no height. | Give the container an explicit size. |
 
 ## Test the integration
 
-1. **Happy path**: Load the page with a Test publishable key. The loading message disappears, the map renders, markers appear at the right places, and the view fits them. Select a marker and confirm its popup.
-2. **Wrong key**: Use `prj_test_pk_invalid`. Confirm your error message appears and the page has no blank map area.
-3. **Coordinate order**: Add one location whose position you know. If it appears in the wrong hemisphere or in the ocean, latitude and longitude are swapped.
-4. **No data**: Render the map with an empty locations list. The map still loads at your default center and `fitToMarkers()` does nothing.
-5. **Narrow screen**: Use your browser's device toolbar at 360 pixels wide. The map fills its container, the logo stays visible, and popups fit on screen.
-6. **Resize and visibility**: If the map lives in a tab, modal, or collapsible panel, open and close it and confirm the map fills the container.
-7. **Navigation**: In a single-page app, visit and leave the map view several times and confirm no console errors about WebGL contexts.
-8. **Offline**: Turn off the network in developer tools after the map loads, pan, then turn it back on and pan again. The map recovers without a reload.
-9. **Live key**: Repeat the happy path with your Live publishable key before launch.
+- **Passing case**: Load the page with a Test publishable key. The loading message disappears, the map renders, and selecting the marker opens its popup.
+- **Failing case**: Replace the key with `prj_test_pk_invalid` and reload. Your error message appears in place of a blank area.
+
+For more, see [Test, troubleshoot, and go live](/fundamentals/testing-and-launch).
 
 ## Production checklist
 
-- [ ] The page uses a Live publishable key supplied by configuration, not a secret key and not a hard-coded Test key.
-- [ ] The SDK and plugin versions are pinned (CDN URLs include versions; npm installs use your lockfile).
-- [ ] The container has an explicit size at every breakpoint, and `map.resize()` is called when it changes.
-- [ ] A loading state and an error state exist, and the error state has a text fallback such as the address.
+- [ ] The page uses a Live publishable key from configuration, not a secret key or a hard-coded Test key.
+- [ ] SDK and plugin versions are pinned.
+- [ ] The container has an explicit size at every breakpoint, and maps are removed on unmount.
+- [ ] A loading state and an error state exist.
 - [ ] The Radar logo and map attribution are visible.
-- [ ] Maps are removed on unmount.
 - [ ] Popup content built from your data uses `text` or DOM elements, not unescaped `html`.
-- [ ] Custom style IDs and custom marker IDs exist in the Live environment's project.
-- [ ] You have checked [Coverage](#coverage) for the countries you serve.
+
+## Build with an agent
+
+Copy this prompt into a coding agent that has access to your repository.
+
+```text
+Add an interactive Radar map to this repository.
+
+Read https://docs.radar.com/maps/maps.md, https://docs.radar.com/sdk/web.md, and
+https://docs.radar.com/api/maps.md, and follow them for this platform.
+
+Constraints:
+- Use a publishable key read from configuration. Never put a secret key in client code.
+- Give the map container an explicit size, and remove the map when its view unmounts.
+- Keep the Radar logo and map attribution visible. Do not invent methods or options.
+
+Add tests for: the map loads and shows markers from the application's own data; an
+invalid key shows the error state instead of a blank area.
+```
 
 ## See also
 
-- [Web SDK](/sdk/web): installation, initialization options, and every `Radar.*` method.
-- [Maps API](/api/maps): style and static map endpoints.
-- [Routing API](/api/routing): distance, matrix, directions, route matching, and optimization.
-- [Build store locators](/maps/store-locators): search your locations and show a list next to the map.
-- [Autocomplete, geocode, and validate addresses](/maps/addresses): add an address search box to the map.
-- [MapLibre GL JS documentation](https://maplibre.org/maplibre-gl-js/docs/API/): the full map, marker, and popup API that `RadarMap` extends.
-
-For help, contact [Radar support](https://radar.com/support).
-
-To have a coding agent implement this guide, use the prompt in [Build with an agent](#build-with-an-agent).
+- [Web SDK](/sdk/web)
+- [Maps API](/api/maps)
+- [Routing API](/api/routing)
+- [Build store locators](/maps/store-locators)
+- [Autocomplete, geocode, and validate addresses](/maps/addresses)

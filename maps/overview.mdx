@@ -4,10 +4,9 @@ sidebarTitle: "Overview and quickstart"
 description: "Make your first Radar Maps request, display a map, and find the guide for maps, store locators, addresses, search, and routing."
 ---
 
-import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
 import { RadarMapDemo } from '/snippets/radar-demos.jsx';
 
-Radar Maps gives you base maps, geocoding, address autocomplete and validation, search, and routing behind one publishable key. By the end of this page you have made one geocoding request, rendered one map, and know which guide or reference page covers the rest.
+Radar Maps gives you base maps, geocoding, address autocomplete and validation, search, and routing behind one publishable key. By the end of this page you have made one geocoding request and rendered one map.
 
 <RadarMapDemo center={[-73.9867, 40.7041]} markerText="20 Jay St" />
 
@@ -15,9 +14,7 @@ Radar Maps gives you base maps, geocoding, address autocomplete and validation, 
 
 <Steps>
   <Step title="Get a publishable key">
-    <EnvironmentAndKeys />
-
-    Maps requests from a browser or app use a publishable key (`prj_test_pk_...` or `prj_live_pk_...`). Start with the Test key.
+    Copy your Test publishable key (`prj_test_pk_...`) from the dashboard. See [Choose the right API key](/fundamentals/authentication-and-access#choose-the-right-api-key). Never put a secret key in client code. The web SDK refuses to initialize with one.
   </Step>
   <Step title="Make a request">
     Forward geocode an address. Pass the publishable key in the `Authorization` header.
@@ -38,13 +35,7 @@ Radar Maps gives you base maps, geocoding, address autocomplete and validation, 
         {
           "latitude": 40.7041,
           "longitude": -73.9867,
-          "geometry": {
-            "type": "Point",
-            "coordinates": [-73.9867, 40.7041]
-          },
-          "country": "United States",
           "countryCode": "US",
-          "state": "New York",
           "stateCode": "NY",
           "city": "Brooklyn",
           "postalCode": "11201",
@@ -52,7 +43,6 @@ Radar Maps gives you base maps, geocoding, address autocomplete and validation, 
           "street": "Jay St",
           "layer": "address",
           "confidence": "exact",
-          "addressLabel": "20 Jay St",
           "formattedAddress": "20 Jay St, Brooklyn, New York, NY 11201 USA"
         }
       ]
@@ -62,9 +52,7 @@ Radar Maps gives you base maps, geocoding, address autocomplete and validation, 
     If you get `401`, the key is missing or wrong. See [Authentication, errors, and rate limits](/api/fundamentals).
   </Step>
   <Step title="Display a map">
-    Each tab renders a Radar map centered on the address you geocoded, adds one marker, and shows a message if the map fails to load. To try the JavaScript tab, save it as an HTML file, replace the key, and open it in a browser. It loads the Radar web SDK 5.3.0 and the maps plugin 1.2.0 from Radar's CDN.
-
-    <CodeGroup>
+    Save this page as an HTML file, replace the key, and open it in a browser. It renders a Radar map centered on the address you geocoded, adds one marker, and shows a message if the map fails to load.
 
     ```html JavaScript
     <!DOCTYPE html>
@@ -120,278 +108,26 @@ Radar Maps gives you base maps, geocoding, address autocomplete and validation, 
     </html>
     ```
 
-    ```jsx React
-    import { useEffect, useRef, useState } from 'react';
-    import Radar from 'radar-sdk-js';
-    import { createMapsPlugin } from '@radarlabs/plugin-maps';
-    import '@radarlabs/plugin-maps/dist/radar-maps.css';
-
-    Radar.registerPlugin(createMapsPlugin());
-    Radar.initialize(process.env.REACT_APP_RADAR_PUBLISHABLE_KEY);
-
-    const CENTER = [-73.9867, 40.7041]; // [longitude, latitude]
-
-    export default function RadarMap() {
-      const containerRef = useRef(null);
-      const [status, setStatus] = useState('loading');
-
-      useEffect(() => {
-        let loaded = false;
-
-        const map = Radar.ui.map({
-          container: containerRef.current,
-          style: 'radar-default-v1',
-          center: CENTER,
-          zoom: 14,
-        });
-
-        map.on('load', () => {
-          loaded = true;
-          setStatus('ready');
-
-          Radar.ui.marker({ popup: { text: '20 Jay St' } })
-            .setLngLat(CENTER)
-            .addTo(map);
-        });
-
-        map.on('error', (event) => {
-          console.error('Map error', event.error);
-          if (!loaded) {
-            setStatus('error');
-          }
-        });
-
-        // Remove the map when the component unmounts.
-        return () => map.remove();
-      }, []);
-
-      return (
-        <div>
-          {status === 'loading' && <p role="status">Loading map...</p>}
-          {status === 'error' && <p role="alert">The map could not load. Refresh the page to try again.</p>}
-          <div ref={containerRef} style={{ width: '100%', height: '500px' }} />
-        </div>
-      );
-    }
-    ```
-
-    ```swift Swift
-    import SwiftUI
-    import MapLibre
-
-    struct RadarMap: UIViewRepresentable {
-        let publishableKey = "prj_test_pk_..."
-        let center = CLLocationCoordinate2D(latitude: 40.7041, longitude: -73.9867)
-        var onLoadFailed: (Error) -> Void
-
-        func makeCoordinator() -> Coordinator {
-            Coordinator(self)
-        }
-
-        func makeUIView(context: Context) -> MLNMapView {
-            let styleURL = URL(string: "https://api.radar.io/maps/styles/radar-default-v1?publishableKey=\(publishableKey)")
-
-            let mapView = MLNMapView(frame: .zero, styleURL: styleURL)
-            mapView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-            mapView.setCenter(center, zoomLevel: 14, animated: false)
-            mapView.delegate = context.coordinator
-
-            // The Radar logo replaces the MapLibre logo. Add radar-logo to your asset catalog.
-            mapView.logoView.isHidden = true
-            let logoImageView = UIImageView(image: UIImage(named: "radar-logo"))
-            logoImageView.translatesAutoresizingMaskIntoConstraints = false
-            mapView.addSubview(logoImageView)
-            NSLayoutConstraint.activate([
-                logoImageView.bottomAnchor.constraint(equalTo: mapView.safeAreaLayoutGuide.bottomAnchor, constant: -10),
-                logoImageView.leadingAnchor.constraint(equalTo: mapView.safeAreaLayoutGuide.leadingAnchor, constant: 10),
-                logoImageView.widthAnchor.constraint(equalToConstant: 74),
-                logoImageView.heightAnchor.constraint(equalToConstant: 26)
-            ])
-
-            return mapView
-        }
-
-        func updateUIView(_ uiView: MLNMapView, context: Context) {
-        }
-
-        class Coordinator: NSObject, MLNMapViewDelegate {
-            let control: RadarMap
-
-            init(_ control: RadarMap) {
-                self.control = control
-            }
-
-            // Add the marker when the style finishes loading. Add default-marker to your asset catalog.
-            func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
-                let point = MLNPointAnnotation()
-                point.coordinate = control.center
-
-                let shapeSource = MLNShapeSource(identifier: "marker-source", shape: point, options: nil)
-                let shapeLayer = MLNSymbolStyleLayer(identifier: "marker-style", source: shapeSource)
-
-                if let image = UIImage(named: "default-marker") {
-                    style.setImage(image, forName: "marker")
-                }
-                shapeLayer.iconImageName = NSExpression(forConstantValue: "marker")
-
-                style.addSource(shapeSource)
-                style.addLayer(shapeLayer)
-            }
-
-            func mapViewDidFailLoadingMap(_ mapView: MLNMapView, withError error: Error) {
-                control.onLoadFailed(error)
-            }
-        }
-    }
-    ```
-
-    ```kotlin Kotlin
-    import android.os.Bundle
-    import android.widget.Toast
-    import androidx.appcompat.app.AppCompatActivity
-    import androidx.core.content.res.ResourcesCompat
-    import androidx.core.graphics.drawable.toBitmap
-    import org.maplibre.android.MapLibre
-    import org.maplibre.android.camera.CameraPosition
-    import org.maplibre.android.geometry.LatLng
-    import org.maplibre.android.maps.MapView
-    import org.maplibre.android.plugins.annotation.SymbolManager
-    import org.maplibre.android.plugins.annotation.SymbolOptions
-
-    class MapActivity : AppCompatActivity() {
-
-        private lateinit var mapView: MapView
-
-        override fun onCreate(savedInstanceState: Bundle?) {
-            super.onCreate(savedInstanceState)
-
-            val publishableKey = "prj_test_pk_..."
-            val styleURL = "https://api.radar.io/maps/styles/radar-default-v1?publishableKey=$publishableKey"
-            val center = LatLng(40.7041, -73.9867)
-
-            // Must be called before the layout is inflated. The layout holds the MapView and the Radar logo.
-            MapLibre.getInstance(this)
-            setContentView(R.layout.activity_main)
-
-            mapView = findViewById(R.id.mapView)
-            mapView.onCreate(savedInstanceState)
-
-            mapView.addOnDidFailLoadingMapListener {
-                Toast.makeText(this, "The map could not load.", Toast.LENGTH_LONG).show()
-            }
-
-            mapView.getMapAsync { map ->
-                map.uiSettings.isLogoEnabled = false
-                map.cameraPosition = CameraPosition.Builder().target(center).zoom(14.0).build()
-
-                map.setStyle(styleURL) { loadedStyle ->
-                    val markerDrawable = ResourcesCompat.getDrawable(resources, R.drawable.default_marker, null)!!
-                    loadedStyle.addImage("radar-marker", markerDrawable.toBitmap())
-
-                    val symbolManager = SymbolManager(mapView, map, loadedStyle)
-                    symbolManager.iconAllowOverlap = true
-                    symbolManager.iconIgnorePlacement = true
-                    symbolManager.create(
-                        SymbolOptions()
-                            .withLatLng(center)
-                            .withIconImage("radar-marker")
-                            .withIconAnchor("bottom")
-                    )
-                }
-            }
-        }
-
-        override fun onStart() { super.onStart(); mapView.onStart() }
-        override fun onResume() { super.onResume(); mapView.onResume() }
-        override fun onPause() { super.onPause(); mapView.onPause() }
-        override fun onStop() { super.onStop(); mapView.onStop() }
-        override fun onLowMemory() { super.onLowMemory(); mapView.onLowMemory() }
-        override fun onDestroy() { super.onDestroy(); mapView.onDestroy() }
-
-        override fun onSaveInstanceState(outState: Bundle) {
-            super.onSaveInstanceState(outState)
-            mapView.onSaveInstanceState(outState)
-        }
-    }
-    ```
-
-    ```jsx React Native
-    import { useState } from 'react';
-    import { Text, View } from 'react-native';
-    import { Camera, Marker } from '@maplibre/maplibre-react-native';
-    import Radar, { Map } from 'react-native-radar';
-
-    Radar.initialize('prj_test_pk_...');
-
-    const CENTER = [-73.9867, 40.7041]; // [longitude, latitude]
-
-    export default function RadarMap() {
-      const [failed, setFailed] = useState(false);
-
-      if (failed) {
-        return <Text accessibilityRole="alert">The map could not load.</Text>;
-      }
-
-      return (
-        <View style={{ width: '100%', height: 500 }}>
-          <Map
-            mapOptions={{
-              mapStyle: 'radar-default-v1',
-              showUserLocation: false,
-              onDidFailLoadingMap: () => setFailed(true),
-            }}
-          >
-            <Camera initialViewState={{ center: CENTER, zoom: 14 }} />
-            <Marker lngLat={CENTER}>
-              <View
-                accessibilityLabel="20 Jay St"
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: 10,
-                  borderWidth: 3,
-                  borderColor: '#FFFFFF',
-                  backgroundColor: '#000257',
-                }}
-              />
-            </Marker>
-          </Map>
-        </View>
-      );
-    }
-    ```
-
-    </CodeGroup>
-
-    The page shows a street map centered on Brooklyn with one marker, zoom buttons and attribution in the bottom right, and the Radar logo in the bottom left. Select the marker to open its popup. If the page is blank, check that the container has a width and a height and that the stylesheet loaded. The React tab needs the npm packages, and the native tabs use MapLibre with a Radar style URL and the Radar logo and marker image assets. For setup on each platform, see [Display maps](/maps/maps).
+    You see a street map of Brooklyn with one marker, zoom buttons, and the Radar logo. Select the marker to open its popup. If the page is blank, check that the container has a width and a height and that the stylesheet loaded. For React, iOS, Android, and React Native, see [Display maps](/maps/maps).
   </Step>
 </Steps>
 
 ## What Maps includes
 
-| Capability | What it does | Start here | Reference |
+| Capability | What it does | Guide | Reference |
 | --- | --- | --- | --- |
 | Map display | Interactive vector maps on the web and in native apps, plus static map images. | [Display maps](/maps/maps) | [Maps API](/api/maps), [Web SDK](/sdk/web) |
 | Address tools | Autocomplete as a user types, forward and reverse geocoding, IP geocoding, and address validation. | [Autocomplete, geocode, and validate addresses](/maps/addresses) | [Geocoding API](/api/geocoding), [Search API](/api/search) |
 | Search | Find your own locations (geofences) or places near a point. | [Build store locators](/maps/store-locators) | [Search API](/api/search) |
-| Routing | Distance and duration, matrices, directions, route matching, and route optimization. | [Routing and static map reference](#routing-and-static-map-reference) | [Routing API](/api/routing) |
+| Routing | Distance and duration, matrices, directions, route matching, and route optimization. | [Build store locators](/maps/store-locators#show-route-distance-and-travel-time) | [Routing API](/api/routing) |
 
 Radar map data comes from [OpenStreetMap](https://www.openstreetmap.org). The interactive map component is built on [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/), so MapLibre options, events, and plugins work with it.
-
-## Keys and authentication
-
-- **Publishable keys**: The geocoding, search, routing, and map endpoints used in these guides accept a publishable key, so the map component, the autocomplete component, and direct requests from a browser or app need no secret key.
-- **Secret keys**: Keep them on your backend. The web SDK refuses to initialize with one.
-- **REST requests**: Send the key in the `Authorization` header. Map style URLs and static map URLs, which are loaded by a map library or an image element and can't set headers, take the key as a `publishableKey` query parameter.
-- **Environments**: Test and Live keys belong to separate environments. Build with the Test key, then switch to the Live key at launch.
-
-To find your keys, see [Set up organizations, projects, accounts, and authentication](/fundamentals/authentication-and-access). For error shapes and rate limits, see [Authentication, errors, and rate limits](/api/fundamentals).
 
 ## Guides
 
 <CardGroup cols={3}>
   <Card title="Display maps" icon="map" href="/maps/maps">
-    Render an interactive map with markers, popups, shapes, and custom styles on web and native, or generate a static map image.
+    Render an interactive map with markers, popups, shapes, and custom styles, or generate a static map image.
   </Card>
   <Card title="Build store locators" icon="store" href="/maps/store-locators">
     Search your locations near an address or the user's position and show a matching list and map.
@@ -401,65 +137,10 @@ To find your keys, see [Set up organizations, projects, accounts, and authentica
   </Card>
 </CardGroup>
 
-## Routing and static map reference
-
-The quickstart and guides use a small part of the routing surface. Everything below is supported and documented in the reference.
-
-| Operation | Use it to | Reference |
-| --- | --- | --- |
-| Distance | Get travel distance and duration between one origin and one destination, for one or more travel modes. | [Distance](/api/routing#distance) |
-| Matrix | Get distances and durations between several origins and destinations in one request. | [Matrix](/api/routing#matrix) |
-| Directions | Get a route through two or more locations in order, with turn-by-turn steps and geometry. | [Directions](/api/routing#directions) |
-| Route matching | Snap recorded points to the roads most likely traveled. | [Route match](/api/routing#route-match) |
-| Route optimization | Order a list of stops and get the route that visits them. | [Optimize route](/api/routing#optimize-route) |
-| Static maps | Request a map image by URL, with optional markers and paths. | [Static maps](/maps/maps#static-maps), [Maps API](/api/maps) |
-
-In the web SDK, `Radar.distance()` and `Radar.matrix()` wrap the distance and matrix endpoints. Call the other routing endpoints over REST. [Build store locators](/maps/store-locators#show-route-distance-and-travel-time) uses distance and matrix, [Display maps](/maps/maps#display-a-route) draws a route on a map, and [Track pickups, deliveries, and workers](/geofencing/trips) covers live trip ETAs.
-
 ## Migrate to Radar Maps
 
-How you migrate depends on what you're migrating from.
+For a web page built on the Google Maps JavaScript API, replace the Google Maps script tag with the Radar [Migration SDK](/maps/migration-sdk) script tag, and existing `google.maps` calls are served by Radar. The Migration SDK is a compatibility layer, so test every map interaction, control, and overlay after the swap.
 
-### From Google Maps on the web
+Google web services (geocoding, places, routes) aren't covered by the Migration SDK. Port each call to the matching operation in the [Geocoding API](/api/geocoding), [Search API](/api/search), or [Routing API](/api/routing).
 
-Radar maintains a Migration SDK for web pages built on the Google Maps JavaScript API. You replace the Google Maps script tag with the Radar Migration SDK script tag, and existing `google.maps` calls are served by Radar. This is the supported migration path for Google Maps. For the script URL and its `key`, `style`, and `callback` parameters, see [Migration SDK](/maps/migration-sdk).
-
-The Migration SDK is a compatibility layer, not a guarantee that every Google Maps feature behaves identically. After the swap, test every map interaction, control, and overlay your pages use, and port anything that doesn't behave as expected to the Radar web SDK in [Display maps](/maps/maps).
-
-Google web services called from your backend or app (geocoding, places, routes) are separate HTTP APIs. They aren't covered by the Migration SDK. Port each call to the Radar endpoint that does the same job:
-
-| Google Maps Platform | Radar |
-| --- | --- |
-| Dynamic Maps | [Display maps](/maps/maps) |
-| Static Maps | [Static maps](/maps/maps#static-maps) |
-| Geocoding API | [Forward geocode](/api/geocoding#forward-geocode) |
-| Reverse Geocoding API | [Reverse geocode](/api/geocoding#reverse-geocode) |
-| Autocomplete API | [Autocomplete](/api/search#autocomplete) |
-| Place Autocomplete UI | [Autocomplete component](/maps/addresses#add-the-autocomplete-component) |
-| Address Validation API | [Validate an address](/api/geocoding#validate-an-address) |
-| Nearby Search API | [Search places](/api/search#search-places) |
-| Distance Matrix API | [Matrix](/api/routing#matrix) |
-| Directions API | [Directions](/api/routing#directions) |
-| Snap to Roads API | [Route match](/api/routing#route-match) |
-| Speed Limits API | [Route match](/api/routing#route-match), with `speedLimit` in the `roadAttributes` parameter |
-| Compute Routes API | [Matrix](/api/routing#matrix), [Directions](/api/routing#directions), or [Optimize route](/api/routing#optimize-route) |
-
-Request parameters and response shapes differ between the two platforms, so each ported call needs its own request mapping and response parsing. Radar also offers [IP geocoding](/api/geocoding#ip-geocode), which has no direct Google Maps Platform equivalent in this table.
-
-### From Mapbox, MapLibre, Leaflet, or another library
-
-There's no migration SDK for these libraries. Port them by hand:
-
-- **Mapbox GL JS or MapLibre GL JS**: Keep your map code on MapLibre GL JS and point its `style` option at a Radar style URL, or move to the Radar web SDK, which wraps MapLibre and adds markers, popups, and shape helpers. See [MapLibre GL JS](/maps/maps#maplibre-gl-js).
-- **Leaflet**: Use Radar as the base map through the MapLibre Leaflet plugin. See [Leaflet](/maps/maps#leaflet).
-- **Native iOS and Android, React Native, Flutter**: Use MapLibre Native or the Radar React Native map component with a Radar style. See [Compatibility](/maps/maps#compatibility).
-- **Geocoding, search, and routing calls**: Replace each request with the matching Radar endpoint from the table in [From Google Maps on the web](#from-google-maps-on-the-web) and update your response parsing.
-
-Plan time to rebuild custom styles in the dashboard and to retest clustering, drawing, or other plugins you depend on. See [Custom styles](/maps/maps#custom-styles).
-
-## Coverage, caching, and support
-
-- Maps coverage is listed in [Display maps](/maps/maps#coverage). Geocoding and search coverage by country is listed in [Autocomplete, geocode, and validate addresses](/maps/addresses#coverage).
-- Routing coverage for distance, matrix, and route matching is rated great for consumer and logistics use cases in the US, Canada, the UK, and the EU, and good elsewhere.
-- You can cache API responses for up to 30 days. See the [terms of use](https://radar.com/terms).
-- To report a bad geocoding, search, or routing result, contact [Radar support](https://radar.com/support).
+There's no migration SDK for Mapbox, MapLibre, or Leaflet. Point your existing map at a Radar style URL, or move to the Radar web SDK. See [Compatibility](/maps/maps#compatibility).

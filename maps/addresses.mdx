@@ -4,16 +4,15 @@ sidebarTitle: "Autocomplete, geocode, and validate"
 description: "Build an address entry flow with Radar autocomplete, then use forward, reverse, and IP geocoding and address validation where each one fits."
 ---
 
-import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
 import { RadarAutocompleteDemo } from '/snippets/radar-demos.jsx';
 
-By the end of this guide you have an address form that suggests addresses as the user types, fills structured fields from the chosen suggestion, lets the user correct them, and checks a hand-typed address before accepting it. You also know when to use forward geocoding, reverse geocoding, IP geocoding, and address validation, and what each result does and doesn't tell you.
+By the end of this guide you have an address form that suggests addresses as the user types, fills structured fields from the chosen suggestion, lets the user correct them, and checks a hand-typed address before accepting it.
 
 <RadarAutocompleteDemo />
 
 ## Complete example
 
-The JavaScript tab is the whole address form in one HTML page, the other tabs make the same autocomplete and geocode calls in a native app, and the sections below explain each part.
+The JavaScript tab is the whole address form in one HTML page, and the other tabs make the same autocomplete and geocode calls in a native app.
 
 <CodeGroup>
 
@@ -436,330 +435,81 @@ export default function AddressForm({ onAccept }) {
 
 </CodeGroup>
 
-## Build with an agent
-
-Copy this prompt into a coding agent that has access to your repository.
-
-```text
-Add address autocomplete and address checking to this repository using the current
-Radar documentation.
-
-First inspect the application framework, platform versions, existing Radar code,
-the existing address form and its field names, how addresses are stored and
-submitted, how environment variables reach the client, and the existing tests.
-Preserve existing behavior outside this task.
-
-Read:
-- https://docs.radar.com/maps/addresses.md
-- https://docs.radar.com/sdk/web.md
-- https://docs.radar.com/api/search.md
-- https://docs.radar.com/api/geocoding.md
-
-Implement the documented flow: the Radar autocomplete component (or an
-AutocompleteSession behind the existing input) with a minimum input length and
-debounce; structured fields filled from the selected result and editable by the
-user; a check on submit for addresses that were typed or edited by hand; and clear
-handling of ambiguous matches, no match, and request errors. Use address validation
-only if this project has access to it, and treat its verification status exactly as
-documented. If IP geocoding is used for defaults, treat it as an estimate that the
-user can override. Use a publishable key in client code, read from configuration.
-Do not invent methods, fields, validation outcomes, supported countries, or
-defaults.
-
-Add tests for: selecting a suggestion fills every structured field; a valid
-hand-typed address is accepted; an ambiguous address shows choices and accepts the
-chosen one; an address with no match shows a correction message and does not
-submit; a failed request shows an error and lets the user retry or continue as the
-product requires. Run the repository's relevant checks. Report changed files, test
-results, required dashboard or plan setup, and anything that still needs
-confirmation. Do not change production settings or deploy without approval.
-```
-
 ## Prerequisites
 
-- A Radar account and a publishable key. See [Keys](#keys).
-- **Web**: The examples use `radar-sdk-js` 5.3.0 and `@radarlabs/plugin-autocomplete` 1.2.0. The autocomplete plugin requires `radar-sdk-js` 5.3.0 or later. The geocoding and validation methods are part of the core SDK and need no plugin.
-- **Permissions**: None for autocomplete, forward geocoding, IP geocoding, or validation. Reverse geocoding the user's current position needs location permission. Reverse geocoding a coordinate you already have doesn't.
-- **Plan**: Address validation is available on the [Enterprise plan](https://radar.com/pricing), for United States and Canada addresses. Address enrichment on autocomplete selections must be enabled for your project. Everything else in this guide is available to any project.
+- A publishable key. See [Choose the right API key](/fundamentals/authentication-and-access#choose-the-right-api-key). Never put a secret key in client code.
+- **Web**: The examples use `radar-sdk-js` 5.3.0 and `@radarlabs/plugin-autocomplete` 1.2.0, which requires `radar-sdk-js` 5.3.0 or later. Geocoding and validation are part of the core SDK.
+- No location permission, unless you reverse geocode the user's current position.
 
-### Keys
+## Formatted address, geocoded coordinate, and validated address
 
-<EnvironmentAndKeys />
-
-Every operation in this guide accepts a publishable key, so the form can call Radar directly from the browser or app.
-
-## How it works
-
-### Five operations
-
-These are separate operations with different inputs and outputs. Choose by what you have and what you need.
-
-| Operation | You have | You get | Use it for | Reference |
-| --- | --- | --- | --- | --- |
-| Autocomplete | A partial address or place name, as the user types | A ranked list of candidate addresses | Address entry in forms and search boxes | [Autocomplete](/api/search#autocomplete) |
-| Forward geocode | A complete address as text | Matching addresses with coordinates and a confidence level | Turning a stored or typed address into a coordinate | [Forward geocode](/api/geocoding#forward-geocode) |
-| Reverse geocode | A coordinate | The address or region at that coordinate | Labeling a map pin or a device position | [Reverse geocode](/api/geocoding#reverse-geocode) |
-| IP geocode | Nothing. Radar reads the request's IP address | An estimated city, state, and country | Defaults such as country or language, with no permission prompt | [IP geocode](/api/geocoding#ip-geocode) |
-| Validate | A complete address in structured fields | A standardized address and a verification status | Checking an address before you ship or bill to it | [Validate an address](/api/geocoding#validate-an-address) |
-
-Autocomplete is for partial input and forward geocoding is for complete addresses. Don't call forward geocoding on every keystroke, and don't use autocomplete to resolve a stored address in a batch job.
-
-### Formatted address, geocoded coordinate, and validated address
-
-A Radar address result can carry three different kinds of information. They answer different questions.
+A Radar address result can carry three kinds of information. Don't treat one as another.
 
 | Term | Where it appears | What it tells you | What it doesn't tell you |
 | --- | --- | --- | --- |
-| Formatted address | `formattedAddress` on every address result | A display string assembled from the result's fields, such as `841 Broadway, New York, NY 10003 USA`. | That the address was checked. A formatted string exists for a city or postal code result too. |
-| Geocoded coordinate | `latitude`, `longitude`, `layer`, and, on forward geocode results, `confidence` | Where Radar places the result, and how precisely. `exact` is a known address location, `interpolated` is an estimate between known address points, and `fallback` is the center of a containing area such as a postal code or city. | That mail or a courier can reach it. A `fallback` coordinate can be far from the building. |
-| Validated address | The `address` and `result.verificationStatus` returned by the validate operation | Whether the structured input matched a known address record, in standardized form with fields such as `plus4` and a record type. | That a delivery will succeed, that the recipient is there, or that an unverified address doesn't exist. |
+| Formatted address | `formattedAddress` on every result | A display string, such as `841 Broadway, New York, NY 10003 USA`. | That the address was checked. A city or postal code result has one too. |
+| Geocoded coordinate | `latitude`, `longitude`, `layer`, and, on forward geocode results, `confidence` | Where Radar places the result, and how precisely: `exact` is a known address location, `interpolated` is an estimate between known address points, and `fallback` is the center of a containing area such as a postal code or city. | That mail or a courier can reach it. |
+| Validated address | `result.verificationStatus` from the validate operation | Whether the structured input matched a known address record. | That a delivery will succeed. |
 
-A coordinate tells you where to put a pin. A verification status tells you whether the text of the address matched a record. Don't treat either as the other.
+## Add the autocomplete component
 
-### Responsibilities
+Load the stylesheet, the core SDK, and the autocomplete plugin, in that order, as the JavaScript tab does. With npm, install the packages:
 
-| Part | Responsibility |
-| --- | --- |
-| Your form | Renders the autocomplete input and editable fields, applies the selected result, checks hand-typed input on submit, and shows correction messages. |
-| Radar | Returns candidates, coordinates, estimates, and verification results. |
-| Your backend | Receives the final fields and coordinate, and applies your own rules, such as whether to accept an unverified address. If the decision matters, repeat the check on your backend, because anything sent from a browser can be changed by the user. |
+```bash
+npm install radar-sdk-js @radarlabs/plugin-autocomplete
+```
 
-## Build an address entry flow
+Then import `@radarlabs/plugin-autocomplete/dist/radar-autocomplete.css`, call `Radar.registerPlugin(createAutocompletePlugin())`, and initialize with your publishable key.
 
-A finished entry looks like this: the user types "841 broad", chooses "841 Broadway, New York, NY 10003 USA" from the suggestions, and the form fills street `841 Broadway`, city `New York`, state `NY`, postal code `10003`, and country `US`. The application keeps those fields together with the coordinate `40.7343, -73.9911`.
+`Radar.ui.autocomplete()` renders a search input and a suggestions list into `container`, an element ID or element, and handles keyboard navigation and screen reader announcements. If you pass an existing `input` element, it attaches the list to that input. In a single-page app, create the component once per mount and call its `remove()` method on unmount.
 
-### Add the autocomplete component
+## Fill structured fields from the selection
 
-The autocomplete component renders a search input and a suggestions list, handles keyboard navigation and screen reader announcements, and calls you back when the user chooses a result.
+`onSelection` receives one address object. The example copies `number` and `street` (or `addressLabel`), `unit`, `city`, `stateCode`, `postalCode`, and `countryCode` into editable fields and keeps `latitude` and `longitude` with them. Every field except the coordinate can be absent, so read them defensively.
 
-<Tabs>
-  <Tab title="HTML">
-    Add the stylesheet, the core SDK, and the autocomplete plugin, in that order. The plugin script registers itself with the core SDK.
+Store the structured fields and the coordinate, not only `formattedAddress`. For every field, see [Address object](/api/geocoding#address-object).
 
-    ```html
-    <link href="https://js.radar.com/autocomplete/v1.2.0/radar-autocomplete.css" rel="stylesheet">
-    <script src="https://js.radar.com/v5.3.0/radar.min.js"></script>
-    <script src="https://js.radar.com/autocomplete/v1.2.0/radar-autocomplete.min.js"></script>
+## Check a typed address on submit
 
-    <div id="autocomplete"></div>
+Autocomplete suggests an address. It doesn't decide which address is right. Keep the fields editable after a selection so the user can add a unit, fix a postal code, or enter an address Radar doesn't know, such as a new building. In the example, adding a unit keeps the selection, and editing any other field clears it.
 
-    <script>
-      Radar.initialize('prj_test_pk_...');
-
-      Radar.ui.autocomplete({
-        container: 'autocomplete',
-        onSelection: (address) => {
-          console.log(address.formattedAddress);
-        },
-      });
-    </script>
-    ```
-  </Tab>
-  <Tab title="React">
-    Install the core SDK and the plugin:
-
-    ```bash
-    npm install radar-sdk-js @radarlabs/plugin-autocomplete
-    ```
-
-    Import the plugin stylesheet, register the plugin, and create the component in an effect. Remove it when the component unmounts.
-
-    ```jsx
-    import { useEffect, useRef } from 'react';
-    import Radar from 'radar-sdk-js';
-    import { createAutocompletePlugin } from '@radarlabs/plugin-autocomplete';
-    import '@radarlabs/plugin-autocomplete/dist/radar-autocomplete.css';
-
-    Radar.registerPlugin(createAutocompletePlugin());
-    Radar.initialize(process.env.REACT_APP_RADAR_PUBLISHABLE_KEY);
-
-    export default function AddressSearch({ onAddress }) {
-      const containerRef = useRef(null);
-
-      useEffect(() => {
-        const autocomplete = Radar.ui.autocomplete({
-          container: containerRef.current,
-          layers: ['address'],
-          onSelection: (address) => onAddress(address),
-          onError: (error) => console.error(error),
-        });
-
-        return () => autocomplete.remove();
-      }, [onAddress]);
-
-      return <div ref={containerRef} />;
-    }
-    ```
-  </Tab>
-</Tabs>
-
-`container` is an element ID or an element. If you pass an existing `input` element, the component attaches its suggestions list to that input and leaves the input's styling alone. If the container can't be found, `Radar.ui.autocomplete()` throws an error with the `status` `CONTAINER_NOT_FOUND`.
-
-To verify, type three or more characters. Suggestions appear under the input, the arrow keys move through them, and Enter selects one.
-
-The JavaScript tab in [Complete example](#complete-example) combines the component with editable fields and a check on submit. To run it, save it as an HTML file, replace the key, and open it in a browser. The sections that follow explain each part.
-
-### Fill structured fields from the selection
-
-`onSelection` receives one address object. The fields most forms need are:
-
-| Field | Example | Notes |
-| --- | --- | --- |
-| `number` | `841` | The street number. |
-| `street` | `Broadway` | The street name. |
-| `unit` | `Fl 7` | Present when the result identifies a unit. |
-| `addressLabel` | `841 Broadway` | The first line of the address. |
-| `city` | `New York` | |
-| `stateCode` | `NY` | `state` has the full name. |
-| `postalCode` | `10003` | |
-| `countryCode` | `US` | `country` has the full name. |
-| `formattedAddress` | `841 Broadway, New York, NY 10003 USA` | For display. |
-| `latitude`, `longitude` | `40.7343`, `-73.9911` | Also available as a GeoJSON point in `geometry`, in `[longitude, latitude]` order. |
-| `layer` | `address` | The kind of result. A `place` result also has `placeLabel`. |
-
-Every field except the coordinate can be absent, so read them defensively. A result from the `postalCode` or `locality` layer has no street number, which is why the example limits suggestions to `layers: ['address']` and still leaves every field editable.
-
-Store the structured fields and the coordinate, not only the formatted string. For the full list of address fields, see [Address object](/api/geocoding#address-object).
-
-### Let the user correct the result
-
-Autocomplete suggests an address. It doesn't decide which address is right. Keep the fields editable after a selection so the user can add a unit, fix a postal code, or enter an address Radar doesn't know, such as a new building.
-
-The example tracks whether the fields still match a Radar result with the `accepted` variable. Adding a unit keeps the match. Editing any other field clears it, so the address is checked again on submit.
-
-### Check a typed address on submit
-
-When the user typed or edited the address by hand, the example sends the combined fields to `Radar.forwardGeocode()` with `layers: ['address']` and the country, and branches on the response:
+When the address was typed or edited by hand, the example sends the combined fields to `Radar.forwardGeocode()` and branches on the response:
 
 | Response | Meaning | What the example does |
 | --- | --- | --- |
 | One address with `confidence` of `exact` | The text resolved to one known address location. | Accepts it and updates the fields to the matched form. |
-| Several addresses, or one with `confidence` of `interpolated` or `fallback` | The input is ambiguous, or Radar could only place it approximately. | Shows up to five candidates as buttons and lets the user choose one or edit the fields. |
-| An empty `addresses` array | Nothing matched. | Asks the user to check the street number, street name, and postal code. Doesn't submit. |
-| The promise rejects | The request failed. | Shows a retry message. |
+| Several addresses, or `confidence` of `interpolated` or `fallback` | The input is ambiguous, or Radar could only place it approximately. | Shows up to five candidates and lets the user choose one or edit the fields. |
+| An empty `addresses` array | Nothing matched. | Asks for a correction. Doesn't submit. |
 
-Whether your product blocks submission when no address matches is your decision. A checkout for physical delivery might require a match or an explicit "use this address anyway" confirmation. A contact form might accept anything. Make that rule explicit, and enforce it on your backend as well.
+Whether your product blocks submission when nothing matches is your decision. Enforce it on your backend as well, because anything sent from a browser can be changed by the user. This check confirms that the address resolves to a location. It isn't [address validation](#validate-an-address).
 
-This check confirms that the address resolves to a location. It isn't address validation. If you need a verification status and a standardized postal form, see [Validate an address](#validate-an-address).
-
-### Tune the component
-
-These options control when the component searches and what it returns.
+## Tune the component
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `minCharacters` | `3` | Characters required before the first request. Lower values send more requests and return less relevant results. |
-| `debounceMS` | `200` | Milliseconds to wait after the last keystroke before a request is sent. |
-| `limit` | `8` | Maximum number of suggestions shown. |
-| `layers` | none | Restrict results to kinds of result, for example `['address']` for street addresses only, or `['postalCode', 'locality']` for a city or postal code search. Without it, results come from the address and coarse (postal code, city, county, state, country) layers. |
-| `countryCode` | none | Restrict results to a country, as a two-letter code. |
-| `lang` | none | The language for results. |
-| `near` | none | A location to prefer results near, as `{ latitude, longitude }` or a `"latitude,longitude"` string. Without it, results are biased by the request's IP-derived location. |
-| `postalCode` | none | Restrict results to a postal code. |
-| `mailable` | none | Return only mailable addresses. |
-| `placeholder` | `Search address` | Placeholder text for the input. |
-| `width` | `400` | Width in pixels or as a CSS value. With `responsive` set to `true` (the default) it acts as a maximum width. |
-| `maxHeight` | none | Maximum height of the suggestions list. |
-| `disabled` | `false` | Disables the input. |
-| `showMarkers` | `true` | Shows a marker icon next to each suggestion. |
-| `markerColor` | `#ACBDC8` | Color of the marker icons. |
-| `hideResultsOnBlur` | `true` | Closes the list when the input loses focus. |
-| `idPrefix` | `radar-autocomplete` | Prefix for element IDs. Set a different value for each component when a page has more than one. |
-| `ariaLabel` | `Search for an address` | Accessible label for the input. |
-| `onSelection` | none | Called with the chosen address. |
-| `onResults` | none | Called with the array of suggestions each time the list refreshes. |
-| `onRequest` | none | Called with the request parameters before each request. |
-| `onError` | none | Called with the error when a request fails. |
-| `onEnrichment` | none | Called after `onSelection` with the enriched address, only when the project has address enrichment enabled. |
+| `minCharacters` | `3` | Characters required before the first request. |
+| `debounceMS` | `200` | Milliseconds to wait after the last keystroke before a request. |
+| `limit` | `8` | Maximum number of suggestions. |
+| `layers` | None | Kinds of result to return, for example `['address']` for street addresses only. |
+| `countryCode` | None | Restrict results to a country, as a two-letter code. |
+| `near` | None | A location to prefer results near. Without it, results are biased by the request's IP-derived location. |
+| `onSelection`, `onError` | None | Called with the chosen address, and with the error when a request fails. |
 
-For checkout forms that take United States and Canada addresses, set `layers` to `['address']` and limit results to those countries. For other international address entry, ask your Radar account team for the settings that fit your countries.
+The component also accepts `lang`, `postalCode`, `mailable`, `placeholder`, `width`, `maxHeight`, `disabled`, `showMarkers`, `markerColor`, `hideResultsOnBlur`, `idPrefix`, `ariaLabel`, `onResults`, and `onRequest`.
 
-The component returned by `Radar.ui.autocomplete()` has setters for changes after creation, including `setNear()`, `setPlaceholder()`, `setDisabled()`, `setMinCharacters()`, `setLimit()`, `setLang()`, `setPostalCode()`, and `setWidth()`, and a `remove()` method. See [Web SDK](/sdk/web).
-
-### Use your own input
-
-To keep an existing input and suggestions list, call the autocomplete operation yourself through an `AutocompleteSession`. Create one session per address field. The session groups the field's requests and lets you report the result the user chose. This example adds a minimum input length and a debounce:
-
-```javascript
-const session = new Radar.AutocompleteSession();
-const input = document.getElementById('address-input');
-let timer;
-
-input.addEventListener('input', () => {
-  clearTimeout(timer);
-  const query = input.value.trim();
-
-  // Minimum input: wait for three characters.
-  if (query.length < 3) {
-    renderSuggestions([]);
-    return;
-  }
-
-  // Debounce: wait 200 ms after the last keystroke.
-  timer = setTimeout(async () => {
-    try {
-      const { addresses } = await session.autocomplete({
-        query,
-        layers: ['address'],
-        countryCode: 'US',
-        limit: 5,
-      });
-
-      // Ignore a response for text the user has already changed.
-      if (input.value.trim() === query) {
-        renderSuggestions(addresses);
-      }
-    } catch (error) {
-      console.error(error);
-      showSuggestionsUnavailable();
-    }
-  }, 200);
-});
-
-// Call this when the user chooses a suggestion.
-function chooseSuggestion(address) {
-  fillFields(address);
-  session.select(address).catch(() => {});
-}
-```
-
-`renderSuggestions`, `showSuggestionsUnavailable`, and `fillFields` are your own functions. `session.select()` reports the chosen result to Radar, which uses selections to measure and improve autocomplete quality. Pass it the address object exactly as `session.autocomplete()` returned it. If the project has address enrichment enabled, the promise resolves with an enriched `address`. The component does all of this for you.
+To keep your own input and suggestions list, call the autocomplete operation through a `Radar.AutocompleteSession`, and apply the same minimum input length and debounce yourself. See [Web SDK](/sdk/web#search).
 
 ## Use the other operations
 
+Each operation accepts a publishable key.
+
 ### Forward geocode
 
-Convert a complete address to a coordinate, as in this example:
-
-```javascript
-try {
-  const { addresses } = await Radar.forwardGeocode({ query: '841 Broadway, New York, NY 10003' });
-
-  if (addresses.length === 0) {
-    // No match.
-  } else {
-    const { latitude, longitude, confidence, formattedAddress } = addresses[0];
-  }
-} catch (error) {
-  console.error(error.status, error.message);
-}
-```
-
-Optional parameters are `layers`, `country`, and `lang`. Check `confidence` before you rely on the coordinate for anything precise, such as a delivery pin: `exact` and `interpolated` are address-level, and `fallback` is the center of a larger area. See [Forward geocode](/api/geocoding#forward-geocode).
+`Radar.forwardGeocode({ query })` converts a complete address to a coordinate. Use autocomplete for partial input instead of calling it on every keystroke. Check `confidence` before you rely on the coordinate for anything precise, such as a delivery pin. See [Forward geocode](/api/geocoding#forward-geocode).
 
 ### Reverse geocode
 
-Convert a coordinate to an address, as in this example:
-
-```javascript
-const { addresses } = await Radar.reverseGeocode({ latitude: 40.7343, longitude: -73.9911 });
-
-if (addresses.length > 0) {
-  console.log(addresses[0].formattedAddress);
-}
-```
-
-Pass both `latitude` and `longitude`. If you omit them, the SDK requests the browser's location first, which shows a permission prompt and can reject with `ERROR_PERMISSIONS` or `ERROR_LOCATION`. Use `layers` to choose the level of detail, for example `['locality']` when you only need the city. The result is the address nearest the coordinate. It isn't proof that a person or device was inside that building. See [Reverse geocode](/api/geocoding#reverse-geocode).
+`Radar.reverseGeocode({ latitude, longitude })` converts a coordinate to the nearest address. If you omit the coordinate, the SDK requests the browser's location first, which shows a permission prompt. See [Reverse geocode](/api/geocoding#reverse-geocode).
 
 ### Validate an address
 
@@ -767,562 +517,91 @@ Pass both `latitude` and `longitude`. If you omit them, the SDK requests the bro
   Address validation is available on the [Enterprise plan](https://radar.com/pricing), for United States and Canada addresses.
 </Info>
 
-Validation takes a complete address in structured fields and returns a standardized address and a verification status. A project without access receives a `402` response, which the web SDK reports as `ERROR_PAYMENT_REQUIRED`.
-
-Send `city`, `stateCode`, `postalCode`, and `countryCode`, plus either `number` and `street` or a single `addressLabel`. Sending `addressLabel` together with `number` and `street` returns a `400` error.
-
-This example validates an address and branches on the verification status:
-
-```javascript
-async function validate(fields) {
-  try {
-    const { address, result } = await Radar.validateAddress(fields);
-
-    switch (result && result.verificationStatus) {
-      case 'verified':
-        // The input matched one address record completely. Use the standardized address.
-        return { ok: true, address };
-      case 'partially verified':
-        // Part of the input matched. Show the standardized address and ask the user to confirm it.
-        return { ok: false, suggestion: address };
-      case 'ambiguous':
-        // The input closely matches several records. Ask for the missing detail, often a unit.
-        return { ok: false, needsDetail: true };
-      default:
-        // 'unverified', or no status: Radar could not verify the input.
-        return { ok: false };
-    }
-  } catch (error) {
-    // Validation was unavailable. Decide whether your flow continues without it.
-    console.error(error.status, error.message);
-    return { ok: false, unavailable: true };
-  }
-}
-
-const outcome = await validate({
-  number: '841',
-  street: 'Broadway',
-  unit: 'Fl 7',
-  city: 'New York',
-  stateCode: 'NY',
-  postalCode: '10003',
-  countryCode: 'US',
-});
-```
+`Radar.validateAddress()` takes a complete address in structured fields and returns a standardized `address` and a `result.verificationStatus`. Send `city`, `stateCode`, `postalCode`, and `countryCode`, plus either `number` and `street` or a single `addressLabel`. See [Validate an address](/api/geocoding#validate-an-address).
 
 | `verificationStatus` | Meaning | Suggested handling |
 | --- | --- | --- |
 | `verified` | The input has a complete and unique match with a result. | Accept. Store the standardized `address`. |
-| `partially verified` | The input has a partial match with a result. | Show the returned address next to what the user typed and ask them to confirm or correct. |
-| `ambiguous` | The input closely matches multiple results. | Ask for more detail. |
-| `unverified` | Radar was unable to verify the input address. | Ask the user to correct it, or let them continue with an explicit confirmation if your product allows that. |
+| `partially verified` | The input has a partial match with a result. | Show the returned address and ask the user to confirm or correct. |
+| `ambiguous` | The input closely matches multiple results. | Ask for more detail, often a unit. |
+| `unverified` | Radar was unable to verify the input address. | Ask for a correction, or an explicit confirmation if your product allows it. |
 
-A `verified` status means the text matched a single known address record. It isn't a guarantee that a carrier delivers there or that the recipient lives there, and an `unverified` status doesn't prove the address is fake. New construction and rural addresses are common reasons for an address to be real but unverified. For United States addresses, the response can also carry an analysis of the unit, indicating that a unit is missing or invalid. The standardized `address` includes `plus4` and `metadata` with a record type and property type. For the full response, see [Validate an address](/api/geocoding#validate-an-address).
+`verified` means the text matched a single known address record. It isn't a guarantee that a carrier delivers there, and `unverified` doesn't prove the address is fake.
 
 ### IP geocode
 
-IP geocoding converts the IP address of the request to an estimated city, state, and country. It needs no permission and no input. This example returns region defaults, or none when there's no estimate or the request came through a proxy:
-
-```javascript
-async function regionDefaults() {
-  try {
-    const { address, proxy } = await Radar.ipGeocode();
-
-    if (!address || proxy) {
-      // No estimate, or the request came through a known proxy. Do not assume a region.
-      return { countryCode: null, stateCode: null };
-    }
-
-    return { countryCode: address.countryCode, stateCode: address.stateCode };
-  } catch (error) {
-    return { countryCode: null, stateCode: null };
-  }
-}
-```
-
-The response has `ip`, `address` (with `countryCode`, `stateCode`, `city`, `postalCode`, and a coarse `latitude` and `longitude`), and `proxy`, which is `true` when the IP address is a known proxy.
-
-Treat the result as an estimate. An IP address locates a network, not a person. Mobile carriers, corporate networks, and VPNs routinely place a user in a different city, state, or country. Good uses are defaults the user can change:
-
-- Preselect the country in an address form and pass it as `countryCode` to autocomplete.
-- Choose an initial language, currency, or regional content.
-- Pick which regional notice or consent option to show first during onboarding. When there is no estimate or `proxy` is `true`, fall back to your most protective default. An IP estimate is one input to that choice. It doesn't establish which laws apply to a user and isn't a consent solution on its own.
-
-Don't use IP geocoding to prove that a user is physically in a place or to decide eligibility for regulated activity. For that, see [Geo-compliance overview and quickstart](/geo-compliance/overview). For the response fields, see [IP geocode](/api/geocoding#ip-geocode).
+`Radar.ipGeocode()` converts the IP address of the request to an estimated city, state, and country, with no permission and no input. The result is an estimate: an IP address locates a network, not a person. Use it for defaults the user can change, such as a preselected country, and not to decide eligibility for regulated activity. See [IP geocode](/api/geocoding#ip-geocode).
 
 ## Native apps
 
-The same operations are available in the Radar mobile SDKs. The React Native SDK also exports an `Autocomplete` component.
-
-| Operation | Web | iOS (Swift) | Android (Kotlin) |
-| --- | --- | --- | --- |
-| Autocomplete | `Radar.ui.autocomplete()`, `Radar.AutocompleteSession` | `Radar.autocomplete(query:near:limit:completionHandler:)` | `Radar.autocomplete(query, near, layers, limit, country, mailable)` |
-| Forward geocode | `Radar.forwardGeocode()` | `Radar.geocode(address:completionHandler:)` | `Radar.geocode(query, layers, countries)` |
-| Reverse geocode | `Radar.reverseGeocode()` | `Radar.reverseGeocode(location:completionHandler:)` | `Radar.reverseGeocode(location, layers)` |
-| IP geocode | `Radar.ipGeocode()` | `Radar.ipGeocode(completionHandler:)` | `Radar.ipGeocode()` |
-| Validate | `Radar.validateAddress()` | `Radar.validateAddress(street:number:unit:city:stateCode:postalCode:countryCode:completionHandler:)` | `Radar.validateAddress(street, number, unit, city, stateCode, postalCode, countryCode, callback)` |
-
-The native `validateAddress()` methods in the table need iOS SDK 3.46.0 or later and Android SDK 4.3.0 or later. Each also has a form that takes `addressLabel` in place of `street` and `number`.
-
-Native methods report a `RadarStatus` and results through a completion handler or callback instead of a promise. The native tabs in [Complete example](#complete-example) request suggestions, read the structured fields, and check a typed address with forward geocoding. These examples request suggestions on their own:
-
-<CodeGroup>
-
-```swift Swift
-import RadarSDK
-
-func suggestAddresses(for query: String) {
-    Radar.autocomplete(query: query, near: nil, limit: 5) { (status, addresses) in
-        guard status == .success, let addresses = addresses else {
-            // Show that suggestions are unavailable.
-            return
-        }
-
-        if addresses.isEmpty {
-            // Show a "no results" row.
-            return
-        }
-
-        for address in addresses {
-            print(address.formattedAddress ?? "", address.coordinate.latitude, address.coordinate.longitude)
-        }
-    }
-}
-```
-
-```kotlin Kotlin
-import io.radar.sdk.Radar
-
-fun suggestAddresses(query: String) {
-    Radar.autocomplete(query = query, limit = 5) { status, addresses ->
-        if (status != Radar.RadarStatus.SUCCESS || addresses == null) {
-            // Show that suggestions are unavailable.
-            return@autocomplete
-        }
-
-        if (addresses.isEmpty()) {
-            // Show a "no results" row.
-            return@autocomplete
-        }
-
-        for (address in addresses) {
-            println("${address.formattedAddress} ${address.coordinate.latitude} ${address.coordinate.longitude}")
-        }
-    }
-}
-```
-
-```jsx React Native
-import { View } from 'react-native';
-import Radar, { Autocomplete } from 'react-native-radar';
-
-Radar.initialize('prj_test_pk_...');
-
-export const AddressSearch = ({ onAddress }) => (
-  <View>
-    <Autocomplete
-      options={{
-        minCharacters: 3,
-        debounceMS: 200,
-        limit: 8,
-        layers: ['address'],
-        countryCode: 'US',
-        onSelection: (address) => onAddress(address),
-        onError: (error) => console.warn(error),
-      }}
-    />
-  </View>
-);
-```
-
-</CodeGroup>
-
-In a native text field, apply the same minimum input length and debounce yourself before you call `Radar.autocomplete`. The React Native component in React Native SDK 4.39.0 accepts `near`, `debounceMS`, `minCharacters`, `limit`, `layers`, `countryCode`, `placeholder`, `disabled`, `showMarkers`, `style`, `onSelection`, `onResults`, and `onError`. See [iOS SDK](/sdk/ios), [Android SDK](/sdk/android), and [React Native SDK](/sdk/react-native).
+The iOS, Android, and React Native SDKs provide the same operations, and the React Native SDK also exports an `Autocomplete` component. In a native text field, apply the minimum input length and debounce yourself before you call `Radar.autocomplete`. See [iOS SDK](/sdk/ios#geocoding), [Android SDK](/sdk/android#geocoding), and [React Native SDK](/sdk/react-native#maps-and-ui-kits).
 
 ## Coverage
 
-Radar's geocoding and search data combines open and commercial datasets. The table rates data quality and availability by country for coarse (city-level) and fine (address-level) results.
+Coarse (city-level) geocoding and autocomplete and IP geocoding are rated great in every rated country. Fine (address-level) coverage varies:
 
-| Rating | Description |
+| Fine geocoding and autocomplete | Countries and territories |
 | --- | --- |
-| Great | Great data quality and availability |
-| Good | Good data quality and availability |
-| Approximate | Approximate data quality and availability |
+| Great | Algeria, Andorra, Argentina, Armenia, Australia, Austria, Azerbaijan, Bahrain, Belarus, Belgium, Bosnia-Herzegovina, Brazil, Bulgaria, Canada, Chile, Colombia, Croatia, Cyprus, Czechia, Denmark, Ecuador, Estonia, Faroe Islands, Finland, France, French Guiana, Georgia, Germany, Greece, Guadeloupe, Hungary, Iceland, Ireland, Italy, Kosovo, Latvia, Liechtenstein, Lithuania, Luxembourg, Malta, Martinique, Mayotte, Mexico, Moldova, Montenegro, Netherlands, New Zealand, Norway, Paraguay, Peru, Poland, Portugal, Republic of North Macedonia, Reunion, Romania, Russia, San Marino, Serbia, Slovakia, Slovenia, South Africa, Spain, Sweden, Switzerland, Tunisia, Turkey, Ukraine, United Kingdom, United States, Uruguay |
+| Good | Brunei, Cambodia, Egypt, Hong Kong, India, Indonesia, Israel, Japan, Jordan, Kazakhstan, Kuwait, Laos, Lebanon, Macao, Malaysia, Monaco, Morocco, Myanmar, Philippines, Saudi Arabia, Singapore, United Arab Emirates |
+| Approximate | Other rated countries and territories |
 
-"Geocoding" covers forward and reverse geocoding. "Autocomplete" covers address autocomplete. "Place search" covers place detection and search.
-
-<Accordion title="Coverage by country">
-
-| Country | Coarse geocoding | Fine geocoding | IP geocoding | Coarse autocomplete | Fine autocomplete | Place search |
-| --- | --- | --- | --- | --- | --- | --- |
-| Afghanistan | Great | Approximate | Great | Great | Approximate | Good |
-| Albania | Great | Approximate | Great | Great | Approximate | Good |
-| Algeria | Great | Great | Great | Great | Great | Good |
-| Andorra | Great | Great | Great | Great | Great | Good |
-| Angola | Great | Approximate | Great | Great | Approximate | Good |
-| Anguilla | Great | Approximate | Great | Great | Approximate | Good |
-| Antarctica | Great | Approximate | Great | Great | Approximate | Good |
-| Antigua and Barbuda | Great | Approximate | Great | Great | Approximate | Good |
-| Argentina | Great | Great | Great | Great | Good | Good |
-| Armenia | Great | Great | Great | Great | Great | Good |
-| Aruba | Great | Approximate | Great | Great | Approximate | Good |
-| Australia | Great | Great | Great | Great | Great | Good |
-| Austria | Great | Great | Great | Great | Great | Good |
-| Azerbaijan | Great | Great | Great | Great | Great | Good |
-| Bahamas | Great | Approximate | Great | Great | Approximate | Good |
-| Bahrain | Great | Great | Great | Great | Great | Good |
-| Bangladesh | Great | Approximate | Great | Great | Approximate | Good |
-| Barbados | Great | Approximate | Great | Great | Approximate | Good |
-| Belarus | Great | Great | Great | Great | Great | Good |
-| Belgium | Great | Great | Great | Great | Great | Good |
-| Belize | Great | Approximate | Great | Great | Approximate | Good |
-| Benin | Great | Approximate | Great | Great | Approximate | Good |
-| Bermuda | Great | Approximate | Great | Great | Approximate | Good |
-| Bhutan | Great | Approximate | Great | Great | Approximate | Good |
-| Bolivia | Great | Approximate | Great | Great | Approximate | Good |
-| Bonaire Sint Eustatius and Saba | Great | Approximate | Great | Great | Approximate | Good |
-| Bosnia-Herzegovina | Great | Great | Great | Great | Great | Good |
-| Botswana | Great | Approximate | Great | Great | Approximate | Good |
-| Bouvet Island | Great | Approximate | Great | Great | Approximate | Good |
-| Brazil | Great | Great | Great | Great | Great | Good |
-| British Virgin Islands | Great | Approximate | Great | Great | Approximate | Good |
-| Brunei | Great | Good | Great | Great | Good | Good |
-| Bulgaria | Great | Great | Great | Great | Great | Good |
-| Burkina Faso | Great | Approximate | Great | Great | Approximate | Good |
-| Burundi | Great | Approximate | Great | Great | Approximate | Good |
-| Cabo Verde | Great | Approximate | Great | Great | Approximate | Good |
-| Cambodia | Great | Good | Great | Great | Good | Good |
-| Cameroon | Great | Approximate | Great | Great | Approximate | Good |
-| Canada | Great | Great | Great | Great | Great | Good |
-| Cayman Islands | Great | Approximate | Great | Great | Approximate | Good |
-| Central African Republic | Great | Approximate | Great | Great | Approximate | Good |
-| Chad | Great | Approximate | Great | Great | Approximate | Good |
-| Chile | Great | Great | Great | Great | Great | Good |
-| Clipperton Island | Great | Approximate | Great | Great | Approximate | Good |
-| Cocos (Keeling) Islands | Great | Approximate | Great | Great | Approximate | Good |
-| Colombia | Great | Great | Great | Great | Great | Good |
-| Comoros | Great | Approximate | Great | Great | Approximate | Good |
-| Congo-Brazzaville | Great | Approximate | Great | Great | Approximate | Good |
-| Cook Islands | Great | Approximate | Great | Great | Approximate | Good |
-| Costa Rica | Great | Approximate | Great | Great | Approximate | Good |
-| Cote d'Ivoire | Great | Approximate | Great | Great | Approximate | Good |
-| Croatia | Great | Great | Great | Great | Great | Good |
-| Cuba | Great | Approximate | Great | Great | Approximate | Good |
-| Curacao | Great | Approximate | Great | Great | Approximate | Good |
-| Cyprus | Great | Great | Great | Great | Great | Good |
-| Czechia | Great | Great | Great | Great | Great | Good |
-| Democratic Republic of the Congo | Great | Approximate | Great | Great | Approximate | Good |
-| Denmark | Great | Great | Great | Great | Great | Good |
-| Djibouti | Great | Approximate | Great | Great | Approximate | Good |
-| Dominica | Great | Approximate | Great | Great | Approximate | Good |
-| Dominican Republic | Great | Approximate | Great | Great | Approximate | Good |
-| Ecuador | Great | Great | Great | Great | Good | Good |
-| Egypt | Great | Good | Great | Great | Good | Good |
-| El Salvador | Great | Approximate | Great | Great | Approximate | Good |
-| Equatorial Guinea | Great | Approximate | Great | Great | Approximate | Good |
-| Eritrea | Great | Approximate | Great | Great | Approximate | Good |
-| Estonia | Great | Great | Great | Great | Great | Good |
-| Eswatini | Great | Approximate | Great | Great | Approximate | Good |
-| Ethiopia | Great | Approximate | Great | Great | Approximate | Good |
-| Falkland Islands | Great | Approximate | Great | Great | Approximate | Good |
-| Faroe Islands | Great | Great | Great | Great | Great | Good |
-| Federated States of Micronesia | Great | Approximate | Great | Great | Approximate | Good |
-| Fiji | Great | Approximate | Great | Great | Approximate | Good |
-| Finland | Great | Great | Great | Great | Great | Good |
-| France | Great | Great | Great | Great | Great | Good |
-| French Guiana | Great | Great | Great | Great | Great | Good |
-| French Polynesia | Great | Approximate | Great | Great | Approximate | Good |
-| French Southern and Antarctic Lands | Great | Approximate | Great | Great | Approximate | Good |
-| Gabon | Great | Approximate | Great | Great | Approximate | Good |
-| Georgia | Great | Great | Great | Great | Great | Good |
-| Germany | Great | Great | Great | Great | Great | Good |
-| Ghana | Great | Approximate | Great | Great | Approximate | Good |
-| Gibraltar | Great | Approximate | Great | Great | Approximate | Good |
-| Greece | Great | Great | Great | Great | Great | Good |
-| Greenland | Great | Approximate | Great | Great | Approximate | Good |
-| Grenada | Great | Approximate | Great | Great | Approximate | Good |
-| Guadeloupe | Great | Great | Great | Great | Great | Good |
-| Guatemala | Great | Approximate | Great | Great | Approximate | Good |
-| Guinea | Great | Approximate | Great | Great | Approximate | Good |
-| Guinea-Bissau | Great | Approximate | Great | Great | Approximate | Good |
-| Guyana | Great | Approximate | Great | Great | Approximate | Good |
-| Haiti | Great | Approximate | Great | Great | Approximate | Good |
-| Heard Island and McDonald Islands | Great | Approximate | Great | Great | Approximate | Good |
-| Holy See | Great | Approximate | Great | Great | Approximate | Good |
-| Honduras | Great | Approximate | Great | Great | Approximate | Good |
-| Hong Kong | Great | Good | Great | Great | Good | Good |
-| Hungary | Great | Great | Great | Great | Great | Good |
-| Iceland | Great | Great | Great | Great | Great | Good |
-| India | Great | Good | Great | Great | Good | Good |
-| Indonesia | Great | Good | Great | Great | Good | Good |
-| Iran | Great | Approximate | Great | Great | Approximate | Good |
-| Iraq | Great | Approximate | Great | Great | Approximate | Good |
-| Ireland | Great | Great | Great | Great | Great | Good |
-| Israel | Great | Good | Great | Great | Good | Good |
-| Italy | Great | Great | Great | Great | Great | Good |
-| Jamaica | Great | Approximate | Great | Great | Approximate | Good |
-| Japan | Great | Good | Great | Great | Good | Good |
-| Jordan | Great | Good | Great | Great | Good | Good |
-| Kazakhstan | Great | Good | Great | Great | Good | Good |
-| Kenya | Great | Approximate | Great | Great | Approximate | Good |
-| Kiribati | Great | Approximate | Great | Great | Approximate | Good |
-| Kosovo | Great | Great | Great | Great | Great | Good |
-| Kuwait | Great | Good | Great | Great | Good | Good |
-| Kyrgyzstan | Great | Approximate | Great | Great | Approximate | Good |
-| Laos | Great | Good | Great | Great | Good | Good |
-| Latvia | Great | Great | Great | Great | Great | Good |
-| Lebanon | Great | Good | Great | Great | Good | Good |
-| Lesotho | Great | Approximate | Great | Great | Approximate | Good |
-| Liberia | Great | Approximate | Great | Great | Approximate | Good |
-| Libya | Great | Approximate | Great | Great | Approximate | Good |
-| Liechtenstein | Great | Great | Great | Great | Great | Good |
-| Lithuania | Great | Great | Great | Great | Great | Good |
-| Luxembourg | Great | Great | Great | Great | Great | Good |
-| Macao | Great | Good | Great | Great | Good | Good |
-| Madagascar | Great | Approximate | Great | Great | Approximate | Good |
-| Malawi | Great | Approximate | Great | Great | Approximate | Good |
-| Malaysia | Great | Good | Great | Great | Good | Good |
-| Maldives | Great | Approximate | Great | Great | Approximate | Good |
-| Mali | Great | Approximate | Great | Great | Approximate | Good |
-| Malta | Great | Great | Great | Great | Great | Good |
-| Marshall Islands | Great | Approximate | Great | Great | Approximate | Good |
-| Martinique | Great | Great | Great | Great | Great | Good |
-| Mauritania | Great | Approximate | Great | Great | Approximate | Good |
-| Mauritius | Great | Approximate | Great | Great | Approximate | Good |
-| Mayotte | Great | Great | Great | Great | Great | Good |
-| Mexico | Great | Great | Great | Great | Great | Good |
-| Moldova | Great | Great | Great | Great | Great | Good |
-| Monaco | Great | Good | Great | Great | Good | Good |
-| Mongolia | Great | Approximate | Great | Great | Approximate | Good |
-| Montenegro | Great | Great | Great | Great | Great | Good |
-| Montserrat | Great | Approximate | Great | Great | Approximate | Good |
-| Morocco | Great | Good | Great | Great | Good | Good |
-| Mozambique | Great | Approximate | Great | Great | Approximate | Good |
-| Myanmar | Great | Good | Great | Great | Good | Good |
-| Namibia | Great | Approximate | Great | Great | Approximate | Good |
-| Nauru | Great | Approximate | Great | Great | Approximate | Good |
-| Nepal | Great | Approximate | Great | Great | Approximate | Good |
-| Netherlands | Great | Great | Great | Great | Great | Good |
-| New Caledonia | Great | Approximate | Great | Great | Approximate | Good |
-| New Zealand | Great | Great | Great | Great | Great | Good |
-| Nicaragua | Great | Approximate | Great | Great | Approximate | Good |
-| Niger | Great | Approximate | Great | Great | Approximate | Good |
-| Nigeria | Great | Approximate | Great | Great | Approximate | Good |
-| Niue | Great | Approximate | Great | Great | Approximate | Good |
-| Norfolk Island | Great | Approximate | Great | Great | Approximate | Good |
-| Norway | Great | Great | Great | Great | Great | Good |
-| Pakistan | Great | Approximate | Great | Great | Approximate | Good |
-| Palau | Great | Approximate | Great | Great | Approximate | Good |
-| Panama | Great | Approximate | Great | Great | Approximate | Good |
-| Papua New Guinea | Great | Approximate | Great | Great | Approximate | Good |
-| Paraguay | Great | Great | Great | Great | Great | Good |
-| Peru | Great | Great | Great | Great | Good | Good |
-| Philippines | Great | Good | Great | Great | Good | Good |
-| Pitcairn Islands | Great | Approximate | Great | Great | Approximate | Good |
-| Poland | Great | Great | Great | Great | Great | Good |
-| Portugal | Great | Great | Great | Great | Great | Good |
-| Qatar | Great | Approximate | Great | Great | Approximate | Good |
-| Republic of Belarus | Great | Great | Great | Great | Great | Good |
-| Republic of Korea | Great | Approximate | Great | Great | Approximate | Good |
-| Republic of North Macedonia | Great | Great | Great | Great | Great | Good |
-| Reunion | Great | Great | Great | Great | Great | Good |
-| Romania | Great | Great | Great | Great | Great | Good |
-| Russia | Great | Great | Great | Great | Great | Good |
-| Rwanda | Great | Approximate | Great | Great | Approximate | Good |
-| Saint Barthelemy | Great | Approximate | Great | Great | Approximate | Good |
-| Saint Helena | Great | Approximate | Great | Great | Approximate | Good |
-| Saint Kitts and Nevis | Great | Approximate | Great | Great | Approximate | Good |
-| Saint Lucia | Great | Approximate | Great | Great | Approximate | Good |
-| Saint Martin | Great | Approximate | Great | Great | Approximate | Good |
-| Saint Pierre and Miquelon | Great | Approximate | Great | Great | Approximate | Good |
-| Saint Vincent and the Grenadines | Great | Approximate | Great | Great | Approximate | Good |
-| Samoa | Great | Approximate | Great | Great | Approximate | Good |
-| San Marino | Great | Great | Great | Great | Great | Good |
-| Sao Tome and Principe | Great | Approximate | Great | Great | Approximate | Good |
-| Saudi Arabia | Great | Good | Great | Great | Good | Good |
-| Senegal | Great | Approximate | Great | Great | Approximate | Good |
-| Serbia | Great | Great | Great | Great | Great | Good |
-| Seychelles | Great | Approximate | Great | Great | Approximate | Good |
-| Sierra Leone | Great | Approximate | Great | Great | Approximate | Good |
-| Singapore | Great | Good | Great | Great | Good | Good |
-| Sint Maarten | Great | Approximate | Great | Great | Approximate | Good |
-| Slovakia | Great | Great | Great | Great | Great | Good |
-| Slovenia | Great | Great | Great | Great | Great | Good |
-| Solomon Islands | Great | Approximate | Great | Great | Approximate | Good |
-| Somalia | Great | Approximate | Great | Great | Approximate | Good |
-| South Africa | Great | Great | Great | Great | Great | Good |
-| South Georgia and the South Sandwich Islands | Great | Approximate | Great | Great | Approximate | Not rated |
-| South Sudan | Great | Approximate | Great | Great | Approximate | Good |
-| Spain | Great | Great | Great | Great | Great | Good |
-| Sri Lanka | Great | Approximate | Great | Great | Approximate | Good |
-| State Of Palestine | Great | Approximate | Great | Great | Approximate | Good |
-| Sudan | Great | Approximate | Great | Great | Approximate | Good |
-| Suriname | Great | Approximate | Great | Great | Approximate | Good |
-| Sweden | Great | Great | Great | Great | Great | Good |
-| Switzerland | Great | Great | Great | Great | Great | Good |
-| Syria | Great | Approximate | Great | Great | Approximate | Good |
-| Taiwan | Great | Approximate | Great | Great | Approximate | Good |
-| Tajikistan | Great | Approximate | Great | Great | Approximate | Good |
-| Tanzania | Great | Approximate | Great | Great | Approximate | Good |
-| Thailand | Great | Approximate | Great | Great | Approximate | Good |
-| The Gambia | Great | Approximate | Great | Great | Approximate | Good |
-| The Sultanate of Oman | Great | Approximate | Great | Great | Approximate | Good |
-| Timor-Leste | Great | Approximate | Great | Great | Approximate | Good |
-| Togo | Great | Approximate | Great | Great | Approximate | Good |
-| Tokelau | Great | Approximate | Great | Great | Approximate | Good |
-| Tonga | Great | Approximate | Great | Great | Approximate | Good |
-| Trinidad and Tobago | Great | Approximate | Great | Great | Approximate | Good |
-| Tunisia | Great | Great | Great | Great | Great | Good |
-| Turkey | Great | Great | Great | Great | Great | Good |
-| Turkmenistan | Great | Approximate | Great | Great | Approximate | Good |
-| Turks and Caicos Islands | Great | Approximate | Great | Great | Approximate | Good |
-| Tuvalu | Great | Approximate | Great | Great | Approximate | Good |
-| Uganda | Great | Approximate | Great | Great | Approximate | Good |
-| Ukraine | Great | Great | Great | Great | Great | Good |
-| United Arab Emirates | Great | Good | Great | Great | Good | Good |
-| United Kingdom | Great | Great | Great | Great | Great | Good |
-| United States | Great | Great | Great | Great | Great | Great |
-| Uruguay | Great | Great | Great | Great | Great | Good |
-| Uzbekistan | Great | Approximate | Great | Great | Approximate | Good |
-| Vanuatu | Great | Approximate | Great | Great | Approximate | Good |
-| Venezuela | Great | Approximate | Great | Great | Approximate | Good |
-| Vietnam | Great | Approximate | Great | Great | Approximate | Good |
-| Wallis and Futuna | Great | Approximate | Great | Great | Approximate | Good |
-| Yemen | Great | Approximate | Great | Great | Approximate | Good |
-| Zambia | Great | Approximate | Great | Great | Approximate | Good |
-| Zimbabwe | Great | Approximate | Great | Great | Approximate | Good |
-
-</Accordion>
+Fine autocomplete is rated good, not great, in Argentina, Ecuador, and Peru. Place search is rated good in nearly every rated country, and great in the United States.
 
 ## Handle results and errors
 
-The web SDK methods resolve with the fields in this table. With a Test key, each response also carries the raw API body under `response`.
+Web SDK methods reject with a `RadarError`. Read its `status`. The component passes the same errors to `onError`.
 
-| Method | Resolves with |
-| --- | --- |
-| `Radar.autocomplete()`, `session.autocomplete()` | `addresses`: an array of address objects, most relevant first. Empty when nothing matches. |
-| `Radar.forwardGeocode()` | `addresses`: an array of address objects, each with `confidence`. |
-| `Radar.reverseGeocode()` | `addresses`: an array of address objects. |
-| `Radar.ipGeocode()` | `ip`, `address` (may be absent), and `proxy`. |
-| `Radar.validateAddress()` | `address` (the standardized address) and `result.verificationStatus`. |
-
-This is one address object from a forward geocode response:
-
-```json
-{
-  "latitude": 40.7343,
-  "longitude": -73.9911,
-  "geometry": {
-    "type": "Point",
-    "coordinates": [-73.9911, 40.7343]
-  },
-  "country": "United States",
-  "countryCode": "US",
-  "state": "New York",
-  "stateCode": "NY",
-  "county": "New York County",
-  "city": "New York",
-  "postalCode": "10003",
-  "number": "841",
-  "street": "Broadway",
-  "layer": "address",
-  "confidence": "exact",
-  "addressLabel": "841 Broadway",
-  "formattedAddress": "841 Broadway, New York, NY 10003 USA"
-}
-```
-
-This is a validation response:
-
-```json
-{
-  "meta": {
-    "code": 200
-  },
-  "address": {
-    "addressLabel": "841 BROADWAY FL 7",
-    "unit": "FL 7",
-    "number": "841",
-    "street": "BROADWAY",
-    "city": "NEW YORK",
-    "stateCode": "NY",
-    "postalCode": "10003",
-    "plus4": "4704",
-    "county": "NEW YORK",
-    "countryCode": "US",
-    "formattedAddress": "841 BROADWAY FL 7, NEW YORK, NY 10003-4704 US",
-    "metadata": {
-      "recordType": "H",
-      "propertyType": "commercial"
-    }
-  },
-  "result": {
-    "verificationStatus": "verified"
-  }
-}
-```
-
-For the field definitions and the response for each operation, see [Geocoding API](/api/geocoding) and [Search API](/api/search).
-
-### Errors, ambiguous results, and recovery
-
-Web SDK methods reject with a `RadarError`. Read its `status` and `message`. The component passes the same errors to `onError`.
-
-| Situation | What happens | What to do |
+| Result or error | What it means | What to do |
 | --- | --- | --- |
-| Fewer characters than `minCharacters` | The component sends no request and shows no list. | Nothing. |
-| No suggestions for the text | The component's list shows "No results". A direct call resolves with an empty `addresses` array. | Let the user keep typing or enter the address in the fields by hand. |
-| The user never picks a suggestion | `onSelection` doesn't fire. | Keep the fields usable on their own, and check them on submit. |
-| Several matches for a typed address | Forward geocoding returns more than one address. | Show the candidates and let the user choose. Don't pick the first one silently for a delivery address. |
-| Approximate match | `confidence` is `interpolated` or `fallback`, or `layer` isn't `address`. | Ask the user to confirm, or ask for a more complete address. |
-| No match | An empty `addresses` array. | Ask for a correction. Decide whether your flow allows continuing. |
-| Invalid request | `ERROR_BAD_REQUEST`, for example an empty query or conflicting validation fields. | Fix the request. Don't retry unchanged. |
-| Wrong or revoked key | `ERROR_UNAUTHORIZED`. | Check the key and environment. |
-| Validation not available to the project | `ERROR_PAYMENT_REQUIRED`. | Fall back to the forward geocode check, or contact your Radar account team about access. |
-| Rate limited | `ERROR_RATE_LIMIT`. | Keep the debounce and minimum length in place, and retry after a short wait. |
-| Network failure or timeout | `ERROR_NETWORK` or another `RadarError`. | Let the user retry, and keep manual entry available. |
-| Location denied during reverse geocoding with no coordinate | `ERROR_PERMISSIONS`. | Ask for an address instead. |
-| The component's container is missing | `Radar.ui.autocomplete()` throws with `status` `CONTAINER_NOT_FOUND`. | Create the component after the container is in the document. |
-| The component is recreated on every render | Duplicate inputs or lost focus in a single-page app. | Create it once per mount and call `remove()` on unmount. |
-
-Address suggestions are an aid. If Radar is unreachable, the user must still be able to type an address into the fields and submit it under whatever rule your product sets.
+| An empty `addresses` array, or "No results" in the component | Nothing matched. | Let the user keep typing or enter the address by hand. |
+| `onSelection` never fires | The user didn't pick a suggestion. | Keep the fields usable on their own, and check them on submit. |
+| Several addresses, or `confidence` of `interpolated` or `fallback` | An ambiguous or approximate match. | Show the candidates and let the user choose. Don't pick the first one silently. |
+| `ERROR_BAD_REQUEST` | An invalid request, for example an empty query or `addressLabel` sent together with `number` and `street`. | Fix the request. Don't retry unchanged. |
+| `ERROR_UNAUTHORIZED` | The key is wrong or revoked. | Check the key and environment. |
+| `ERROR_PAYMENT_REQUIRED` from `Radar.validateAddress()` | Validation isn't available to the project. | Fall back to the forward geocode check. |
+| `ERROR_RATE_LIMIT` | Too many requests. | Keep the debounce and minimum length in place, and retry after a short wait. |
+| `ERROR_NETWORK` or another `RadarError` | The request failed. | Let the user retry, and keep manual entry available. |
 
 ## Test the integration
 
-1. **Valid address from a suggestion**: Type the start of a real address, choose a suggestion, and confirm every field is filled and the status reads "Check the details". Select Continue. The address is accepted with no further request.
-2. **Valid address typed by hand**: Without using the suggestions, type a complete real address into the fields and select Continue. One exact match is accepted, and the fields update to the matched form.
-3. **Ambiguous input**: Enter an address that Radar can only match approximately, for example a real street and city with a street number that doesn't exist on that street. Candidate buttons appear. Choose one and confirm it is accepted. If your input returns a single exact match, it wasn't ambiguous, so try another. In an automated test, stub `Radar.forwardGeocode` to resolve with two addresses.
-4. **No result**: Enter a street line of random letters and select Continue. The correction message appears and nothing is accepted.
-5. **API error**: In developer tools, block requests to `api.radar.io`. Type in the search input and confirm the "suggestions are unavailable" message. Then fill the fields by hand and select Continue, and confirm the "could not check" message. Unblock and confirm both paths recover.
-6. **Edit after selecting**: Choose a suggestion, change the postal code, and select Continue. The address is checked again and isn't accepted as-is.
-7. **Unit**: Choose a suggestion, add a unit, and select Continue. The address is accepted and the unit is kept.
-8. **Keyboard and screen reader**: Reach the search input with Tab, move through suggestions with the arrow keys, select with Enter, and close the list with Escape. A screen reader announces the number of results.
-9. **Validation, if you use it**: Send one address you expect to be `verified`, one with a missing unit in a multi-unit building, and one that doesn't exist, and confirm your handling of each status.
-10. **IP defaults, if you use them**: Load the page through a VPN and confirm that the defaults are either reasonable or absent and that the user can change them.
+- **Passing case**: Type the start of a real address, choose a suggestion, and confirm every field is filled. Select Continue. The address is accepted with no further request.
+- **Failing case**: Enter a street line of random letters and select Continue. The correction message appears and nothing is accepted.
+
+For more, see [Test, troubleshoot, and go live](/fundamentals/testing-and-launch).
 
 ## Production checklist
 
-- [ ] The form uses the Live publishable key, supplied by configuration. No secret key is in client code.
-- [ ] SDK and plugin versions are pinned.
-- [ ] Minimum input length and debounce are in place for every autocomplete input, including inputs you built yourself.
-- [ ] `layers` and `countryCode` match the addresses you accept.
+- [ ] The form uses the Live publishable key from configuration. No secret key is in client code.
+- [ ] Minimum input length and debounce are in place for every autocomplete input.
 - [ ] Fields stay editable after a selection, and manual entry works when suggestions are unavailable.
 - [ ] You store structured fields and the coordinate, not only `formattedAddress`.
-- [ ] Ambiguous, approximate, no-match, and error cases each have a message and a next step.
-- [ ] Your rule for unverified or unmatched addresses is written down and enforced on the backend.
-- [ ] Wording in your interface doesn't promise more than the result supports: "verified" isn't "deliverable".
-- [ ] IP-derived defaults are labeled or changeable, and aren't used for eligibility decisions.
-- [ ] Addresses and coordinates are personal data. Don't write them to client logs or analytics in production.
-- [ ] You have checked [Coverage](#coverage) for the countries you serve. You can cache API responses for up to 30 days under the [terms of use](https://radar.com/terms).
+- [ ] Your rule for unverified or unmatched addresses is enforced on the backend.
+- [ ] Your interface doesn't promise more than the result supports: "verified" isn't "deliverable".
+
+## Build with an agent
+
+Copy this prompt into a coding agent that has access to your repository.
+
+```text
+Add address autocomplete and address checking to this repository with Radar.
+
+Read https://docs.radar.com/maps/addresses.md, https://docs.radar.com/sdk/web.md, and
+https://docs.radar.com/api/geocoding.md, and follow them for this platform.
+
+Constraints:
+- Use a publishable key read from configuration. Never put a secret key in client code.
+- Keep the fields editable, and check a typed or edited address on submit.
+- Use address validation only if this project has access. Do not invent fields.
+
+Add tests for: selecting a suggestion fills every structured field; an ambiguous address
+shows choices; an address with no match shows a correction message and does not submit.
+```
 
 ## See also
 
-- [Geocoding API](/api/geocoding): forward, reverse, and IP geocoding, address validation, and the address object.
-- [Search API](/api/search): autocomplete, autocomplete select, and place and geofence search.
-- [Web SDK](/sdk/web): every method, parameter, and error type used here.
-- [Build store locators](/maps/store-locators): use an address as the origin of a nearby search.
-- [Display maps](/maps/maps): show the chosen address on a map.
-
-For help, contact [Radar support](https://radar.com/support).
-
-To have a coding agent implement this guide, use the prompt in [Build with an agent](#build-with-an-agent).
+- [Geocoding API](/api/geocoding)
+- [Search API](/api/search)
+- [Web SDK](/sdk/web)
+- [Build store locators](/maps/store-locators)
+- [Display maps](/maps/maps)

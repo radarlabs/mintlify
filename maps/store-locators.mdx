@@ -3,17 +3,15 @@ title: "Build store locators"
 description: "Build a location finder that searches your stores, branches, or ATMs near an address or the user's position and shows a matching list and map."
 ---
 
-import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
 import { RadarStoreLocatorDemo } from '/snippets/radar-demos.jsx';
-import GeofenceImport from '/snippets/geofence-import.mdx';
 
-By the end of this guide you have a location finder in a web page. A visitor types an address (no location permission needed) or chooses to share their position, sees the nearest locations in a list and on a map, selects one, and sees its details with the driving distance and time.
+By the end of this guide you have a location finder in a web page. A visitor types an address (no location permission needed) or shares their position, sees the nearest locations in a list and on a map, selects one, and sees the driving distance and time.
 
 <RadarStoreLocatorDemo />
 
 ## Complete example
 
-The JavaScript tab is the whole locator in one HTML page, the other tabs run the same address search and nearby search in a native app, and the sections below explain each part.
+The JavaScript tab is the whole locator in one HTML page, and the other tabs run the same address search and nearby search in a native app.
 
 <CodeGroup>
 
@@ -432,159 +430,58 @@ export async function findStores(query) {
 
 </CodeGroup>
 
-## Build with an agent
-
-Copy this prompt into a coding agent that has access to your repository.
-
-```text
-Build a store locator (location finder) in this repository using the current Radar
-documentation.
-
-First inspect the application framework, platform versions, existing Radar or map
-code, where location data (stores, branches, ATMs) lives today, how environment
-variables reach the client, and the existing tests. Preserve existing behavior
-outside this task.
-
-Read:
-- https://docs.radar.com/maps/store-locators.md
-- https://docs.radar.com/sdk/web.md
-- https://docs.radar.com/api/search.md
-- https://docs.radar.com/api/routing.md
-
-Implement the documented flow: locations loaded into Radar as geofences with a tag,
-external ID, and metadata (or the application's own list); address search with the
-Radar autocomplete component; an optional "use my location" action; a nearby search
-with Radar.searchGeofences; a results list and a map that always show the same
-locations; selecting a location from either the list or the map; and route distance
-and travel time labeled separately from straight-line distance. Handle denied
-location permission, no results, search errors, and loading states, and make the
-layout work on a narrow mobile screen. Use a publishable key in client code, read
-from configuration. Geofence import with a secret key belongs on the backend or in
-the dashboard, never in client code. Do not invent methods, fields, supported
-platforms, or defaults.
-
-Add tests for: a manual address search with location permission denied returns
-results; the list and the map show the same locations in the same order; selecting
-a list item and selecting a marker lead to the same selected state; a search with
-no nearby locations shows the empty state; a failed search request shows the error
-state and allows a retry. Run the repository's relevant checks. Report changed
-files, test results, required dashboard setup (keys, geofence import, tags), and
-anything that still needs confirmation. Do not change production settings or
-deploy without approval.
-```
-
 ## Prerequisites
 
-- A Radar account and a publishable key. See [Keys](#keys).
+- A publishable key. See [Choose the right API key](/fundamentals/authentication-and-access#choose-the-right-api-key). Never put a secret key in client code.
 - Your locations, each with a name, coordinates or an address, and an ID from your own system.
-- **Web**: The examples use `radar-sdk-js` 5.3.0, `@radarlabs/plugin-maps` 1.2.0, and `@radarlabs/plugin-autocomplete` 1.2.0. The autocomplete plugin requires `radar-sdk-js` 5.3.0 or later.
-- **Permissions**: None. Address search works without location permission. The "Use my location" button asks for browser location permission only when the visitor selects it.
-- **Access**: To import geofences in the Radar dashboard, you need access to the project's Geofences page. To import through the API, you need a secret key on your backend.
-
-### Keys
-
-<EnvironmentAndKeys />
-
-Everything the locator does in the browser uses the publishable key. Only geofence import through the API uses a secret key, and that runs on your backend.
-
-## How it works
-
-| Part | Responsibility |
-| --- | --- |
-| Radar (setup) | Stores your locations as geofences. Each has a `tag` (such as `store`), an `externalId` (your ID), a `description` (the display name), and `metadata` (hours, phone, services). |
-| Your page | Collects a search origin from the autocomplete component or the browser's location, calls the search, and renders the list and the map from the same result array. |
-| Radar (search) | Returns the geofences near the origin, nearest first, filtered by tag. Separately returns route distance and travel time on request. |
-| Your backend | Keeps Radar in step with your location database through import, the API, or nightly sync. It isn't in the request path of a search. |
-
-Two different distances appear in a locator, and they aren't interchangeable:
-
-| Question | Straight-line distance | Route distance and travel time |
-| --- | --- | --- |
-| What it is | The distance between two points over the earth's surface, ignoring roads. | The distance along roads for a travel mode, and the estimated time to travel it. |
-| Where it comes from | Geofence search orders results by it. You compute the number in the browser. | `Radar.distance()` for one destination or `Radar.matrix()` for many. |
-| Cost | No extra request. | One extra request per selection or per result set. |
-| Label it as | "0.4 mi away" or "straight line". | "0.5 mi by car, about 3 mins". |
-
-The nearest location in a straight line isn't always the quickest to reach, for example across a river or a highway. If you show both numbers, label each one.
+- **Web**: The examples use `radar-sdk-js` 5.3.0, `@radarlabs/plugin-maps` 1.2.0, and `@radarlabs/plugin-autocomplete` 1.2.0.
+- No location permission. The "Use my location" button asks for it only when the visitor selects it.
 
 ## Load your locations
 
-The locator searches geofences in your Radar project. Give every location the same `tag` so the search can filter on it, your own ID as the `externalId`, and the fields you want to display as `metadata`. If you'd rather not store locations in Radar, see [Use your own location list](#use-your-own-location-list).
-
-For a locator, a small circle at each location is enough. This CSV defines three stores:
-
-```csv
-description,tag,externalId,type,radius,coordinates,enabled,metadata
-"Store 41",store,store-41,circle,100,"[-73.990500,40.735900]",true,"{""phone"":""555-0141"",""hours"":""8am to 9pm"",""pickup"":true}"
-"Store 42",store,store-42,circle,100,"[-73.989700,40.741100]",true,"{""phone"":""555-0142"",""hours"":""8am to 9pm"",""pickup"":false}"
-"Store 43",store,store-43,circle,100,"[-73.984000,40.726500]",true,"{""phone"":""555-0143"",""hours"":""9am to 6pm"",""pickup"":true}"
-```
+The locator searches geofences in your Radar project. Import your locations as geofences with the same `tag` (the example uses `store`), your own ID as the `externalId`, the display name as the `description`, and the fields you want to show as `metadata`. See [CSV import](/geofencing/geofences-and-places#csv-import).
 
 Geofence metadata is returned to anyone who can run a search with your publishable key. Put only public information in it.
 
-Import your locations with one of the methods that follow. To verify the import, open the [Geofences](https://dashboard.radar.com/geofencing/geofences) page and confirm that your locations appear with the tag you chose. For how the same geofences also generate entry and exit events, see [Detect geofence events and place visits](/geofencing/geofences-and-places).
+## Accept an address
 
-<GeofenceImport />
+`Radar.ui.autocomplete()` renders a search input that suggests addresses, cities, and postal codes. When the visitor chooses a suggestion, `onSelection` receives an address with `latitude`, `longitude`, and `formattedAddress`, and the example uses those coordinates as the search origin.
 
-## Build the locator
+This is the primary path, and it needs no location permission. For the component's options, see [Autocomplete, geocode, and validate addresses](/maps/addresses#add-the-autocomplete-component).
 
-The locator is one page: an address input, a "Use my location" button, a results list, and a map, all driven by one search function.
+## Accept the user's location
 
-To run the JavaScript tab in [Complete example](#complete-example), save it as an HTML file, replace the key, and open it in a browser. A finished search looks like this: the status line reads "3 locations near 841 Broadway, New York, NY 10003 USA, nearest first.", the list shows "Store 42, 0.4 mi away (straight line)" and two more entries, and the map shows three markers fitted to the view. Selecting "Store 42" highlights it, opens its popup on the map, and changes its distance line to "0.5 mi by car, about 3 mins".
+The "Use my location" button calls `Radar.getLocation()`, which triggers the browser's permission prompt. Call it from a button, not on page load, so the visitor understands why they are being asked. If the visitor denies permission, the example tells them to search by address and the rest of the page keeps working.
 
-For npm projects, install and register the two plugins as shown in [Display maps](/maps/maps#with-npm-or-yarn) and [Autocomplete, geocode, and validate addresses](/maps/addresses#add-the-autocomplete-component). The calls are the same.
+The last block of the example calls `Radar.ipGeocode()` to run a first search with no prompt. An IP-derived location is an estimate that can be wrong by a large distance, so label it as an estimate and let an address search replace it.
 
-### Accept an address
-
-`Radar.ui.autocomplete()` renders a search input into the `autocomplete` container. As the visitor types, it suggests addresses, cities, and postal codes. When they choose a suggestion, `onSelection` receives an address object with `latitude`, `longitude`, and `formattedAddress`, and the example uses those coordinates as the search origin.
-
-This is the primary path and it needs no location permission. The component waits for three characters before it searches, shows "No results" in its dropdown when nothing matches, and calls `onError` if a request fails. It fires `onSelection` only when the visitor picks a suggestion. If you build your own search box and want to accept free text on submit, call `Radar.forwardGeocode({ query })` and use the first address, or show a message when the `addresses` array is empty. For the component's options, including limiting results to a country, see [Autocomplete, geocode, and validate addresses](/maps/addresses).
-
-### Accept the user's location
-
-The "Use my location" button calls `Radar.getLocation()`, which triggers the browser's permission prompt the first time. Call it from a button, not on page load, so the visitor understands why they are being asked.
-
-If the visitor denies permission, the promise rejects with an error whose `status` is `ERROR_PERMISSIONS`. If the browser can't determine a position or times out, the `status` is `ERROR_LOCATION`. In both cases the example tells the visitor to search by address and leaves the rest of the page working. See [Understand foreground and background location permissions](/fundamentals/location-permissions) for the browser and mobile permission models.
-
-### Start near the visitor without asking for permission
-
-The last block of the example calls `Radar.ipGeocode()` and, if it returns an address, runs a first search around it. An IP-derived location is an estimate of the visitor's city or region, taken from their network. It can be wrong by a large distance, especially on mobile networks, corporate networks, and VPNs. Use it to make the first screen useful, label it as an estimate, and let an address search or the visitor's own location replace it. Don't present it as the visitor's position.
-
-### Search nearby locations
+## Search nearby locations
 
 `Radar.searchGeofences()` returns the geofences nearest to `near`, sorted by straight-line distance.
 
 | Parameter | Value in the example | Notes |
 | --- | --- | --- |
-| `near` | The search origin as `{ latitude, longitude }` | If you omit it, the SDK requests the browser's location, which triggers a permission prompt. Always pass it in a locator. |
+| `near` | The search origin | If you omit it, the SDK requests the browser's location, which triggers a permission prompt. Always pass it. |
 | `radius` | `10000` | Meters. The maximum is `10000`. |
 | `tags` | `['store']` | Only geofences with one of these tags are returned. |
 | `limit` | `10` | The number of results to show. |
-| `includeGeometry` | `false` | The locator needs only each geofence's center, which is always returned as `geometryCenter`. Leaving out the full shapes keeps responses small. |
+| `includeGeometry` | `false` | The locator needs only each geofence's center, which is always returned as `geometryCenter`. |
 
-Each returned geofence has `_id`, `description`, `tag`, `externalId`, `metadata`, and `geometryCenter`, a GeoJSON point in `[longitude, latitude]` order. In TypeScript, the SDK's `RadarGeofence` type declares only the first five, so extend the type or cast to read `geometryCenter`. For every parameter and field, see [Search geofences](/api/search#search-geofences).
+Each geofence has `description`, `tag`, `externalId`, `metadata`, and `geometryCenter`, a GeoJSON point in `[longitude, latitude]` order. For every parameter and field, see [Search geofences](/api/search#search-geofences).
 
-To filter on metadata, such as locations that offer pickup, filter the returned array on `geofence.metadata` in the browser, or use a separate tag for those locations. The REST endpoint also accepts `metadata[key]=value` filters.
+## Show the list and the map
 
-### Show the list and the map
+The example converts the response into one `locations` array and renders both the list and the markers from it in a single loop. That keeps the two views in sync: the same locations, in the same order, with each list button holding a reference to its marker. Before each search it clears the list and calls `map.clearMarkers()`, and afterward it calls `map.fitToMarkers()`.
 
-The example converts the response into one `locations` array and renders both the list and the markers from it in a single loop. That is what keeps the two views consistent: the same locations, in the same order, with each list button holding a reference to its marker. Before each new search it clears the list and calls `map.clearMarkers()`, then calls `map.fitToMarkers()` so every result is visible.
+Selecting a list entry and selecting a marker both call `selectLocation()`, so they lead to the same state: the entry is highlighted and scrolled into view, its popup is open, and the map moves to it.
 
-List content is written with `textContent` and popups use the `text` option, so names and metadata from your data are never interpreted as markup.
+List content is written with `textContent` and popups use the `text` option, so names and metadata are never interpreted as markup.
 
-A counter (`searchCount`) discards the response of an older search if the visitor starts a new one before it returns.
+## Show route distance and travel time
 
-### Select a location
+Search results are ordered by straight-line distance, which ignores roads. Route distance and travel time follow roads and cost one extra request, so label each number for what it is.
 
-Selecting a list entry and selecting a marker both call `selectLocation()`, so they lead to the same state: the entry is marked with `aria-current`, scrolled into view, its popup is open, and the map moves to it. A marker click opens its own popup and closes the others, so the function only manages popups when the selection came from the list.
-
-To open a full details page, add a link to each entry built from `location.id`, which is your own `externalId`, for example `/stores/store-42`. Use `metadata` for the fields you show inline, such as hours, phone number, and services.
-
-### Show route distance and travel time
-
-When a location is selected, the example calls `Radar.distance()` with the search origin and the location and replaces the straight-line label with the driving distance and time from `routes.car.distance.text` and `routes.car.duration.text`. If the request fails, or no drivable route exists, the straight-line label stays.
-
-To show travel time for every result at once, make one `Radar.matrix()` request after the search, as in this example:
+When a location is selected, the example calls `Radar.distance()` and replaces the straight-line label with `routes.car.distance.text` and `routes.car.duration.text`. If the request fails or no drivable route exists, the straight-line label stays. To show travel time for every result at once, make one `Radar.matrix()` request after the search:
 
 ```javascript
 const { matrix } = await Radar.matrix({
@@ -600,202 +497,72 @@ matrix[0].forEach((route, index) => {
 });
 ```
 
-The search results are ordered by straight-line distance. If you re-sort the list by travel time, re-sort the single `locations` array before you render, so the list and the map stay in the same order. For units, travel modes, and request limits, see [Distance](/api/routing#distance) and [Matrix](/api/routing#matrix). For how the two distances relate, see [Straight-line distance and route distance](/api/routing#straight-line-distance-and-route-distance).
+See [Distance](/api/routing#distance) and [Matrix](/api/routing#matrix).
 
 ## Variations
 
-### Branches, ATMs, and other location types
+A branch, ATM, or dealer finder is the same flow with different tags and metadata: import each type with its own tag, search several at once with `tags: ['branch', 'atm']`, and read each result's `tag` to choose a marker color or icon. If your locations already come from your own API, skip geofences: build the same `locations` array from your list, sort it by `straightLineMiles()` from the search origin, and render from it. To find public places, such as a chain or a category of business, use `Radar.searchPlaces()`. See [Search places](/api/search#search-places).
 
-A bank finder, a dealer finder, and a pickup-point finder are the same flow with different tags and metadata.
+## Native apps
 
-- Import each type with its own tag, for example `branch` and `atm`.
-- Search several types at once with `tags: ['branch', 'atm']`, or one type when the visitor picks a filter. Each result's `tag` tells you which type it is, so you can use a different marker color or icon per type with the marker's `color` or `url` option.
-- Put type-specific attributes in metadata, for example `"driveThrough": true` or `"deposits": false`, and filter the result array on them.
-- Geofences can carry operating hours. Search results include them as `operatingHours` when set.
-
-### Use your own location list
-
-If your locations already come from your own API, you can skip geofences. Keep the same structure: build one `locations` array, compute `straightLineMiles()` from the search origin to each, sort by it, take the first few, and render the list and markers from that array. Address search, the user's location, selection, and route distance work as in the example. This suits a small number of locations. With many locations, a geofence search avoids sending the whole list to every visitor.
-
-### Search places
-
-To find public places, such as a category of business or a named chain, use `Radar.searchPlaces()` with `chains` or `categories` in place of `Radar.searchGeofences()`. Results have a `name`, `categories`, and a `location` point. See [Search places](/api/search#search-places).
-
-### Native apps
-
-The same flow works in a native app: a search field, a nearby search, a list, and a map. The Radar iOS, Android, and React Native SDKs provide `Radar.searchGeofences`, `Radar.autocomplete`, `Radar.geocode`, and `Radar.getDistance`, and [Display maps](/maps/maps#compatibility) shows how to render a Radar map with MapLibre Native. The native tabs in [Complete example](#complete-example) geocode a typed address and search near it. These examples show the nearby search on its own:
-
-<CodeGroup>
-
-```swift Swift
-import CoreLocation
-import RadarSDK
-
-func searchStores(near origin: CLLocation) {
-    Radar.searchGeofences(
-        near: origin,
-        radius: 10000,
-        tags: ["store"],
-        metadata: nil,
-        limit: 10,
-        includeGeometry: false
-    ) { (status, location, geofences) in
-        guard status == .success, let geofences = geofences else {
-            // Show the error state.
-            return
-        }
-
-        if geofences.isEmpty {
-            // Show the empty state.
-            return
-        }
-
-        // Geofences are sorted by distance from the origin.
-        for geofence in geofences {
-            if let circle = geofence.geometry as? RadarCircleGeometry {
-                let coordinate = circle.center.coordinate
-                print(geofence.externalId ?? "", geofence.__description, coordinate.latitude, coordinate.longitude)
-            }
-        }
-    }
-}
-```
-
-```kotlin Kotlin
-import android.location.Location
-import io.radar.sdk.Radar
-import io.radar.sdk.model.RadarCircleGeometry
-
-fun searchStores(origin: Location) {
-    Radar.searchGeofences(
-        near = origin,
-        radius = 10000,
-        tags = arrayOf("store"),
-        metadata = null,
-        limit = 10,
-        includeGeometry = false
-    ) { status, _, geofences ->
-        if (status != Radar.RadarStatus.SUCCESS || geofences == null) {
-            // Show the error state.
-            return@searchGeofences
-        }
-
-        if (geofences.isEmpty()) {
-            // Show the empty state.
-            return@searchGeofences
-        }
-
-        // Geofences are sorted by distance from the origin.
-        for (geofence in geofences) {
-            val center = (geofence.geometry as? RadarCircleGeometry)?.center
-            println("${geofence.externalId} ${geofence.description} ${center?.latitude} ${center?.longitude}")
-        }
-    }
-}
-```
-
-</CodeGroup>
-
-Initialize the SDK before you call these methods. On each platform the search returns every geofence's center, so the examples leave out the full shapes with `includeGeometry` set to `false`. For setup and the address search methods, see [iOS SDK](/sdk/ios), [Android SDK](/sdk/android), and [React Native SDK](/sdk/react-native).
+The same flow works in a native app. The Radar iOS, Android, and React Native SDKs provide `Radar.searchGeofences`, `Radar.autocomplete`, `Radar.geocode`, and `Radar.getDistance`, and the native tabs in [Complete example](#complete-example) geocode a typed address and search near it. To render the map, see [Compatibility](/maps/maps#compatibility). For setup, see [iOS SDK](/sdk/ios), [Android SDK](/sdk/android), and [React Native SDK](/sdk/react-native).
 
 ## Handle results and errors
 
-`Radar.searchGeofences()` resolves with a `geofences` array. This is the raw API response for one result with `includeGeometry` set to `false`:
+Every `Radar.*` method in the example returns a promise that rejects with a `RadarError`. Read its `status`.
 
-```json
-{
-  "meta": {
-    "code": 200
-  },
-  "geofences": [
-    {
-      "_id": "64f0c0ffee0000000000002a",
-      "live": false,
-      "type": "circle",
-      "tag": "store",
-      "externalId": "store-42",
-      "description": "Store 42",
-      "metadata": {
-        "phone": "555-0142",
-        "hours": "8am to 9pm",
-        "pickup": false
-      },
-      "geometryCenter": {
-        "type": "Point",
-        "coordinates": [-73.9897, 40.7411]
-      },
-      "geometryRadius": 100
-    }
-  ]
-}
-```
-
-| Result | What your app does |
-| --- | --- |
-| One or more geofences | Render the list and markers from the array, in the order returned. |
-| An empty `geofences` array | Show the empty state and keep the search box usable. This is a successful response, not an error. |
-| `routes.car` present in a distance response | Show `distance.text` and `duration.text`, labeled as driving. |
-| `routes.car` missing | No route was found for that mode. Keep the straight-line distance. |
-| `address` missing from `Radar.ipGeocode()` | No estimate is available. Wait for the visitor to search. |
-
-`distance.text` and `duration.text` are display strings such as "0.5 mi" and "3 mins". Use the numeric `value` fields for sorting. For their units, see [Distance and duration values](/api/routing#distance-and-duration-values).
-
-### Errors and degraded paths
-
-Every `Radar.*` method in this guide returns a promise that rejects with a `RadarError`. Read its `status`.
-
-| Situation | What happens | What to do |
+| Result or error | What it means | What to do |
 | --- | --- | --- |
-| Location permission denied | `Radar.getLocation()` rejects with `ERROR_PERMISSIONS`. | Tell the visitor to search by address. Don't block the page. |
-| Location unavailable or timed out | `Radar.getLocation()` rejects with `ERROR_LOCATION`. | Same as denied. |
-| No locations near the origin | The search resolves with an empty array. | Show an empty state that names the searched place and invites another search. |
-| Address has no suggestions | The autocomplete dropdown shows "No results". | Nothing. The visitor edits the text. |
-| Wrong or revoked key | Requests reject with `ERROR_UNAUTHORIZED`, and the map fires its `error` event. | Show an unavailable state. Check the key and environment. |
-| Rate limited | Requests reject with `ERROR_RATE_LIMIT`. | Ask the visitor to wait, and avoid issuing a search on every keystroke or map move. |
-| Network failure or timeout | Requests reject with `ERROR_NETWORK` or another `RadarError`. | Show a retry message. A new search retries. |
-| Route request fails | `Radar.distance()` or `Radar.matrix()` rejects. | Keep straight-line distances. Route distance is an enhancement. |
-| A slow response arrives after a newer search | Two results race. | Discard the older response, as the example does with `searchCount`. |
-| Map fails to load | The map's `error` event fires before `load`. | Keep the list working. The list is a complete fallback. See [Loading, errors, and recovery](/maps/maps#loading-errors-and-recovery). |
-| Geofence missing from results | The location is disabled, has a different tag, is in the other environment, or is farther than `radius`. | Check the geofence in the dashboard for the environment that matches your key. |
-
-On a phone, the example stacks the list above the map, each taking half the screen. If you hide the map behind a "Map" tab on small screens instead, call `map.resize()` when the tab is shown.
+| An empty `geofences` array | No locations within `radius`. This is a successful response, not an error. | Show an empty state that names the searched place, and keep the search box usable. |
+| `ERROR_PERMISSIONS` or `ERROR_LOCATION` from `Radar.getLocation()` | The visitor denied location permission, or the browser couldn't determine a position. | Tell the visitor to search by address. Don't block the page. |
+| `ERROR_UNAUTHORIZED` | The key is wrong or revoked. | Show an unavailable state. Check the key and environment. |
+| `ERROR_RATE_LIMIT` | Too many requests. | Ask the visitor to wait. Don't search on every keystroke or map move. |
+| `ERROR_NETWORK` or another `RadarError` | The request failed. | Show a retry message. A new search retries. |
+| `routes.car` missing, or the route request rejects | No route was found, or the request failed. | Keep the straight-line distance. |
+| The map's `error` event fires before `load` | The map failed to load. | Keep the list working. See [Handle load failure](/maps/maps#handle-load-failure). |
+| A location is missing from results | It is disabled, has a different tag, is in the other environment, or is farther than `radius`. | Check the geofence in the dashboard for the environment that matches your key. |
 
 ## Test the integration
 
-1. **Manual search with no permission**: In your browser's site settings, block location for the page. Reload, type an address, and choose a suggestion. Results appear in the list and on the map. This is the path every visitor can use.
-2. **List and map agree**: Count the list entries and the markers. They match, and the first entry is the nearest marker to the searched address.
-3. **Select from the list**: Select an entry. It is highlighted, the map moves to it, its popup opens, and the distance line changes to a driving distance and time.
-4. **Select from the map**: Select a different marker. The matching list entry is highlighted and scrolled into view, and only that marker's popup is open.
-5. **Denied location**: With location still blocked, select "Use my location". The status line tells you to search by address, and address search still works.
-6. **Granted location**: Allow location and select "Use my location". Results appear around your position.
-7. **Empty results**: Search for a city where you have no locations. The empty state names the place you searched, and the next search works.
-8. **No suggestions**: Type a string of random letters. The dropdown shows "No results" and nothing else changes.
-9. **Search error**: In developer tools, block requests to `api.radar.io` and search again. The status line shows the error message. Unblock and search again to confirm recovery.
-10. **Mobile layout**: At 360 pixels wide, the list and map are both visible and usable, and the search box is reachable without horizontal scrolling.
-11. **Keys**: Search the page source and network requests for `_sk_`. There are no matches.
+- **Passing case**: Block location for the page in your browser's site settings, type an address, and choose a suggestion. The same locations appear in the list and on the map, nearest first, and selecting one shows a driving distance and time.
+- **Failing case**: Search for a city where you have no locations. The empty state names the place you searched, and the next search works.
+
+For more, see [Test, troubleshoot, and go live](/fundamentals/testing-and-launch).
 
 ## Production checklist
 
 - [ ] The page uses the Live publishable key, and your locations are imported into the Live environment with the same tags.
 - [ ] No secret key appears in client code, the page source, or a client-side environment variable.
-- [ ] Location data in Radar is kept current by sync or by API calls from your backend when a location opens, moves, or closes. Closed locations are disabled or deleted.
 - [ ] Geofence metadata contains only information you intend to be public.
 - [ ] Address search is the default path, and location permission is requested only from a user action.
-- [ ] IP-based starting results are labeled as an estimate.
-- [ ] Loading, empty, and error states exist for search, and the list works if the map fails.
+- [ ] Empty and error states exist for search, and the list works if the map fails.
 - [ ] Straight-line and route distances are labeled, and the list and map use the same order.
-- [ ] Searches are triggered by a selection or a button, not by every keystroke or map movement, to stay within rate limits.
-- [ ] The layout is tested on a phone, with a keyboard, and with a screen reader. The status line uses `role="status"` so results are announced.
+
+## Build with an agent
+
+Copy this prompt into a coding agent that has access to your repository.
+
+```text
+Build a store locator in this repository with Radar.
+
+Read https://docs.radar.com/maps/store-locators.md, https://docs.radar.com/sdk/web.md,
+and https://docs.radar.com/api/search.md, and follow them for this platform.
+
+Constraints:
+- Use a publishable key read from configuration. Never put a secret key in client code.
+- Address search must work with location permission denied.
+- Render the list and the map from one array. Label straight-line and route distance.
+
+Add tests for: an address search with location permission denied returns results; the
+list and the map show the same locations in the same order; a search with no nearby
+locations shows the empty state.
+```
 
 ## See also
 
-- [Search API](/api/search): search geofences, search places, and autocomplete.
-- [Routing API](/api/routing): distance and matrix.
-- [Web SDK](/sdk/web): `Radar.searchGeofences()`, `Radar.getLocation()`, `Radar.distance()`, `Radar.matrix()`, and error types.
-- [Display maps](/maps/maps): markers, popups, custom styles, and map errors.
-- [Autocomplete, geocode, and validate addresses](/maps/addresses): the address input in depth.
-- [Detect geofence events and place visits](/geofencing/geofences-and-places): import, sync, and events for the same geofences.
-
-For help, contact [Radar support](https://radar.com/support).
-
-To have a coding agent implement this guide, use the prompt in [Build with an agent](#build-with-an-agent).
+- [Search API](/api/search)
+- [Routing API](/api/routing)
+- [Web SDK](/sdk/web)
+- [Display maps](/maps/maps)
+- [Autocomplete, geocode, and validate addresses](/maps/addresses)
+- [Detect geofence events and place visits](/geofencing/geofences-and-places)

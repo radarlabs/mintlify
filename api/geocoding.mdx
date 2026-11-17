@@ -16,6 +16,8 @@ The base URL is `https://api.radar.io`. Send your API key in the `Authorization`
 
 For partial input such as a few typed characters or a place name, use [Autocomplete](/api/search#autocomplete) instead of forward geocoding.
 
+You can cache API responses for up to 30 days under the [terms of use](https://radar.com/terms). For data quality by country, see [Coverage](#coverage).
+
 ## Address object
 
 Forward geocode, reverse geocode, IP geocode, and [Autocomplete](/api/search#autocomplete) return addresses in the same shape. Only `latitude`, `longitude`, and `geometry` are always present. Radar includes the other fields when they apply to the result and its layer.
@@ -270,6 +272,8 @@ A `200` response contains `meta` and these fields:
 | `proxy` | boolean | `true` if the IP address is a known proxy. |
 | `ip` | string | The IP address that Radar geocoded. |
 
+When `proxy` is `true`, or the response has no `address`, don't assume a region. Fall back to your most protective default, or ask the user. Mobile carriers, corporate networks, and VPNs routinely place a user in a different city, state, or country, so use the result only for defaults the user can change. To prove that a user is physically in a place, or to decide eligibility for regulated activity, see [Geo-compliance overview and quickstart](/geo-compliance/overview).
+
 ### Example
 
 This request geocodes the IP address of the caller.
@@ -311,6 +315,24 @@ Radar returns this response:
   },
   "proxy": false,
   "ip": "203.0.113.10"
+}
+```
+
+This web SDK example returns region defaults, or none when there's no estimate or the request came through a known proxy:
+
+```javascript
+async function regionDefaults() {
+  try {
+    const { address, proxy } = await Radar.ipGeocode();
+
+    if (!address || proxy) {
+      return { countryCode: null, stateCode: null };
+    }
+
+    return { countryCode: address.countryCode, stateCode: address.stateCode };
+  } catch (error) {
+    return { countryCode: null, stateCode: null };
+  }
 }
 ```
 
@@ -458,3 +480,253 @@ A `400` response looks like this:
   }
 }
 ```
+
+## Coverage
+
+Radar's geocoding and search data combines open and commercial datasets. The table rates data quality and availability by country for coarse (city-level) and fine (address-level) results.
+
+| Rating | Description |
+| --- | --- |
+| Great | Great data quality and availability |
+| Good | Good data quality and availability |
+| Approximate | Approximate data quality and availability |
+
+"Geocoding" covers forward and reverse geocoding. "Autocomplete" covers address autocomplete. "Place search" covers place detection and search.
+
+| Country | Coarse geocoding | Fine geocoding | IP geocoding | Coarse autocomplete | Fine autocomplete | Place search |
+| --- | --- | --- | --- | --- | --- | --- |
+| Afghanistan | Great | Approximate | Great | Great | Approximate | Good |
+| Albania | Great | Approximate | Great | Great | Approximate | Good |
+| Algeria | Great | Great | Great | Great | Great | Good |
+| Andorra | Great | Great | Great | Great | Great | Good |
+| Angola | Great | Approximate | Great | Great | Approximate | Good |
+| Anguilla | Great | Approximate | Great | Great | Approximate | Good |
+| Antarctica | Great | Approximate | Great | Great | Approximate | Good |
+| Antigua and Barbuda | Great | Approximate | Great | Great | Approximate | Good |
+| Argentina | Great | Great | Great | Great | Good | Good |
+| Armenia | Great | Great | Great | Great | Great | Good |
+| Aruba | Great | Approximate | Great | Great | Approximate | Good |
+| Australia | Great | Great | Great | Great | Great | Good |
+| Austria | Great | Great | Great | Great | Great | Good |
+| Azerbaijan | Great | Great | Great | Great | Great | Good |
+| Bahamas | Great | Approximate | Great | Great | Approximate | Good |
+| Bahrain | Great | Great | Great | Great | Great | Good |
+| Bangladesh | Great | Approximate | Great | Great | Approximate | Good |
+| Barbados | Great | Approximate | Great | Great | Approximate | Good |
+| Belarus | Great | Great | Great | Great | Great | Good |
+| Belgium | Great | Great | Great | Great | Great | Good |
+| Belize | Great | Approximate | Great | Great | Approximate | Good |
+| Benin | Great | Approximate | Great | Great | Approximate | Good |
+| Bermuda | Great | Approximate | Great | Great | Approximate | Good |
+| Bhutan | Great | Approximate | Great | Great | Approximate | Good |
+| Bolivia | Great | Approximate | Great | Great | Approximate | Good |
+| Bonaire Sint Eustatius and Saba | Great | Approximate | Great | Great | Approximate | Good |
+| Bosnia-Herzegovina | Great | Great | Great | Great | Great | Good |
+| Botswana | Great | Approximate | Great | Great | Approximate | Good |
+| Bouvet Island | Great | Approximate | Great | Great | Approximate | Good |
+| Brazil | Great | Great | Great | Great | Great | Good |
+| British Virgin Islands | Great | Approximate | Great | Great | Approximate | Good |
+| Brunei | Great | Good | Great | Great | Good | Good |
+| Bulgaria | Great | Great | Great | Great | Great | Good |
+| Burkina Faso | Great | Approximate | Great | Great | Approximate | Good |
+| Burundi | Great | Approximate | Great | Great | Approximate | Good |
+| Cabo Verde | Great | Approximate | Great | Great | Approximate | Good |
+| Cambodia | Great | Good | Great | Great | Good | Good |
+| Cameroon | Great | Approximate | Great | Great | Approximate | Good |
+| Canada | Great | Great | Great | Great | Great | Good |
+| Cayman Islands | Great | Approximate | Great | Great | Approximate | Good |
+| Central African Republic | Great | Approximate | Great | Great | Approximate | Good |
+| Chad | Great | Approximate | Great | Great | Approximate | Good |
+| Chile | Great | Great | Great | Great | Great | Good |
+| Clipperton Island | Great | Approximate | Great | Great | Approximate | Good |
+| Cocos (Keeling) Islands | Great | Approximate | Great | Great | Approximate | Good |
+| Colombia | Great | Great | Great | Great | Great | Good |
+| Comoros | Great | Approximate | Great | Great | Approximate | Good |
+| Congo-Brazzaville | Great | Approximate | Great | Great | Approximate | Good |
+| Cook Islands | Great | Approximate | Great | Great | Approximate | Good |
+| Costa Rica | Great | Approximate | Great | Great | Approximate | Good |
+| Cote d'Ivoire | Great | Approximate | Great | Great | Approximate | Good |
+| Croatia | Great | Great | Great | Great | Great | Good |
+| Cuba | Great | Approximate | Great | Great | Approximate | Good |
+| Curacao | Great | Approximate | Great | Great | Approximate | Good |
+| Cyprus | Great | Great | Great | Great | Great | Good |
+| Czechia | Great | Great | Great | Great | Great | Good |
+| Democratic Republic of the Congo | Great | Approximate | Great | Great | Approximate | Good |
+| Denmark | Great | Great | Great | Great | Great | Good |
+| Djibouti | Great | Approximate | Great | Great | Approximate | Good |
+| Dominica | Great | Approximate | Great | Great | Approximate | Good |
+| Dominican Republic | Great | Approximate | Great | Great | Approximate | Good |
+| Ecuador | Great | Great | Great | Great | Good | Good |
+| Egypt | Great | Good | Great | Great | Good | Good |
+| El Salvador | Great | Approximate | Great | Great | Approximate | Good |
+| Equatorial Guinea | Great | Approximate | Great | Great | Approximate | Good |
+| Eritrea | Great | Approximate | Great | Great | Approximate | Good |
+| Estonia | Great | Great | Great | Great | Great | Good |
+| Eswatini | Great | Approximate | Great | Great | Approximate | Good |
+| Ethiopia | Great | Approximate | Great | Great | Approximate | Good |
+| Falkland Islands | Great | Approximate | Great | Great | Approximate | Good |
+| Faroe Islands | Great | Great | Great | Great | Great | Good |
+| Federated States of Micronesia | Great | Approximate | Great | Great | Approximate | Good |
+| Fiji | Great | Approximate | Great | Great | Approximate | Good |
+| Finland | Great | Great | Great | Great | Great | Good |
+| France | Great | Great | Great | Great | Great | Good |
+| French Guiana | Great | Great | Great | Great | Great | Good |
+| French Polynesia | Great | Approximate | Great | Great | Approximate | Good |
+| French Southern and Antarctic Lands | Great | Approximate | Great | Great | Approximate | Good |
+| Gabon | Great | Approximate | Great | Great | Approximate | Good |
+| Georgia | Great | Great | Great | Great | Great | Good |
+| Germany | Great | Great | Great | Great | Great | Good |
+| Ghana | Great | Approximate | Great | Great | Approximate | Good |
+| Gibraltar | Great | Approximate | Great | Great | Approximate | Good |
+| Greece | Great | Great | Great | Great | Great | Good |
+| Greenland | Great | Approximate | Great | Great | Approximate | Good |
+| Grenada | Great | Approximate | Great | Great | Approximate | Good |
+| Guadeloupe | Great | Great | Great | Great | Great | Good |
+| Guatemala | Great | Approximate | Great | Great | Approximate | Good |
+| Guinea | Great | Approximate | Great | Great | Approximate | Good |
+| Guinea-Bissau | Great | Approximate | Great | Great | Approximate | Good |
+| Guyana | Great | Approximate | Great | Great | Approximate | Good |
+| Haiti | Great | Approximate | Great | Great | Approximate | Good |
+| Heard Island and McDonald Islands | Great | Approximate | Great | Great | Approximate | Good |
+| Holy See | Great | Approximate | Great | Great | Approximate | Good |
+| Honduras | Great | Approximate | Great | Great | Approximate | Good |
+| Hong Kong | Great | Good | Great | Great | Good | Good |
+| Hungary | Great | Great | Great | Great | Great | Good |
+| Iceland | Great | Great | Great | Great | Great | Good |
+| India | Great | Good | Great | Great | Good | Good |
+| Indonesia | Great | Good | Great | Great | Good | Good |
+| Iran | Great | Approximate | Great | Great | Approximate | Good |
+| Iraq | Great | Approximate | Great | Great | Approximate | Good |
+| Ireland | Great | Great | Great | Great | Great | Good |
+| Israel | Great | Good | Great | Great | Good | Good |
+| Italy | Great | Great | Great | Great | Great | Good |
+| Jamaica | Great | Approximate | Great | Great | Approximate | Good |
+| Japan | Great | Good | Great | Great | Good | Good |
+| Jordan | Great | Good | Great | Great | Good | Good |
+| Kazakhstan | Great | Good | Great | Great | Good | Good |
+| Kenya | Great | Approximate | Great | Great | Approximate | Good |
+| Kiribati | Great | Approximate | Great | Great | Approximate | Good |
+| Kosovo | Great | Great | Great | Great | Great | Good |
+| Kuwait | Great | Good | Great | Great | Good | Good |
+| Kyrgyzstan | Great | Approximate | Great | Great | Approximate | Good |
+| Laos | Great | Good | Great | Great | Good | Good |
+| Latvia | Great | Great | Great | Great | Great | Good |
+| Lebanon | Great | Good | Great | Great | Good | Good |
+| Lesotho | Great | Approximate | Great | Great | Approximate | Good |
+| Liberia | Great | Approximate | Great | Great | Approximate | Good |
+| Libya | Great | Approximate | Great | Great | Approximate | Good |
+| Liechtenstein | Great | Great | Great | Great | Great | Good |
+| Lithuania | Great | Great | Great | Great | Great | Good |
+| Luxembourg | Great | Great | Great | Great | Great | Good |
+| Macao | Great | Good | Great | Great | Good | Good |
+| Madagascar | Great | Approximate | Great | Great | Approximate | Good |
+| Malawi | Great | Approximate | Great | Great | Approximate | Good |
+| Malaysia | Great | Good | Great | Great | Good | Good |
+| Maldives | Great | Approximate | Great | Great | Approximate | Good |
+| Mali | Great | Approximate | Great | Great | Approximate | Good |
+| Malta | Great | Great | Great | Great | Great | Good |
+| Marshall Islands | Great | Approximate | Great | Great | Approximate | Good |
+| Martinique | Great | Great | Great | Great | Great | Good |
+| Mauritania | Great | Approximate | Great | Great | Approximate | Good |
+| Mauritius | Great | Approximate | Great | Great | Approximate | Good |
+| Mayotte | Great | Great | Great | Great | Great | Good |
+| Mexico | Great | Great | Great | Great | Great | Good |
+| Moldova | Great | Great | Great | Great | Great | Good |
+| Monaco | Great | Good | Great | Great | Good | Good |
+| Mongolia | Great | Approximate | Great | Great | Approximate | Good |
+| Montenegro | Great | Great | Great | Great | Great | Good |
+| Montserrat | Great | Approximate | Great | Great | Approximate | Good |
+| Morocco | Great | Good | Great | Great | Good | Good |
+| Mozambique | Great | Approximate | Great | Great | Approximate | Good |
+| Myanmar | Great | Good | Great | Great | Good | Good |
+| Namibia | Great | Approximate | Great | Great | Approximate | Good |
+| Nauru | Great | Approximate | Great | Great | Approximate | Good |
+| Nepal | Great | Approximate | Great | Great | Approximate | Good |
+| Netherlands | Great | Great | Great | Great | Great | Good |
+| New Caledonia | Great | Approximate | Great | Great | Approximate | Good |
+| New Zealand | Great | Great | Great | Great | Great | Good |
+| Nicaragua | Great | Approximate | Great | Great | Approximate | Good |
+| Niger | Great | Approximate | Great | Great | Approximate | Good |
+| Nigeria | Great | Approximate | Great | Great | Approximate | Good |
+| Niue | Great | Approximate | Great | Great | Approximate | Good |
+| Norfolk Island | Great | Approximate | Great | Great | Approximate | Good |
+| Norway | Great | Great | Great | Great | Great | Good |
+| Pakistan | Great | Approximate | Great | Great | Approximate | Good |
+| Palau | Great | Approximate | Great | Great | Approximate | Good |
+| Panama | Great | Approximate | Great | Great | Approximate | Good |
+| Papua New Guinea | Great | Approximate | Great | Great | Approximate | Good |
+| Paraguay | Great | Great | Great | Great | Great | Good |
+| Peru | Great | Great | Great | Great | Good | Good |
+| Philippines | Great | Good | Great | Great | Good | Good |
+| Pitcairn Islands | Great | Approximate | Great | Great | Approximate | Good |
+| Poland | Great | Great | Great | Great | Great | Good |
+| Portugal | Great | Great | Great | Great | Great | Good |
+| Qatar | Great | Approximate | Great | Great | Approximate | Good |
+| Republic of Korea | Great | Approximate | Great | Great | Approximate | Good |
+| Republic of North Macedonia | Great | Great | Great | Great | Great | Good |
+| Reunion | Great | Great | Great | Great | Great | Good |
+| Romania | Great | Great | Great | Great | Great | Good |
+| Russia | Great | Great | Great | Great | Great | Good |
+| Rwanda | Great | Approximate | Great | Great | Approximate | Good |
+| Saint Barthelemy | Great | Approximate | Great | Great | Approximate | Good |
+| Saint Helena | Great | Approximate | Great | Great | Approximate | Good |
+| Saint Kitts and Nevis | Great | Approximate | Great | Great | Approximate | Good |
+| Saint Lucia | Great | Approximate | Great | Great | Approximate | Good |
+| Saint Martin | Great | Approximate | Great | Great | Approximate | Good |
+| Saint Pierre and Miquelon | Great | Approximate | Great | Great | Approximate | Good |
+| Saint Vincent and the Grenadines | Great | Approximate | Great | Great | Approximate | Good |
+| Samoa | Great | Approximate | Great | Great | Approximate | Good |
+| San Marino | Great | Great | Great | Great | Great | Good |
+| Sao Tome and Principe | Great | Approximate | Great | Great | Approximate | Good |
+| Saudi Arabia | Great | Good | Great | Great | Good | Good |
+| Senegal | Great | Approximate | Great | Great | Approximate | Good |
+| Serbia | Great | Great | Great | Great | Great | Good |
+| Seychelles | Great | Approximate | Great | Great | Approximate | Good |
+| Sierra Leone | Great | Approximate | Great | Great | Approximate | Good |
+| Singapore | Great | Good | Great | Great | Good | Good |
+| Sint Maarten | Great | Approximate | Great | Great | Approximate | Good |
+| Slovakia | Great | Great | Great | Great | Great | Good |
+| Slovenia | Great | Great | Great | Great | Great | Good |
+| Solomon Islands | Great | Approximate | Great | Great | Approximate | Good |
+| Somalia | Great | Approximate | Great | Great | Approximate | Good |
+| South Africa | Great | Great | Great | Great | Great | Good |
+| South Georgia and the South Sandwich Islands | Great | Approximate | Great | Great | Approximate | Not rated |
+| South Sudan | Great | Approximate | Great | Great | Approximate | Good |
+| Spain | Great | Great | Great | Great | Great | Good |
+| Sri Lanka | Great | Approximate | Great | Great | Approximate | Good |
+| State Of Palestine | Great | Approximate | Great | Great | Approximate | Good |
+| Sudan | Great | Approximate | Great | Great | Approximate | Good |
+| Suriname | Great | Approximate | Great | Great | Approximate | Good |
+| Sweden | Great | Great | Great | Great | Great | Good |
+| Switzerland | Great | Great | Great | Great | Great | Good |
+| Syria | Great | Approximate | Great | Great | Approximate | Good |
+| Taiwan | Great | Approximate | Great | Great | Approximate | Good |
+| Tajikistan | Great | Approximate | Great | Great | Approximate | Good |
+| Tanzania | Great | Approximate | Great | Great | Approximate | Good |
+| Thailand | Great | Approximate | Great | Great | Approximate | Good |
+| The Gambia | Great | Approximate | Great | Great | Approximate | Good |
+| The Sultanate of Oman | Great | Approximate | Great | Great | Approximate | Good |
+| Timor-Leste | Great | Approximate | Great | Great | Approximate | Good |
+| Togo | Great | Approximate | Great | Great | Approximate | Good |
+| Tokelau | Great | Approximate | Great | Great | Approximate | Good |
+| Tonga | Great | Approximate | Great | Great | Approximate | Good |
+| Trinidad and Tobago | Great | Approximate | Great | Great | Approximate | Good |
+| Tunisia | Great | Great | Great | Great | Great | Good |
+| Turkey | Great | Great | Great | Great | Great | Good |
+| Turkmenistan | Great | Approximate | Great | Great | Approximate | Good |
+| Turks and Caicos Islands | Great | Approximate | Great | Great | Approximate | Good |
+| Tuvalu | Great | Approximate | Great | Great | Approximate | Good |
+| Uganda | Great | Approximate | Great | Great | Approximate | Good |
+| Ukraine | Great | Great | Great | Great | Great | Good |
+| United Arab Emirates | Great | Good | Great | Great | Good | Good |
+| United Kingdom | Great | Great | Great | Great | Great | Good |
+| United States | Great | Great | Great | Great | Great | Great |
+| Uruguay | Great | Great | Great | Great | Great | Good |
+| Uzbekistan | Great | Approximate | Great | Great | Approximate | Good |
+| Vanuatu | Great | Approximate | Great | Great | Approximate | Good |
+| Venezuela | Great | Approximate | Great | Great | Approximate | Good |
+| Vietnam | Great | Approximate | Great | Great | Approximate | Good |
+| Wallis and Futuna | Great | Approximate | Great | Great | Approximate | Good |
+| Yemen | Great | Approximate | Great | Great | Approximate | Good |
+| Zambia | Great | Approximate | Great | Great | Approximate | Good |
+| Zimbabwe | Great | Approximate | Great | Great | Approximate | Good |
