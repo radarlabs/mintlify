@@ -301,7 +301,7 @@ Each implementation guide has a `## Build with an agent` section directly after 
 | verified location check, then "check" | verification call, verified request |
 | geolocation token, then "token" | JWT (unless describing the format), location token |
 | geofence, place, trip, beacon (lowercase) | Geofence, Trip |
-| Places (the feature), Radar SDK, Radar API | places feature, the SDK's API |
+| Places (the feature), Radar SDK, Radar API | Radar Places, places feature, the SDK's API |
 | user ID (concept), `userId` (field) | UserID, user id |
 | iOS, Android, web (lowercase web) | Web, the browser SDK |
 | turn on, turn off | enable, disable (for toggles) |
