@@ -4,92 +4,24 @@ sidebarTitle: "Test and go live"
 description: "Reproduce a successful and a failed Radar workflow in the Test environment, inspect why each result happened, fix common problems, and work through a go-live checklist."
 ---
 
-import TestBlockBypass from '/snippets/test-block-bypass.mdx';
-
 By the end of this page you can reproduce a passing and a failing result on a test device, see why Radar produced each one, and run a checklist before you switch to Live keys.
 
 ## Start from the symptom
 
-| Symptom | Check first | Go deeper |
-| --- | --- | --- |
-| The device never appears in the Radar dashboard | Publishable key, initialization, and location permission. See [Device doesn't appear in the dashboard](#device-doesnt-appear-in-the-dashboard). | [iOS SDK](/sdk/ios), [Android SDK](/sdk/android) |
-| Geofence or place events don't fire | Whether a location update arrived, and whether the device was outside the geofence first. See [Events don't fire](#events-dont-fire). | [Detect geofence events and place visits](/geofencing/geofences-and-places) |
-| Events fire in the foreground but not in the background | Background permission and background modes. See [Events don't fire](#events-dont-fire). | [Location permissions](/fundamentals/location-permissions) |
-| A trip doesn't start, update, or end | The trip status and the last location update on the user. | [Track pickups, deliveries, and workers](/geofencing/trips) |
-| A location check fails when you expect a pass, or passes when you expect a fail | The failure reasons on the check on the Locations page. See [Inspect a location check](#inspect-a-location-check). | [Geo-compliance overview and quickstart](/geo-compliance/overview) |
-| You can't produce a failed check to test your blocked screen | A scoped block rule for your test user. See [Force a pass or a fail](#force-a-pass-or-a-fail). | [Verify location eligibility for sportsbooks and casinos](/geo-compliance/gaming) |
-| A fraud rule or case doesn't trigger | The rule conditions against the check you expected to match. | [Fraud overview and quickstart](/fraud/overview) |
-| The SDK returns an error status | The status name. See [Tell technical errors from application decisions](#tell-technical-errors-from-application-decisions). | [Authentication, errors, and rate limits](/api/fundamentals) |
-| Your listener or receiver is never called | Whether events are generated at all, then where the listener is registered. See [Listeners don't deliver](#listeners-dont-deliver). | [iOS SDK](/sdk/ios), [Android SDK](/sdk/android) |
-| Map, search, or geocoding requests fail | The key type and any website or mobile restriction on it. | [Maps overview and quickstart](/maps/overview) |
+| Symptom | Start here |
+| --- | --- |
+| The device never appears in the Radar dashboard | [Device doesn't appear in the dashboard](#device-doesnt-appear-in-the-dashboard) |
+| Geofence or place events don't fire, or fire only in the foreground | [Events don't fire](#events-dont-fire) |
+| Your listener or receiver is never called | [Listeners don't deliver](#listeners-dont-deliver) |
+| A location check passes or fails when you expect the opposite | [Inspect what happened](#inspect-what-happened) |
+| You can't produce a failed check to test your blocked screen | [Force a pass or a fail](#force-a-pass-or-a-fail) |
+| The SDK returns an error status | [Test the failure paths](#test-the-failure-paths) |
 
 ## Set up a safe test environment
 
-Tests must not change real customer records. Set these up before you test anything:
-
-1. **Test keys**: Initialize development and staging builds with `prj_test_pk_...`, and call the API from development backends with `prj_test_sk_...`. Switch the dashboard to Test to see the results. See [Choose the right API key](/fundamentals/authentication-and-access#choose-the-right-api-key).
-2. **Named test identities**: Give each tester and each automated test a fixed `userId` that is clearly not a customer, for example `test-qa-ana` or `test-ci-android-01`. Keep the list where your team can find it. Named identities let you filter the dashboard, scope rules to them, and clean up afterwards.
-3. **Live data**: Keep test data out of Live. If you must test in Live, for example to confirm Live configuration before launch, use only your named test identities and remove what you created when you finish.
-4. **Rule permissions**: Limit who can change rules. Block rules need the Write role. Bypass rules and overrides need Admin. See [Roles and what each can do](/fundamentals/authentication-and-access#roles-and-what-each-can-do).
-
-### Clean up test data
-
-- Delete test users from the user detail page in the dashboard, or with the [Users API](/api/users).
-- Delete or disable every block rule, bypass rule, and override you created for testing. Set a **Disable after** date on temporary rules, so that they don't outlive the test.
-- Delete test geofences and trips that you created by hand in Live.
-- Data in Test also expires according to your [data retention settings](/fundamentals/authentication-and-access#find-and-change-data-retention), which apply to both environments.
-
-## Force a pass or a fail
-
-To test how your app handles a failed location check without travelling, or a passing check from a place where checks normally fail, scope a rule to one of your named test identities. Bypass rules are for internal testing only and must never be applied to real end users.
-
-<TestBlockBypass />
-
-After each rule change, run a new check from the test device, then confirm two things: the result in the dashboard matches the rule, and your app shows the screen you expect for that result.
-
-For fraud rules, cases, and their test steps, see [Fraud overview and quickstart](/fraud/overview).
-
-## Test location and movement
-
-### Use a physical device for final results
-
-Simulators and emulators are useful for layout and control flow. They aren't a substitute for a device:
-
-- Location sensors, motion, Bluetooth, and background execution behave differently or are missing.
-- Fraud checks can flag a simulator or emulator, for example as a mocked location. Run location verification tests on physical devices.
-- Background delivery, battery behavior, and permission prompts must be confirmed on real hardware, on both iOS and Android.
-
-### Simulate location in the dashboard
-
-The [Simulator](https://dashboard.radar.com/geofencing/simulate) page in the dashboard generates location updates without a device.
-
-1. Switch the dashboard to Test.
-2. Open the Simulator page and click the map to generate a location for the default user `simulated-user-id`. Entries, exits, and other events appear in the activity feed as the API would produce them.
-3. To simulate a specific user, open that user from the [Users](https://dashboard.radar.com/geofencing/users) page and click **Simulate**.
-4. To simulate a trip, enter `externalId`, `destinationGeofenceTag`, and `destinationGeofenceExternalId`, or select a geofence on the map and set it as the trip destination. Then start the trip and click along a route.
-
-Simulated locations and events follow your project settings and are sent to the integrations enabled for that environment. Run simulations in Test so that nothing reaches Live systems.
-
-### Simulate movement from the SDK
-
-`Radar.mockTracking()` sends a sequence of mock location updates along a route between an origin and a destination. Use it to exercise geofence entry, exit, and trip events from a development build. For the parameters, see the mock tracking section of [iOS SDK](/sdk/ios) or [Android SDK](/sdk/android).
-
-Mock tracking is for functional tests of geofencing and trips. It doesn't produce verified location checks. To test verification outcomes, use the rules in [Force a pass or a fail](#force-a-pass-or-a-fail).
-
-### Test real movement
-
-Before launch, run at least one test with real movement for each workflow you ship:
-
-- Start outside the geofence. A device must be seen outside a geofence before Radar generates another entry event for it.
-- Move far enough and stay long enough for your tracking options. For example, with stop detection turned on, a brief pass through a geofence may not count as a stop. See [Tracking options](/sdk/tracking).
-- Test with the app in the foreground, in the background, and after the device has been locked for several minutes.
-- Record the time you crossed each boundary, then compare it with the event times in the dashboard.
-
-## Inspect what happened
-
-### Turn on SDK debug logging
-
-By default the SDK logs only critical errors. In development builds, raise the log level to see each request and response:
+- **Test keys**: Initialize development builds with `prj_test_pk_...`, and switch the dashboard to Test. See [Choose the right API key](/fundamentals/authentication-and-access#choose-the-right-api-key).
+- **Named test users**: Give each tester a fixed `userId` that is clearly not a customer, for example `test-user-123`, so that you can scope rules to it and clean up afterwards.
+- **Debug logging**: In development builds, raise the log level to see each request and response:
 
 <CodeGroup>
 
@@ -107,210 +39,111 @@ Radar.setLogLevel(Radar.RadarLogLevel.DEBUG)
 
 </CodeGroup>
 
-A successful track request logs a `200` status code for `POST https://api.radar.io/v1/track`. Don't ship debug logging in production builds.
+## Force a pass or a fail
 
-### Find a user or device
+To test a failed verified location check without travelling, or a passing check from a place where checks normally fail, scope a rule to one named test user in the Test environment. A block rule needs the Write role, and a bypass rule needs Admin.
 
-1. Open the [Users](https://dashboard.radar.com/geofencing/users) page in the environment you tested in.
-2. Search or filter by your test `userId`, shown as **External ID**.
-3. Open the user to see their last location, the geofences and places they are in, and the SDK version on their device.
+<Warning>
+  Bypass rules are for internal testing only. Never apply them to real end users.
+</Warning>
 
-If the same person appears more than once, compare the `userId`, `deviceId`, and install on each record. Radar keeps a separate record for each unique combination. See [Handle login, logout, and user switching](/fundamentals/authentication-and-access#handle-login-logout-and-user-switching).
+To block the test user and confirm the rejection:
 
-### Review a user's activity
+1. In the dashboard, open the **Block rules** page and click **Create**. Match on the user ID, enter `test-user-123`, add a description, and select **Blocked**.
+2. Sign in to your app as `test-user-123` and trigger a check. The token returns `passed` set to `false`, `failureReasons` containing `fraud_blocked_user_id`, and `user.fraud.blocked` set to `true`. Your app shows its blocked state.
+3. Send the protected request directly to your backend with the failed token. Your backend must reject it. If the request succeeds, your backend is trusting the client instead of reading `passed` from the verified token.
 
-From the user detail page, open the user's activity view. It shows recent locations and events on a map alongside your geofences.
+To pass checks for a tester who is outside your allowed area or on a development device:
 
-- Select a location or event in the feed to center the map on it and see its accuracy radius.
-- Narrow the time range to the minute you are investigating.
-- Compare the accuracy radius with the geofence size. A small geofence and an inaccurate location produce a low-confidence event.
+1. Create a rule the same way, and select **Bypassed**. To limit the rule, restrict it to specific countries or states, or to specific failure reasons in **Bypassed failure reasons**.
+2. Run a check as the test user. The token returns `passed` set to `true` and `user.fraud.bypassed` set to `true`, and your backend performs the action.
 
-Each location has a source that tells you what triggered it:
+Your backend can read `user.fraud.bypassed` to tell a bypassed pass from a regular one. In production, consider rejecting tokens with `user.fraud.bypassed` set to `true` unless the user is on your internal tester list.
 
-| Source | Triggered by |
-| --- | --- |
-| `FOREGROUND_LOCATION` | `Radar.trackOnce()` |
-| `BACKGROUND_LOCATION` | `Radar.startTracking()` |
-| `MANUAL_LOCATION` | `Radar.trackOnce()` with a location you passed in |
-| `GEOFENCE_ENTER`, `GEOFENCE_EXIT` | A client-side geofence, either a nearby synced geofence or the geofence the SDK places around the current location |
-| `BEACON_ENTER`, `BEACON_EXIT` | A client-side beacon entry or exit |
-| `VISIT_ARRIVAL`, `VISIT_DEPARTURE` | The iOS visit monitoring service (iOS only) |
-| `MOCK_LOCATION` | `Radar.mockTracking()` |
+To test one specific failure reason or location, open the user or device in the dashboard, open its menu, and select **Set override**.
 
-### Inspect a location check
+To clean up:
 
-For Geo-compliance and Fraud, each verified location check is listed on the [Locations](https://dashboard.radar.com/geofencing/locations) page.
+1. Disable or delete each rule you created for the test user, and remove any override.
+2. Run one more check. Confirm that `user.fraud.blocked` and `user.fraud.bypassed` are both `false`.
+3. Confirm that no bypass rule exists in the Live environment for a real user.
 
-1. Click **Filters** and filter by user ID, IP address, or jurisdiction. Use the date filters to narrow the time range.
-2. Open the check. The detail page shows a map of the location, whether the check passed, the failure reasons if it didn't, and the user, device, IP address, and jurisdiction details.
-3. Compare the failure reasons with what your app displayed. Your app must make its decision from the same result.
+## Test location and movement
 
-For what each failure reason means and what to tell the user, see [Geo-compliance overview and quickstart](/geo-compliance/overview).
+- **Dashboard**: On the [Simulator](https://dashboard.radar.com/geofencing/simulate) page, click the map to generate location updates and events without a device. Simulated events are sent to your integrations, so simulate in Test.
+- **SDK**: `Radar.mockTracking()` sends mock location updates along a route, to exercise geofence and trip events. It doesn't produce verified location checks.
+- **Physical device**: Confirm final results on real hardware. Fraud checks can flag a simulator or emulator. Start outside the geofence: a device must be seen outside a geofence before Radar generates another entry event for it.
 
-### Tell technical errors from application decisions
+## Inspect what happened
 
-A failed check and a failed request are different outcomes, and your app must handle them differently.
+Open the [Users](https://dashboard.radar.com/geofencing/users) page and filter by your test `userId`, shown as **External ID**. The user shows their last location and the geofences and places they are in.
 
-| Outcome | How you see it | What it means | What your app does |
-| --- | --- | --- | --- |
-| Request succeeded, check passed | Status `SUCCESS`, and the result reports a pass | Radar evaluated the location and it met your rules. | Allow the action. |
-| Request succeeded, check failed | Status `SUCCESS`, and the result reports a failure with reasons | Radar evaluated the location and it didn't meet your rules. This is a decision, not an error. | Block the action and explain why. Don't retry in a loop. |
-| `ERROR_PERMISSIONS` | Error status | The user hasn't granted location permission. | Explain what to turn on. See [Location permissions](/fundamentals/location-permissions). |
-| `ERROR_LOCATION` | Error status | The device could not determine a location. | Ask the user to turn on location services and Wi-Fi, then let them retry. |
-| `ERROR_NETWORK` | Error status | The request didn't reach Radar. | Ask the user to check their connection, then let them retry. |
-| `ERROR_PUBLISHABLE_KEY`, `ERROR_UNAUTHORIZED` | Error status | The SDK wasn't initialized with a valid key or token. | Fix your configuration. This isn't a user problem. |
-| `ERROR_FORBIDDEN` | Error status | The key or token isn't permitted to make this request. | Check key restrictions and feature access for the project. |
-| `ERROR_RATE_LIMIT` | Error status | Too many requests from this device or project. | Back off. See [Rate limit errors](#rate-limit-errors). |
-| `ERROR_SERVER`, `ERROR_UNKNOWN` | Error status | The request failed for another reason. | Retry later with a limit, and show a fallback message. |
-
-When an action depends on a passing check, treat every error status as "not verified". Never allow the action because a request failed.
+Each verified location check is listed on the [Locations](https://dashboard.radar.com/geofencing/locations) page. Filter by user ID, IP address, or jurisdiction, then open the check to see whether it passed and its failure reasons.
 
 ## Test the failure paths
 
-Run each of these in Test before launch. For each one, write down what the user sees.
+A check that can't complete returns an error status and no token. Reproduce each of these on a device:
 
 | Condition | How to reproduce | Expected behavior |
 | --- | --- | --- |
-| No network | Turn on airplane mode, then trigger a location call. | The SDK returns `ERROR_NETWORK`. Your app shows a retry option and doesn't treat the user as verified. |
-| Slow or dropped network | Use a network conditioner or a weak connection. | Your app shows progress, times out cleanly, and doesn't send duplicate actions. |
-| Permission denied or revoked | Deny location, or turn it off in Settings while the app is in the background. | `ERROR_PERMISSIONS`, and the no-location experience. |
+| No network | Turn on airplane mode, then trigger a location call. | `ERROR_NETWORK`. Your app shows a retry option. |
+| Permission denied | Deny location, or turn it off in Settings. | `ERROR_PERMISSIONS`, and the no-location experience. |
 | Location unavailable | Turn off location services for the device. | `ERROR_LOCATION`, with guidance to turn location on. |
-| Stale result | Complete a check, wait until after its expiry time, then attempt the protected action. | Your app or backend rejects the expired result and requests a new check. |
-| Device clock changed | Change the device time, then attempt the protected action. | Your backend decides expiry using its own clock, not the device clock. |
-| App backgrounded mid-flow | Start a check or trip, then switch apps and return. | The flow resumes or restarts cleanly. No duplicate trips or checks. |
-| App terminated | Force quit the app during a trip, then reopen it. | Your app reads the current trip state and resumes or ends tracking. While the app stays force quit, no location is delivered. |
-| User switches account | Log out and log in as a second test identity on the same device. | The next location or check is attributed to the second identity. |
+| Stale result | Complete a check, wait until after its expiry time, then attempt the protected action. | Your backend rejects the expired result and your app requests a new check. |
+| App terminated | Force quit the app during a trip, then reopen it. | Your app reads the current trip state and resumes or ends tracking. |
+| User switches account | Log out and log in as a second test user on the same device. | The next location or check is attributed to the second user. |
 
-For verified location checks, make the final decision on your backend from a validated geolocation token, including its expiry. See [Geolocation token schema](/api/geolocation-tokens).
+When an action depends on a passing check, treat every error status as "not verified". Never allow the action because a request failed. Make the final decision on your backend from a validated token. See [Geolocation token schema](/api/geolocation-tokens).
 
 ## Fix common problems
 
 ### Device doesn't appear in the dashboard
 
-A device appears after its first successful track request.
-
-1. Confirm that location permission is granted on the device.
-2. Confirm that the SDK is initialized at app launch with the publishable key for the environment you are viewing. On iOS, initialize in `application(_:didFinishLaunchingWithOptions:)`. On Android, initialize in `onCreate()` of your `Application` class.
-3. Call `Radar.trackOnce()` and log the status in the callback.
-4. Turn on [debug logging](#turn-on-sdk-debug-logging) and look for the track request and its status code.
-5. Check that the dashboard is set to the same environment as your key.
+A device appears after its first successful track request. Confirm that location permission is granted, that the SDK is initialized at app launch with the publishable key for the environment the dashboard is showing, and that `Radar.trackOnce()` is called. With debug logging on, a successful track request logs a `200` status code for `POST https://api.radar.io/v1/track`.
 
 ### Events don't fire
 
-1. Confirm that a location update arrived. Open the user in the dashboard and check the time of their last location.
-2. Confirm that events are turned on for the [context type](/fundamentals/context-types) you're testing on the [Settings](https://dashboard.radar.com/settings) page.
-3. Confirm that you called `Radar.startTracking()` if you expect events while the app is in the background.
-4. Confirm that background permission is granted and, on iOS, that the Location updates background mode is on when you use the responsive or continuous preset.
-5. Confirm that the device moved enough to trigger an update under your [tracking options](/sdk/tracking), and that it was seen outside the geofence before the entry you expected.
-6. Test on a physical device.
+1. Check the time of the user's last location in the dashboard, to confirm that an update arrived.
+2. Confirm that events are turned on for the [context type](/fundamentals/context-types) on the [Settings](https://dashboard.radar.com/settings) page.
+3. For events in the background, confirm that you called `Radar.startTracking()`, that background permission is granted and, on iOS, that the Location updates background mode is on when you use the responsive or continuous preset.
+4. Confirm that the device moved enough to trigger an update under your [tracking options](/sdk/tracking), and was seen outside the geofence first.
 
 ### Listeners don't deliver
 
-1. Confirm that the event appears in the dashboard. A listener is called only when an event is generated.
-2. Confirm where the listener is registered. On iOS, set the `RadarDelegate` at app launch. On Android, register the `RadarReceiver` in your `Application` class. In cross-platform frameworks, register listeners outside the view lifecycle so that they exist when the app is launched in the background.
-3. Use the right listener for the job:
-   - The client location listener (`didUpdateClientLocation` on iOS, `onClientLocationUpdated` on Android) is called when the SDK receives a location from the device, before it is sent to Radar.
-   - The location listener (`didUpdateLocation` on iOS, `onLocationUpdated` on Android) is called after Radar processes a location, with updated user context.
-   - The events listener (`didReceiveEvents`) is called only when a location update generates events.
-4. Implement the error listener (`didFail` on iOS, `onError` on Android) and log what it receives.
-
-### The same user appears more than once
-
-Radar keeps one user record for each combination of install, device, and `userId`. Changing or clearing the `userId` on a device creates a new record. Review when your app calls `Radar.setUserId()`. See [Handle login, logout, and user switching](/fundamentals/authentication-and-access#handle-login-logout-and-user-switching).
-
-### Rate limit errors
-
-The track endpoint is limited per device, per second, per hour, and per day. If you reach a limit:
-
-- Collect locations less often by adjusting your [tracking options](/sdk/tracking).
-- Don't call `Radar.trackOnce()` in a loop or on every screen.
-- During testing, if a device reaches the hourly or daily limit, reinstall the app to reset it.
+A listener is called only when an event is generated, so first confirm that the event appears in the dashboard. Then check where the listener is registered: on iOS, set the `RadarDelegate` at app launch, and on Android, register the `RadarReceiver` in your `Application` class. In cross-platform frameworks, register listeners outside the view lifecycle so that they exist when the app is launched in the background.
 
 ### Another location SDK is installed
 
-You can run Radar alongside another location SDK while you migrate. On iOS, significant location change, region, and visit events can be delivered to every `CLLocationManager` in the app, so the Radar SDK may receive location updates that another SDK triggered, even before you call a Radar tracking method. This doesn't happen on Android.
+On iOS, significant location change, region, and visit events can be delivered to every `CLLocationManager` in the app, so the Radar SDK may receive location updates that another SDK triggered, even before you call a Radar tracking method. This doesn't happen on Android.
 
 ### Measure battery use
 
-To measure the battery use of Radar background tracking, isolate it from the rest of your app and the device:
+Install two builds of your app on the same device model, one with Radar background tracking and one without. Use the phone normally for a full day without opening either app, then compare them on the Battery screen in the device settings. That screen shows each app's share of the battery used in that period, not a share of the full battery.
 
-1. Install two builds of your app on the same device model, one with Radar background tracking and one without. As an alternative, install the [Radar Waypoint app](/waypoint), which only runs Radar.
-2. Use the phone normally for a full day and don't open either app. An open app and a lit screen usually use more battery than location services do.
-3. Compare the apps on the Battery screen in the device settings.
+## Create, save, and subscribe to reports
 
-The Battery screen shows each app's share of the battery used in that period, not a share of the full battery. If your app shows 2 percent and the phone used 50 percent of its battery, your app used about 1 percent of the full battery.
+You need the Write role or above to save a report or create a subscription.
 
-With the efficient and responsive presets, the SDK wakes up while the user is moving and shuts down when they stop.
+1. Open the analysis view from the Locations page. Choose a chart type or a table, then set filters, the date range, and columns.
+2. Click **Save** and enter a title and description.
+3. Open the saved report. Export it for a one-time file, or click **Subscribe to report** and enter the recipients' email addresses and the frequency.
 
-## Find, export, and report on data
+## Roll out gradually
 
-### Look up users, devices, and checks
+Before you enforce a new check, run it alongside the one it replaces: your current provider stays in control, your app also runs a Radar check at the same moments, and your backend records the Radar result without enforcing it.
 
-- **Users**: The [Users](https://dashboard.radar.com/geofencing/users) page. Filter by user ID or open a user directly.
-- **Events**: The [Events](https://dashboard.radar.com/geofencing/events) page.
-- **Location checks**: The [Locations](https://dashboard.radar.com/geofencing/locations) page. Click **Filters** to narrow by user ID, IP address, or jurisdiction, and use the date filters for a time range.
-
-Save the filters you use every day as a report so that you don't need to rebuild them. See [Create, save, and subscribe to reports](#create-save-and-subscribe-to-reports).
-
-### Export data
-
-Export the current list from the dashboard when you need to work with the data elsewhere, or export a single user's data from the user detail page. Which exports you can run depends on your role. See [Export data](/fundamentals/authentication-and-access#export-data).
-
-For a continuous feed, use [webhooks](/integrations/webhooks) or the [AWS S3](/integrations/aws-s3) integration, not repeated manual exports.
-
-### Create, save, and subscribe to reports
-
-You need the Write role or above to save a report or create a subscription. Read accounts can view saved reports.
-
-<Steps>
-  <Step title="Build the report">
-    Open the analysis view from the Locations page. Choose a chart type, or choose a table for a spreadsheet-style report. Choose what each row or series represents, then set filters, the date range, and columns.
-  </Step>
-  <Step title="Save it">
-    Click **Save** and enter a title and description. To keep the original and create a variant, click **Save as**.
-  </Step>
-  <Step title="Export or subscribe">
-    Open the saved report. Export it for a one-time file. To receive it on a schedule, click **Subscribe to report**, then enter the recipients' email addresses and the frequency.
-  </Step>
-</Steps>
-
-To verify, open the saved report from the reports list and confirm that the first scheduled email arrives. Add only recipients who are permitted to see the location data in the report.
+- **Shadow traffic can create history and risk signals**: Shadow checks are real checks. They create user and device records and location history in Radar, and they can contribute to fraud flags and risk scores. Agree with your Radar account team how that history is handled when you start enforcing.
+- **Compare**: Look at pass rate, failure reasons, technical error rate, and latency, and review a sample of the checks where the two providers disagree.
+- **Switch**: Enforce in stages, behind a server-side flag that your backend reads on each restricted request.
+- **Roll back**: Rollback is the same flag turned off. Keep the previous integration deployable until the final stage is complete.
 
 ## Go-live checklist
 
-### Configuration
-
-- [ ] Production builds use the Live publishable key. Production backends use the Live secret key from a secret store.
-- [ ] Development and staging builds still use Test keys.
+- [ ] Production builds use the Live publishable key, and production backends use the Live secret key from a secret store.
 - [ ] Website and mobile restrictions are set on your publishable keys.
 - [ ] Live settings match what you tested in Test: geofences, event types, tracking options, integrations, webhooks, and, for Geo-compliance, jurisdiction settings.
 - [ ] Debug logging is off in production builds.
-
-### Access and data
-
-- [ ] Each teammate has their own account with the lowest role that covers their work.
-- [ ] The list of Admin and Owner accounts has been reviewed.
-- [ ] Data retention is set to the periods you intend.
-- [ ] No test block rule, bypass rule, or override remains in Live. Confirm this on the day you launch.
-
-### Behavior
-
-- [ ] You reproduced one successful and one failed workflow on a physical iPhone and a physical Android device.
-- [ ] You tested every row in [Test the failure paths](#test-the-failure-paths).
+- [ ] No test block rule, bypass rule, or override remains in Live.
+- [ ] You reproduced one successful and one failed workflow on a physical iPhone and a physical Android device, and tested every row in [Test the failure paths](#test-the-failure-paths).
 - [ ] The permission flow passes the checks in [Verify your permission flow](/fundamentals/location-permissions#verify-your-permission-flow).
-- [ ] Your app treats every error status as "not verified" where an action depends on a check.
 - [ ] Your backend, not the client, makes the final decision for protected actions.
-- [ ] Login, logout, and account switching attribute activity to the right user.
-
-### Rollout
-
-- [ ] Release to a small share of users first with a staged rollout or a feature flag that you can turn off without an app release.
-- [ ] Before you enforce a new check, consider running it without blocking users and compare the results with what you expect.
-- [ ] Tell your support team what a blocked user sees and how to look that user up in the dashboard.
-
-### Monitoring
-
-- [ ] Watch pass and fail counts, error statuses, and event volume in the dashboard after each rollout step. Save the views you check as reports and subscribe the owners.
-- [ ] Alert on webhook delivery failures in your own systems.
-- [ ] Watch your usage on the [Home](https://dashboard.radar.com) page. Usage statistics are recalculated nightly.
-- [ ] After each SDK or operating system update, repeat the tests on this page.

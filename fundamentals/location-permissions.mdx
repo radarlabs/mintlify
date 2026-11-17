@@ -4,120 +4,208 @@ sidebarTitle: "Location permissions"
 description: "Choose the location permission each Radar feature needs on iOS and Android, request it in the right order, and handle denial, revocation, and active trips."
 ---
 
-import LocationPermissions from '/snippets/location-permissions.mdx';
-
-By the end of this page you know which location permission each Radar feature needs, your app requests it in an order both platforms accept, and it keeps working when the user says no or changes their mind later.
-
-## Keep three things separate
-
-Most permission bugs come from treating these as one setting:
-
-| Concept | Question it answers | Who controls it |
-| --- | --- | --- |
-| Permission scope | Has the user allowed location while the app is in use, or at any time? Precise or approximate? | The user, through the system prompt and Settings. |
-| App execution state | Is the app visible, in the background, suspended, or terminated? | The operating system and the user. |
-| Tracking behavior | Is Radar collecting one location, tracking on an interval, or tracking for the length of a trip? | Your code and your [tracking options](/sdk/tracking). |
-
-A trip that keeps updating after the user locks the phone isn't the same as background tracking. During a trip the app is still in use in a way the user started and can see. Background tracking means the app receives location when the user isn't using it at all, and it needs the broader permission.
-
-## What each permission allows
-
-| Scope | iOS | Android |
-| --- | --- | --- |
-| Foreground | When In Use (`authorizedWhenInUse`). Location while the app is in use, and for a short time after it moves to the background. | `ACCESS_FINE_LOCATION` or `ACCESS_COARSE_LOCATION`. Location while an activity is visible or a foreground service is running. |
-| Background | Always (`authorizedAlways`). Location at any time. The system can relaunch a terminated app for significant location changes, visits, and region monitoring. | `ACCESS_BACKGROUND_LOCATION`, on Android 10 (API level 29) and later. Location when no activity is visible and no foreground service is running. |
-| One-time | Allow Once. Treated as When In Use until the app is no longer in use. | Only this time, on Android 11 and later. Access ends shortly after the app leaves the foreground, unless a foreground service started while it was visible is still running. |
-| Precision | Precise Location on or off (`accuracyAuthorization` is full or reduced). | Precise or Approximate, on Android 12 and later. |
-
-Background permission never replaces foreground permission. On both platforms the user grants foreground access first.
+By the end of this page you know which location permission each Radar feature needs, your app requests it in an order both platforms accept, and it keeps working when the user says no.
 
 ## Choose permissions by scenario
 
-Request the lowest scope in this table that supports your feature.
+Request the lowest scope that supports your feature. Foreground means When In Use on iOS, and `ACCESS_FINE_LOCATION` with `ACCESS_COARSE_LOCATION` on Android. Background means Always on iOS, and `ACCESS_BACKGROUND_LOCATION` on Android.
 
-| Scenario | Permission to request | Extra platform setup | Limits to design for |
-| --- | --- | --- | --- |
-| App-open context, for example nearby stores or `Radar.trackOnce()` on launch | Foreground | None | Works only while the app is in use. |
-| Ongoing geofencing or location-based messaging with `Radar.startTracking()` | Foreground, then background | iOS: the Location updates and Background fetch background modes if you use the responsive or continuous preset. Android: `ACCESS_BACKGROUND_LOCATION` in your manifest. | Without background access, events are generated only while the app is in use. Updates depend on movement and on the operating system waking the app. |
-| User-started trip, for example pickup or delivery to a customer | Foreground | iOS: the same background modes, plus the background location indicator. Android: a location foreground service with a notification. See [Keep an active trip tracking with foreground permission](#keep-an-active-trip-tracking-with-foreground-permission). | Start the trip while the app is visible. Tracking ends if the user force quits the app. |
-| Workforce tracking during a shift | Foreground with the trip pattern, or background if tracking must start without the worker opening the app | Same as the row that matches your choice | Track only during working hours. Stop tracking at the end of the shift. |
-| Location verification with `Radar.trackVerified()` | Foreground | See [Fraud plugin setup](/sdk/fraud) | A check made without location permission returns `ERROR_PERMISSIONS`. Reduced or approximate accuracy can cause a check to fail its accuracy requirement. |
-| Beacon detection | Foreground to range beacons with `Radar.trackOnce()`. Background to monitor beacons with `Radar.startTracking()`. | Android: Bluetooth permissions, including `BLUETOOTH_SCAN` and `BLUETOOTH_CONNECT` at runtime when you target API level 31 or later. | Without the Bluetooth permissions on Android, beacons aren't detected. |
+| Scenario | iOS | Android |
+| --- | --- | --- |
+| App-open use, for example nearby stores or `Radar.trackOnce()` on launch | Foreground. Add `NSLocationWhenInUseUsageDescription` to `Info.plist`. | Foreground. The Radar SDK manifest already declares both permissions. |
+| Background geofencing or messaging with `Radar.startTracking()` | Foreground, then background. Add `NSLocationAlwaysAndWhenInUseUsageDescription`, and the Location updates and Background fetch background modes if you use the responsive or continuous preset. | Foreground, then background. Add `ACCESS_BACKGROUND_LOCATION` to your manifest. |
+| User-started trip, for example pickup or delivery | Foreground, with the same background modes and the background location indicator. | Foreground, with a location foreground service and its notification. |
+| Workforce tracking during a shift | Same as a trip, or background if tracking must start without the worker opening the app. | Same as iOS. |
+| Verification with `Radar.trackVerified()` | Foreground. Reduced accuracy can cause a check to fail its accuracy requirement. | Foreground. Approximate location can cause the same failure. |
+| Beacons | Foreground to range beacons with `Radar.trackOnce()`. Background to monitor them with `Radar.startTracking()`. | The same, plus Bluetooth permissions, including `BLUETOOTH_SCAN` and `BLUETOOTH_CONNECT` at runtime when you target API level 31 or later. |
 
-On the web, the browser shows its own location prompt the first time the Radar web SDK asks for a location. The browser has no background permission.
+Without background access, events are generated only while the app is in use. On the web, the browser shows its own location prompt the first time the Radar web SDK asks for a location, and has no background permission.
 
 ## Request permissions in order
 
-<LocationPermissions />
+Request foreground access when the user reaches a location feature. Request background access later, as its own step, and only if a feature needs it. Both platforms deliver the user's choice asynchronously, so start Radar tracking from the callback, not on the line after the request.
 
-### Rules both platforms enforce
+<CodeGroup>
 
-- **Foreground first**: On iOS, request Always only after When In Use is granted. On Android 11 (API level 30) and later, if you request a foreground permission and `ACCESS_BACKGROUND_LOCATION` in the same call, the system ignores the request and grants neither.
-- **Limited prompts**: You can't prompt indefinitely. On iOS, the system prompts once for each request and stores the answer. You can ask to upgrade from When In Use to Always one time. On Android 11 and later, after the user selects **Deny** more than once for a permission, the system stops showing the dialog for it. After that, the only path is the system Settings app.
-- **Asynchronous answer**: A request returns immediately. The user's choice arrives in `locationManagerDidChangeAuthorization(_:)` on iOS and in your activity result callback on Android. Don't call `Radar.startTracking()` on the line after the request.
-- **Background access on Android 11 and later**: The system sends the user to Settings. The system dialog has no **Allow all the time** option. Your request opens the app's location settings page, and the user chooses the option there.
+```swift Swift
+import CoreLocation
+import RadarSDK
+
+final class LocationPermissionController: NSObject, CLLocationManagerDelegate {
+    private let locationManager = CLLocationManager()
+
+    override init() {
+        super.init()
+        locationManager.delegate = self
+    }
+
+    // Call when the user continues from your foreground explanation.
+    func requestForeground() {
+        if locationManager.authorizationStatus == .notDetermined {
+            locationManager.requestWhenInUseAuthorization()
+        }
+    }
+
+    // Call when the user continues from your background explanation.
+    func requestBackground() {
+        if locationManager.authorizationStatus == .authorizedWhenInUse {
+            locationManager.requestAlwaysAuthorization()
+        }
+    }
+
+    // Called when the manager is created, when the user answers a prompt,
+    // and when the user changes the setting later.
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        switch manager.authorizationStatus {
+        case .authorizedAlways:
+            Radar.startTracking(trackingOptions: .presetResponsive)
+        case .authorizedWhenInUse:
+            Radar.trackOnce { status, location, events, user in
+                // Update the foreground experience.
+            }
+        case .denied, .restricted:
+            Radar.stopTracking()
+            // Show the foreground-only or no-location experience.
+        case .notDetermined:
+            break
+        @unknown default:
+            break
+        }
+    }
+}
+```
+
+```kotlin Kotlin
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import io.radar.sdk.Radar
+import io.radar.sdk.RadarTrackingOptions
+
+class MainActivity : AppCompatActivity() {
+
+    private val foregroundRequest = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        val granted = grants[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (granted) {
+            Radar.trackOnce { status, location, events, user ->
+                // Update the foreground experience.
+            }
+        } else {
+            // Show the no-location experience.
+        }
+    }
+
+    private val backgroundRequest = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            Radar.startTracking(RadarTrackingOptions.RESPONSIVE)
+        } else {
+            // Keep the foreground-only experience.
+        }
+    }
+
+    // Call when the user continues from your foreground explanation.
+    fun requestForeground() {
+        foregroundRequest.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        )
+    }
+
+    // Call when the user continues from your background explanation.
+    fun requestBackground() {
+        val hasForeground = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasForeground && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            backgroundRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        }
+    }
+}
+```
+
+```javascript React Native
+import Radar from 'react-native-radar';
+
+// Call when the user continues from your foreground explanation.
+export async function requestForeground() {
+  const status = await Radar.requestPermissions(false);
+  return status === 'GRANTED_FOREGROUND' || status === 'GRANTED_BACKGROUND';
+}
+
+// Call later, when the user continues from your background explanation.
+export async function requestBackground() {
+  const status = await Radar.requestPermissions(true);
+  return status === 'GRANTED_BACKGROUND';
+}
+```
+
+```dart Flutter
+import 'package:flutter_radar/flutter_radar.dart';
+
+// Call when the user continues from your foreground explanation.
+Future<bool> requestForeground() async {
+  await Radar.requestPermissions(false);
+  final status = await Radar.getPermissionsStatus();
+  return status == 'GRANTED_FOREGROUND' || status == 'GRANTED_BACKGROUND';
+}
+```
+
+</CodeGroup>
+
+For the Flutter background request, see [Flutter SDK](/sdk/flutter). Both platforms enforce the order:
+
+- **Separate requests**: On iOS, request Always only after When In Use is granted. On Android 11 (API level 30) and later, if you request a foreground permission and `ACCESS_BACKGROUND_LOCATION` in the same call, the system ignores the request and grants neither.
+- **Settings on Android**: On Android 11 and later, the background request opens your app's location settings page, where the user chooses **Allow all the time**.
+- **Limited prompts**: On iOS, you can ask to upgrade from When In Use to Always one time. On Android 11 and later, after the user selects **Deny** more than once, the system stops showing the dialog. After that, the only path is the system Settings app.
 
 ## Explain the request before the system prompt
 
-The system prompt says what is being requested. It doesn't say why. Show your own screen first, sometimes called a primer, and trigger the system prompt only when the user chooses to continue.
-
-A good primer is:
+The system prompt doesn't say why you need location. Show your own screen first, and trigger the system prompt only when the user chooses to continue. A good screen is:
 
 - **Transparent**: It says what location data you collect and how you use it, and links to your privacy policy.
 - **Valuable**: It names the feature the user gets, for example pickup timing or nearby offers.
 - **Timely**: It appears when the user reaches the feature that needs location, not at first launch.
 - **Optional**: It includes a way to decline, and the app keeps working if they do.
 
-Use a separate primer for background access, shown after foreground access is granted and only when the user opts in to a feature that needs it. On Android, name the settings option the user needs to select in the background primer. Call `PackageManager.getBackgroundPermissionOptionLabel()` to get its localized label.
-
-On iOS, the usage description strings in `Info.plist` appear inside the system prompt. Write them for your users, in plain language.
-
-## Handle precise and approximate location
-
-Users can grant location without precision.
-
-- **iOS**: Read `accuracyAuthorization` on your `CLLocationManager`. With reduced accuracy, locations are approximate.
-- **Android 12 and later**: When you request `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` together, the user chooses **Precise** or **Approximate**. If they choose **Approximate**, only `ACCESS_COARSE_LOCATION` is granted. Don't request `ACCESS_FINE_LOCATION` by itself. Background access has the same precision as foreground access.
-
-Decide what each feature does with approximate location:
-
-- Features that need a city or region, such as regional content, can continue.
-- Features that depend on a specific place, such as geofence entry at a store, arrival detection, or location verification, need precise location. Tell the user which feature is limited and offer a way to turn on precise location. On Android, request both permissions together again to show the upgrade dialog.
+Use a separate screen for background access, shown after foreground access is granted. On iOS, the usage description strings in `Info.plist` appear inside the system prompt, so write them for your users.
 
 ## Handle denial, restriction, and revocation
 
-Check the current status every time a location feature starts. Don't cache the answer from a previous session.
+Check the current status every time a location feature starts.
 
-| State | How you detect it | What to do |
-| --- | --- | --- |
-| Not asked yet | iOS: `.notDetermined`. Android: permission not granted and you haven't requested it yet. | Show your primer, then request foreground access. |
-| Foreground granted | iOS: `.authorizedWhenInUse`. Android: fine or coarse location granted. | Run foreground features. Offer background access only where a feature needs it. |
-| Background granted | iOS: `.authorizedAlways`. Android: `ACCESS_BACKGROUND_LOCATION` granted. | Start background tracking. |
-| Denied | iOS: `.denied`. Android: permission not granted after a request. | Keep the app usable. Show which feature is unavailable at the place where it would appear. Offer a link to Settings only when the user tries to use that feature. |
-| Restricted | iOS: `.restricted`, for example by parental controls or device management. | Treat as denied. The user may not be able to change it, so don't send them to Settings. |
-| Background declined, foreground kept | iOS: status stays `.authorizedWhenInUse`. Android: background permission not granted. | Continue with foreground features. Don't ask again on every launch. |
-| Revoked or downgraded later | iOS: `locationManagerDidChangeAuthorization(_:)` is called, including when a suspended app resumes. Android: the system ends your app process, so you see the new state the next time the app starts. | Stop tracking that the new status doesn't allow, and update the UI. |
+| State | What to do |
+| --- | --- |
+| Denied, or background declined | Keep the app usable. Show which feature is unavailable, and offer a link to Settings only when the user tries to use it. |
+| Restricted on iOS, for example by parental controls | Treat as denied, but don't send the user to Settings. |
+| Revoked or downgraded later | Stop tracking that the new status doesn't allow. iOS calls `locationManagerDidChangeAuthorization(_:)`. On Android, check the permission in `onResume()`. |
+| Approximate location only | Geofence entry and location verification need precise location. Tell the user which feature is limited. |
 
-When the user returns from Settings, read the status again before you act. On iOS, the delegate method reports the change. On Android, check the permission in `onResume()`.
-
-On Android, the system also resets permissions for apps that haven't been used for a few months when the app targets Android 11 or later. Treat this the same as "not asked yet".
-
-Radar reports a missing permission as an error status. A tracking or verification call made without location permission returns `ERROR_PERMISSIONS`. Handle it by showing the no-location experience. Don't retry in a loop.
+A tracking or verification call made without location permission returns `ERROR_PERMISSIONS`. Show the no-location experience, and don't retry in a loop.
 
 ## Keep an active trip tracking with foreground permission
 
-A user who starts a pickup, delivery, or shift has asked for tracking and can see that it is happening. Both platforms support this with foreground permission, with extra configuration.
+A user who starts a pickup, delivery, or shift has asked for tracking and can see it happening. Both platforms support this with foreground permission and extra configuration. Start the trip while the app is visible.
 
 <Tabs>
   <Tab title="iOS">
     1. In Xcode, under **Signing & Capabilities**, add **Background Modes** and turn on **Location updates** and **Background fetch**.
-    2. Track with the continuous preset, which sets the `showBlueBar` tracking option. With this option, iOS shows the background location indicator while your app uses location in the background.
-    3. Start the trip while the app is in the foreground, after When In Use access is confirmed.
+    2. Track with the continuous preset, which sets the `showBlueBar` tracking option. iOS then shows the background location indicator while your app uses location in the background.
 
-    With When In Use authorization and background location updates turned on, iOS keeps the app running in the background while location services are active. If the system terminates the app or the user force quits it, iOS doesn't relaunch an app that has only When In Use authorization. Tracking can resume only after the user opens the app again.
+    If the user force quits the app, iOS doesn't relaunch an app that has only When In Use authorization.
   </Tab>
   <Tab title="Android">
-    1. Use the `CONTINUOUS` preset or set `foregroundServiceEnabled` in your tracking options. The SDK then runs a foreground service with a persistent notification while tracking.
+    1. Use the `CONTINUOUS` preset or set `foregroundServiceEnabled` in your tracking options. The SDK then runs a foreground service with a persistent notification.
     2. In Android SDK 4.0.0 and later, declare the service and its permission in your app manifest:
 
     ```xml
@@ -133,54 +221,43 @@ A user who starts a pickup, delivery, or shift has asked for tracking and can se
     </manifest>
     ```
 
-    3. Start the trip while an activity is visible. Apps that target Android 12 or later can't start a foreground service from the background except in specific cases, and on Android 14 or later a location foreground service can be created only while the app holds the location permission at that moment, which for foreground permission means while the app is visible.
-    4. If you publish on Google Play, declare your foreground service use in the Play Console. Google Play doesn't accept geofencing as a foreground service use case. Use the service for trips, navigation, or user-initiated location sharing.
+    3. Declare your foreground service use in the Play Console. Google Play doesn't accept geofencing as a foreground service use case.
 
-    If the service isn't declared, the SDK logs an error and tracks without a foreground service. Tracking stops if the user selects **Force stop**, and can stop on devices whose manufacturer aggressively ends background services.
+    If the service isn't declared, the SDK logs an error and tracks without a foreground service. Tracking stops if the user selects **Force stop**.
   </Tab>
 </Tabs>
 
-End tracking when the trip ends. Complete or cancel the trip, and call `Radar.stopTracking()` if you started tracking separately. For the full trip lifecycle and recovery after the app restarts, see [Track pickups, deliveries, and workers](/geofencing/trips).
+See [Track pickups, deliveries, and workers](/geofencing/trips).
 
 ## Know the limits of background tracking
 
-Background permission lets the operating system deliver location to your app. It doesn't guarantee when.
-
-- **Delivery timing**: Delivery depends on movement and on the system. With the efficient and responsive presets, the SDK wakes up while the user is moving and shuts down when they stop. A location callback isn't a precise clock.
-- **Relaunch on iOS**: iOS can relaunch a terminated app only for some update types. With Always authorization, the Location updates background mode, and at least one of the `syncGeofences`, `useStoppedGeofence`, `useMovingGeofence`, `useSignificantLocationChanges`, or `useVisits` [tracking options](/sdk/tracking), the SDK can resume after the app is terminated when iOS delivers one of those updates.
-- **Swiped-away apps on Android**: Android keeps delivering after the app is swiped away, with exceptions. Radar doesn't receive updates after **Force stop**, or when the device manufacturer ends background services.
-- **Remote settings**: Changes to [remote tracking options](/sdk/remote-configuration) reach a device when the SDK next fetches its configuration. They don't wake a suspended or terminated app.
-- **Missed updates**: If the operating system has suspended or terminated the app and delivers no update, Radar can't generate a geofence or trip event for that period. Design fallbacks on your backend for anything that must happen on time.
+- **Timing**: Background permission doesn't guarantee when the system delivers a location. With the efficient and responsive presets, the SDK wakes up while the user is moving and shuts down when they stop.
+- **Terminated apps**: With Always authorization, iOS can relaunch a terminated app only for some update types. See [Tracking options](/sdk/tracking). Android keeps delivering after the app is swiped away, but not after **Force stop**.
+- **Missed updates**: If the system delivers no update, Radar can't generate a geofence or trip event for that period.
 
 ## See permission status for your users
 
-The location permission statistics in the Radar dashboard use four states. The SDK reports them as follows:
+The location permission statistics in the Radar dashboard use four states:
 
-| Dashboard state | iOS | Android |
+| Dashboard state | iOS `authorizationStatus` | Android |
 | --- | --- | --- |
-| Granted background | `authorizationStatus` is `.authorizedAlways` | `ACCESS_BACKGROUND_LOCATION` is granted |
-| Granted foreground | `authorizationStatus` is `.authorizedWhenInUse` | `ACCESS_FINE_LOCATION` or `ACCESS_COARSE_LOCATION` is granted, and `ACCESS_BACKGROUND_LOCATION` isn't |
-| Denied | `authorizationStatus` is `.denied` or `.restricted` | No location permission is granted, and the SDK has seen `ACCESS_FINE_LOCATION` or `ACCESS_COARSE_LOCATION` denied with `shouldShowRequestPermissionRationale()` returning `true` |
-| Not determined | `authorizationStatus` is `.notDetermined` | None of the above |
-
-Opt-in rates vary by app and by how well the primer explains the benefit. Use these states to measure your own flow before and after a change.
+| Granted background | `.authorizedAlways` | `ACCESS_BACKGROUND_LOCATION` is granted. |
+| Granted foreground | `.authorizedWhenInUse` | Fine or coarse location is granted, and background isn't. |
+| Denied | `.denied` or `.restricted` | No location permission is granted, and the SDK has seen a foreground permission denied. |
+| Not determined | `.notDetermined` | None of the above. |
 
 ## Verify your permission flow
 
-Run each of these on a physical iPhone and a physical Android device:
+On a physical iPhone and a physical Android device:
 
 1. Fresh install. Confirm that no system prompt appears until you reach a location feature.
 2. Grant foreground access. Confirm that the foreground feature works and that background tracking hasn't started.
-3. Continue to the background step. Confirm that the foreground and background requests appear as separate steps, and that on Android 11 or later the app opens the location settings page.
+3. Continue to the background step. Confirm that it is a separate request.
 4. Decline background access. Confirm that foreground features still work and the app doesn't ask again on the next launch.
-5. Deny foreground access. Confirm that the app stays usable and explains which feature is unavailable.
-6. Grant access, then change it to denied in Settings while the app is in the background. Return to the app and confirm that tracking stops and the UI updates.
-7. Choose approximate location. Confirm that each feature either works or explains why it needs precise location.
-8. Start a trip with foreground access only, lock the device, and move. Confirm that the indicator (iOS) or notification (Android) is visible and that locations arrive in the dashboard.
+5. Deny access in Settings, then return to the app. Confirm that tracking stops and the app explains which feature is unavailable.
+6. Start a trip with foreground access only, lock the device, and move. Confirm that locations arrive in the dashboard.
 
 ## Platform references
 
 - Apple: [Requesting authorization to use location services](https://developer.apple.com/documentation/CoreLocation/requesting-authorization-to-use-location-services)
 - Android: [Request location permissions](https://developer.android.com/develop/sensors-and-location/location/permissions/runtime) and [Request background location](https://developer.android.com/develop/sensors-and-location/location/permissions/background)
-- Android: [Restrictions on starting a foreground service from the background](https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start)
-- Radar: [iOS SDK](/sdk/ios), [Android SDK](/sdk/android), and [Tracking options](/sdk/tracking)

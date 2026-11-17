@@ -3,116 +3,27 @@ title: "Choose your integration"
 description: "Match the outcome you need to a Radar SDK or API path, the permissions it requires, the result you get back, and the guide that implements it."
 ---
 
-Use this page to pick one implementation guide before you write code. At the end, you know which SDK or API to call, whether you need to ask the user for location, what result your app or backend receives, and which guide to follow.
+Pick one implementation guide before you write code. Radar returns three kinds of result, from different calls:
 
-## Start with the kind of result you need
+- **Location tracking**: `Radar.trackOnce()`, `Radar.startTracking()`, or `Radar.startTrip()` returns the user's geofences, place, and trip, plus events. It needs location permission. It is built for experiences, and isn't evidence for an access decision.
+- **Verified location**: `Radar.trackVerified()` returns a signed geolocation token with `passed` and failure reasons. It needs the fraud plugin and foreground location permission.
+- **Device and network risk**: `Radar.revealRisk()` returns `risk.level`, `risk.reasons`, and a signed token. It needs the fraud plugin and doesn't request location.
 
-Radar returns three kinds of result. They come from different calls, ask different things of the user, and support different decisions.
-
-| | Location tracking | Verified location | Device and network risk |
-| --- | --- | --- | --- |
-| Question it answers | Where is this device, and which of my geofences, places, or trips does that relate to? | Is this user in a location where the action is allowed, and can I trust the location? | Does this device or its network connection look risky? |
-| Client call | `Radar.trackOnce()`, `Radar.startTracking()`, or `Radar.startTrip()` | `Radar.trackVerified()` | `Radar.revealRisk()` |
-| What you install | The core SDK | The core SDK and the fraud plugin | The core SDK and the fraud plugin |
-| Location permission | Required. Foreground for in-app use, background for events while the app is closed. | Required. Foreground is enough. | Not requested |
-| Result | The user's current geofences, place, beacons, and trip, plus events such as `user.entered_geofence` | A signed geolocation token with `passed`, failure reasons, fraud signals, and an expiry | `risk.level`, `risk.reasons`, `network`, `device`, and a signed token |
-| Who decides | Your app, or a system that receives the events | Your backend, after it validates the token | Your backend, after it validates the token |
-| Product | [Geofencing](/geofencing/overview) | [Geo-compliance](/geo-compliance/overview) and [Fraud](/fraud/overview) | [Fraud](/fraud/overview) |
-
-For what each kind of context is, see [Understand geofences, places, regions, beacons, and fraud context](/fundamentals/context-types).
-
-Location tracking is built for experiences: a location that is good enough to show the right screen or start an order. It isn't evidence for an access decision. Use a verified location check when the answer gates something of value. Use a risk assessment when you want a signal without a location prompt, and step up to a verified location check only when you need to know where the user is.
-
-Maps is the fourth path. Displaying a map, searching for an address, and geocoding don't track a user and don't need location permission, unless you also show or use the user's current position.
+A backend can't manufacture a verified client-location result: the check runs on the user's device, Radar signs the result, and your backend validates the token. Setting up a project and its API keys in the Radar dashboard is also different from identifying an end user, which your app does with `Radar.setUserId()`. See [Set up organizations, projects, accounts, and authentication](/fundamentals/authentication-and-access).
 
 ## Find your guide
 
-Each row is one of the 11 implementation guides. "Precise location" means the device's location is collected for that outcome.
+| What you want to do | Platforms | What you get back | Guide |
+| --- | --- | --- | --- |
+| Allow sportsbook, casino, or fantasy play only in permitted jurisdictions | iOS, Android, React Native, web, macOS, Windows | Signed geolocation token | [Verify location eligibility for sportsbooks, casinos, and fantasy](/geo-compliance/gaming) |
+| Confirm a user is in a region, at a store or workplace, or near an address | iOS, Android, React Native, web | Signed geolocation token | [Verify location for non-gaming use cases](/geo-compliance/non-gaming) |
+| Assess logins, registrations, and promotion redemptions | iOS, Android, React Native, web | Risk assessment with a signed token | [Prevent account takeover, new account fraud, and promo abuse](/fraud/account-fraud) |
+| Check a payment or withdrawal, and verify location only when risk calls for it | iOS, Android, React Native, web | Risk assessment, then a signed geolocation token | [Detect risky transactions and verify precise location](/fraud/risky-transactions) |
+| Know when a user enters, dwells in, or leaves a store or venue | iOS, Android, web | `user.geofences`, `user.place`, and events | [Detect geofence events and place visits](/geofencing/geofences-and-places) |
+| Track a customer, driver, or worker to a destination | iOS, Android, React Native | Trip status, ETA, and arrival events | [Track pickups, deliveries, and workers](/geofencing/trips) |
+| Detect presence indoors, where GPS isn't precise enough | iOS, Android, React Native | `user.beacons` and beacon events | [Track indoor location with beacons](/geofencing/beacons) |
+| Show an interactive or static map | Web, iOS, Android, React Native, Flutter | A rendered map | [Display maps](/maps/maps) |
+| Let visitors find your nearest store, branch, or ATM | Web, iOS, Android | Nearby locations with distances | [Build store locators](/maps/store-locators) |
+| Complete, geocode, and validate addresses | Web, iOS, Android, React Native, your backend | Addresses with coordinates, and a validation result | [Autocomplete, geocode, and validate addresses](/maps/addresses) |
 
-### Geo-compliance
-
-| Outcome | Precise location | Platforms | SDK or API path | Permissions | Output | Guide |
-| --- | --- | --- | --- | --- | --- | --- |
-| Allow sportsbook, casino, fantasy, prediction market, or sweepstakes play only in permitted jurisdictions | Yes | iOS, Android, React Native, web, macOS, Windows | Core SDK and fraud plugin on the client, `Radar.trackVerified()`. Token validation on your backend. | Foreground location | Signed geolocation token | [Verify location eligibility for sportsbooks, casinos, and fantasy](/geo-compliance/gaming) |
-| Confirm a user is in a region, at a store or workplace, or near an expected address | Yes | iOS, Android, React Native, web | Same as above. Your backend also checks the region, place, or address condition in the token. | Foreground location | Signed geolocation token | [Verify location for non-gaming use cases](/geo-compliance/non-gaming) |
-
-### Fraud
-
-| Outcome | Precise location | Platforms | SDK or API path | Permissions | Output | Guide |
-| --- | --- | --- | --- | --- | --- | --- |
-| Decide whether to allow, step up, review, or block a login or sensitive account action | No for the risk assessment. Yes if you add a verified location check. | iOS, Android, React Native, web | Core SDK and fraud plugin, `Radar.revealRisk()`. `Radar.trackVerified()` when permission is already granted. | None for the risk assessment | Risk assessment with a signed token | [Prevent account takeover and account sharing](/fraud/account-takeover-and-sharing) |
-| Assess registrations and promotion redemptions, and link accounts to devices | No at registration. Yes for the first verified location check of the new account. | iOS, Android, React Native, web | `Radar.revealRisk()`, then `Radar.trackVerified()`. Your backend sends outcomes with the [Labels API](/api/labels) and a secret key. | None for the risk assessment. Foreground location for the verified check. | Risk assessment, then a signed geolocation token | [Prevent new account fraud, multi-accounting, and promo abuse](/fraud/new-account-fraud) |
-| Check a payment, withdrawal, or other transaction, and verify location only when risk calls for it | Only for the step-up | iOS, Android, React Native, web | `Radar.revealRisk()` first. `Radar.trackVerified()` with a `transactionId` as the step-up. | None until the step-up, then foreground location | Risk assessment, and a signed geolocation token for the step-up | [Detect risky transactions and verify precise location](/fraud/risky-transactions) |
-
-### Geofencing
-
-| Outcome | Precise location | Platforms | SDK or API path | Permissions | Output | Guide |
-| --- | --- | --- | --- | --- | --- | --- |
-| Know when a user enters, dwells in, or leaves a store, venue, or other place | Yes | iOS, Android, and the mobile wrappers. Web while the page is open. | Core SDK. `Radar.trackOnce()` for current state, `Radar.startTracking()` for events. Events also go to [webhooks and integrations](/integrations/integrations). | Foreground for in-app experiences. Background for events while the app is closed. | `user.geofences`, `user.place`, and events such as `user.entered_geofence` | [Detect geofence events and place visits](/geofencing/geofences-and-places) |
-| Track a customer, driver, or worker to a destination with an ETA and an arrival event | Yes | iOS, Android, and React Native in the guide | Core SDK, `Radar.startTrip()` with trip tracking. Your backend can create and update trips with the [Trips API](/api/trips). | Foreground is enough for a trip the user starts | Trip status and ETA, and events such as `user.approaching_trip_destination` and `user.arrived_at_trip_destination` | [Track pickups, deliveries, and workers](/geofencing/trips) |
-| Detect presence in an indoor area where GPS isn't precise enough | Yes, plus Bluetooth | iOS and Android, with a React Native example. Not web. | Core SDK with the `beacons` option. Register beacons in the Radar dashboard or with the [Beacons API](/api/beacons). | Location, and Bluetooth permissions on Android | `user.beacons`, and `user.entered_beacon` and `user.exited_beacon` events | [Track indoor location with beacons](/geofencing/beacons) |
-
-### Maps
-
-| Outcome | Precise location | Platforms | SDK or API path | Permissions | Output | Guide |
-| --- | --- | --- | --- | --- | --- | --- |
-| Show an interactive or static map | No | Web. iOS, Android, and Flutter through MapLibre. React Native through the `Map` component. | Web SDK with `@radarlabs/plugin-maps`, a Radar style URL in a MapLibre library, or a static map URL from the [Maps API](/api/maps) | None | A rendered map | [Display maps](/maps/maps) |
-| Let visitors find your nearest store, branch, or ATM | Optional | Web, with native variations for iOS and Android | Web SDK with the maps and autocomplete plugins, and geofence search from the [Search API](/api/search) | None for address search. Location only if the visitor chooses to use their position. | A list and map of nearby locations with distances | [Build store locators](/maps/store-locators) |
-| Complete, geocode, and validate addresses in a form or on your backend | No, except to reverse geocode the user's current position | Web. iOS, Android, and React Native through SDK methods. Any backend through the REST API. | Web SDK with `@radarlabs/plugin-autocomplete`, the SDK geocoding methods, or the [Geocoding API](/api/geocoding) and [Search API](/api/search) | None, except for the user's current position | Address objects with coordinates, and a validation result | [Autocomplete, geocode, and validate addresses](/maps/addresses) |
-
-If your outcome spans two rows, start with the one that produces the decision. For example, a pickup app that also needs a store locator starts with the trips guide and adds the locator afterward.
-
-## Check your platform
-
-Feature support differs by SDK. Confirm it in the tables in [SDK overview and compatibility](/sdk/sdk) before you commit to a path. The summary below covers the questions that most often change the choice.
-
-| Client | What to know | Reference |
-| --- | --- | --- |
-| Native iOS and Android | All four products. Verified location checks and risk assessments need the fraud plugin, which you install separately from the core SDK. | [iOS SDK](/sdk/ios), [Android SDK](/sdk/android), [Fraud plugin setup](/sdk/fraud) |
-| Web | Tracks only while your page is open: no background tracking, no beacons, no silent push. Verified location checks and risk assessments come from `@radarlabs/plugin-fraud`. Maps and autocomplete UI are separate plugins. | [Web SDK](/sdk/web) |
-| Desktop browser with a companion app | The web fraud plugin can work with Radar Verify for Mac and Windows, which adds remote desktop detection, more advanced detection of mocked locations and proxies, and more stable device IDs. Pass `skipVerifyApp: true` to run the check in the browser with no download. The companion app isn't used with mobile SDKs. | [Choose the companion app or the no-download path](/sdk/fraud#choose-the-companion-app-or-the-no-download-path) |
-| React Native | Core tracking, trips, beacons, verified location checks and risk assessments with the fraud plugin, and `Map` and `Autocomplete` components. | [React Native SDK](/sdk/react-native) |
-| Flutter, Capacitor, Cordova, .NET MAUI | Core tracking, trips, and beacons. Each wrapper bundles specific native SDK versions, and support for verified location checks, risk assessments, and UI components varies by wrapper. Don't assume a wrapper has a method because the native SDK does. | [Core SDK support](/sdk/sdk#core-sdk-support), [Fraud plugin support](/sdk/sdk#fraud-plugin-support) |
-| Your backend | Geocoding, search, and routing requests. Managing geofences, trips, beacons, and users with a secret key. Receiving events through webhooks. Validating tokens. | [REST API overview](/api) |
-
-## What your backend can and cannot do
-
-A backend can't manufacture a verified client-location result. A verified location check and a risk assessment both collect signals on the user's device or browser, through the SDK and the fraud plugin, and Radar signs the result. The check has to run on the device because that is where the location and integrity signals come from. A location that your client reports to your own API in a request body isn't verified.
-
-Your backend's role in Geo-compliance and Fraud is to:
-
-1. Receive the signed token from the client on an authenticated request.
-2. Validate the signature and expiry, and check that the user, product, and result match the action. See [Geolocation token schema](/api/geolocation-tokens).
-3. Decide, enforce the decision, and record it.
-
-Reading `passed` in the app isn't validation. The app shows what the backend decided.
-
-Calls from your backend do have a place in the other paths:
-
-- **Maps**: The geocoding, search, and routing endpoints work from your backend as well as from a client. See [Geocoding API](/api/geocoding), [Search API](/api/search), and [Routing API](/api/routing).
-- **IP geocoding**: It returns an estimate of where a network connection terminates. Use it to set a default region or search bias. It isn't a verified location.
-- **Trips**: Your backend can create and update trips with the [Trips API](/api/trips). Creating a trip on your backend doesn't start tracking on a device. The app still has to be running the SDK and sending locations.
-- **Events**: Your backend receives geofence, place, trip, and beacon events through [webhooks](/integrations/webhooks) or another [integration](/integrations/integrations).
-
-## Set up a project, then identify users
-
-These are two separate steps, done in different places by different people. Confusing them is a common early mistake.
-
-| | Account and project setup | Identifying an end user |
-| --- | --- | --- |
-| What it is | Creating your organization and project, inviting teammates, and getting API keys | Telling Radar which of your app's users a device belongs to |
-| Where it happens | The dashboard | Your app, through the SDK |
-| Who does it | Your team, once per project | Your code, each time a user signs in or changes |
-| What it uses | Dashboard accounts and roles, publishable keys (`prj_test_pk_...`, `prj_live_pk_...`), and secret keys (`prj_test_sk_...`) | `Radar.setUserId()` with a stable, opaque ID from your own system, such as `user-123` |
-| Guide | [Set up a project and its environments](/fundamentals/authentication-and-access#set-up-a-project-and-its-environments) and [Choose the right API key](/fundamentals/authentication-and-access#choose-the-right-api-key) | [Identify the users in your app](/fundamentals/authentication-and-access#identify-the-users-in-your-app) |
-
-A dashboard account is a teammate. A user is a person or device in your app. Users never sign in to the dashboard, and inviting a teammate doesn't create a user. An API key identifies your project and environment, not a person.
-
-For Geo-compliance and Fraud, the user ID matters for the decision itself: your backend compares the user ID in the validated token to the user in the authenticated session. Set it before the check, and set it again when the signed-in user changes.
-
-## Next steps
-
-1. Set up your project and keys: [Set up organizations, projects, accounts, and authentication](/fundamentals/authentication-and-access).
-2. If your path collects location, plan the prompts: [Understand foreground and background location permissions](/fundamentals/location-permissions).
-3. Open the guide from the table above, or start with a product quickstart: [Geo-compliance](/geo-compliance/overview#quickstart), [Fraud](/fraud/overview#quickstart-assess-device-and-network-risk), [Geofencing](/geofencing/overview#quickstart-show-the-right-experience-when-the-app-opens-inside-a-location), or [Maps](/maps/overview#quickstart).
-4. Before launch, work through [Test, troubleshoot, and go live](/fundamentals/testing-and-launch).
+For what each SDK supports, see [SDK overview and compatibility](/sdk/sdk).
