@@ -1,145 +1,238 @@
 ---
-title: "Overview"
-description: "Overview of Radar's Geofencing Platform: geofencing, place visit detection, trip tracking, fraud detection, and location analytics."
+title: "Geofencing overview and quickstart"
+sidebarTitle: "Overview and quickstart"
+description: "Learn what Radar Geofencing does, make a first foreground location check that returns the user's current geofences, and choose the right guide for events, trips, or beacons."
 ---
 
-Radar's Geofencing Platform is the industry-leading geofencing and location tracking platform, including geofencing, place visit detection, trip tracking, fraud detection, and analytics.
+import EnvironmentAndKeys from '/snippets/environment-and-keys.mdx';
 
-Together with our [Maps Platform](/maps/overview), Radar provides full-stack location infrastructure for any product or service. We power location-based experiences for [enterprises and startups](https://radar.com/customers) across hundreds of millions of devices worldwide.
+At the end of this page, your app can open inside one of your locations and show the right experience immediately, without waiting for an entry event. Geofencing tells your app and your backend where a user is in terms you define: which of your locations they are in, which places they are visiting, how far they are from a destination, and which beacons are nearby.
 
-## Features
+## What Geofencing does
 
-<CardGroup cols={2}>
-  <Card title="Geofences" icon={<svg
-xmlns="http://www.w3.org/2000/svg"
-width={32}
-height={32}
-viewBox="0 0 36 36"                  
-fill="none"
-{...props}
->
-<rect width={36} height={36} fill="#FF6F00" rx={18} />
-<path
-fill="#fff"
-fillRule="evenodd"
-d="M18.165 10.5a4.56 4.56 0 0 1 4.342 4.552v.194c0 2.69-3.64 6.57-4.021 6.966a.811.811 0 0 1-.53.239.811.811 0 0 1-.531-.24c-.374-.396-4.021-4.275-4.021-6.965v-.194c0-2.444 1.92-4.44 4.342-4.552h.419Zm-1.929 4.552a1.711 1.711 0 1 0 3.423 0c0-.95-.762-1.712-1.711-1.712-.95 0-1.712.762-1.712 1.712Zm5.62 5.403c.105-.142.195-.276.285-.418l.007-.008c1.129.568 1.809 1.383 1.809 2.31 0 1.8-2.564 3.161-5.957 3.161s-5.957-1.36-5.957-3.162c0-.911.658-1.711 1.75-2.279.082.127.164.254.26.389.21.299.42.575.629.844-.733.33-1.151.725-1.151 1.046 0 .666 1.778 1.667 4.462 1.667 2.683 0 4.462-1.001 4.462-1.666 0-.33-.441-.74-1.204-1.07l.073-.095c.173-.225.356-.463.533-.719Z"
-clipRule="evenodd"
-/>
-</svg>} href="/geofencing/geofences">
-    Industry-leading accuracy with unlimited geofences, polygon geofences, and more
+| Capability | What you get | How you get it |
+| --- | --- | --- |
+| Foreground state check | The user's current geofences, place, region, trip, and beacons, at the moment you ask. | Call `Radar.trackOnce()` while the app is open. |
+| Background event detection | Events such as `user.entered_geofence` and `user.exited_geofence` as the user moves, including while the app is closed. | Call `Radar.startTracking()` after the user grants background location access. |
+| Trips | A live ETA to a destination and `user.approaching_trip_destination` and `user.arrived_at_trip_destination` events for one journey. | Call `Radar.startTrip()` when the journey starts and end the trip when it finishes. |
+| Beacons | Which registered Bluetooth beacons are in range, for areas where GPS isn't precise enough. | Register beacons, then turn on beacon ranging in a tracking call. |
+
+Radar generates events on its servers from the location updates the SDK sends. Your app receives the result in the SDK callback and in a delegate or receiver. Your backend receives the same events through [webhooks](/integrations/webhooks) or another [integration](/integrations/integrations).
+
+## Quickstart: show the right experience when the app opens inside a location
+
+This quickstart needs only foreground location permission. It uses the Test environment.
+
+### 1. Get your Test publishable key
+
+<EnvironmentAndKeys />
+
+### 2. Create a geofence around a place you can test
+
+1. Open the [Geofences](https://dashboard.radar.com/geofencing/geofences) page in the Radar dashboard, with the environment switch set to **Test**.
+2. Click **Create**, search for your current address, and select **circle**.
+3. Enter the description `Store 42`, the tag `store`, and the external ID `store-42`.
+4. Click **Create**. The geofence appears in the list.
+
+Draw the circle large enough to contain the spot where you test. Indoors, a phone's reported location can be tens of meters from where you are standing.
+
+### 3. Install and initialize the SDK
+
+Follow the install and initialize steps for your platform: [iOS](/sdk/ios), [Android](/sdk/android), [web](/sdk/web), or [React Native](/sdk/react-native). Initialize once, at app startup, with the Test publishable key. On iOS and Android, initialize in the native application lifecycle (`AppDelegate` and `Application.onCreate()`), not in a screen that loads later.
+
+### 4. Request foreground location permission
+
+Ask for "While Using the App" access on iOS or `ACCESS_FINE_LOCATION` on Android before the next step. For the full flow, including what to do after a denial, see [Understand foreground and background location permissions](/fundamentals/location-permissions).
+
+### 5. Read the user's current state
+
+Call `Radar.trackOnce()` when the app opens and each time it returns to the foreground. The call gets one location, sends it to Radar, and returns the user's current context.
+
+<CodeGroup>
+
+```swift Swift
+import RadarSDK
+
+// iOS SDK 3.46.0. Call after Radar.initialize(publishableKey:) and
+// after foreground location permission is granted.
+func refreshLocationContext() {
+    Radar.trackOnce { status, location, events, user in
+        guard status == .success, let user = user else {
+            // No location context. Show the default experience.
+            print("trackOnce failed: \(Radar.stringForStatus(status))")
+            return
+        }
+
+        if let store = user.geofences?.first(where: { $0.tag == "store" }) {
+            // The user is inside one of your stores right now.
+            print("In store \(store.externalId ?? "")")
+        } else {
+            print("Not in a store")
+        }
+    }
+}
+```
+
+```kotlin Kotlin
+import android.util.Log
+import io.radar.sdk.Radar
+
+// Android SDK 4.3.0. Call after Radar.initialize() and after
+// foreground location permission is granted.
+fun refreshLocationContext() {
+    Radar.trackOnce { status, location, events, user ->
+        if (status != Radar.RadarStatus.SUCCESS || user == null) {
+            // No location context. Show the default experience.
+            Log.w("Geofencing", "trackOnce failed: $status")
+            return@trackOnce
+        }
+
+        val store = user.geofences?.firstOrNull { it.tag == "store" }
+        if (store != null) {
+            // The user is inside one of your stores right now.
+            Log.d("Geofencing", "In store ${store.externalId}")
+        } else {
+            Log.d("Geofencing", "Not in a store")
+        }
+    }
+}
+```
+
+```javascript JavaScript
+import Radar from 'radar-sdk-js';
+
+// Web SDK 5.3.0. The browser asks for location permission on the first call.
+Radar.initialize('prj_test_pk_...');
+
+async function refreshLocationContext() {
+  try {
+    const { user } = await Radar.trackOnce();
+    const store = user?.geofences?.find((geofence) => geofence.tag === 'store');
+    if (store) {
+      // The user is inside one of your stores right now.
+      console.log(`In store ${store.externalId}`);
+    } else {
+      console.log('Not in a store');
+    }
+  } catch (err) {
+    // No location context. Show the default experience.
+    console.warn('trackOnce failed', err);
+  }
+}
+```
+
+```javascript React Native
+import Radar from 'react-native-radar';
+
+// React Native SDK 4.39.0. Call after Radar.initialize() and after
+// foreground location permission is granted.
+async function refreshLocationContext() {
+  try {
+    const { user } = await Radar.trackOnce();
+    const store = user?.geofences?.find((geofence) => geofence.tag === 'store');
+    if (store) {
+      // The user is inside one of your stores right now.
+      console.log(`In store ${store.externalId}`);
+    } else {
+      console.log('Not in a store');
+    }
+  } catch (err) {
+    // No location context. Show the default experience.
+    console.warn('trackOnce failed', err);
+  }
+}
+```
+
+</CodeGroup>
+
+### 6. Check the result
+
+Run the app while you are inside the geofence. The `user` returned by `trackOnce()` includes the geofence you created:
+
+```json
+{
+  "user": {
+    "_id": "64f0a1b2c3d4e5f6a7b8c9d0",
+    "userId": "user-123",
+    "foreground": true,
+    "stopped": true,
+    "geofences": [
+      {
+        "_id": "64f0a1b2c3d4e5f6a7b8c9d1",
+        "tag": "store",
+        "externalId": "store-42",
+        "description": "Store 42",
+        "metadata": {
+          "curbside": true
+        }
+      }
+    ]
+  }
+}
+```
+
+Then confirm in the dashboard:
+
+- The [Users](https://dashboard.radar.com/geofencing/users) page shows your device with a recent location.
+- The [Events](https://dashboard.radar.com/geofencing/events) page shows a `user.entered_geofence` event for `Store 42`, generated by the first update inside the geofence.
+
+If `geofences` is empty, check that the geofence and the publishable key are in the same environment, that the geofence is enabled, and that the device's reported location falls inside the circle. For more checks, see [Test, troubleshoot, and go live](/fundamentals/testing-and-launch).
+
+## Read current state or wait for an event
+
+Radar gives you two views of the same facts. Use the one that matches the question you are asking.
+
+| Question | Use | Why |
+| --- | --- | --- |
+| "Is this user in a store right now?" | Current state: `user.geofences`, `user.place`, `user.beacons`, and `user.trip` from `trackOnce()`, or from the location-update callback while tracking. | State is true on every update for as long as the user is inside. It answers correctly when the app opens and the user is already there. |
+| "Did this user arrive a moment ago?" | Events: `user.entered_geofence`, `user.exited_geofence`, and the others your project has enabled. | An event is generated once, at the transition. Use it to trigger something that happens one time, such as a notification or a backend workflow. |
+
+An app that shows an in-store mode only when it receives `user.entered_geofence` misses every user who was already inside when the app launched, because Radar doesn't generate a second entry event until the user leaves and returns. Read state for what the user sees on screen. Use events for one-time triggers.
+
+## Custom geofences and Radar Places
+
+| | Custom geofences | Radar Places |
+| --- | --- | --- |
+| What they represent | Locations you define: your stores, venues, delivery zones, or job sites. | Places from Radar's point-of-interest dataset, grouped by chain (such as `starbucks`) and category (such as `airport`). |
+| How you set them up | Create or import them, and keep them up to date as your locations change. | Turn on Places for your project and choose the chains and categories to monitor. |
+| What identifies them | Your `tag`, `externalId`, and `metadata`. | Radar's chain slug and category names, plus chain IDs or metadata you map in settings. |
+| User context | `user.geofences`, a list. | `user.place`, one place. |
+| Events | `user.entered_geofence`, `user.exited_geofence`, `user.dwelled_in_geofence` | `user.entered_place`, `user.exited_place` |
+
+Use custom geofences for locations you operate. Use Places for locations you don't, such as partner venues or airports. See [Detect geofence events and place visits](/geofencing/geofences-and-places).
+
+## Permissions and tracking modes
+
+What you can detect depends on the location permission the user grants and on how often the SDK sends updates.
+
+| Mode | Call | Permission needed | Update frequency | Use it for |
+| --- | --- | --- | --- | --- |
+| Foreground check | `Radar.trackOnce()` | Foreground | One update per call | In-app experiences on open and resume. |
+| Background tracking | `Radar.startTracking()` with the responsive or efficient preset | Background ("Always" on iOS, "Allow all the time" on Android) | Responsive: about every 2.5 minutes while moving, paused when stopped. Efficient: less often. | Entry and exit events and messaging while the app is closed. |
+| Trip tracking | `Radar.startTrip()` with the continuous preset | Foreground, with the iOS background location indicator or the Android foreground service active | About every 30 seconds for the length of the trip | Live ETAs and arrival detection for a pickup, delivery, or shift. |
+
+Continuous tracking uses more battery and shows a visible system indicator, so use it only between the start and end of a trip. Background tracking for geofence events is lower frequency and can run for as long as the user keeps the permission. On Android, background location updates can be delayed by Doze and other system limits. On iOS, they can be delayed by Low Power Mode.
+
+You can set the tracking mode in code or from the dashboard with [remote configuration](/sdk/remote-configuration). For every option and preset value, see [Tracking options](/sdk/tracking). For the permission flow on each platform, see [Understand foreground and background location permissions](/fundamentals/location-permissions).
+
+## Choose a guide
+
+<CardGroup cols={3}>
+  <Card title="Detect geofence events and place visits" icon="location-dot" href="/geofencing/geofences-and-places">
+    Import your locations, turn on Places, show an in-store mode, send location-triggered messages, and log conversions.
   </Card>
-  <Card title="Trips" icon={<svg
-xmlns="http://www.w3.org/2000/svg"
-width={32}
-height={32}
-viewBox="0 0 36 36"
-fill="none"
-{...props}
->
-<rect width={36} height={36} fill="#EB0083" rx={18} />
-<path
-fill="#fff"
-d="M24 10.5H12a.932.932 0 0 0-.923.937v13.126c0 .515.415.937.922.937h.194a.932.932 0 0 0 .923-.937v-2.81H24a.932.932 0 0 0 .922-.938v-9.378a.932.932 0 0 0-.922-.937Zm-1.116 5.622h-3.256v3.307h-3.256v-3.307h-3.256v-3.308h3.256v3.308h3.256v-3.308h3.256v3.308Z"
-/>
-</svg>} href="/geofencing/trips">
-    Trip tracking, live ETAs, arrival detection, and routing for pickups and deliveries
+  <Card title="Track pickups, deliveries, and workers" icon="route" href="/geofencing/trips">
+    Start a trip to a destination, act on ETA and arrival, and end tracking when the journey is done.
   </Card>
-  <Card title="Places" icon={<svg
-xmlns="http://www.w3.org/2000/svg"
-width={32}
-height={32}
-viewBox="0 0 36 36"
-fill="none"
-{...props}
->
-<rect width={36} height={36} fill="#5B38FF" rx={18} />
-<path
-fill="#fff"
-d="M23.531 10.969c-.187-.281-.468-.469-.843-.469h-9.375c-.376 0-.657.188-.844.469-1.969 3.75-1.969 3.937-1.969 4.219a1.88 1.88 0 0 0 1.875 1.874v7.5c0 .563.375.938.938.938h9.374c.563 0 .938-.375.938-.938v-7.5a1.88 1.88 0 0 0 1.875-1.875c0-.28 0-.468-1.969-4.218Zm-3.656 12.656v-3.75h-3.75v3.75H14.25v-6.844c.281.188.563.282.938.282.562 0 1.03-.282 1.406-.657.375.375.843.657 1.406.657s1.031-.282 1.406-.657c.375.375.844.657 1.407.657.375 0 .656-.094.937-.282v6.844h-1.875Z"
-/>
-</svg>} href="/geofencing/places">
-    Points-of-interest (POI) dataset to detect visits to millions of places
-  </Card>
-  <Card title="Regions" icon={<svg
-xmlns="http://www.w3.org/2000/svg"
-width={32}
-height={32}
-viewBox="0 0 36 36"
-fill="none"
-{...props}
->
-<rect width={36} height={36} fill="#3FCD7D" rx={18} />
-<path
-fill="#fff"
-d="M18.035 10.525a7.489 7.489 0 0 1 7.49 7.491c0 2.08-.847 3.959-2.214 5.316a7.489 7.489 0 0 1-12.786-5.335 7.455 7.455 0 0 1 2.108-5.17 7.468 7.468 0 0 1 5.402-2.302Zm0 1.404c-1.13 0-2.189.311-3.097.85l.269.218.056.056 1.02 1.086c.132.14.197.338.169.534l-.252 1.695a.633.633 0 0 1-.347.487l-1.536.776-.374.319.103.169.758.814c.075.075.122.16.15.263l.44 1.525a.642.642 0 0 1-.206.675l-1.049.88-.08.339a6.084 6.084 0 0 0 2.24 1.232.687.687 0 0 1 .144-.28l1.17-1.273.58-1.6a.61.61 0 0 1 .375-.384l2.014-.759a.655.655 0 0 1 .355-.028l1.947.394a.65.65 0 0 1 .328.167l.39.382a6.04 6.04 0 0 0 .519-2.45c0-3.352-2.734-6.087-6.086-6.087Z"
-/>
-</svg>} href="/geofencing/regions">
-    Admin boundary dataset for country, state, and postal code detection
-  </Card>
-  <Card title="User insights" icon={<svg
-xmlns="http://www.w3.org/2000/svg"
-width={32}
-height={32}
-viewBox="0 0 36 36"
-fill="none"
-{...props}
->
-<rect width={36} height={36} fill="#00A6A6" rx={18} />
-<path
-fill="#fff"
-fillRule="evenodd"
-d="M18.625 10.75a1 1 0 0 0-1.25 0l-7 5.6a1 1 0 0 0 .625 1.78h.75v6.12a1 1 0 0 0 1 1h3.5a1 1 0 0 0 1-1v-3.5h1.5v3.5a1 1 0 0 0 1 1h3.5a1 1 0 0 0 1-1v-6.12H25a1 1 0 0 0 .625-1.78l-7-5.6Zm3.625 6.18L18 13.53l-4.25 3.4v6.32h1.5v-3.5a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1v3.5h1.5v-6.32Z"
-clipRule="evenodd"
-/>
-</svg>} href="/geofencing/user-insights">
-    Infer home, work, travel, and commute context from location history
-  </Card>
-  <Card title="Beacons" icon={<svg
-xmlns="http://www.w3.org/2000/svg"
-width={32}
-height={32}
-viewBox="0 0 36 36"
-fill="none"
-{...props}
->
-<rect width={36} height={36} fill="#0005FB" rx={18} />
-<path
-fill="#fff"
-d="M17.588 25.5a.79.79 0 0 1-.356-.078.836.836 0 0 1-.477-.756v-5.31l-2.89 1.843a.843.843 0 0 1-1.155-.255.843.843 0 0 1 .256-1.156l3.489-2.222-3.49-2.2a.818.818 0 0 1-.255-1.144.838.838 0 0 1 1.156-.256l2.9 1.834v-4.467c0-.311.166-.589.444-.733a.818.818 0 0 1 .856.044l4.989 3.311a.813.813 0 0 1 .366.7.861.861 0 0 1-.389.7l-3.466 2.211 3.466 2.2a.85.85 0 0 1 .39.645.789.789 0 0 1-.3.688l-4.99 4.2a.817.817 0 0 1-.533.2h-.011Zm.833-6.678v4.055l2.756-2.31-2.756-1.745Zm0-5.934v3.423l2.634-1.678-2.634-1.745Z"
-/>
-</svg>} href="/geofencing/beacons">
-    Hardware-enabled micro-geofences accurately detect locations down to a meter or less
-  </Card>
-  <Card title="Fraud" icon={<svg
-xmlns="http://www.w3.org/2000/svg"
-width={32}
-height={32}
-viewBox="0 0 36 36"
-fill="none"
-{...props}
->
-<rect width={36} height={36} fill="#EB0C00" rx={18} />
-<path
-fill="#fff"
-d="M18.287 9.25c3.315.164 5.963 3.086 5.963 6.665v.284c0 3.94-4.997 9.62-5.521 10.2-.206.23-.524.351-.729.351-.205 0-.523-.12-.729-.35-.513-.581-5.521-6.261-5.521-10.2v-.285c0-3.579 2.638-6.5 5.963-6.665h.574Zm-3.412 5.635v1.875h6.25v-1.875h-6.25Z"
-/>
-</svg>} href="/geofencing/fraud">
-    Detect GPS spoofing, proxy and VPN usage, and device tampering
-  </Card>
-  <Card title="Integrations" icon={<svg
-xmlns="http://www.w3.org/2000/svg"
-width={32}
-height={32}
-viewBox="0 0 36 36"
-fill="none"
-{...props}
->
-<rect width={36} height={36} fill="#8BA1B0" rx={18} />
-<path
-fill="#fff"
-d="m17.565 17.455-1.238 1.236.982.98 1.236-1.235.874.873-1.236 1.237.821.821a.619.619 0 0 1 0 .874l-.928.928a3.702 3.702 0 0 1-4.77.398l-1.743 1.744a.618.618 0 1 1-.874-.875l1.744-1.743a3.703 3.703 0 0 1 .397-4.77l.928-.927a.618.618 0 0 1 .874 0l.821.821 1.237-1.236.875.874ZM24.86 10.5a.634.634 0 0 1 .446 1.092l-1.79 1.79a3.804 3.804 0 0 1-.41 4.898l-.952.953a.635.635 0 0 1-.897 0l-4.49-4.489a.635.635 0 0 1 0-.897l.953-.954a3.803 3.803 0 0 1 4.898-.409l1.79-1.79a.635.635 0 0 1 .452-.194Z"
-/>
-</svg>} href="/integrations/integrations">
-    Send Radar events and user context to other systems server-to-server
+  <Card title="Track indoor location with beacons" icon="bluetooth" href="/geofencing/beacons">
+    Register beacons and detect which ones are in range where GPS isn't precise enough.
   </Card>
 </CardGroup>
+
+## Reference
+
+- SDKs: [iOS](/sdk/ios), [Android](/sdk/android), [web](/sdk/web), [React Native](/sdk/react-native), [Flutter](/sdk/flutter)
+- [Tracking options](/sdk/tracking) and [remote configuration](/sdk/remote-configuration)
+- APIs: [Geofences](/api/geofences), [Events](/api/events), [Trips](/api/trips), [Beacons](/api/beacons)
+- [Webhooks](/integrations/webhooks) and other [integrations](/integrations/integrations)
+- [Test, troubleshoot, and go live](/fundamentals/testing-and-launch)
