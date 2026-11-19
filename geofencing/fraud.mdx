@@ -455,7 +455,7 @@ Choose your implementation pattern depending on your use cases:
 You can call `Radar.trackVerified()` to manually perform a location check. `Radar.trackVerified()` returns a `RadarVerifiedLocationToken` with:
 
 - `passed`: A boolean indicating whether the user passed all fraud and jurisdiction checks (`user.fraud.passed && user.country.passed && user.state.passed`).
-- `token`: A tamper-proof JSON Web Token (JWT) that you can send to your server to validate the signature, signed with the _JSON Web Token (JWT) Secret Key_ found under _Fraud_ on the [Settings page](https://dashboard.radar.com/settings#fraud-settings).
+- `token`: A tamper-proof JSON Web Token (JWT) that you can send to your server to validate the signature, signed with the _JSON Web Token (JWT) Secret Key_ found under _Fraud_ on the [Settings page](https://dashboard.radar.com/settings#fraud-settings). With [encrypted responses](#encrypted-responses), `token` is a JSON Web Encryption (JWE) token instead.
 - `failureReasons`: If `passed == false`, an array of more detailed [failure reasons](#failure-reasons).
 - `expiresAt`: The datetime when the token expires, by default in 20 minutes, but earlier when close to the border based on compliance requirements.
 - `expiresIn`: The number of seconds until the token expires.
@@ -591,14 +591,20 @@ You can send the JWT to your server and validate the signature. For example, in 
 ```javascript
 import { jwtVerify } from 'jose';
 
+const SECRET_KEY = new TextEncoder().encode(process.env.RADAR_JWT_SECRET_KEY);
+
 try {
-  const { payload } = await jwtVerify(token, SECRET_KEY);
+  const { payload } = await jwtVerify(token, SECRET_KEY, {
+    algorithms: ['HS256'],
+  });
   const { user } = payload;
   // token is valid, check payload to allow or deny access
 } catch (err) {
   // token is invalid, deny access, show error message
 }
 ```
+
+If your project uses [encrypted responses](#encrypted-responses), decrypt the token before you verify it.
 
 #### Ranging beacons
 
@@ -918,6 +924,79 @@ Radar.initializeWithAuthToken(authToken, true);
 
 If the auth token is invalid or the signature is invalid, `Radar.trackVerified()` will return `ERROR_UNAUTHORIZED`. If any of the claims don't match, `Radar.trackVerified()` will return `ERROR_FORBIDDEN`.
 
+### Encrypted responses
+
+<Info>
+  Contact your customer success manager for access to encrypted responses.
+</Info>
+
+By default, `token` is a JWT signed with a secret key that Radar and your server share. As an alternative, Radar can return `token` as a JSON Web Encryption (JWE) token. Radar signs the response with its own private key, then encrypts it with a public key that you upload. Only your server can decrypt the response.
+
+Encrypted responses are available for `Radar.trackVerified()` and `Radar.revealRisk()`.
+
+With encrypted responses, Radar returns only `token`, `passed`, `expiresAt`, and `expiresIn` to the client. Everything else, including `user`, `events`, and `failureReasons` for location checks and `risk`, `network`, and `device` for risk checks, is only in the encrypted token. Send the token to your server to read it.
+
+First, create an EC P-256 key pair. Save your private key. Your private key should never leave your server. Then convert your public key to a JSON Web Key (JWK) and copy it. For example:
+
+```bash
+openssl ecparam -genkey -name prime256v1 -noout -out private-key.pem
+openssl ec -in private-key.pem -pubout -out public-key.pem
+node -e "const fs = require('fs'); const crypto = require('crypto'); const key = crypto.createPublicKey(fs.readFileSync('public-key.pem')); console.log(JSON.stringify(key.export({ format: 'jwk' }), null, 2));" > public-key.jwk
+cat public-key.jwk | pbcopy
+```
+
+The public JWK has four fields:
+
+```json
+{
+  "kty": "EC",
+  "x": "...",
+  "y": "...",
+  "crv": "P-256"
+}
+```
+
+Under _Response encryption keys_ on the [Settings page](https://dashboard.radar.com/settings#response-keys), click _Add_. Choose the _Live_ or _Test_ environment, then upload your public JWK file or paste its contents. Unlike [auth tokens](#auth-tokens), response encryption keys must be in JWK format, not PEM format. If you paste a PEM file, or a JWK that includes the private `d` field, you'll see the error `Enter a public P-256 JWK without private key material.`
+
+A new key is disabled until you activate it. Once your server has the private key, open the menu on the key's row and click _Activate_. Only one key is active per environment, and live and test keys are separate. You need the owner role to add, activate, or delete keys.
+
+To read a response, decrypt the token on your server with your private key, then verify Radar's signature on the decrypted JWT. Radar encrypts with `ECDH-ES` and `A256GCM`, and signs with `ES256`. Radar's public signing keys are published at `https://api.radar.io/.well-known/jwks.json`. For example, in JavaScript:
+
+```javascript
+import { readFileSync } from 'node:fs';
+import { createPrivateKey } from 'node:crypto';
+import { compactDecrypt, createRemoteJWKSet, jwtVerify } from 'jose';
+
+const PRIVATE_KEY = createPrivateKey(readFileSync('private-key.pem'));
+const RADAR_KEYS = createRemoteJWKSet(new URL('https://api.radar.io/.well-known/jwks.json'));
+
+try {
+  const { plaintext } = await compactDecrypt(token, PRIVATE_KEY, {
+    keyManagementAlgorithms: ['ECDH-ES'],
+    contentEncryptionAlgorithms: ['A256GCM'],
+  });
+  const { payload } = await jwtVerify(new TextDecoder().decode(plaintext), RADAR_KEYS, {
+    algorithms: ['ES256'],
+    issuer: 'api-verified',
+  });
+  const { result, endpoint, live } = payload;
+  const { user } = result;
+  // token is valid, check result to allow or deny access
+} catch (err) {
+  // token is invalid, deny access, show error message
+}
+```
+
+The decrypted JWT includes these claims:
+
+- `result`: The response. For location checks, this has the same fields as the default JWT payload, including `user`, `events`, `passed`, and `failureReasons`.
+- `endpoint`: `track` for `Radar.trackVerified()` or `revealRisk` for `Radar.revealRisk()`.
+- `live`: A boolean indicating whether the response is from the live or test environment.
+- `aud`: Your Radar project ID.
+- `exp`: The time when the token expires.
+
+To rotate keys, add a new key, deploy its private key to your server, then activate the new key. Activating a key disables the previous key for that environment. Keep the previous private key until the tokens encrypted with it expire. The `kid` header of each token is the _Key ID_ of the key that encrypted it, so your server can choose the matching private key. You can delete a key once it's disabled.
+
 ### Failure reasons
 
 <Info>
@@ -976,7 +1055,7 @@ If using `@radarlabs/plugin-fraud` version `1.4.0` or higher, iOS SDK version `3
 - `risk`: Risk information, including a risk `level` (none, low, medium, high, configurable with [Risk scores](#risk-scores)) and `reasons` (includes `proxy`, `compromised`, and `sharing` reasons from [Failure reasons](#failure-reasons)).
 - `network`: Network information, including IP address, IP geolocation, privacy information, and ASN information.
 - `device`: Device and browser information.
-- `token`: A tamper-proof JSON Web Token (JWT) that you can send to your server to validate the signature, signed with the _JSON Web Token (JWT) Secret Key_ found under _Fraud_ on the [Settings page](https://dashboard.radar.com/settings#fraud-settings).
+- `token`: A tamper-proof JSON Web Token (JWT) that you can send to your server to validate the signature, signed with the _JSON Web Token (JWT) Secret Key_ found under _Fraud_ on the [Settings page](https://dashboard.radar.com/settings#fraud-settings). With [encrypted responses](#encrypted-responses), `token` is a JSON Web Encryption (JWE) token instead.
 - `expiresAt`: The datetime when the token expires.
 - `expiresIn`: The number of seconds until the token expires.
 
