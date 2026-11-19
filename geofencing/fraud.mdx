@@ -591,8 +591,12 @@ You can send the JWT to your server and validate the signature. For example, in 
 ```javascript
 import { jwtVerify } from 'jose';
 
+const SECRET_KEY = new TextEncoder().encode(process.env.RADAR_JWT_SECRET_KEY);
+
 try {
-  const { payload } = await jwtVerify(token, SECRET_KEY);
+  const { payload } = await jwtVerify(token, SECRET_KEY, {
+    algorithms: ['HS256'],
+  });
   const { user } = payload;
   // token is valid, check payload to allow or deny access
 } catch (err) {
