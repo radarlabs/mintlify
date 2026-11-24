@@ -86,6 +86,10 @@
     {
       "source": "/tutorials/building-a-delivery-tracker-with-live-location-and-etas",
       "destination": "/tutorials/building-a-delivery-tracking-app"
+    },
+    {
+      "source": "/insights",
+      "destination": "/geofencing/user-insights"
     }
   ],
   "navigation": {
